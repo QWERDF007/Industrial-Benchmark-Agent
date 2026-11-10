@@ -114,6 +114,7 @@ class SampleRepository:
                 s.height,
                 s.quality_status.value if isinstance(s.quality_status, QualityStatus) else str(s.quality_status),
                 s.quality_source,
+                s.annotation_availability.model_dump_json(),
             )
             for s in samples
         ]
@@ -123,8 +124,8 @@ class SampleRepository:
                 INSERT INTO samples (
                     sample_id, task_id, dataset_id, image_path, relative_path, data_origin,
                     physical_sample_id, capture_sequence_id, batch_id, station, camera,
-                    width, height, quality_status, quality_source, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    width, height, quality_status, quality_source, annotation_availability_json, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                 ON CONFLICT(dataset_id, relative_path) DO UPDATE SET
                     sample_id = excluded.sample_id,
                     task_id = excluded.task_id,
@@ -139,6 +140,7 @@ class SampleRepository:
                     height = excluded.height,
                     quality_status = excluded.quality_status,
                     quality_source = excluded.quality_source,
+                    annotation_availability_json = excluded.annotation_availability_json,
                     updated_at = CURRENT_TIMESTAMP
                 """,
                 data,
@@ -219,6 +221,7 @@ class SampleRepository:
             height=row["height"],
             quality_status=QualityStatus(row["quality_status"]),
             quality_source=row["quality_source"],
+            annotation_availability=json.loads(row['annotation_availability_json']),
             is_excluded=bool(row['is_excluded']),
         )
 

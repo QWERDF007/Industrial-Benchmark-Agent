@@ -6,7 +6,7 @@ from iad_core.prompt_files import PromptFiles
 
 
 class ExplorationPrompts:
-    """One UTF-8 file per preset: display name on the first line, full prompt below."""
+    """Render preset templates before displaying their complete editable instruction."""
 
     def __init__(self):
         self.files = PromptFiles(Path(os.environ.get('IAD_EXPLORATION_PRESETS_DIR') or Path(__file__).with_name('presets')),

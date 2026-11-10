@@ -19,7 +19,7 @@ test("Industrial Harness Plugin exposes the allowed native tools and its authori
   new SkillRegistry(ctx);
   new LocalAttachmentStore(ctx, { dshHome: root });
   skillTool.apply(ctx);
-  const fork = await ctx.plugin(harness);
+  const fork = await ctx.plugin(harness, {dbPath: path.join(root, 'test.db')});
   try {
     const assembly = await ctx.systemPrompt.assemble();
     const policy = assembly.sections.find(section => section.name === "industrial_benchmark_policies");
@@ -28,13 +28,14 @@ test("Industrial Harness Plugin exposes the allowed native tools and its authori
     for (const forbidden of ["review_write", "review_submit", "gold_write", "shell", "mcp__iad__task_inspect"]) {
       assert.equal(ctx.tools.get(forbidden), undefined);
     }
-    assert.ok(ctx.tools.get("knowledge_mine_normal"));
-    assert.ok(ctx.tools.get("knowledge_mine_defect"));
+    assert.ok(ctx.tools.get("knowledge_mine"));
+    assert.equal(ctx.tools.get("knowledge_mine_normal"), undefined);
+    assert.equal(ctx.tools.get("knowledge_mine_defect"), undefined);
     assert.ok(ctx.tools.get("knowledge_evidence"));
   } finally {
     await fork.dispose();
     await fs.rm(root, { recursive: true, force: true });
   }
-  assert.equal(ctx.tools.get("knowledge_mine_normal"), undefined);
+  assert.equal(ctx.tools.get("knowledge_mine"), undefined);
   assert.equal(ctx.iadPythonBridge, undefined);
 });

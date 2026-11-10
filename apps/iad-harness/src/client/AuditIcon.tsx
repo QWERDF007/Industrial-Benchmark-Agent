@@ -117,6 +117,12 @@ export function EyeIcon({ size = 18 }: { size?: number }) {
   );
 }
 
+export function ClockIcon() {
+  return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 8v4l3 2M21 12a9 9 0 1 1-9-9 9 9 0 0 1 9 9Z" />
+  </svg>;
+}
+
 export function DocumentSearchIcon({ size = 17 }: { size?: number }) {
   return (
     <svg

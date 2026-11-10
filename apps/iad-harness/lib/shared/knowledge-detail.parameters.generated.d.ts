@@ -5,12 +5,20 @@ export declare const knowledgeDetailParameters: {
         readonly required: true;
     };
     readonly check_id: {
-        readonly type: "string";
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Check Id";
     };
     readonly evidence_role: {
-        readonly type: "string";
-        readonly enum: readonly ["support", "counter"];
+        readonly oneOf: readonly [{
+            readonly type: "string";
+            readonly enum: readonly ["support", "counter"];
+        }, {
+            readonly type: "null";
+        }];
         readonly title: "Evidence Role";
     };
     readonly section: {

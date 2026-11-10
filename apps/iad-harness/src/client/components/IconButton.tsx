@@ -1,9 +1,9 @@
 import React, {forwardRef} from 'react';
 import {CloseIcon,DeleteIcon,RefreshIcon,ClearFilterIcon,EditIcon,CopyIcon,PlusIcon,ChevronIcon,
-  DocumentIcon,DocumentSearchIcon,MineIcon,StatsIcon,EyeIcon,EyeOffIcon,ZoomInIcon,ZoomOutIcon,FitIcon,ExpandIcon} from '../AuditIcon.js';
+  DocumentIcon,DocumentSearchIcon,ClockIcon,MineIcon,StatsIcon,EyeIcon,EyeOffIcon,ZoomInIcon,ZoomOutIcon,FitIcon,ExpandIcon} from '../AuditIcon.js';
 
 const icons={close:CloseIcon,delete:DeleteIcon,refresh:RefreshIcon,clear:ClearFilterIcon,edit:EditIcon,copy:CopyIcon,
-  add:PlusIcon,chevron:ChevronIcon,prompt:DocumentIcon,details:DocumentSearchIcon,mine:MineIcon,stats:StatsIcon,
+  add:PlusIcon,chevron:ChevronIcon,prompt:DocumentIcon,details:DocumentSearchIcon,clock:ClockIcon,mine:MineIcon,stats:StatsIcon,
   annotations:EyeIcon,annotationsOff:EyeOffIcon,zoomIn:ZoomInIcon,zoomOut:ZoomOutIcon,fit:FitIcon,expand:ExpandIcon};
 export type IconName=keyof typeof icons;
 export type IconButtonProps = Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'aria-label'|'children'> & {label:string;icon:IconName};

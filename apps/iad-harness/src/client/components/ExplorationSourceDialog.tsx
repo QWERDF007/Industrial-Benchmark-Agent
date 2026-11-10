@@ -1,12 +1,12 @@
 import React,{useMemo,useRef,useState} from 'react';
-import type {ExplorationCandidate} from '../exploration-view.js';
+import type {ExplorationCandidate, ExplorationRole} from '../exploration-view.js';
 import {Button} from './Button.js';
 import {Modal} from './Modal.js';
 import {Pagination} from './Pagination.js';
 import {ThumbnailCard} from './ThumbnailCard.js';
 
 export function ExplorationSourceDialog({kind,candidates,selected,loading,onChange,onClose}:{
-  kind:ExplorationCandidate['kind'];candidates:ExplorationCandidate[];selected:string[];loading:boolean;
+  kind:ExplorationRole;candidates:ExplorationCandidate[];selected:string[];loading:boolean;
   onChange(ids:string[]):void;onClose():void;
 }) {
   const [search,setSearch]=useState(''),[selectedOnly,setSelectedOnly]=useState(false),[page,setPage]=useState(1);
@@ -14,7 +14,7 @@ export function ExplorationSourceDialog({kind,candidates,selected,loading,onChan
   const chosen=useMemo(()=>new Set(selected),[selected]);
   const filtered=useMemo(()=>{
     const query=search.trim().toLocaleLowerCase();
-    return candidates.filter(item=>item.kind===kind&&(!selectedOnly||chosen.has(item.id))
+    return candidates.filter(item=>(!selectedOnly||chosen.has(item.id))
       &&(!query||item.filename.toLocaleLowerCase().includes(query)));
   },[candidates,kind,chosen,selectedOnly,search]);
   const current=Math.min(page,Math.max(1,Math.ceil(filtered.length/24)));

@@ -11,17 +11,11 @@ class JsonObjectResponseFormat(AnalysisModel):
     type: Literal['json_object']
 
 
-class ModelLimits(AnalysisModel):
-    capacity_mode: Optional[Literal['vllm_tokenize']] = None
-    max_visual_inputs: Optional[int] = Field(default=None, ge=1)
-    max_request_bytes: Optional[int] = Field(default=None, gt=0)
+class GenerationLimits(AnalysisModel):
     context_tokens: Optional[int] = Field(default=None, gt=0)
     max_output_tokens: Optional[int] = Field(default=None, gt=0)
     request_parameters: dict = Field(default_factory=dict)
     generation_timeout_seconds: Optional[float] = Field(default=None, ge=0)
-    connect_timeout_seconds: Optional[float] = Field(default=None, ge=0)
-    write_timeout_seconds: Optional[float] = Field(default=None, ge=0)
-    pool_timeout_seconds: Optional[float] = Field(default=None, ge=0)
 
     @model_validator(mode='after')
     def protected_request_fields(self):
@@ -30,6 +24,15 @@ class ModelLimits(AnalysisModel):
         if 'response_format' in self.request_parameters:
             JsonObjectResponseFormat.model_validate(self.request_parameters['response_format'])
         return self
+
+
+class ModelLimits(GenerationLimits):
+    capacity_mode: Optional[Literal['vllm_tokenize']] = None
+    max_visual_inputs: Optional[int] = Field(default=None, ge=1)
+    max_request_bytes: Optional[int] = Field(default=None, gt=0)
+    connect_timeout_seconds: Optional[float] = Field(default=None, ge=0)
+    write_timeout_seconds: Optional[float] = Field(default=None, ge=0)
+    pool_timeout_seconds: Optional[float] = Field(default=None, ge=0)
 
 
 class ModelProfile(ModelLimits):
@@ -56,3 +59,10 @@ class ModelProfile(ModelLimits):
 class ModelProfileSnapshot(ModelProfile):
     """Immutable job metadata preserves fields from the captured execution schema."""
     model_config = ConfigDict(extra='allow', frozen=True)
+
+
+class FrozenModelRole(AnalysisModel):
+    profile: ModelProfile | None = None
+    input_modalities: list[str] = Field(default_factory=list)
+    native_profile: dict | None = None
+    error: str | None = None

@@ -5,9 +5,10 @@ from contextlib import contextmanager,nullcontext
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from sqlite3 import Connection
-from typing import Any, Callable, List, Literal, Optional, Tuple
+from typing import Annotated, Any, Callable, List, Literal, Optional, Tuple
 
 import httpx
+from pydantic import AwareDatetime, Field, FiniteFloat
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.storage.database import Database
@@ -23,9 +24,14 @@ class ModelCallSummary(AnalysisModel):
     call_id: str
     run_id: str
     operation: Literal['tokenize', 'generate']
-    schema_name: str
+    schema_name: Optional[str]
     phase: Optional[str]
     sample_id: Optional[str]
+    role: Optional[Literal['agent', 'vision']] = None
+    request_id: Optional[str] = None
+    source: Literal['http', 'native_llm'] = 'http'
+    session_id: Optional[str] = None
+    attempt: Optional[int] = Field(default=None, gt=0, strict=True)
     started_at: str
     finished_at: Optional[str] = None
     elapsed_ms: Optional[float] = None
@@ -38,20 +44,66 @@ class ModelCallSummary(AnalysisModel):
 
 
 class ModelCallDetail(ModelCallSummary):
-    request_body: str
-    response_body: Optional[str]
+    request_body: str = Field(description='http来源为传输正文；native_llm来源为省略运行时signal的SDK请求JSON')
+    response_body: Optional[str] = Field(description='http来源为传输正文；native_llm来源为SDK流的实际终态与可得用量')
 
 
-_active: ContextVar[Optional[Tuple['ModelCalls', str, Optional[Callable[[], None]], str]]] = ContextVar('iad_model_calls', default=None)
+class NativeModelCallStart(AnalysisModel):
+    call_id: str = Field(min_length=1)
+    started_at: AwareDatetime
+    request: dict[str, Any]
+
+
+class NativeModelCallEnd(AnalysisModel):
+    call_id: str = Field(min_length=1)
+    finished_at: AwareDatetime
+    elapsed_ms: Annotated[FiniteFloat, Field(ge=0)]
+    finish_reason: Optional[str] = None
+    usage: Optional[dict[str, Any]] = None
+    error: Optional[ModelCallError] = None
+    http_status: Optional[int] = None
+
+
+_active: ContextVar[Optional[Tuple['ModelCalls', str, Optional[Callable[[], None]], str, Optional[str], Optional[str], Optional[str]]]] = ContextVar('iad_model_calls', default=None)
 
 
 class ModelCalls:
     def __init__(self, db: Database):
         self.db = db
 
+    def start_native(self, run_id: str, request: NativeModelCallStart, *, sample_id: str | None, session_id: str,
+                     attempt: int) -> None:
+        with self.db.connection() as connection:
+            payload = json.loads(connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0])
+            summary = ModelCallSummary(call_id=request.call_id, run_id=run_id, operation='generate',
+                schema_name=None, phase=payload.get('phase'), sample_id=sample_id,
+                role='agent', request_id=request.call_id, source='native_llm', session_id=session_id, attempt=attempt,
+                started_at=request.started_at.isoformat())
+            connection.execute('INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)',
+                (summary.call_id, run_id, summary.model_dump_json()))
+            self.db.call_payloads.write(run_id, summary.call_id, 'request', json.dumps(request.request, ensure_ascii=False).encode())
+
+    def finish_native(self, run_id: str, sample_id: str | None, result: NativeModelCallEnd) -> None:
+        with self.db.connection() as connection:
+            row = connection.execute('SELECT summary_json FROM model_calls WHERE run_id=? AND call_id=?',
+                (run_id, result.call_id)).fetchone()
+            if row is None:
+                raise LookupError('原生模型调用不属于当前作业')
+            summary = ModelCallSummary.model_validate_json(row[0])
+            if summary.source != 'native_llm' or summary.sample_id != sample_id:
+                raise ValueError('原生模型调用不属于当前主图')
+            summary.finished_at = result.finished_at.isoformat()
+            summary.elapsed_ms, summary.finish_reason = result.elapsed_ms, result.finish_reason
+            summary.usage = (result.usage if result.error is None and result.finish_reason is not None
+                and result.usage and any(result.usage.values()) else None)
+            summary.error, summary.http_status = result.error, result.http_status
+            connection.execute('UPDATE model_calls SET summary_json=? WHERE call_id=?', (summary.model_dump_json(), summary.call_id))
+            self.db.call_payloads.write(run_id, summary.call_id, 'response', result.model_dump_json().encode())
+
     @contextmanager
-    def bind(self, run_id: str, checkpoint: Optional[Callable[[], None]] = None, *, state_run_id: Optional[str] = None):
-        token = _active.set((self, run_id, checkpoint, state_run_id or run_id))
+    def bind(self, run_id: str, checkpoint: Optional[Callable[[], None]] = None, *, state_run_id: Optional[str] = None,
+             role: Optional[Literal['agent', 'vision']] = None, request_id: Optional[str] = None, sample_id: Optional[str] = None):
+        token = _active.set((self, run_id, checkpoint, state_run_id or run_id, role, request_id, sample_id))
         try:
             yield
         finally:
@@ -68,11 +120,12 @@ class ModelCalls:
             finally:
                 response.close()
             return
-        repository, run_id, checkpoint, state_run_id = binding
+        repository, run_id, checkpoint, state_run_id, role, request_id, sample_id = binding
         with repository.db.connection() as conn:
             payload = json.loads(conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (state_run_id,)).fetchone()[0])
             summary = ModelCallSummary(call_id='call_' + uuid.uuid4().hex, run_id=run_id, operation=operation,
-                schema_name=schema_name, phase=payload.get('phase'), sample_id=payload.get('current_sample_id'),
+                schema_name=schema_name, phase=payload.get('phase'), sample_id=sample_id if sample_id is not None else payload.get('current_sample_id'),
+                role=role, request_id=request_id,
                 started_at=datetime.now(timezone.utc).isoformat())
             conn.execute('INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)',
                          (summary.call_id, run_id, summary.model_dump_json()))

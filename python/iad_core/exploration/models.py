@@ -5,6 +5,8 @@ from pydantic import Field, model_validator
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.knowledge.models import KnowledgeEvidence, KnowledgeSource
 
+EXPLORATION_JOBS = ('DIRECTION_EXPLORATION', 'EXPLORATION_BATCH')
+
 
 class ExplorationPresetEdit(AnalysisModel):
     name: NonBlankText
@@ -40,13 +42,16 @@ class ExplorationStart(AnalysisModel):
         return self
 
 
-class ProposedDirection(AnalysisModel):
+class DirectionContent(AnalysisModel):
     title: NonBlankText
     instruction: NonBlankText
     applies_to: Literal['normal', 'defect', 'both']
     rationale: NonBlankText
     evidence_ids: list[str] = Field(min_length=1)
     limitations: list[str]
+
+
+class ProposedDirection(DirectionContent):
     previous_direction_id: Optional[str] = Field(default=None,
         description='延续或修订历史方向时填写给定direction_id；本轮新增方向为null，历史文本不是本轮视觉证据')
 

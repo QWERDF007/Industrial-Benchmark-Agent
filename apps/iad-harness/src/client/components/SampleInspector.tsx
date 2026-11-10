@@ -1,6 +1,6 @@
 import {ThumbnailCard} from "./ThumbnailCard.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { AuditStartRequest, InspectionSnapshot, JobSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
+import type { JobSnapshot, InspectionSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { ImageCanvas } from "./ImageCanvas.js";
 import { ReviewWorkspace } from "./ReviewWorkspace.js";
@@ -15,10 +15,10 @@ import { AuditConsistency } from "./AuditConsistency.js";
 import { HumanReviewForm } from "./HumanReviewForm.js";
 import { auditEvidenceUrl, regionSources, mediaUrl, message, request, reviewLabel, modelLabels } from "../api.js";
 import { useWorkspace } from "../workspace.js";
-import {useWorkbenchModel} from "../models.js";
 import { inspectionImage } from "../inspection.js";
 import { jobStatuses, jobPhases } from "../../shared/job-display.js";
 import type { SampleNavigation } from "../useSampleNavigation.js";
+import {datasetImageAnnotations} from '../dataset-image-annotations.js';
 
 export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation, queue, filters, advanceOnSubmit = false, panel }: {
   panel?: Pick<ModalProps, "onClose" | "restoreFocus"> & { presentation: ModalPresentation; onOpen(open: boolean): void };
@@ -29,11 +29,9 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
   onReviewed(record: ReviewDecisionRecord, relativePath: string): void;
 }) {
   const { workspace, state } = useWorkspace();
-  const model = useWorkbenchModel();
   const [loadedDetail, setDetail] = useState<SampleDetail | null>(null);
   const detail = loadedDetail?.sample.sample_id === sampleId ? loadedDetail : null;
   const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
   const job = jobs.find(job => job.sample_ids.includes(sampleId));
   const jobRunning = jobs.some(job => job.status === "RUNNING" || job.status === "PENDING");
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
@@ -60,16 +58,10 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
     });
     return () => controller.abort();
   }, [sampleId, revision]);
-  async function audit() {
-    setBusy(true); setError("");
-    try {
-      const view = workspace.view("industrial-audit");
-      const input: AuditStartRequest = { dataset_id: dataset.dataset_id, sample_ids: [sampleId],
-        knowledge_version_id: view.version || undefined,
-        consistency_mode:view.auditConsistencyMode };
-      const job = await request<JobSnapshot>("/audit/start", input); workspace.updateView("industrial-audit", {job:job.run_id}); onJobsChanged();
-    }
-    catch (error) { setError(message(error)); } finally { setBusy(false); }
+  function audit() {
+    workspace.selectDataset(dataset.dataset_id);
+    workspace.updateView('industrial-audit',{tab:'setup'});
+    workspace.navigate('industrial-audit');
   }
   const evidenceSource = (evidence: VisualEvidence): ImageSource => {
     const suggestion = detail!.suggestion!;
@@ -77,8 +69,8 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
     return inspectionImage({ reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: suggestion.suggestion_id }, analysis }, { kind: "evidence", id: evidence.evidence_id });
   };
   const image = useMemo<ImageSource | null>(() => detail ? { src: mediaUrl(detail.sample), title: detail.sample.relative_path.split("/").pop()!, width: detail.sample.width, height: detail.sample.height,
-    annotationLayer: { kind: "sample", annotations: detail.annotations, sample: detail.sample },
-    inspection: detail.suggestion?.analysis ? { reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: detail.suggestion.suggestion_id }, analysis: detail.suggestion.analysis } : undefined } : null, [detail, dataset.dataset_id, sampleId]);
+    ...datasetImageAnnotations(dataset.format,detail.sample,detail.annotations),
+    inspection: detail.suggestion?.analysis ? { reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: detail.suggestion.suggestion_id }, analysis: detail.suggestion.analysis } : undefined } : null, [detail, dataset.dataset_id, dataset.format, sampleId]);
   useEffect(() => {
     if (navigation?.open && image && detail?.sample.sample_id === sampleId) {
       imageButton.current?.focus({ preventScroll: true });
@@ -155,7 +147,7 @@ export function SampleInspector({ dataset, sampleId, mode, revision, onReviewed,
         {detail.suggestion && <p className="iad-muted iad-inspector-basis">冻结知识：{detail.knowledge ? "已关联" : "未关联"}</p>}
         <div className="iad-actions">
           <button onClick={() => workspace.navigate("industrial-review", sampleId)}>前往人工复核</button>
-          <button disabled={busy || jobRunning || !model.ready} onClick={audit}>{busy || jobRunning ? "正在联合审计…" : "按知识审计此图"}</button>
+          <button disabled={jobRunning} onClick={audit}>新建模型审计</button>
         </div>
         <details className="iad-audit-details"><summary>样本信息与审计详情</summary>{information}</details>
       </> : information}

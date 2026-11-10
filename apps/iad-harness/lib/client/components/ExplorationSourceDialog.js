@@ -10,7 +10,7 @@ export function ExplorationSourceDialog({ kind, candidates, selected, loading, o
     const chosen = useMemo(() => new Set(selected), [selected]);
     const filtered = useMemo(() => {
         const query = search.trim().toLocaleLowerCase();
-        return candidates.filter(item => item.kind === kind && (!selectedOnly || chosen.has(item.id))
+        return candidates.filter(item => (!selectedOnly || chosen.has(item.id))
             && (!query || item.filename.toLocaleLowerCase().includes(query)));
     }, [candidates, kind, chosen, selectedOnly, search]);
     const current = Math.min(page, Math.max(1, Math.ceil(filtered.length / 24)));

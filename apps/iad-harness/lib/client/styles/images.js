@@ -6,15 +6,15 @@ export const imagesStyles = `
 .crumb{color:#8190a6;font-size:11px;margin:0 0 2px}
 .heading-side{font-size:12px;color:#8190a6}
 
-.dataset-panel{display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .field{display:flex;flex-direction:column;gap:5px;min-width:0}
 .field>label,.filter-item>label{font-size:12px;color:#586a84}
 .dataset-panel .parent{width:265px}
 .dataset-panel .child{width:410px}
 .dataset-panel select{width:100%;height:38px}
 
-.filter-bar{background:var(--surface,#fff);border:1px solid var(--border,#dbe2eb);border-radius:7px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
-.filter-item{display:flex;flex-direction:column;gap:5px;min-width:0}
+.filter-bar{background:var(--surface,#fff);border:1px solid var(--border,#dbe2eb);border-radius:7px;min-height:96px;padding:16px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:var(--iad-layout-gap)}
+.filter-item{display:flex;flex-direction:column;gap:var(--iad-layout-label-gap);min-width:0}
+.filter-item>label{line-height:var(--iad-layout-label-height)}
 .filter-item input,.filter-item select{height:38px}
 .filter-search{flex:1 1 240px;min-width:180px}
 .filter-search input{width:100%}
@@ -55,8 +55,9 @@ export const imagesStyles = `
 
 .full-overlay {z-index:10010;display:flex;align-items:stretch;justify-content:stretch;padding:0;background:#1c2633}
 .full-dialog {display:flex;flex-direction:column;width:100vw;height:100dvh;min-width:0;min-height:0;background:#202a36}
-.full-toolbar {height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#1c2633;border-bottom:1px solid rgba(255,255,255,.08);padding:0 20px;color:#f4f7fd}
-.full-file{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;color:#f4f7fd !important}
+.full-toolbar {position:relative;height:52px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;background:#1c2633;border-bottom:1px solid rgba(255,255,255,.08);padding:0 20px;color:#f4f7fd}
+.full-toolbar>.iad-image-quality{left:50%;top:50%;transform:translate(-50%,-50%);padding:0;border-radius:0;background:transparent;color:inherit;font-size:13px;font-weight:600}
+.full-file{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;max-width:calc(50% - 48px);flex:1;color:#f4f7fd !important}
 .full-stage {flex:1;position:relative;overflow:hidden;min-height:0;background:#202a36;touch-action:none;cursor:grab}
 .full-stage.dragging{cursor:grabbing}
 .full-image-world {position:absolute;left:50%;top:50%;transform-origin:center;user-select:none}
@@ -120,13 +121,6 @@ export const imagesStyles = `
 #reset{margin-left:0;align-self:flex-end}
 #refresh{align-self:flex-end}
 
-.iad-workbench[data-page="industrial-images"] .dataset-panel {
-  margin-bottom: 8px !important;
-}
-.iad-workbench[data-page="industrial-images"] .filter-bar {
-  margin-bottom: 8px !important;
-  padding: 7px 12px !important;
-}
 .iad-workbench[data-page="industrial-images"] .grid {
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)) !important;
   gap: 10px 12px !important;

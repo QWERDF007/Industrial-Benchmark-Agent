@@ -6,17 +6,20 @@ from types import SimpleNamespace
 
 import pytest
 
-from iad_core.knowledge.service import KnowledgeService
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.model_profile import ModelProfile
 from iad_core.workbench.vision import VlmClient
-from tests.knowledge_scenarios import selected_group
+from iad_core.advisory.analysis import AnalysisModel
+
+
+class StreamObservation(AnalysisModel):
+    description: str
 
 
 @pytest.fixture
 def streaming_model():
     model = SimpleNamespace(requests=[], emitted=bytearray(), entered=threading.Event(), mode='complete')
-    content = json.dumps(dict(summary='仅记录所见，缺少独立变化', checks=[], suspects=[], limitations=['需要更多来源']), ensure_ascii=False)
+    content = json.dumps(dict(description='仅记录原像素中可见的外观变化，保留不确定项。'*10), ensure_ascii=False)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -83,86 +86,91 @@ def streaming_model():
         server.shutdown(); server.server_close(); thread.join()
 
 
-def test_active_generation_survives_read_timeout_between_response_start_and_finish(knowledge_dataset, streaming_model):
-    db, config = knowledge_dataset
+@pytest.fixture
+def recorded_stream(dataset, streaming_model):
+    db, _, config = dataset
+    run_id = 'transport-stream'
+    with db.connection() as connection:
+        connection.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES(?,?,'ANALYSIS_WORKFLOW','RUNNING','{}')",
+            (run_id, config.task.task_id))
     profile = ModelProfile(endpoint=streaming_model.endpoint, model_id='stream-model',
         capacity_mode='vllm_tokenize', generation_timeout_seconds=.25, connect_timeout_seconds=2)
-    service = KnowledgeService(db, VlmClient(profile=profile))
+    client = VlmClient(profile=profile)
+    calls, cancelled = ModelCalls(db), threading.Event()
+
+    def checkpoint():
+        if cancelled.is_set():
+            raise InterruptedError('用户取消当前传输')
+
+    def generate():
+        with calls.bind(run_id, checkpoint):
+            plan = client.plan(StreamObservation, '返回实际观察。', [], 'stream-model')
+            return client.generate(plan)
+
     try:
-        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), kind='normal')
-        service.wait(job['run_id'], 5)
-        state = service.status(job['run_id'])
-        assert state['status'] == 'COMPLETED', state['errors']
-        assert streaming_model.requests[0]['stream'] is True
-        assert streaming_model.requests[0]['stream_options'] == {'include_usage': True}
-        call = state['model_calls'][-1]
-        assert call['finish_reason'] == 'stop'
-        assert call['usage'] == dict(prompt_tokens=1000, completion_tokens=100, total_tokens=1100)
-        assert call['response_id'] == 'stream-1'
-        assert call['response_model'] == 'reported-stream-model'
-        detail = ModelCalls(db).get(job['run_id'], call['call_id'])
-        assert detail.response_body.encode() == bytes(streaming_model.emitted)
+        yield calls, run_id, generate, cancelled
     finally:
-        service.close()
+        client.client.close()
+
+
+def test_active_generation_survives_read_timeout_between_response_start_and_finish(recorded_stream, streaming_model):
+    calls, run_id, generate, _ = recorded_stream
+    result = generate()
+    assert result.description.startswith('仅记录原像素')
+    assert streaming_model.requests[0]['stream'] is True
+    assert streaming_model.requests[0]['stream_options'] == {'include_usage': True}
+    call = calls.list(run_id)[-1]
+    assert call.finish_reason == 'stop'
+    assert call.elapsed_ms > 250
+    assert call.usage == dict(prompt_tokens=1000, completion_tokens=100, total_tokens=1100)
+    assert call.response_id == 'stream-1'
+    assert call.response_model == 'reported-stream-model'
+    assert calls.get(run_id, call.call_id).response_body.encode() == bytes(streaming_model.emitted)
 
 
 @pytest.mark.parametrize('mode,message', [('incomplete', '模型流未完整结束'), ('length', '输出达到 token 上限')])
-def test_incomplete_stream_never_publishes_even_if_received_json_is_valid(knowledge_dataset, streaming_model, mode, message):
-    db, config = knowledge_dataset
+def test_incomplete_stream_never_returns_a_parsed_prefix(recorded_stream, streaming_model, mode, message):
+    calls, run_id, generate, _ = recorded_stream
     streaming_model.mode = mode
-    service = KnowledgeService(db, VlmClient(profile=ModelProfile(endpoint=streaming_model.endpoint,
-        model_id='stream-model', capacity_mode='vllm_tokenize', generation_timeout_seconds=.25)))
-    try:
-        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), kind='normal')
-        service.wait(job['run_id'], 5)
-        state = service.status(job['run_id'])
-        assert state['status'] == 'FAILED'
-        assert message in state['errors'][0]['message']
-        assert service.repository.current(config.dataset.id, 'normal') is None
-        call = state['model_calls'][-1]
-        assert call['error']['type'] == 'ValueError'
-        assert call['finish_reason'] == ('length' if mode == 'length' else None)
-        assert ModelCalls(db).get(job['run_id'], call['call_id']).response_body.encode() == bytes(streaming_model.emitted)
-    finally:
-        service.close()
+    with pytest.raises(ValueError, match=message):
+        generate()
+    call = calls.list(run_id)[-1]
+    assert call.error.type == 'ValueError'
+    assert call.finish_reason == ('length' if mode == 'length' else None)
+    assert calls.get(run_id, call.call_id).response_body.encode() == bytes(streaming_model.emitted)
 
 
-def test_cancellation_stops_an_active_stream_and_keeps_the_actual_partial_response(knowledge_dataset, streaming_model):
-    db, config = knowledge_dataset
-    service = KnowledgeService(db, VlmClient(profile=ModelProfile(endpoint=streaming_model.endpoint,
-        model_id='stream-model', capacity_mode='vllm_tokenize', generation_timeout_seconds=2)))
+def test_cancellation_stops_an_active_stream_and_keeps_the_actual_partial_response(recorded_stream, streaming_model):
+    calls, run_id, generate, cancelled = recorded_stream
+    errors, results = [], []
+
+    def execute():
+        try:
+            results.append(generate())
+        except Exception as error:
+            errors.append(error)
+
+    worker = threading.Thread(target=execute)
+    worker.start()
     try:
-        job = service.start(request=selected_group(db, config.dataset.id, 'normal'), kind='normal')
         assert streaming_model.entered.wait(3)
-        service.cancel(job['run_id'])
-        service.wait(job['run_id'], 3)
-        state = service.status(job['run_id'])
-        assert state['status'] == 'CANCELLED'
-        assert service.repository.current(config.dataset.id, 'normal') is None
-        call = state['model_calls'][-1]
-        assert call['error']['type'] == 'InterruptedError'
-        assert call['finish_reason'] is None
-        raw = ModelCalls(db).get(job['run_id'], call['call_id']).response_body.encode()
-        assert raw and bytes(streaming_model.emitted).startswith(raw)
-        assert b'[DONE]' not in raw
+        cancelled.set()
     finally:
-        service.close()
+        worker.join(5)
+    assert not worker.is_alive() and not results
+    assert len(errors) == 1 and isinstance(errors[0], InterruptedError)
+    call = calls.list(run_id)[-1]
+    assert call.error.type == 'InterruptedError'
+    assert call.finish_reason is None
+    raw = calls.get(run_id, call.call_id).response_body.encode()
+    assert raw and bytes(streaming_model.emitted).startswith(raw)
+    assert b'[DONE]' not in raw
 
 
-
-def test_repeated_json_closing_stops_generation_and_never_publishes_a_prefix(knowledge_dataset,streaming_model):
-    db,config=knowledge_dataset
-    streaming_model.mode='trailing'
-    profile=ModelProfile(endpoint=streaming_model.endpoint,model_id='stream-model',capacity_mode='vllm_tokenize')
-    service=KnowledgeService(db,VlmClient(profile=profile))
-    try:
-        job=service.start(request=selected_group(db,config.dataset.id,'normal'),kind='normal')
-        service.wait(job['run_id'],10)
-        state=service.status(job['run_id'])
-        assert state['status']=='FAILED' and state['completed']==0
-        assert len(streaming_model.requests)==2,'原始输出越界后最多由模型修正一次'
-        assert state['knowledge_version_id'] is None
-        assert all(call['error']['type']=='ModelOutputError' for call in state['model_calls'] if call['operation']=='generate')
-        assert 'JSON' in state['errors'][0]['message']
-    finally:
-        service.close()
+def test_repeated_json_closing_never_returns_a_parsed_prefix(recorded_stream, streaming_model):
+    calls, run_id, generate, _ = recorded_stream
+    streaming_model.mode = 'trailing'
+    with pytest.raises(ValueError, match='JSON'):
+        generate()
+    assert len(streaming_model.requests) == 2
+    assert all(call.error.type == 'ModelOutputError' for call in calls.list(run_id) if call.operation == 'generate')

@@ -4,37 +4,39 @@ import {Modal} from './Modal.js';
 import {DatasetScopeSelector} from './DatasetScopeSelector.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
+import {AgentPromptEditors} from './AgentPromptEditors.js';
 import {IconButton} from "./IconButton.js";
-import {analysisDefaults} from "../../shared/analysis-defaults.generated.js";
 import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {Dataset, DatasetGroup, JobSnapshot} from '../../shared/contracts.js';
-import type {ExplorationCatalog, MiningDirection, SubmittedMiningPrompt} from '../../shared/domain.generated.js';
+import type {MiningDirection, PublishedDirectionCatalog, SubmittedMiningPrompt} from '../../shared/domain.generated.js';
 import {message, request} from '../api.js';
-import {activeExplorationDirections} from '../exploration-view.js';
+import {useModuleSettings} from '../useModuleSettings.js';
 import {getDatasetGroupId} from '../dataset-hierarchy.js';
-import {useWorkbenchModel} from '../models.js';
 import {KnowledgeConfirmation, type KnowledgeConfirmationState} from './KnowledgeConfirmation.js';
 
-interface PresetItem {id:string;name:string;text:string;origin?:MiningDirection['origin']}
+interface PresetItem {id:string;directionId:string;name:string;text:string;origin:MiningDirection['origin'];source:MiningDirection['source']}
 
-export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParentId, selectedChildId, onClose, onStarted}: {
-  dataset: Dataset; datasets: Dataset[]; groups: DatasetGroup[]; selectedParentId:string;selectedChildId:string;
+export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParentId, selectedChildIds, onClose, onStarted}: {
+  dataset: Dataset; datasets: Dataset[]; groups: DatasetGroup[]; selectedParentId:string;selectedChildIds:string[];
   onClose():void; onStarted(jobs:JobSnapshot[]):void;
 }) {
   const parentGroups = groups.filter(group=>group.group_id !== 'single');
-  const model = useWorkbenchModel();
-  const [batchSize, setBatchSize] = useState<number>(analysisDefaults.knowledge.batch_size);
+  const configuration = useModuleSettings('knowledge');
+  const configuredBatch = configuration.settings && 'batch_size' in configuration.settings ? configuration.settings.batch_size : undefined;
+  const [batchSize, setBatchSize] = useState<number|null>(null);
+  useEffect(()=>{if(configuredBatch !== undefined)setBatchSize(configuredBatch);},[configuredBatch]);
   const started = useRef<JobSnapshot|null>(null);
   const submission = useRef<string|null>(null);
   const [confirmState, setConfirmState] = useState<KnowledgeConfirmationState | null>(null);
   const [setupDataset, setSetupDataset] = useState<string>(selectedParentId);
-  const [setupSubsets, setSetupSubsets] = useState<Set<string>>(new Set([selectedChildId]));
+  const [setupSubsets, setSetupSubsets] = useState<Set<string>>(new Set(selectedChildIds));
   const [setupGeneral, setSetupGeneral] = useState<Set<string>>(new Set());
   const [setupExplored, setSetupExplored] = useState<Set<string>>(new Set());
   const [setupEdits, setSetupEdits] = useState<Record<string, { name: string; text: string }>>({});
   const [setupTab, setSetupTab] = useState<"preset" | "explore">('preset');
   const [setupPrompt, setSetupPrompt] = useState("");
+  const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.knowledge);
   const [setupPromptDirty, setSetupPromptDirty] = useState(false);
   const [formError, setFormError] = useState("");
   const [editingDir, setEditingDir] = useState<{ kind: "preset" | "explore"; id: string } | null>(null);
@@ -51,9 +53,8 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   }, [datasets, groups, setupDataset]);
 
   const [presetDirections, setPresetDirections] = useState<PresetItem[]>([]);
-  const [exploredDirections, setExploredDirections] = useState<(PresetItem & {source:string;datasetId:string})[]>([]);
+  const [exploredDirections, setExploredDirections] = useState<PresetItem[]>([]);
   const [directionsError, setDirectionsError] = useState('');
-  const [explorationCatalogs, setExplorationCatalogs] = useState<ExplorationCatalog[]>([]);
   const [presetsLoading, setPresetsLoading] = useState(true);
   const [directionsLoading, setDirectionsLoading] = useState(true);
   const [presetsError, setPresetsError] = useState('');
@@ -62,7 +63,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
     request<{directions:MiningDirection[]}>('/knowledge/presets', undefined, undefined, controller.signal)
       .then(({directions}) => {
         if (controller.signal.aborted) return;
-        setPresetDirections(directions.map(d=>({id:d.direction_id,name:d.title,text:d.instruction,origin:d.origin})));
+        setPresetDirections(directions.map(d=>({id:'preset:'+d.direction_id,directionId:d.direction_id,name:d.title,text:d.instruction,origin:d.origin,source:d.source})));
         setPresetsLoading(false);
       }).catch(error => {if (!controller.signal.aborted){setPresetsError(message(error));setPresetsLoading(false);}});
     return () => controller.abort();
@@ -72,14 +73,11 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
     const controller = new AbortController();
     setDirectionsError('');setDirectionsLoading(true);
     const ids:string[] = JSON.parse(subsetIds);
-    Promise.all(ids.map(dataset_id => request<ExplorationCatalog>(`/exploration?${new URLSearchParams({dataset_id})}`,
-      undefined, undefined, controller.signal)))
-      .then(catalogs => {
+    request<PublishedDirectionCatalog>(`/analysis/directions?${new URLSearchParams({dataset_ids:JSON.stringify(ids)})}`,undefined,undefined,controller.signal)
+      .then(({directions}) => {
         if (controller.signal.aborted) return;
-        const explored = catalogs.flatMap(c=>activeExplorationDirections(c.exploration,c.removed_direction_ids)
-          .map(d=>({id:d.direction_id,name:d.title,text:d.instruction,source:c.exploration!.version_id,datasetId:c.dataset_id})));
+        const explored = directions.map(d=>({id:JSON.stringify(d.source),directionId:d.direction_id,name:d.title,text:d.instruction,origin:d.origin,source:d.source}));
         const available = new Set(explored.map(d=>d.id));
-        setExplorationCatalogs(catalogs);
         setExploredDirections(explored);
         setSetupExplored(previous=>new Set([...previous].filter(id=>available.has(id))));
         setDirectionsLoading(false);
@@ -106,24 +104,17 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   const generatePromptText = useCallback((
     datasetName: string,
     subsetsNames: string[],
-    dirs: { id: string; name: string; text: string }[]
+    dirs: PresetItem[]
   ) => {
     return [
-      "挖掘目标：",
-      promptDefaults.knowledgeObjective,
-      ...explorationCatalogs.flatMap(catalog => {
-        const snapshot=catalog.exploration;
-        return snapshot && snapshot.directions.some(direction=>setupExplored.has(direction.direction_id))
-          ? [`方向探索结论：${snapshot.summary}`,`探索限制：${snapshot.limitations.join('；')}`] : [];
-      }),
+      promptDefaults.knowledgeInstruction,
       `数据集：${datasetName}`,
       `子数据集：${subsetsNames.join("、")}`,
       "来源范围：所选子数据集的全部登记图像。",
       "用户选择的观察方向：",
-      ...dirs.map(x => `${x.id} | ${x.name}：${x.text}`),
-      promptDefaults.knowledge,
+      ...dirs.map((x,index) => `D${index+1} | ${x.name}：${x.text}`),
     ].join("\n");
-  }, [explorationCatalogs, setupExplored]);
+  }, []);
 
   useEffect(() => {
     if (setupPromptDirty) return;
@@ -135,16 +126,18 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   }, [setupPromptDirty, currentSetupParent, currentSetupChildDatasets, setupSubsets, allSelectedDirItems, generatePromptText, dataset.name]);
 
   const validationProblem = useMemo(() => {
-    if (!model.ready) return model.error || model.view?.error || '请先配置工作台模型';
+    if (!configuration.settings?.model) return configuration.loading ? '正在读取模型' : '请先配置知识挖掘分析模型';
+    if (configuration.saving) return '正在保存每批图像数';
+    if (configuration.error) return configuration.error;
     if(directionsLoading || presetsLoading)return '正在读取方向';
-    if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 200) return '每批图像数应为1至200的整数';
+    if (!Number.isInteger(batchSize) || batchSize === null || batchSize < 1 || batchSize > 200) return '每批图像数应为1至200的整数';
     if (directionsError || presetsError) return directionsError || presetsError;
-    if (!presetDirections.length) return "正在读取方向";
     if (!setupSubsets.size) return "请选择子数据集";
     if (!allSelectedDirItems.length) return "请选择挖掘方向";
-    if (!setupPrompt.trim()) return "请填写完整提示词";
+    if (!systemPrompt.trim()) return '请填写系统提示词';
+    if (!setupPrompt.trim()) return '请填写用户提示词';
     return "";
-  }, [setupSubsets.size, allSelectedDirItems.length, setupPrompt, directionsError, presetsError, directionsLoading, presetsLoading, presetDirections.length, model.ready, model.error, model.view?.error, batchSize]);
+  }, [setupSubsets.size, allSelectedDirItems.length, setupPrompt, systemPrompt, directionsError, presetsError, directionsLoading, presetsLoading, presetDirections.length, configuration.settings, configuration.loading, configuration.saving, configuration.error, batchSize]);
 
   const handleRestorePrompt = () => {
     if (setupPromptDirty && setupPrompt.trim()) {
@@ -197,19 +190,20 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   };
 
   const [submitting, setSubmitting] = useState(false);
-  useEffect(()=>{if(!started.current)submission.current=null;},[setupDataset,setupPrompt,batchSize,JSON.stringify(Array.from(setupSubsets).sort())]);
+  useEffect(()=>{if(!started.current)submission.current=null;},[setupDataset,setupPrompt,systemPrompt,batchSize,JSON.stringify(Array.from(setupSubsets).sort())]);
   const handleSubmitJob = async () => {
     if (validationProblem || submitting) return;
     setSubmitting(true); setFormError('');
     try {
       const miningPrompt: SubmittedMiningPrompt = {
         objective:`${currentSetupParent?.name || dataset.name}知识挖掘`, instruction:setupPrompt, exploration:null,
-        directions:allSelectedDirItems.map(item=>({direction_id:item.id,title:item.name,instruction:item.text,enabled:true,
-          origin:setupExplored.has(item.id) ? 'explored' : item.origin || 'preset'})),
+        directions:allSelectedDirItems.map(item=>({direction_id:item.directionId,title:item.name,instruction:item.text,enabled:true,
+          origin:item.origin,source:item.source})),
       };
+      if(batchSize !== configuredBatch)await configuration.saveAsync({batch_size:batchSize!});
       submission.current ||= uuid();
       const job=await request<JobSnapshot>('/analysis/start',{submission_id:submission.current,analysis_kind:'knowledge',
-        dataset_ids:[...setupSubsets],batch_size:batchSize,mining_prompt:miningPrompt});
+        dataset_ids:[...setupSubsets],system_prompt:systemPrompt,mining_prompt:miningPrompt});
       started.current=job;
       onStarted([job]);
     } catch(error){setFormError(message(error));}finally{setSubmitting(false);}
@@ -377,7 +371,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
               {/* Prompt Editor */}
               <section className="exp-panel kb-setup-prompt" aria-labelledby="kb-prompt-title">
                 <div className="kb-prompt-header">
-                  <h2 id="kb-prompt-title">完整提示词</h2>
+                  <h2 id="kb-prompt-title">提示词</h2>
                   <Button
                     type="button"
 
@@ -387,17 +381,12 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
                     恢复自动生成
                   </Button>
                 </div>
-                <textarea
-                  className="f"
-                  id="prompt-text"
-                  aria-label="完整提示词"
-                  spellCheck={false}
-                  value={setupPrompt}
-                  onChange={e => {
-                    setSetupPrompt(e.target.value);
+                <AgentPromptEditors id="prompt-text" system={systemPrompt} user={setupPrompt}
+                  onSystemChange={setSystemPrompt} onUserChange={text => {
+                    setSetupPrompt(text);
                     setSetupPromptDirty(true);
                   }}
-                />
+                  disabled={submitting}/>
                 <div className="kb-prompt-note" id="prompt-note" aria-live="polite">
                   {setupPromptDirty ? "已手动修改，方向调整后保持当前内容。" : ""}
                 </div>
@@ -411,8 +400,8 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
                 <div className="exp-brief" id="kb-run-summary" aria-live="polite">
                   <span>子数据集 {setupSubsets.size} 个</span>
                   <span>挖掘方向 {allSelectedDirItems.length} 项</span>
-                  <span>范围 全部合格来源</span><label>每批图像数 <input className="f" aria-label="每批挖掘图像数" type="number" min="1" max="200" value={batchSize} disabled={submitting || !!started.current} onChange={e=>setBatchSize(Number(e.target.value))} /></label>
-                  <span>模型 {model.view?.selection?.model_id || '未配置'}</span>
+                  <span>范围 全部登记图像</span><label>每批图像数 <input className="f" aria-label="每批挖掘图像数" type="number" min="1" max="200" value={batchSize ?? ''} disabled={submitting || !!started.current || configuration.loading} aria-describedby="kb-run-check" onChange={e=>setBatchSize(Number(e.target.value))} onBlur={()=>{if(batchSize !== null && Number.isInteger(batchSize) && batchSize>=1 && batchSize<=200 && batchSize!==configuredBatch)configuration.save({batch_size:batchSize});}} /></label>
+                  <span>模型 {configuration.settings?.model?.model_id || '未配置'}</span>
                 </div>
                 <div className="exp-summarybar">
                   <span id="kb-run-check" role="status">

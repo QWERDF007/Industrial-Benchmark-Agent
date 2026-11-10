@@ -1,0 +1,335 @@
+import base64
+from copy import deepcopy
+import io
+import json
+from uuid import uuid4
+
+import httpx
+import pytest
+from PIL import Image
+from pydantic import ValidationError
+
+from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+from iad_core.consistency.agent_context import AnchorAgentContext
+from iad_core.workbench.calls import ModelCalls
+from iad_core.workbench.runtime import WorkbenchRuntime
+from iad_core.workbench.vision import VlmClient
+
+
+def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_its_request(dataset):
+    from iad_core.consistency.agent_review import ConsistencyAgentReview
+
+    database, _, config = dataset
+    sent = []
+    response_ids = None
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        body = json.loads(request.content)
+        sent.append(body)
+        content = next(message for message in body['messages'] if message['role']=='user')['content']
+        groups = [json.loads(part['text'].removeprefix('原图资料：')) for part in content
+            if part['type'] == 'text' and part['text'].startswith('原图资料：')]
+        media = [json.loads(part['text'].removeprefix('图像视图：')) for part in content
+            if part['type'] == 'text' and part['text'].startswith('图像视图：')]
+        facts = json.loads(content[1]['text'])['facts']
+        expected_ids = {group['evidence_id'] for group in groups}
+        assert len(expected_ids) == 2
+        assert {group['sample_id'] for group in groups} == {config.dataset.id + ':dent.png', config.dataset.id + ':scratch.png'}
+        assert all('annotations' in group for group in groups)
+        assert all('evidence_id' not in item for item in media)
+        assert media and any(item['role'] == 'roi' for item in media)
+        assert set(facts['required_image_ids'][config.dataset.id + ':scratch.png']) == expected_ids
+        assert all('evidence_id' not in view for source in facts['sources'].values() for view in source['visual_inputs'])
+        for part in content:
+            if part['type'] == 'image_url':
+                with Image.open(io.BytesIO(base64.b64decode(part['image_url']['url'].split(',')[1]))) as pixels:
+                    assert pixels.convert('RGB').getpixel((0, 0)) == (0, 0, 255)
+        answer = {'observations': [{'candidate_id': config.dataset.id + ':scratch.png',
+            'description': '两侧原始像素相同，主图和参考图的类别名称不同',
+            'phenomena_comparable': True, 'appearance_explains_annotation_difference': False,
+            'media_ids': sorted(expected_ids) if response_ids is None else response_ids,
+            'limitations': ['仅核对标注一致性，不裁决哪侧标注正确']}]}
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
+            'message': {'content': json.dumps(answer)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        anchor_id = config.dataset.id + ':dent.png'
+        job_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+            'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})['run_id']
+        checks.session_created(job_id, anchor_id)
+        selected = checks.retrieve(job_id, anchor_id)
+        review = ConsistencyAgentReview(runtime, client)
+        request = {'request_id': str(uuid4()), 'fingerprint': selected.fingerprint,
+            'candidate_ids': [config.dataset.id + ':scratch.png'], 'question': '核实原始像素与类别差异',
+            'windows': [{'sample_id': config.dataset.id + ':scratch.png', 'bbox': [2, 3, 12, 9], 'padding': 5, 'reason': '原像素补证'}]}
+        observed = review.observe(job_id, anchor_id, request)
+        assert observed.request.request_id == request['request_id']
+        assert observed.request.anchor_id == anchor_id
+        assert observed.request.candidate_ids == request['candidate_ids']
+        assert observed.request.media
+        focused = AnchorAgentContext(runtime).read(job_id, anchor_id,
+            {'candidate_id': request['candidate_ids'][0]}, attempt=1)
+        verification = focused['observations'][0]['facts']['evidence'][0]['verification']
+        assert verification['relation'] == 'EXACT'
+        assert 'registration' not in verification
+        assert next(message for message in sent[0]['messages'] if message['role']=='user')['content'][0]['text'] == checks.snapshot(job_id).instruction
+        assert len(sent) == 1
+        with pytest.raises(ValueError, match='新的request_id'):
+            review.observe(job_id, anchor_id, {**request, 'question': '在原始像素中补充核对标注边界'})
+        actual = [json.loads(part['text'].removeprefix('图像视图：')) for part in next(message for message in sent[0]['messages'] if message['role']=='user')['content']
+            if part['type'] == 'text' and part['text'].startswith('图像视图：')]
+        assert [item.sha256 for item in observed.request.media] == [item['sha256'] for item in actual]
+        assert any(item['source'] == 'model' and item['crop_bbox'] == [0, 0, 17, 14] and item['sent_size'] == [17, 14] for item in actual)
+        assert observed.result.observations[0].phenomena_comparable
+        assert review.observe(job_id, anchor_id, request) == observed
+        assert len(sent) == 1
+        calls = ModelCalls(database).list(job_id)
+        assert [call.operation for call in calls] == ['tokenize', 'generate']
+        assert all(call.role == 'vision' and call.request_id == request['request_id'] for call in calls)
+        from iad_core.workbench.completion import ModelOutputError
+        roots = observed.result.observations[0].media_ids
+        crop_id = next(image.evidence_id for image in observed.request.media if image.role == 'roi')
+        for response_ids in ([roots[0]], [roots[0], crop_id], [*roots, 'foreign-image'], [*roots, roots[0]]):
+            with pytest.raises(ModelOutputError, match='visual_image_references'):
+                review.observe(job_id, anchor_id, {**request, 'request_id': str(uuid4())})
+            assert review.observations(job_id, anchor_id) == [observed]
+        response_ids = None
+        assert checks.anchor(job_id, anchor_id).result is None
+        reference = {'candidate_id': request['candidate_ids'][0], 'comparison': {
+            key: observed.request.facts['candidates'][request['candidate_ids'][0]]['comparison'][key]
+            for key in ('result_id', 'evidence_id')}}
+        draft = {'assessments': [{'candidate_id': request['candidate_ids'][0], 'verdict': 'MATERIAL',
+            'conclusion': '类别不一致', 'categories': ['类别不一致'], 'explanation': '同像素对应区域的原始类别名称不同',
+            'findings': ['原始标注类别不一致']}], 'overall': {'verdict': 'MATERIAL', 'text': '类别不一致',
+            'references': [reference]}, 'conclusions': [{'text': '同像素图的标注类别不一致', 'references': [reference]}],
+            'limitations': []}
+        frozen = runtime.consistency_service.evidence(reference['comparison']['evidence_id'])
+        draft['assessments'][0]['issues'] = [{'type': 'category_mismatch',
+            'main_annotation_ids': [frozen.sources.left.annotations.annotations[0].annotation_id],
+            'candidate_annotation_ids': [frozen.sources.right.annotations.annotations[0].annotation_id],
+            'description': '同一对象的原始类别不同。', 'media_ids': observed.result.observations[0].media_ids}]
+        submission = {'fingerprint': selected.fingerprint, 'draft': draft,
+            'observation_ids': {request['candidate_ids'][0]: [observed.observation_id]}}
+        for invalid in ('coverage', 'observation', 'aggregate'):
+            rejected = deepcopy(submission)
+            if invalid == 'coverage':
+                rejected['observation_ids'] = {}
+            elif invalid == 'observation':
+                rejected['observation_ids'][request['candidate_ids'][0]] = ['another-session-observation']
+            elif invalid == 'aggregate':
+                rejected['draft']['overall'].update(verdict='EQUIVALENT', text='一致')
+            with pytest.raises(ValueError):
+                review.submit(job_id, anchor_id, rejected)
+            assert checks.anchor(job_id, anchor_id).result is None
+            assert runtime.jobs.status(job_id)['completed'] == 0
+        submitted = {'fingerprint': selected.fingerprint,
+            'assessment': {key: value for key, value in draft['assessments'][0].items() if key not in ('conclusion', 'categories')},
+            'observation_ids': [observed.observation_id]}
+        with pytest.raises(ValidationError) as invalid_decision:
+            review.assess(job_id, anchor_id, {**submitted,
+                'assessment': {**submitted['assessment'], 'issues': []}})
+        problems = invalid_decision.value.errors(include_context=False, include_url=False)
+        assert len(problems) == 1
+        assert problems[0]['loc'] == ('assessment',)
+        assert 'MATERIAL必须' in problems[0]['msg']
+        assert 'conclusion' not in problems[0]['msg'] and 'overall' not in problems[0]['msg']
+        assert review.assessments(job_id, anchor_id) == []
+        assessment = review.assess(job_id, anchor_id, submitted)
+        assert assessment.submission.comparison.model_dump(exclude_none=True) == reference['comparison']
+        with pytest.raises(ValueError, match='comparison'):
+            review.assess(job_id, anchor_id, {**submitted,
+                'comparison': {'result_id': 'forged', 'evidence_id': 'forged'}})
+        assert review.assessments(job_id, anchor_id) == [assessment]
+        assert review.assess(job_id, anchor_id, submitted) == assessment
+        assert checks.anchor(job_id, anchor_id).result is None
+        final = {'fingerprint': selected.fingerprint, 'assessment_ids': [assessment.assessment_id]}
+        with pytest.raises(ValidationError, match='conclusions'):
+            review.finalize(job_id, anchor_id, {**final, 'conclusions': ['没有来源的新事实']})
+        with pytest.raises(ValueError, match='恰好引用'):
+            review.finalize(job_id, anchor_id, {**final, 'assessment_ids': [assessment.assessment_id, assessment.assessment_id]})
+        changed = {**submitted, 'assessment': {**submitted['assessment'],
+            'explanation': '同像素图像中主图标注类别与参考图不同，已复查原始类别名称'}}
+        revised = review.assess(job_id, anchor_id, changed)
+        assert revised.assessment_id != assessment.assessment_id
+        with pytest.raises(ValueError, match='最新评估'):
+            review.finalize(job_id, anchor_id, final)
+        assessment = review.assess(job_id, anchor_id, submitted)
+        final['assessment_ids'] = [assessment.assessment_id]
+        result = review.finalize(job_id, anchor_id, final)
+        assert result.reason == 'MODEL_REVIEWED'
+        assert result.overall.verdict == 'MATERIAL'
+        assert result.limitations == ['仅核对标注一致性，不裁决哪侧标注正确']
+        assert checks.anchor(job_id, anchor_id).result == result
+        assert result.conclusions[0].text == result.assessments[0].explanation
+        assert review.finalize(job_id, anchor_id, final) == result
+        assert runtime.jobs.status(job_id)['completed'] == 1
+        from iad_core.consistency.agent_results import ConsistencyAgentResults
+        results = ConsistencyAgentResults(database)
+        detail = results.detail(job_id, anchor_id)
+        assert detail.original_conclusion == detail.model_conclusion == '类别不一致'
+        assert detail.observations == [observed]
+        assert detail.requests[0] == observed.request
+        assert len(detail.requests) == 5
+        assert detail.evidence[0].candidate_id == request['candidate_ids'][0]
+        assert detail.evidence[0].evidence_id == reference['comparison']['evidence_id']
+        assert detail.result == result
+        assert results.report(job_id).agreement == {'一致': 1, '不一致': 0}
+        gallery = results.gallery(job_id)
+        assert gallery.total == 1
+        assert gallery.items[0].group_id == anchor_id
+        assert gallery.items[0].conflict_categories == ['类别不一致']
+        assert gallery.items[0].model_conclusion == '类别不一致'
+        members = results.members(job_id, anchor_id)
+        assert [item.image.sample_id for item in members.items] == request['candidate_ids']
+        assert results.analysis(job_id, anchor_id).result.overall.text == '类别不一致'
+        with pytest.raises(ValueError, match='终稿'):
+            review.submit(job_id, anchor_id, {**submission, 'draft': {**draft, 'limitations': ['不同终稿']}})
+    finally:
+        client.close()
+        runtime.close()
+
+
+@pytest.mark.parametrize('case', ['different_object', 'unregistered_position', 'exact_extra', 'exact_missing'])
+def test_image_and_annotation_comparison_does_not_require_external_policy_or_registration(dataset, tmp_path, case):
+    import numpy as np
+
+    from iad_core.consistency.agent_review import ConsistencyAgentReview
+    from iad_core.dataset.registry import DatasetImport
+    from iad_core.duplicate.index import PixelIndex
+    from iad_core.storage.features import FeatureRepository
+    from iad_core.storage.models import FeatureRecord
+    from tests.feature_fixtures import configure_test_encoder
+
+    database, registry, config = dataset
+    root = tmp_path / 'reference'
+    root.mkdir()
+    (root / 'reference.json').write_text(json.dumps({'imageWidth': 320, 'imageHeight': 240, 'shapes': []}))
+    Image.new('RGB', (320, 240), (0, 0, 200) if case in ('different_object', 'unregistered_position') else 'blue').save(root / 'reference.png')
+    if case == 'unregistered_position':
+        (root / 'reference.json').write_text(json.dumps({'imageWidth': 320, 'imageHeight': 240,
+            'shapes': [{'label': 'dent', 'shape_type': 'rectangle', 'points': [[12, 10], [32, 30]]}]}))
+    registry.save(config)
+    registry.rescan(config.dataset.id)
+    reference_dataset = registry.import_labelme(DatasetImport(format='labelme', name='对侧空标',
+        image_dir=str(root), annotation_dir=str(root)))
+    main_id = config.dataset.id + ':dent.png'
+    reference_id = reference_dataset.dataset.id + ':reference.png'
+    corpus_id = reference_dataset.dataset.id
+    if case == 'exact_missing':
+        main_id, reference_id = reference_id, main_id
+        corpus_id = config.dataset.id
+    if case in ('different_object', 'unregistered_position'):
+        encoder = configure_test_encoder(database, tmp_path)
+        for identity in (main_id, reference_id):
+            group = PixelIndex(database).get(identity).content_group_id
+            vector = np.zeros(encoder.profile.dim, dtype=encoder.profile.storage_dtype)
+            vector[0] = 1
+            FeatureRepository(database).upsert(FeatureRecord(content_group_id=group,
+                profile_id=encoder.profile.profile_id, dim=encoder.profile.dim,
+                dtype=encoder.profile.storage_dtype, embedding_blob=vector.tobytes()))
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        content = next(message for message in json.loads(request.content)['messages'] if message['role']=='user')['content']
+        media = [json.loads(item['text'].removeprefix('原图资料：'))['evidence_id'] for item in content
+            if item['type'] == 'text' and item['text'].startswith('原图资料：')]
+        media = list(dict.fromkeys(media))
+        if case in ('different_object', 'unregistered_position'):
+            finding = {'relation': 'content_different' if case == 'different_object' else 'unverified',
+                'reason': '真实内容不同。' if case == 'different_object' else '关键局部不能确认。',
+                'main_description': '主图实际表面状态。', 'candidate_description': '候选实际表面状态。'}
+            context = json.loads(content[1]['text'])
+            answer = {'overview': finding if context['scope'] == 'overview' else None,
+                'windows': [{'window_index': window['window_index'], **finding} for window in context['windows']],
+                'media_ids': media, 'limitations': []}
+        else:
+            answer = {'observations': [{'candidate_id': reference_id,
+                'description': '局部对象可比，框的位置不同，但没有可靠配准' if case == 'unregistered_position' else '两侧表面实际状态不同',
+                'phenomena_comparable': case == 'unregistered_position',
+                'appearance_explains_annotation_difference': case != 'unregistered_position',
+                'media_ids': media, 'limitations': []}]}
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        job_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id, reference_dataset.dataset.id],
+            'mode': 'combined' if case in ('different_object', 'unregistered_position') else 'exact', 'max_exact_candidates': 1,
+            'subjects': {'kind': 'samples', 'sample_ids': [main_id]},
+            'corpus_scope': {'kind': 'datasets', 'dataset_ids': [corpus_id]}})['run_id']
+        checks.session_created(job_id, main_id)
+        candidates = checks.retrieve(job_id, main_id)
+        assert [item.sample_id for item in candidates.candidates] == [reference_id]
+        review = ConsistencyAgentReview(runtime, client)
+        state = review.verify(job_id, main_id)
+        if case in ('different_object', 'unregistered_position'):
+            assert not state.eligible_ids
+            result = review.finish_rules(job_id, main_id)
+            assert result.pass_reason == 'no_eligible_candidate'
+            assert result.candidate_stats.assessed == 0
+            with pytest.raises(ValueError, match='未通过'):
+                review.observe(job_id, main_id, {'request_id': str(uuid4()), 'fingerprint': candidates.fingerprint,
+                    'candidate_ids': [reference_id], 'question': '不能审核已跳过的候选。'})
+            from iad_core.consistency.agent_results import ConsistencyAgentResults
+            results = ConsistencyAgentResults(database)
+            assert results.gallery(job_id).total == 0
+            assert results.members(job_id, main_id).items == []
+            return
+        observed = review.observe(job_id, main_id, {'request_id': str(uuid4()), 'fingerprint': candidates.fingerprint,
+            'candidate_ids': [reference_id], 'question': '核对同内容对象的标注数量。'})
+        frozen = runtime.consistency_service.evidence(observed.request.facts['candidates'][reference_id]['comparison']['evidence_id'])
+        direction = 'missing_annotation' if case == 'exact_missing' else 'extra_annotation'
+        saved = review.assess(job_id, main_id, {'fingerprint': candidates.fingerprint,
+            'observation_ids': [observed.observation_id], 'assessment': {'candidate_id': reference_id,
+                'verdict': 'MATERIAL', 'explanation': '主图相对于候选的同内容对象标注数量不同。', 'issues': [{
+                    'type': direction,
+                    'main_annotation_ids': [item.annotation_id for item in frozen.sources.left.annotations.annotations],
+                    'candidate_annotation_ids': [item.annotation_id for item in frozen.sources.right.annotations.annotations],
+                    'description': '同一可见对象只在一侧有框。', 'media_ids': observed.result.observations[0].media_ids}]}})
+        result = review.finalize(job_id, main_id, {'fingerprint': candidates.fingerprint, 'assessment_ids': [saved.assessment_id]})
+        assert result.result == 'discrepancy'
+        assert result.issues[0].type == direction
+    finally:
+        client.close()
+        runtime.close()
+
+
+def test_invalid_visual_output_does_not_append_hidden_repair_instructions(dataset):
+    from iad_core.consistency.agent_review import ConsistencyAgentReview
+    from iad_core.workbench.completion import ModelOutputError
+
+    database, _, config = dataset
+    sent = []
+    instruction = '直接比较这两张图的原始标注。'
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': '{}'}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        anchor = config.dataset.id + ':dent.png'
+        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+            'instruction': instruction, 'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
+        checks.session_created(run, anchor)
+        selected = checks.retrieve(run, anchor)
+        with pytest.raises(ModelOutputError):
+            ConsistencyAgentReview(runtime, client).observe(run, anchor, {'request_id': str(uuid4()),
+                'fingerprint': selected.fingerprint, 'candidate_ids': [selected.candidates[0].sample_id], 'question': instruction})
+        assert len(sent) == 1
+        assert [message['role'] for message in sent[0]['messages']] == ['system','user']
+        assert next(message for message in sent[0]['messages'] if message['role']=='user')['content'][0]['text'] == instruction
+    finally:
+        client.close()
+        runtime.close()

@@ -18,16 +18,9 @@ class AnalysisJobViews:
         selected = []
         for job in self.families.list(dataset_id, ('ANALYSIS_WORKFLOW',)):
             if job.analysis_kind == analysis_kind:
-                selected.append(self.summary(job, dataset_id))
+                selected.append(self.summary(job))
         return selected
 
-    def summary(self, job: dict | JobSnapshot, dataset_id: str | None = None) -> dict:
+    def summary(self, job: dict | JobSnapshot) -> dict:
         job = JobSnapshot.model_validate(job)
-        dataset_id = dataset_id or job.dataset_id
-        unit = next(unit for unit in job.model_extra['request']['units'] if unit['dataset_id'] == dataset_id)
-        result = next((result for result in job.dataset_results if result.dataset_id == dataset_id), None)
-        return JobView.from_snapshot(job,
-            knowledge_version_id=result.knowledge_version_id if result else None,
-            exploration_version_id=result.exploration_version_id if result else None,
-            mining_prompt=unit['request'].get('mining_prompt'),
-            exploration_prompt=unit['request'].get('exploration_request', {}).get('prompt')).model_dump(mode='json')
+        return JobView.from_snapshot(job).model_dump(mode='json')

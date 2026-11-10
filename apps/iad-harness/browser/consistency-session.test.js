@@ -109,7 +109,7 @@ for name,label in [('left','scratch'),('right','dent')]:
     await fs.writeFile('/tmp/iad-consistency-sidebar-layout/sidebar-scrolled-900.png',await driver.takeScreenshot(),'base64');
     await viewport(driver,1920,1080);
     const images=requests.at(-1).messages.flatMap(message=>Array.isArray(message.content) ? message.content.filter(block=>block.type==='image_url') : []);
-    assert.ok(images.length>=3,'实际模型请求必须携带真实图片附件');
+    assert.ok(images.length>=3,`实际模型请求必须携带至少3个真实图片附件，实际为${images.length}个`);
     await button('Chat');
     for(const group of await driver.findElements(By.xpath("//button[contains(., 'Completed') and @aria-expanded='false']")))await group.click();
     for(const group of await driver.findElements(By.xpath("//button[contains(., 'Called tools') and @aria-expanded='false']")))await group.click();
@@ -124,16 +124,17 @@ for name,label in [('left','scratch'),('right','dent')]:
     await setTheme(driver,'Light');
     const report=await post('/consistency/report',{selection:{kind:'scope',subjects:{kind:'all_registered'}},relation:'EXACT'});
     const gallery=await post('/consistency/gallery',{query_id:report.page.query_id,kind:'groups'});
-    const groupRoute={pageId:'industrial-consistency',tab:'groups',queryId:report.page.query_id,groupId:gallery.items[0].group_id};
+    const groupRoute={pageId:'industrial-consistency',tab:'groups',queryId:report.page.query_id,groupId:gallery.items[0].group_id,memberId:dataset.dataset_id+':right.png'};
     await driver.get(base+'/?'+new URLSearchParams({iad:JSON.stringify(groupRoute)}));
     await driver.wait(until.elementLocated(By.css('dialog[aria-label="图组详情"]')),10000);
-    await driver.wait(()=>driver.executeScript('return document.querySelector("dialog[aria-label=图组详情] button.iad-primary")?.disabled===false'),5000);
     const groupBefore=await driver.executeScript('return JSON.parse(new URL(location.href).searchParams.get("iad"))');
     const beforeRequests=requests.length;await button('在 DSH 中解释');
     await driver.wait(()=>requests.length>=beforeRequests+2,30000);
     await driver.wait(()=>driver.findElement(By.css('body')).getText().then(text=>text.includes('原像素完全相同，双方标注类别不同。')),10000);
     const referenceBody=requests.at(-1).messages.filter(message=>message.role==='user').flatMap(message=>typeof message.content==='string'?[message.content]:message.content.filter(block=>block.type==='text').map(block=>block.text)).join('\n');
-    assert.ok(referenceBody.includes('consistency_group_analyze'),'图组解释请求包含完整组模型验证意图');
+    assert.ok(!referenceBody.includes('consistency_group_analyze'),'解释冻结证据不会另行启动旧图组模型作业');
+    const checks=await (await fetch(base+'/api/iad/analysis/jobs?'+new URLSearchParams({dataset_id:dataset.dataset_id,analysis_kind:'consistency'}))).json();
+    assert.deepEqual(checks.jobs,[],'解释历史证据不会创建新的审核作业');
     let returnLink;
     for(const anchor of await driver.findElements(By.css('a[href*="iad="]'))){
       const href=await anchor.getAttribute('href');const restoredRoute=JSON.parse(new URL(href).searchParams.get('iad'));

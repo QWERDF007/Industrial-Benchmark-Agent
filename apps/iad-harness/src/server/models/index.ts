@@ -1,21 +1,14 @@
 import type { Context } from '@deepseek-ai/cordis';
-import type { JobView, ModelLimits, ModuleSettingsSnapshot, WorkbenchModelSettings, WorkbenchModelView } from '../../shared/domain.generated.js';
+import type { ModelLimits, WorkbenchModelSettings, WorkbenchModelView } from '../../shared/domain.generated.js';
 import type { BridgeDispatch, ModelRouting } from '../python-bridge/index.js';
-import {businessModules} from '../../shared/business-modules.js';
 import { ModelConfigurationError, NativeProviders } from './providers.js';
 
-const starts: Readonly<Record<string, ModuleSettingsSnapshot['module'] | null>> = {
-  dataset_report_start:null,analysis_start:null,direction_exploration_start:'exploration',direction_exploration_batch_start:'exploration',
-  knowledge_start:'knowledge',knowledge_batch_start:'knowledge',audit_start:'audit',
-  consistency_group_analyze:'consistency',consistency_model_start:'consistency',
-};
-const retries: Record<string, string> = {analysis_retry:'analysis_node',direction_exploration_retry: 'direction_exploration_status', knowledge_retry: 'knowledge_status', audit_retry: 'audit_status',consistency_model_retry:'consistency_model_status'};
 const normalized = (endpoint: string) => endpoint.replace(/\/$/, '').replace(/\/chat\/completions$/, '');
 
 export class WorkbenchModelRouting implements ModelRouting {
   private readonly providers: NativeProviders;
   private initialization?: Promise<WorkbenchModelSettings>;
-  constructor(ctx: Context) {this.providers = new NativeProviders(ctx);}
+  constructor(ctx: Context) {this.providers = new NativeProviders(() => ctx);}
 
   private async settings(dispatch: BridgeDispatch): Promise<WorkbenchModelSettings> {
     const current: WorkbenchModelSettings = await dispatch('model_settings_get');
@@ -70,25 +63,6 @@ export class WorkbenchModelRouting implements ModelRouting {
         await this.providers.resolve({...base.selection, ...edit.settings.model}, 'inspect', signal);
       }
       return dispatch(operation, edit, signal);
-    }
-    if (Object.hasOwn(starts,operation)) {
-      const module = operation === 'analysis_start' ? args.request?.analysis_kind : starts[operation];
-      const options: ModuleSettingsSnapshot | null = module ? await dispatch('module_settings_get', {module}, signal) : null;
-      if(options&&!options.settings.model)throw new ModelConfigurationError(`请在设置的「${businessModules[options.module]}」中选择分析模型`);
-      const settings = await this.settings(dispatch);
-      if (!settings.selection) throw Object.assign(new Error('请先在模型设置中选择工作台提供商和模型'), {statusCode: 422});
-      const selection = {...settings.selection, ...options?.settings.model};
-      const execution = await this.providers.resolve(selection, 'start', signal);
-      if (operation === 'analysis_start' && options?.module === 'consistency' && 'mode' in options.settings) {
-        args = {...args, request:{mode:options.settings.mode,min_similarity:options.settings.min_similarity,...args.request}};
-      }
-      return dispatch(operation, {...args, model_name: selection.model_id, _model_execution: execution}, signal);
-    }
-    if (retries[operation]) {
-      const job: JobView = await dispatch(retries[operation], {run_id: args.run_id}, signal);
-      if (!job.model_profile) throw new ModelConfigurationError('作业缺少冻结模型配置');
-      const execution = await this.providers.credentialsFor(job.model_profile);
-      return dispatch(operation, {...args, _model_execution: execution}, signal);
     }
     return dispatch(operation, args, signal);
   }

@@ -1,9 +1,0 @@
-{
-  "is_passed": true,
-  "total_violations": 0,
-  "physical_leakages": [],
-  "capture_leakages": [],
-  "duplicate_leakages": [],
-  "component_leakages": [],
-  "augmented_leakages": []
-}

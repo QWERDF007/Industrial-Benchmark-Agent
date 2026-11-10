@@ -11,6 +11,7 @@ from iad_core.knowledge.instructions import FrozenMiningPrompt
 KnowledgeKind = Literal["normal", "defect"]
 KNOWLEDGE_JOB_TYPES = ("KNOWLEDGE", "NORMAL_KNOWLEDGE", "DEFECT_KNOWLEDGE")
 DiscoveryStatus = Literal['已形成知识', '证据不足', '不可观察', '不适用']
+KnowledgeStatus = Literal['supported', 'provisional', 'conflicted']
 
 
 class KnowledgeCriterion(AnalysisModel):
@@ -20,7 +21,7 @@ class KnowledgeCriterion(AnalysisModel):
     criterion: str = Field(min_length=1)
     allowed_variations: List[str]
     limitations: List[str]
-    status: Literal["supported", "provisional", "conflicted"] = Field(description="supported：本轮实际证据支持该可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值")
+    status: KnowledgeStatus = Field(description="supported：当前版本完整有效证据支持该条件性可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值")
 
     @property
     def identity(self) -> tuple[str, str, str]:
@@ -141,9 +142,20 @@ class KnowledgeDraft(KnowledgeDraftContent):
         return self
 
 
-class KnowledgeCheck(LearnedCheck):
-    recheck_sample_ids: List[str] = Field(default_factory=list)
+class EvidenceSupportedCheck(LearnedCheck):
     support_limitations: List[str] = Field(default_factory=list)
+
+
+class KnowledgeSupportAssessment(AnalysisModel):
+    status: KnowledgeStatus
+    independent_source_count: int = Field(ge=0)
+    suggested_status: KnowledgeStatus | None = None
+    support_limitations: List[str] = Field(default_factory=list)
+    assessment_reason: str | None = None
+
+
+class KnowledgeCheck(EvidenceSupportedCheck):
+    recheck_sample_ids: List[str] = Field(default_factory=list)
     conflict_ids: List[str] = Field(default_factory=list)
     check_id: str
     predecessor_check_ids: List[str] = Field(default_factory=list)
@@ -335,6 +347,7 @@ class KnowledgeVersionQuery(AnalysisModel):
 class KnowledgeVersion(AnalysisModel):
     version_id: str
     dataset_id: str
+    source_run_id: str | None = None
     kind: Optional[KnowledgeKind] = None
     parent_version_id: Optional[str]
     normal_version_id: Optional[str] = None
@@ -493,19 +506,6 @@ class KnowledgeCheckPage(AnalysisModel):
     page: int
     page_size: int
     items: List[KnowledgeCheckSummary]
-
-
-class KnowledgeCheckEvidencePage(AnalysisModel):
-    version_id: str
-    dataset_id: str
-    kind: Optional[KnowledgeKind] = None
-    check: KnowledgeCheckSummary
-    support_evidence_ids: List[str]
-    counter_evidence_ids: List[str]
-    total: int
-    page: int
-    page_size: int
-    items: List[KnowledgeEvidence]
 
 
 class KnowledgeEvidencePage(AnalysisModel):

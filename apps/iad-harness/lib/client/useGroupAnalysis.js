@@ -11,7 +11,9 @@ export function useGroupAnalysis(reference) {
             return;
         async function read() {
             try {
-                const value = await request('/consistency/gallery/analysis', reference, undefined, controller.signal);
+                const value = await ('job_id' in reference
+                    ? request(`/consistency/checks/${encodeURIComponent(reference.job_id)}/anchors/${encodeURIComponent(reference.anchor_id)}/analysis`, undefined, undefined, controller.signal)
+                    : request('/consistency/gallery/analysis', reference, undefined, controller.signal));
                 if (controller.signal.aborted)
                     return;
                 setSnapshot({ key, analysis: value, error: '' });

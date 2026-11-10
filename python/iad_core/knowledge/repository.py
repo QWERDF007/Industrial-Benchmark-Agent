@@ -28,6 +28,7 @@ class KnowledgeRepository:
         with self.db.connection() as conn:
             rows = conn.execute("""SELECT version_id,dataset_id,parent_version_id,created_at,
                 json_extract(snapshot_json,'$.kind') AS kind,
+                json_extract(snapshot_json,'$.run_id') AS source_run_id,
                 json_extract(snapshot_json,'$.normal_version_id') AS normal_version_id,
                 json_extract(snapshot_json,'$.model_name') AS model_name,
                 json_array_length(snapshot_json,'$.sources') AS source_count,

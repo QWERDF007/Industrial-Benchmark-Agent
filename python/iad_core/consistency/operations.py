@@ -21,12 +21,6 @@ from iad_core.workbench.runtime import workbench
 from iad_core.storage.database import Database
 
 
-def consistency_model_start(args: dict, db_path: str) -> dict:
-    runtime = workbench(db_path)
-    return runtime.invoke_model(args.get('_model_execution'), lambda services:
-        services.consistency_model_batches.start(args['request'], model_name=args.get('model_name')))
-
-
 def consistency_model_status(args: dict, db_path: str) -> dict:
     from iad_core.workbench.job_snapshots import JobSnapshots
     return JobSnapshots(Database(db_path)).snapshot(args['run_id'], ('CONSISTENCY_MODEL_BATCH','CONSISTENCY_ANALYSIS')).model_dump()
@@ -34,15 +28,6 @@ def consistency_model_status(args: dict, db_path: str) -> dict:
 
 def consistency_model_cancel(args: dict, db_path: str) -> dict:
     return workbench(db_path).jobs.cancel(args['run_id'], ('CONSISTENCY_MODEL_BATCH','CONSISTENCY_ANALYSIS'))
-
-
-def consistency_model_retry(args: dict, db_path: str) -> dict:
-    from iad_core.consistency.group_analysis import GroupAnalyses
-    runtime = workbench(db_path)
-    kind = runtime.jobs.status(args['run_id'], ('CONSISTENCY_MODEL_BATCH','CONSISTENCY_ANALYSIS'))['job_type']
-    return runtime.invoke_model(args.get('_model_execution'), lambda services:
-        (services.consistency_model_batches if kind == 'CONSISTENCY_MODEL_BATCH' else GroupAnalyses(runtime,services.client))
-        .retry(args['run_id']), args['run_id'])
 
 
 class RetrievalInvocation(AnalysisModel):
@@ -192,11 +177,3 @@ def consistency_group_analysis(args: dict, db_path: str) -> dict:
     from iad_core.consistency.gallery import GalleryReference
     from iad_core.consistency.group_analysis import GroupAnalysisQueries
     return GroupAnalysisQueries(Database(db_path)).read(GalleryReference.model_validate(args)).model_dump(mode='json')
-
-
-def consistency_group_analyze(args: dict, db_path: str) -> dict:
-    from iad_core.consistency.group_analysis import GroupAnalyses
-    from iad_core.consistency.group_analysis_models import GroupAnalysisStart
-    runtime=workbench(db_path)
-    return runtime.invoke_model(args.get('_model_execution'), lambda services:
-        GroupAnalyses(runtime,services.client).start(GroupAnalysisStart.model_validate(args['request']),args.get('origin_session_id')).model_dump(mode='json'))

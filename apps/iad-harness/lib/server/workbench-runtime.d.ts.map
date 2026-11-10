@@ -1,0 +1,1 @@
+{"version":3,"file":"workbench-runtime.d.ts","sourceRoot":"","sources":["../../src/server/workbench-runtime.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAC,OAAO,EAAC,MAAM,qBAAqB,CAAC;AAGjD,OAAO,KAAK,EAAe,YAAY,EAAC,MAAM,0BAA0B,CAAC;AAYzE,eAAO,MAAM,IAAI,0BAA0B,CAAC;AAE5C,wBAAsB,KAAK,CAAC,GAAG,EAAE,OAAO,EAAE,EAAC,MAAM,EAAC,EAAE;IAAC,MAAM,EAAE,YAAY,CAAA;CAAC,iBA6CzE"}

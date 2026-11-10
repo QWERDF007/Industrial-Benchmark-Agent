@@ -96,10 +96,6 @@ class OriginConfig(BaseModel):
 
 
 class BBoxPolicyConfig(BaseModel):
-    out_of_bounds: str = Field(
-        "reject",
-        description="Policy for out-of-bounds bbox coordinates: 'reject', 'clip'",
-    )
     source_size_mismatch: str = Field(
         "reject",
         description="Policy when label file image size mismatches decoded image size: 'reject', 'scale'",

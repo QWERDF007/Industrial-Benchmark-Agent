@@ -15,3 +15,12 @@ CONFLICT_CATEGORY_DEFAULTS = {
     'labelme': [category for category in ConflictCategory if category != ConflictCategory.CORRESPONDENCE],
     'folder_classification': [ConflictCategory.CATEGORY],
 }
+
+CONFLICT_CATEGORY_LABELS: dict[ConflictCategory, str] = {
+    ConflictCategory.CATEGORY: ConflictCategory.CATEGORY.value,
+    ConflictCategory.EXTRA: '多标',
+    ConflictCategory.MISSING: '少标',
+    ConflictCategory.POSITION: ConflictCategory.POSITION.value,
+    ConflictCategory.SPLIT: ConflictCategory.SPLIT.value,
+    ConflictCategory.MERGE: ConflictCategory.MERGE.value,
+}

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import fsp from "node:fs/promises";
 import { PythonBridge } from "../python-bridge/index.js";
 import { ImageHttpQueries } from '../images/http.js';
+import {ConsistencyHttpQueries} from '../consistency/http.js';
 
 function sendJson(res: ServerResponse, statusCode: number, data: unknown) {
   const body = JSON.stringify(data);
@@ -31,6 +32,7 @@ async function sendMedia(res: ServerResponse, info: { path: string; media_type: 
 
 export function createIadHttpHandler(bridge: PythonBridge) {
   const images = new ImageHttpQueries(bridge);
+  const consistency = new ConsistencyHttpQueries(bridge);
   return async function iadHttpHandler(req: IncomingMessage, res: ServerResponse): Promise<void> {
     try {
       const url = new URL(req.url || "/", "http://localhost");
@@ -55,6 +57,22 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         const data = await bridge.execute(operation, args);
         sendJson(res, 200, data);
       };
+      const anchorResult = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/anchors\/([^/]+)(?:\/(session\.jsonl|members|candidates|review|analysis|diagnostics))?$/);
+      if (anchorResult && method === 'GET') {
+        const run_id = decodeURIComponent(anchorResult[1]), anchor_id = decodeURIComponent(anchorResult[2]);
+        if (anchorResult[3] === 'session.jsonl') return await consistency.session(res, run_id, anchor_id);
+        return await call('consistency_agent_' + (anchorResult[3] || 'detail'), {run_id, anchor_id});
+      }
+      if (anchorResult?.[3] === 'review' && method === 'POST') {
+        return await call('consistency_agent_review_submit', {run_id:decodeURIComponent(anchorResult[1]),
+          anchor_id:decodeURIComponent(anchorResult[2]),request:body});
+      }
+      const check = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/(config|anchors|report|gallery|images|export\.jsonl)$/);
+      if (check && method === 'GET') {
+        const run_id = decodeURIComponent(check[1]);
+        if (check[2] === 'export.jsonl') return await consistency.export(res, run_id);
+        return await call('consistency_agent_' + (check[2] === 'config' ? 'snapshot' : check[2] === 'anchors' ? 'results' : check[2]), {...query, run_id});
+      }
       if (pathname === "/api/iad/images/settings" && method === "GET") return await call("feature_settings_view");
       if(pathname==='/api/iad/images/index/prepare' && method==='POST')return await call('image_index_prepare',body);
       if(pathname==='/api/iad/consistency/start' && method==='POST')return await call('consistency_start',body);
@@ -65,14 +83,35 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if(pathname==='/api/iad/consistency/gallery' && method==='POST')return await call('consistency_gallery',body);
       if(pathname==='/api/iad/consistency/gallery/members' && method==='POST')return await call('consistency_gallery_members',body);
       if(pathname==='/api/iad/consistency/gallery/analysis' && method==='POST')return await call('consistency_group_analysis',body);
-      if(pathname==='/api/iad/consistency/gallery/analyze' && method==='POST')return await call('consistency_group_analyze',{request:body});
-      if(pathname==='/api/iad/consistency/model-batches/start' && method==='POST')return await call('consistency_model_start',{request:body});
       if (pathname === '/api/iad/analysis/start' && method === 'POST') return await call('analysis_start', {request:body});
       if (pathname === '/api/iad/analysis/jobs' && method === 'GET') return await call('analysis_list', query);
+      if (pathname === '/api/iad/analysis/directions' && method === 'GET') return await call('analysis_direction_choices', {dataset_ids:JSON.parse(url.searchParams.get('dataset_ids') || '[]')});
+      if (pathname === '/api/iad/analysis/sources' && method === 'GET') return await call('analysis_sources', {dataset_ids:JSON.parse(url.searchParams.get('dataset_ids') || '[]')});
+      const publication = pathname.match(/^\/api\/iad\/analysis\/publications\/([^/]+)$/);
+      if (publication && method === 'GET') return await call('analysis_publication', {version_id: decodeURIComponent(publication[1])});
+      const analysisObservations=pathname.match(/^\/api\/iad\/analysis\/publications\/([^/]+)\/observations$/);
+      if(analysisObservations&&method==='GET')return await call('analysis_observations',{
+        version_id:decodeURIComponent(analysisObservations[1]),query});
+      const analysisSampleEvidence=pathname.match(/^\/api\/iad\/analysis\/publications\/([^/]+)\/samples\/([^/]+)\/evidence$/);
+      if(analysisSampleEvidence&&method==='GET')return await call('analysis_sample_evidence',{
+        version_id:decodeURIComponent(analysisSampleEvidence[1]),sample_id:decodeURIComponent(analysisSampleEvidence[2])});
+      const analysisExport=pathname.match(/^\/api\/iad\/analysis\/publications\/([^/]+)\/export$/);
+      if(analysisExport&&method==='GET') {
+        const artifact=await bridge.execute<{path:string}>('analysis_export',{version_id:decodeURIComponent(analysisExport[1])});
+        res.setHeader('Content-Disposition',`attachment; filename="${decodeURIComponent(analysisExport[1])}.zip"`);
+        return await sendMedia(res,{path:artifact.path,media_type:'application/zip'});
+      }
+      const analysisSession = pathname.match(/^\/api\/iad\/analysis\/session\/([^/]+)\.jsonl$/);
+      if (analysisSession && method === 'GET') {
+        const artifact = await bridge.execute<{filename: string; jsonl: string}>('analysis_agent_session_export', {run_id: decodeURIComponent(analysisSession[1])});
+        res.writeHead(200, {'Content-Type': 'application/x-ndjson; charset=utf-8',
+          'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(artifact.filename)}`, 'Cache-Control': 'no-store'});
+        res.end(artifact.jsonl);return;
+      }
       const analysis = pathname.match(/^\/api\/iad\/analysis\/(status|node|results|cancel|retry|delete)\/([^/]+)$/);
       if (analysis && ((['status','node','results'].includes(analysis[1]) && method === 'GET') || (!['status','node','results'].includes(analysis[1]) && method === 'POST')))
         return await call('analysis_'+analysis[1], {run_id:decodeURIComponent(analysis[2])});
-      const modelBatch=pathname.match(/^\/api\/iad\/consistency\/model-batches\/([^/]+)(?:\/(cancel|retry))?$/);
+      const modelBatch=pathname.match(/^\/api\/iad\/consistency\/model-batches\/([^/]+)(?:\/(cancel))?$/);
       if(modelBatch && ((!modelBatch[2] && method==='GET') || (modelBatch[2] && method==='POST')))
         return await call('consistency_model_'+(modelBatch[2] || 'status'),{run_id:decodeURIComponent(modelBatch[1])});
       if(pathname==='/api/iad/consistency/context' && method==='POST')return await call('consistency_context',body);
@@ -168,7 +207,7 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         const info = await bridge.execute<{ path: string; media_type: string }>("audit_evidence", { suggestion_id: decodeURIComponent(evidence[1]), evidence_id: decodeURIComponent(evidence[2]) });
         await sendMedia(res, info); return;
       }
-      if (pathname === "/api/iad/audit/start" && method === "POST") return await call("audit_start", body);
+      if (pathname === "/api/iad/audit/start" && method === "POST") return await call("audit_start", {request:body});
       if (pathname === '/api/iad/audit/sources' && method === 'GET') return await call('audit_sources', {
         dataset_ids: JSON.parse(url.searchParams.get('dataset_ids') || '[]'),
       });
@@ -178,20 +217,18 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         run_id: decodeURIComponent(modelCall[1]), call_id: decodeURIComponent(modelCall[2]),
       });
       if (pathname === "/api/iad/audit/jobs" && method === "GET") return await call("audit_list", query);
-      if (pathname === '/api/iad/dataset-reports' && method === 'POST') return await call('dataset_report_start', {request: body});
-      if (pathname === '/api/iad/dataset-reports' && method === 'GET') return await call('dataset_report_list', {
-        dataset_ids: JSON.parse(url.searchParams.get('dataset_ids') || '[]'),
-      });
-      const datasetReport = pathname.match(/^\/api\/iad\/dataset-reports\/([^/]+)(?:\/(status|export))?$/);
-      if (datasetReport && method === 'GET') {
-        const args = {run_id: decodeURIComponent(datasetReport[1])};
-        if (datasetReport[2] === 'export') {
-          const output = await bridge.execute<{filename: string; html: string}>('dataset_report_export', args);
-          res.writeHead(200, {'Content-Type': 'text/html; charset=utf-8',
-            'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(output.filename)}`, 'Cache-Control': 'no-store'});
-          res.end(output.html);return;
-        }
-        return await call(datasetReport[2] === 'status' ? 'dataset_report_status' : 'dataset_report_get', args);
+      const auditSession = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/samples\/([^/]+)\/session\.jsonl$/);
+      if(auditSession && method==='GET') {
+        const output = await bridge.execute<{filename:string;jsonl:string}>('audit_agent_session_export',{
+          run_id:decodeURIComponent(auditSession[1]),sample_id:decodeURIComponent(auditSession[2])});
+        res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8',
+          'Content-Disposition':`attachment; filename*=UTF-8''${encodeURIComponent(output.filename)}`,'Cache-Control':'no-store'});
+        res.end(output.jsonl);return;
+      }
+      const auditMedia = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/samples\/([^/]+)\/evidence\/([^/]+)$/);
+      if(auditMedia && method==='GET') {
+        return await sendMedia(res,await bridge.execute<{path:string;media_type:string}>('audit_evidence',{
+          run_id:decodeURIComponent(auditMedia[1]),sample_id:decodeURIComponent(auditMedia[2]),evidence_id:decodeURIComponent(auditMedia[3])}),true);
       }
       const auditSample = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/samples\/([^/]+)$/);
       if (auditSample && method === 'GET') return await call('audit_job_sample', {
@@ -210,28 +247,13 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         }
         return await call(auditResults[2] === 'samples' ? 'audit_job_samples' : 'audit_job_report', args);
       }
-      const retryOptions = pathname.match(/^\/api\/iad\/(audit|knowledge)\/retry\/([^/]+)$/);
+      const retryOptions = pathname.match(/^\/api\/iad\/(audit)\/retry\/([^/]+)$/);
       if (retryOptions && method === "GET") return await call(retryOptions[1] + "_retry_options", { run_id: decodeURIComponent(retryOptions[2]) });
       const audit = pathname.match(/^\/api\/iad\/audit\/(status|cancel|retry)\/([^/]+)$/);
       if (audit && ((audit[1] === "status" && method === "GET") || (audit[1] !== "status" && method === "POST"))) return await call("audit_" + audit[1], { ...body, run_id: decodeURIComponent(audit[2]) });
-      if (pathname === "/api/iad/knowledge/scopes/open" && method === "POST") return await call("knowledge_scope_open", { request: body });
-      const scope = pathname.match(/^\/api\/iad\/knowledge\/scopes\/([^/]+)(?:\/(start|stop|resume))?$/);
-      if (scope) {
-        const scope_run_id = decodeURIComponent(scope[1]);
-        if (!scope[2] && method === "GET") return await call("knowledge_scope_get", { scope_run_id });
-        if (scope[2] === "start" && method === "POST") return await call("knowledge_start", { request: body, scope_run_id });
-        if ((scope[2] === "stop" || scope[2] === "resume") && method === "POST") return await call("knowledge_scope_" + scope[2], { scope_run_id });
-      }
-      if (pathname === "/api/iad/exploration" && method === "GET") return await call("direction_exploration_get", query);
       if (pathname === '/api/iad/exploration/directions/remove' && method === 'POST') return await call('direction_exploration_remove_direction', body);
       if (pathname === "/api/iad/exploration/presets" && method === "GET") return await call("direction_exploration_presets", query);
       if (pathname === "/api/iad/exploration/presets" && method === "POST") return await call("direction_exploration_preset_save", body);
-      if (pathname === "/api/iad/exploration/start" && method === "POST") return await call("direction_exploration_start", { request: body });
-      if (pathname === "/api/iad/exploration/batches/start" && method === "POST") return await call("direction_exploration_batch_start", {request:body});
-      if (pathname === "/api/iad/exploration/jobs" && method === "GET") return await call("direction_exploration_list", query);
-      const exploration = pathname.match(/^\/api\/iad\/exploration\/(status|cancel|retry|delete)\/([^/]+)$/);
-      if (exploration && ((exploration[1] === "status" && method === "GET") || (exploration[1] !== "status" && method === "POST")))
-        return await call("direction_exploration_" + exploration[1], { run_id: decodeURIComponent(exploration[2]) });
       const explorationImage = pathname.match(/^\/api\/iad\/exploration\/evidence\/([^/]+)\/([^/]+)$/);
       if (explorationImage && method === "GET") {
         const info = await bridge.execute<{ path: string; media_type: string }>("direction_exploration_evidence", {
@@ -241,30 +263,11 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       }
       if (pathname === "/api/iad/knowledge" && method === "GET") return await call("knowledge_get", query);
       if (pathname === "/api/iad/knowledge/presets" && method === "GET") return await call("knowledge_presets", query);
-      if (pathname === "/api/iad/knowledge/batches/start" && method === "POST") return await call("knowledge_batch_start", {request:body});
-      if (pathname === "/api/iad/knowledge/prompt" && method === "GET") return await call("knowledge_prompt_get", query);
-      if (pathname === "/api/iad/knowledge/prompt" && method === "POST") return await call("knowledge_prompt_save", body);
       if (pathname === "/api/iad/knowledge/details" && method === "GET") return await call("knowledge_details", query);
       if (pathname === "/api/iad/knowledge/versions" && method === "GET") return await call("knowledge_versions", query);
       if (pathname === "/api/iad/knowledge/check-review" && method === "POST") return await call("knowledge_check_review", body);
-      if (pathname === "/api/iad/knowledge/sources" && method === "GET") return await call("knowledge_sources", query);
-      if (pathname === "/api/iad/knowledge/start" && method === "POST") return await call("knowledge_start", { request: body });
-      if (pathname === "/api/iad/knowledge/jobs" && method === "GET") return await call("knowledge_list", query);
-      const knowledgeJob = pathname.match(/^\/api\/iad\/knowledge\/jobs\/([^/]+)$/);
-      if (knowledgeJob && method === "DELETE") return await call("knowledge_job_delete", { run_id: decodeURIComponent(knowledgeJob[1]) });
       const removeCheck = pathname.match(/^\/api\/iad\/knowledge\/versions\/([^/]+)\/checks\/remove$/);
       if (removeCheck && method === "POST") return await call("knowledge_check_remove", { version_id: decodeURIComponent(removeCheck[1]), request: body });
-      const knowledge = pathname.match(/^\/api\/iad\/knowledge\/(status|cancel|retry)\/([^/]+)$/);
-      if (knowledge && ((knowledge[1] === "status" && method === "GET") || (knowledge[1] !== "status" && method === "POST"))) {
-        return await call("knowledge_" + knowledge[1], { ...body, run_id: decodeURIComponent(knowledge[2]) });
-      }
-      const observations = pathname.match(/^\/api\/iad\/knowledge\/observations\/([^/]+)(?:\/evidence\/([^/]+))?$/);
-      if (observations && method === "GET") {
-        const run_id = decodeURIComponent(observations[1]);
-        if (!observations[2]) return await call("knowledge_observations", { ...query, run_id });
-        const info = await bridge.execute<{ path: string; media_type: string }>("knowledge_evidence", { run_id, evidence_id: decodeURIComponent(observations[2]) });
-        await sendMedia(res, info); return;
-      }
       const knowledgeEvidence = pathname.match(/^\/api\/iad\/knowledge\/evidence\/([^/]+)\/([^/]+)$/);
       if (knowledgeEvidence && method === "GET") {
         const info = await bridge.execute<{ path: string; media_type: string }>("knowledge_evidence", {

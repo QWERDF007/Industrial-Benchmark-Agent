@@ -11,12 +11,22 @@ from iad_core.consistency.policy import PolicyRelation, AnnotationRole, Annotati
 Identifier = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 Digest = Annotated[str, StringConstraints(pattern=r'^[a-f0-9]{64}$')]
 Count = Annotated[int, Field(ge=0, strict=True)]
+CandidateLimit = Annotated[int, Field(ge=1, strict=True)]
 SimilarityThreshold = Annotated[FiniteFloat, Field(ge=0, le=1, strict=True)]
 DEFAULT_MIN_SIMILARITY = 0.95
+DEFAULT_REVIEW_MIN_SIMILARITY = 0.98
 Mode = Literal['exact', 'visual', 'combined']
+ReviewMode = Literal['exact', 'combined']
 Relation = Literal['EXACT', 'NEAR_CANDIDATE', 'VISUAL_REFERENCE', 'DIFFERENT', 'UNCHECKED']
 DifferenceType = Literal['QUALITY_LABEL', 'CATEGORY', 'ANNOTATION_COUNT', 'ONE_SIDED_REGION', 'GEOMETRY',
     'SPLIT_MERGE', 'AMBIGUOUS_MATCH', 'POLICY_UNCONFIRMED', 'ANNOTATION_UNREADABLE']
+
+
+class ConsistencyRetrievalSettings(AnalysisModel):
+    mode: ReviewMode = 'combined'
+    min_similarity: SimilarityThreshold = DEFAULT_REVIEW_MIN_SIMILARITY
+    max_exact_candidates: CandidateLimit = 5
+    max_similar_candidates: CandidateLimit = 10
 
 
 class AllRegisteredScope(AnalysisModel):

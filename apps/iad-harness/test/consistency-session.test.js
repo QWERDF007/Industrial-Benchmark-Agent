@@ -74,7 +74,7 @@ for name,label in [('left','scratch'),('right','dent')]:
     assert.equal(rendered.differences[0].correction_state,'VERIFIED');
     const skills=await ctx.skills.list();assert.ok(skills.some(skill=>skill.name==='audit-data-consistency'));
     assert.equal((await execute('consistency_context',{evidence_id:result.evidence_id,result_id:'missing'})).isError,true);
-    const started=await execute('consistency_start',{subjects:{kind:'all_registered'},request_id:'native-start'});
+    const started=await execute('consistency_start',{subjects:{kind:'all_registered'},mode:'exact',request_id:'native-start'});
     assert.equal(started.isError,false,JSON.stringify(started));assert.ok(started.meta.links.some(link=>link.location.batchId===started.value.batch_id));
     let batch;
     for(let attempt=0;attempt<50;attempt++){

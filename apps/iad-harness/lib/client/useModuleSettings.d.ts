@@ -5,6 +5,7 @@ type Patch = ModuleSettingsEdit['settings'];
 interface ModuleSettingsState {
     settings: Values | undefined;
     save(patch: Patch): void;
+    saveAsync(patch: Patch): Promise<ModuleSettingsSnapshot>;
     retry(): void;
     loading: boolean;
     saving: boolean;

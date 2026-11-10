@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 from iad_core.storage.database import Database
+from iad_core.workbench.job_models import JobExecutionError
 from iad_core.storage.repositories import (
     AnnotationRepository,
     ImportIssueRepository,
@@ -23,20 +24,31 @@ from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 from iad_core.workbench.review import HumanReview, ReviewSubmission, ReviewHistoryQuery
 from iad_core.workbench.runtime import workbench, close_workbenches
 from iad_core.workbench.analysis_operations import analysis_start, analysis_list, analysis_status, analysis_node, analysis_results, analysis_cancel, analysis_retry, analysis_delete
-from iad_core.exploration.operations import (direction_exploration_start, direction_exploration_batch_start, direction_exploration_status, direction_exploration_list,
-    direction_exploration_cancel, direction_exploration_delete, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence, direction_exploration_remove_direction,
+from iad_core.consistency.agent_operations import (consistency_agent_start, consistency_agent_snapshot,
+    consistency_agent_anchors, consistency_agent_anchor, consistency_agent_session_created, consistency_agent_retrieve,
+    consistency_agent_submit_empty, consistency_agent_failure, consistency_agent_finish,
+    consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit, consistency_agent_configuration, consistency_agent_verify,
+    consistency_agent_trace_event, consistency_agent_trace_status, consistency_agent_cancel, consistency_agent_resume,
+    consistency_agent_interrupt, consistency_agent_detail, consistency_agent_results, consistency_agent_report,
+    consistency_agent_export, consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
+    consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis, consistency_agent_plan, consistency_agent_capacity,
+    consistency_agent_model_call_start, consistency_agent_model_call_end, consistency_agent_diagnostics, consistency_agent_prepare,
+    consistency_agent_session_location)
+from iad_core.exploration.operations import (direction_exploration_evidence, direction_exploration_remove_direction,
     direction_exploration_presets, direction_exploration_preset_save)
 
 from iad_core.workbench.module_settings import module_settings_get, module_settings_save, module_settings_validate
+from iad_core.analysis.operations import ANALYSIS_AGENT_OPERATIONS
+from iad_core.audit.operations import AUDIT_AGENT_OPERATIONS
 from iad_core.workbench.model_operations import (model_settings_get, model_settings_save, model_settings_view,
     model_settings_validate, model_environment_get, model_connection_check, model_provider_validate)
 from iad_core.feature.operations import feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.operations import (consistency_review_context, consistency_review_submit, consistency_correction_verify, image_retrieve, temporary_image_accept,
-    consistency_model_start, consistency_model_status, consistency_model_cancel, consistency_model_retry,
+    consistency_model_status, consistency_model_cancel,
     temporary_image_release, temporary_image_release_owner,consistency_compare,consistency_evidence,
     consistency_evidence_media,consistency_evidence_export,image_index_prepare,consistency_start,consistency_status,
-    consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context)
+    consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context)
 
 DEFAULT_DB_PATH = os.environ.get("IAD_DB_PATH", "data/benchmark.db")
 _output_lock = threading.Lock()
@@ -162,12 +174,11 @@ def sample_get(args, db_path):
     meta = extract_suggestion_meta(suggestion) if suggestion else None
     issues = ImportIssueRepository(db).list_by_sample(sample.sample_id)
     decision = ReviewRepository(db).get_decision(sample.sample_id)
-    from iad_core.knowledge.repository import KnowledgeRepository
-    repository = KnowledgeRepository(db)
+    from iad_core.analysis.queries import AnalysisQueries
     analysis = suggestion.analysis if suggestion else None
     consistency = AuditConsistencyRepository(db).latest(sample.sample_id)
     version_id = analysis.knowledge_version_id if analysis else None
-    knowledge = repository.get(version_id).model_dump(exclude={'mining_steps', 'verification_steps'}) if version_id else None
+    knowledge = AnalysisQueries(db).knowledge(version_id).model_dump(mode='json') if version_id else None
     return {"sample": sample.model_dump(), "knowledge": knowledge, "suggestion": meta,
             "consistency": consistency.model_dump(mode='json') if consistency else None,
             **WorkbenchQuery(db).sample_scores(sample.sample_id),
@@ -280,30 +291,9 @@ def report_get(args, db_path):
     return WorkbenchQuery(Database(db_path)).report(**args)
 
 
-def dataset_report_start(args, db_path):
-    job = workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
-        services.dataset_reports.start(args['request']))
-    return dataset_report_status(dict(run_id=job['run_id']), db_path)
-
-
-def dataset_report_get(args, db_path):
-    from iad_core.workbench.dataset_reports import DatasetReports
-    return DatasetReports.view(Database(db_path), args['run_id']).model_dump(mode='json')
-
-
-def dataset_report_list(args, db_path):
-    from iad_core.workbench.dataset_reports import DatasetReports
-    return dict(reports=DatasetReports.catalog(Database(db_path), args['dataset_ids']))
-
-
-def dataset_report_status(args, db_path):
-    from iad_core.workbench.dataset_reports import DatasetReports
-    return DatasetReports.status(Database(db_path), args['run_id']).model_dump(mode='json')
-
-
-def dataset_report_export(args, db_path):
-    from iad_core.workbench.dataset_reports import DatasetReports
-    return DatasetReports.export(Database(db_path), args['run_id'])
+def workbench_initialize(args, db_path):
+    workbench(db_path)
+    return {}
 
 
 def audit_sources(args, db_path):
@@ -312,8 +302,7 @@ def audit_sources(args, db_path):
 
 
 def audit_start(args, db_path):
-    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
-        services.audit.start(**{key: value for key, value in args.items() if key != '_model_execution'}))
+    raise ValueError('审计需要原生宿主，请通过 /api/iad/audit/start 提交')
 
 
 def audit_status(args, db_path):
@@ -323,13 +312,11 @@ def audit_status(args, db_path):
 
 
 def audit_cancel(args, db_path):
-    return workbench(db_path).audit.cancel(args["run_id"])
+    raise ValueError('审计作业须由原生宿主停止，请通过 /api/iad/audit/cancel 提交')
 
 
 def audit_retry(args, db_path):
-    from iad_core.workbench.job_models import JobRetry
-    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
-        services.audit.retry(**JobRetry.model_validate({key: value for key, value in args.items() if key != '_model_execution'}).model_dump()), args['run_id'])
+    raise ValueError('审计作业须由原生宿主继续，请通过 /api/iad/audit/retry 提交')
 
 
 def audit_retry_options(args, db_path):
@@ -344,29 +331,33 @@ def audit_list(args, db_path):
 
 
 def audit_job_samples(args, db_path):
-    from iad_core.workbench.audit_results import AuditResults
+    from iad_core.audit.queries import AuditQueries
     from iad_core.workbench.audit_result_models import AuditSampleQuery
-    return AuditResults(Database(db_path)).samples(AuditSampleQuery.model_validate(args)).model_dump(mode='json')
+    return AuditQueries(Database(db_path)).samples(AuditSampleQuery.model_validate(args)).model_dump(mode='json')
 
 
 def audit_job_sample(args, db_path):
-    from iad_core.workbench.audit_results import AuditResults
-    return AuditResults(Database(db_path)).sample(args['run_id'], args['sample_id']).model_dump(mode='json')
+    from iad_core.audit.queries import AuditQueries
+    return AuditQueries(Database(db_path)).sample(args['run_id'], args['sample_id']).model_dump(mode='json')
 
 
 def audit_job_report(args, db_path):
-    from iad_core.workbench.audit_results import AuditResults
-    return AuditResults(Database(db_path)).report(args['run_id']).model_dump(mode='json')
+    from iad_core.audit.queries import AuditQueries
+    return AuditQueries(Database(db_path)).report(args['run_id']).model_dump(mode='json')
 
 
 def audit_job_export(args, db_path):
-    from iad_core.workbench.audit_html import AuditHtmlReport
-    from iad_core.workbench.audit_results import AuditResults
-    return AuditHtmlReport(AuditResults(Database(db_path))).render(args['run_id'])
+    from iad_core.audit.queries import AuditQueries
+    return AuditQueries(Database(db_path)).export(args['run_id'])
 
 
 def audit_evidence(args, db_path):
     from iad_core.evidence.images import EvidenceImages
+    from iad_core.audit.models import AuditEvidenceQuery, NativeAuditEvidenceReference
+    from iad_core.audit.queries import AuditQueries
+    reference = AuditEvidenceQuery.model_validate(args).root
+    if isinstance(reference, NativeAuditEvidenceReference):
+        return AuditQueries(Database(db_path)).evidence(reference.run_id,reference.sample_id,reference.evidence_id)
     suggestion = AuditSuggestionRepository(Database(db_path)).get(args["suggestion_id"])
     if not suggestion or not suggestion.analysis:
         raise LookupError("Audit evidence not found")
@@ -383,69 +374,40 @@ def inspection_context(args, db_path):
 
 
 def knowledge_get(args, db_path):
-    from iad_core.knowledge.query import KnowledgeReader
-    return KnowledgeReader(Database(db_path)).read(**args).model_dump()
-
-
-def knowledge_prompt_get(args, db_path):
-    from iad_core.knowledge.prompts import KnowledgePrompts, MiningPromptQuery
-    return KnowledgePrompts(Database(db_path)).read(MiningPromptQuery.model_validate(args)).model_dump()
+    from iad_core.analysis.queries import AnalysisQueries
+    from iad_core.workbench.job_snapshots import JobSnapshots
+    if bool(args.get('run_id')) == bool(args.get('version_id')):
+        raise ValueError('请选择作业run_id或发布version_id之一')
+    db = Database(db_path)
+    if args.get('run_id'):
+        if JobSnapshots(db).snapshot(args['run_id'],('ANALYSIS_WORKFLOW',)).analysis_kind != 'knowledge':
+            raise ValueError('所选作业不是知识挖掘')
+        return analysis_results({'run_id':args['run_id']},db_path)
+    return AnalysisQueries(db).knowledge(args['version_id']).model_dump(mode='json')
 
 
 def knowledge_presets(args, db_path):
-    from iad_core.knowledge.instructions import default_directions
-    return {'directions': [direction.model_dump() for direction in default_directions()]}
-
-
-def knowledge_prompt_save(args, db_path):
-    from iad_core.knowledge.prompts import KnowledgePrompts, MiningPromptEdit
-    return KnowledgePrompts(Database(db_path)).save(MiningPromptEdit.model_validate(args)).model_dump()
-
-
-def knowledge_directions_adopt(args, db_path):
-    from iad_core.knowledge.prompts import KnowledgePrompts
-    return KnowledgePrompts(Database(db_path)).adopt(args).model_dump()
-
-
-def knowledge_scope_open(args, db_path):
-    from iad_core.knowledge.scopes import KnowledgeScopeOpen, KnowledgeScopes
-    return KnowledgeScopes(Database(db_path)).open(KnowledgeScopeOpen.model_validate(args['request']), args.get('origin_session_id')).model_dump()
-
-
-def knowledge_scope_get(args, db_path):
-    from iad_core.knowledge.scopes import KnowledgeScopes
-    scopes = KnowledgeScopes(Database(db_path))
-    scope_run_id = args.get('scope_run_id') or scopes.active(args.get('origin_session_id'), args.get('dataset_id'))
-    if not scope_run_id:
-        raise LookupError('该会话没有匹配的活动连续范围，请提供原范围引用')
-    return scopes.read(scope_run_id).model_dump()
-
-
-def knowledge_scope_stop(args, db_path):
-    return workbench(db_path).knowledge.stop_scope(args['scope_run_id'])
-
-
-def knowledge_scope_resume(args, db_path):
-    from iad_core.knowledge.scopes import KnowledgeScopes
-    return KnowledgeScopes(Database(db_path)).set_active(args['scope_run_id'], True, args.get('origin_session_id')).model_dump()
+    from iad_core.knowledge.instructions import default_directions, DEFAULT_OBJECTIVE
+    from iad_core.analysis.prompt_text import DEFAULT_KNOWLEDGE_USER_PROMPT
+    return {'directions': [direction.model_dump() for direction in default_directions()],
+        'objective': DEFAULT_OBJECTIVE, 'instruction': DEFAULT_KNOWLEDGE_USER_PROMPT}
 
 
 def knowledge_details(args, db_path):
     from iad_core.knowledge.models import KnowledgeDetailQuery
-    from iad_core.knowledge.query import KnowledgeReader
-    return KnowledgeReader(Database(db_path)).details(KnowledgeDetailQuery.model_validate(args)).model_dump()
+    from iad_core.analysis.queries import AnalysisQueries
+    return AnalysisQueries(Database(db_path)).details(KnowledgeDetailQuery.model_validate(args)).model_dump(mode='json')
 
 
 def knowledge_versions(args, db_path):
-    from iad_core.knowledge.repository import KnowledgeRepository
     from iad_core.knowledge.models import KnowledgeVersionQuery, KnowledgeVersionCatalog
+    from iad_core.analysis.queries import AnalysisQueries
     query = KnowledgeVersionQuery.model_validate(args)
     db = Database(db_path)
     DatasetRegistry(db).get(query.dataset_id)
-    repository = KnowledgeRepository(db)
-    current = repository.current(query.dataset_id)
-    return KnowledgeVersionCatalog(dataset_id=query.dataset_id, current_version_id=current.version_id if current else None,
-        versions=repository.versions(query.dataset_id)).model_dump()
+    versions = AnalysisQueries(db).versions(query.dataset_id, 'knowledge')
+    return KnowledgeVersionCatalog(dataset_id=query.dataset_id,
+        current_version_id=versions[0].version_id if versions else None, versions=versions).model_dump(mode='json')
 
 
 def knowledge_check_review(args, db_path):
@@ -454,86 +416,18 @@ def knowledge_check_review(args, db_path):
     return KnowledgeCheckReviews(Database(db_path)).submit(KnowledgeCheckReviewSubmission.model_validate(args)).model_dump()
 
 
-def knowledge_sources(args, db_path):
-    from iad_core.knowledge.models import KnowledgeSourceQuery
-    from iad_core.knowledge.query import KnowledgeReader
-    return KnowledgeReader(Database(db_path)).source_page(KnowledgeSourceQuery.model_validate(args)).model_dump()
-
-
-def knowledge_start(args, db_path):
-    from iad_core.knowledge.requests import MiningInvocation
-    from iad_core.knowledge.instructions import FrozenMiningPrompt
-    invocation = MiningInvocation.model_validate({key: value for key, value in args.items() if key != '_model_execution'})
-    request = invocation.request
-    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
-        services.knowledge.start(request=request, mining_prompt=FrozenMiningPrompt.capture(invocation.mining_prompt), model_name=invocation.model_name, origin_session_id=invocation.origin_session_id, scope_run_id=invocation.scope_run_id))
-
-
-def knowledge_batch_start(args, db_path):
-    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
-        services.knowledge_batches.start(args['request'], model_name=args.get('model_name')))
-
-
-def knowledge_status(args, db_path):
-    return workbench(db_path).knowledge.status(args["run_id"])
-
-
-def knowledge_cancel(args, db_path):
-    return workbench(db_path).knowledge.cancel(args["run_id"])
-
-
-def knowledge_retry(args, db_path):
-    from iad_core.workbench.job_models import JobRetry
-    request = JobRetry.model_validate({key: value for key, value in args.items() if key != '_model_execution'})
-    return workbench(db_path).invoke_model(args.get('_model_execution'), lambda services:
-        (services.knowledge_batches if services.knowledge.status(request.run_id)['job_type'] == 'KNOWLEDGE_BATCH' else services.knowledge)
-        .retry(**request.model_dump()), args['run_id'])
-
-
-def knowledge_retry_options(args, db_path):
-    from iad_core.knowledge.models import KNOWLEDGE_JOB_TYPES
-    return workbench(db_path).jobs.retry_options(args['run_id'], (*KNOWLEDGE_JOB_TYPES, 'KNOWLEDGE_BATCH'))
-
-
-def knowledge_list(args, db_path):
-    return {"jobs": workbench(db_path).knowledge.list(args["dataset_id"])}
-
-
-def knowledge_job_delete(args, db_path):
-    return workbench(db_path).knowledge.delete(args['run_id'])
-
-
 def knowledge_check_remove(args, db_path):
-    from iad_core.knowledge.maintenance import KnowledgeMaintenance
     from iad_core.knowledge.models import KnowledgeCheckRemoval
-    return KnowledgeMaintenance(Database(db_path)).remove_check(args['version_id'],
-        KnowledgeCheckRemoval.model_validate(args['request'])).model_dump()
-
-
-def knowledge_observations(args, db_path):
-    from iad_core.knowledge.trace import KnowledgeTrace
-    from iad_core.knowledge.models import KNOWLEDGE_JOB_TYPES
-    from iad_core.workbench.job_snapshots import JobSnapshots
-    job = JobSnapshots(Database(db_path)).snapshot(args['run_id'], (*KNOWLEDGE_JOB_TYPES, 'KNOWLEDGE_BATCH')).model_dump()
-    return KnowledgeTrace.page(job, int(args.get('page', 1)), int(args.get('page_size', 10))).model_dump()
+    from iad_core.analysis.maintenance import AnalysisMaintenance
+    return AnalysisMaintenance(Database(db_path)).remove_check(args['version_id'],
+        KnowledgeCheckRemoval.model_validate(args['request'])).model_dump(mode='json')
 
 
 def knowledge_evidence(args, db_path):
-    from iad_core.evidence.images import EvidenceImages
-    from iad_core.knowledge.repository import KnowledgeRepository
-    if bool(args.get('run_id')) == bool(args.get('version_id')):
-        raise ValueError('证据引用须明确选择作业run_id或已发布version_id之一')
-    if args.get('run_id'):
-        from iad_core.knowledge.trace import KnowledgeTrace
-        from iad_core.knowledge.models import KNOWLEDGE_JOB_TYPES
-        from iad_core.workbench.job_snapshots import JobSnapshots
-        job = JobSnapshots(Database(db_path)).snapshot(args['run_id'], (*KNOWLEDGE_JOB_TYPES, 'KNOWLEDGE_BATCH')).model_dump()
-        return KnowledgeTrace.evidence(job, args['evidence_id'], db_path)
-    snapshot = KnowledgeRepository(Database(db_path)).get(args["version_id"])
-    for evidence in snapshot.evidence:
-        if evidence.image.evidence_id == args["evidence_id"]:
-            return {"path": EvidenceImages(db_path).path(evidence.image), "media_type": evidence.image.media_type}
-    raise LookupError("Knowledge evidence not found")
+    from iad_core.analysis.queries import AnalysisQueries
+    if not args.get('version_id') or args.get('run_id'):
+        raise ValueError('证据须引用固定的知识发布版本')
+    return AnalysisQueries(Database(db_path)).evidence(args['version_id'], args['evidence_id'])
 
 
 def directory_list(args, db_path):
@@ -546,39 +440,62 @@ def model_call_get(args, db_path):
 
 
 OPERATIONS = {handler.__name__: handler for handler in (
+    consistency_agent_start, consistency_agent_snapshot, consistency_agent_anchors, consistency_agent_anchor,
+    consistency_agent_session_created, consistency_agent_retrieve, consistency_agent_submit_empty,
+    consistency_agent_failure, consistency_agent_finish,
+    consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit,
+    consistency_agent_configuration, consistency_agent_verify,
+    consistency_agent_trace_event, consistency_agent_trace_status,
+    consistency_agent_cancel, consistency_agent_resume,
+    consistency_agent_interrupt,
+    consistency_agent_detail, consistency_agent_results, consistency_agent_report, consistency_agent_export,
+    consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
+    consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis,
+    consistency_agent_plan, consistency_agent_capacity,
+    consistency_agent_model_call_start, consistency_agent_model_call_end,
+    consistency_agent_diagnostics,
+    consistency_agent_prepare,
+    consistency_agent_session_location,
     consistency_review_context, consistency_review_submit, consistency_correction_verify,
     analysis_start, analysis_list, analysis_status, analysis_node, analysis_results, analysis_cancel, analysis_retry, analysis_delete,
     image_retrieve, temporary_image_accept, temporary_image_release, temporary_image_release_owner,
     consistency_compare,consistency_evidence,consistency_evidence_media,consistency_evidence_export,
-    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_group_analyze,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
-    consistency_model_start, consistency_model_status, consistency_model_cancel, consistency_model_retry,
+    image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
+    consistency_model_status, consistency_model_cancel,
     feature_settings_view, feature_settings_save, feature_profile_create, feature_connection_check,
     module_settings_get, module_settings_save, module_settings_validate,
     model_settings_get, model_settings_save, model_settings_view, model_settings_validate, model_environment_get, model_connection_check, model_provider_validate,
     direction_exploration_presets, direction_exploration_preset_save,
-    knowledge_directions_adopt, direction_exploration_start, direction_exploration_batch_start, direction_exploration_status, direction_exploration_list, direction_exploration_cancel,
-    direction_exploration_delete, direction_exploration_retry, direction_exploration_get, direction_exploration_evidence, direction_exploration_remove_direction,
+    direction_exploration_evidence, direction_exploration_remove_direction,
     tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
     dataset_group_list, dataset_group_create, dataset_group_update, dataset_group_delete,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
     knowledge_review_context, knowledge_review_submit, knowledge_review_queue,
-    review_stats, report_get, dataset_report_start, dataset_report_get, dataset_report_list, dataset_report_status, dataset_report_export,
-    audit_sources, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_job_samples, audit_job_sample, audit_job_report, audit_job_export, audit_evidence, inspection_context, directory_list,
-    knowledge_scope_open, knowledge_scope_get, knowledge_scope_stop, knowledge_scope_resume,
-    knowledge_get, knowledge_versions, knowledge_check_review, knowledge_presets, knowledge_prompt_get, knowledge_prompt_save, knowledge_details, knowledge_sources, knowledge_observations, knowledge_evidence, knowledge_start, knowledge_batch_start, knowledge_status, knowledge_cancel, knowledge_retry, knowledge_retry_options, knowledge_list, knowledge_job_delete, knowledge_check_remove, model_call_get,
+    review_stats, report_get,
+    workbench_initialize, audit_sources, audit_start, audit_status, audit_cancel, audit_retry, audit_retry_options, audit_list, audit_job_samples, audit_job_sample, audit_job_report, audit_job_export, audit_evidence, inspection_context, directory_list,
+    knowledge_get, knowledge_versions, knowledge_check_review, knowledge_presets, knowledge_details, knowledge_evidence, knowledge_check_remove, model_call_get,
 )}
 
 
+OPERATIONS.update({operation.__name__: operation for operation in ANALYSIS_AGENT_OPERATIONS})
+OPERATIONS.update({operation.__name__: operation for operation in AUDIT_AGENT_OPERATIONS})
+
 QUERY_OPERATIONS = frozenset({
+    'audit_agent_snapshot','audit_agent_samples','audit_agent_sample','audit_agent_context','audit_agent_session_location', 'audit_evidence',
+    'analysis_publication', 'analysis_sample_evidence', 'analysis_observations', 'analysis_direction_choices', 'analysis_sources', 'analysis_agent_catalog', 'analysis_agent_history',
+    'analysis_agent_arguments', 'analysis_agent_claims',
+    'consistency_agent_snapshot', 'consistency_agent_anchors', 'consistency_agent_anchor',
+    'consistency_agent_detail', 'consistency_agent_results', 'consistency_agent_report', 'consistency_agent_export',
+    'consistency_agent_gallery', 'consistency_agent_images', 'consistency_agent_members', 'consistency_agent_candidates', 'consistency_agent_review', 'consistency_agent_analysis',
+    'consistency_agent_diagnostics',
+    'consistency_agent_session_location',
     'module_settings_get',
-    'knowledge_observations', 'knowledge_evidence',
-    'knowledge_get', 'knowledge_details', 'knowledge_versions', 'knowledge_presets', 'knowledge_prompt_get', 'knowledge_sources',
-    'direction_exploration_get', 'direction_exploration_evidence', 'direction_exploration_presets',
+    'knowledge_evidence',
+    'knowledge_get', 'knowledge_details', 'knowledge_versions', 'knowledge_presets', 'direction_exploration_evidence', 'direction_exploration_presets',
     'analysis_list', 'analysis_status', 'analysis_node', 'analysis_results',
     'consistency_model_status',
     'audit_sources', 'audit_status', 'audit_list', 'audit_job_samples', 'audit_job_sample', 'audit_job_report', 'audit_job_export',
-    'dataset_report_get', 'dataset_report_list', 'dataset_report_status', 'dataset_report_export',
     'dataset_list', 'dataset_get', 'dataset_group_list', 'sample_list', 'sample_get',
     'sample_image_path', 'sample_thumbnail', 'sample_mask_path', 'report_get',
     'review_history', 'review_stats',
@@ -611,11 +528,16 @@ def dispatch_request(req_data: Dict[str, Any], default_db_path: str = DEFAULT_DB
         code = "INVALID_ARGUMENT" if status == 422 else "NOT_FOUND" if status == 404 else "EXECUTION_ERROR"
         if isinstance(error, ConsistencyError):
             code, status = error.code, error.status_code
+        if isinstance(error, JobExecutionError):
+            code, status = error.code or 'EXECUTION_ERROR', 500
         if error.__class__.__name__ == "ToolContractError":
             code, status = "CONTRACT_ERROR", error.status_code
         if status == 500:
             traceback.print_exc(file=sys.stderr)
-        emit({"event": "error", "request_id": req_id, "status": "ERROR", "error": {"code": code, "message": str(error), "details": {"status_code": status}}})
+        details = {'status_code': status}
+        if isinstance(error, JobExecutionError):
+            details.update(source_run_id=error.source_run_id, source_phase=error.source_phase)
+        emit({"event": "error", "request_id": req_id, "status": "ERROR", "error": {"code": code, "message": str(error), "details": details}})
 
 
 def main():

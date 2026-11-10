@@ -10,7 +10,7 @@ export function TabBar({ label, items, value, onChange, className = '' }) {
             return;
         event.preventDefault();
         onChange(items[next].id);
-        buttons.current.get(items[next].id)?.focus();
+        buttons.current.get(items[next].id)?.focus({ preventScroll: true });
     }
     return _jsx("div", { className: `iad-tabs ${className}`.trim(), role: "tablist", "aria-label": label, children: items.map((item, index) => _createElement("button", { ...item.buttonProps, key: item.id, type: "button", role: "tab", "aria-selected": value === item.id, tabIndex: value === item.id ? 0 : -1, className: value === item.id ? 'active' : '', ref: button => { if (button)
                 buttons.current.set(item.id, button);

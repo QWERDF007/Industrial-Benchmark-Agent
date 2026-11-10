@@ -15,6 +15,11 @@ class JobSnapshots:
         self.lock=threading.RLock()
         self.job_types=get_args(JobKind)
 
+    def queue_size(self, dataset_id: str, job_type: JobKind) -> int:
+        with self.db.connection() as connection:
+            return connection.execute("""SELECT COUNT(*) FROM job_runs WHERE job_type=? AND status='PENDING'
+                AND json_extract(payload_json,'$.request.dataset_id')=?""", (job_type,dataset_id)).fetchone()[0]
+
     def identities(self, dataset_id: str, job_types: Sequence[JobKind]) -> dict[str, str]:
         """Map visible attempt IDs to root IDs without loading frozen snapshots."""
         with self.lock:
@@ -69,19 +74,34 @@ class JobSnapshots:
                 "cancel_requested": payload.get("cancel_requested", False),
                 "unprocessed": payload["total_samples"] - payload["completed"] - payload["failed"],
                 "model_calls": [call.model_dump() for call in ModelCalls(self.db).list(run_id,connection=connection)]}
-        if row['job_type'] in ('KNOWLEDGE', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE'):
-            from iad_core.knowledge.trace import observation_progress
-            values['observation_progress'] = observation_progress(values)
-            if not values.get('mining_prompt'):
-                frozen = payload.get('request', {})
-                values['mining_prompt'] = payload.get('mining_prompt') or frozen.get('mining_prompt')
         if row['job_type'] in ('DIRECTION_EXPLORATION', 'EXPLORATION_BATCH'):
             frozen = payload.get('request', {})
             values['exploration_prompt'] = frozen.get('exploration_request', {}).get('prompt')
             if not values['exploration_prompt'] and frozen.get('instruction'):
                 values['exploration_prompt'] = {'text': frozen['instruction']}
         if row['job_type'] == 'ANALYSIS_WORKFLOW' and values.get('analysis_kind') == 'consistency':
-            values['consistency_prompt'] = payload.get('request', {}).get('submission', {}).get('instruction')
+            request = payload['request']
+            values['consistency_prompt'] = (request['consistency_check']['instruction'] if 'consistency_check' in request
+                else request.get('submission', {}).get('instruction'))
+            if 'consistency_check' in request:
+                check = request['consistency_check']
+                values['system_prompt'] = check.get('system_prompt')
+                values['consistency_check_version'] = check['schema_version']
+                profile = check['roles']['vision']['profile']
+                values['model_profile'] = profile
+                model = profile if profile is not None else check['model']
+                values['model_name'] = model['model_id'] if model else None
+        if payload.get('request', {}).get('analysis_workflow_version'):
+            from iad_core.analysis.models import AnalysisWorkflowSnapshot
+            with nullcontext(connection) if connection is not None else self.db.connection() as conn:
+                snapshot = AnalysisWorkflowSnapshot.model_validate_json(conn.execute(
+                    'SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()[0])
+            values.update(model_profile=snapshot.agent.profile.model_dump(), model_name=snapshot.agent.profile.model_id,
+                system_prompt=snapshot.system_prompt,
+                exploration_prompt=snapshot.exploration_prompt, mining_prompt=snapshot.mining_prompt,
+                total_batches=len(snapshot.plan.rounds))
+            if snapshot.module == 'knowledge':
+                values['knowledge_version_id'] = payload.get('analysis_version_id')
         current = payload.get('current_sample_id')
         samples = self.samples(values['dataset_id'], [error['sample_id'] for error in payload['errors']] + ([current] if current else []),connection=connection)
         values['current_sample'] = samples[current] if current else None

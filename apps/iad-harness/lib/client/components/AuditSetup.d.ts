@@ -1,8 +1,7 @@
 import React from 'react';
-import type { Dataset, Filters, JobSnapshot } from '../../shared/contracts.js';
-export declare function AuditSetup({ datasets, filters, jobs, revision, onStarted, onCancel, onBusyChange }: {
+import type { Dataset, JobSnapshot } from '../../shared/contracts.js';
+export declare function AuditSetup({ datasets, jobs, revision, onStarted, onCancel, onBusyChange }: {
     datasets: Dataset[];
-    filters: Filters;
     jobs: JobSnapshot[];
     revision: number;
     onStarted(jobs: JobSnapshot[]): void;

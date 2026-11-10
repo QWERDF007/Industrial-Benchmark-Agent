@@ -1,5 +1,5 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
-import type { AuditStartRequest,ConsistencyContext,ConsistencyContextRequest,ConsistencyResult,Filters, InspectionReference, InspectionSnapshot } from "../shared/contracts.js";
+import type { ConsistencyContext,ConsistencyContextRequest,ConsistencyResult,Filters, InspectionReference, InspectionSnapshot } from "../shared/contracts.js";
 import { initialFilters, initialReviewFilters, request } from "./api.js";
 import { restoreInspection, type ImageView, type InspectionSelection, type InspectionTransform, type InspectionView } from "./inspection.js";
 import type { WorkbenchSession } from "./workbench-session.js";
@@ -8,13 +8,13 @@ import { knowledgeStatuses, type KnowledgeStatusFilter } from "../shared/knowled
 import {consistencyRouteEnums} from "../shared/consistency.parameters.generated.js";
 export { pages, type PageId } from "../shared/navigation.js";
 
-interface ViewState { auditConsistencyMode: NonNullable<AuditStartRequest["consistency_mode"]>; explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null; explorationPromptBase: string; datasetSettingsTab: "directories" | "basic"; checkId: string; explorationVersion: string; explorationNormalCount: string; explorationDefectCount: string; explorationNormalImages: string[]; explorationDefectImages: string[]; explorationObjective: string; miningSourceMode: "uncovered" | "all" | "recheck"; scopeRunId: string; scopeSessionId: string; miningContinuous: boolean; conflictId: string; miningCount: string; miningImages: string[]; miningPreset: string; miningSearch: string; miningPage: number; filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; defectVersion: string; job: string; historyPage: number; historySearch: string; historySampleId: string; knowledgeSearch: string; knowledgeStatus: KnowledgeStatusFilter; inspection: InspectionView | null }
+interface ViewState { datasetIds: string[] | null; explorationPrompt: import("../shared/domain.generated.js").FrozenExplorationPrompt | null; explorationPromptBase: string; datasetSettingsTab: "directories" | "basic"; checkId: string; explorationVersion: string; explorationNormalCount: string; explorationDefectCount: string; explorationNormalImages: string[]; explorationDefectImages: string[]; explorationObjective: string; miningSourceMode: "uncovered" | "all" | "recheck"; scopeRunId: string; scopeSessionId: string; miningContinuous: boolean; conflictId: string; miningCount: string; miningImages: string[]; miningPreset: string; miningSearch: string; miningPage: number; filters: Filters; page: number; selected: string; tab: string; version: string; normalVersion: string; defectVersion: string; job: string; historyPage: number; historySearch: string; historySampleId: string; knowledgeSearch: string; knowledgeStatus: KnowledgeStatusFilter; inspection: InspectionView | null }
 interface WorkspaceState { consistency: Omit<ConsistencyLocation, 'pageId'>; active: boolean; pageId: PageId; datasetId: string; views: Record<string, ViewState> }
 interface Layout {
   selectPanel(id: string | null): void;
   panelInfo: { getSnapshot(): { activePanelId: string | null }; subscribe(listener: () => void): () => void };
 }
-const defaultView = (page: PageId): ViewState => ({ auditConsistencyMode: "exact", explorationPrompt: null, explorationPromptBase: "", datasetSettingsTab: "directories", checkId:"", explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...(page === "industrial-review" ? initialReviewFilters : initialFilters) }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", historySampleId: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
+const defaultView = (page: PageId): ViewState => ({ datasetIds:null, explorationPrompt: null, explorationPromptBase: "", datasetSettingsTab: "directories", checkId:"", explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...(page === "industrial-review" ? initialReviewFilters : initialFilters) }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", historySampleId: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
 
 /** One navigation owner per plugin instance; URLs contain identifiers and filters only. */
 export class Workspace {
@@ -152,7 +152,8 @@ export class Workspace {
           if(consistencyRouteEnums.facts.includes(route.facts))consistency.facts=route.facts;
           if(route.scope?.kind==='datasets' && Array.isArray(route.scope.dataset_ids) && route.scope.dataset_ids.length && route.scope.dataset_ids.every((id:unknown)=>typeof id==='string' && id.length)) consistency.scope=route.scope;
           if(route.query?.kind==='sample' && typeof route.query.sample_id==='string' && route.query.sample_id)consistency.query=route.query;
-          for(const key of ['batchId','resultId','evidenceId','groupId','memberId','differenceId','sessionId','queryId','gallerySearch','subjectId'] as const)if(typeof route[key]==='string')consistency[key]=route[key];
+          for(const key of ['parentId','batchId','resultId','evidenceId','groupId','memberId','differenceId','sessionId','queryId','gallerySearch','subjectId'] as const)if(typeof route[key]==='string')consistency[key]=route[key];
+          if(Array.isArray(route.datasetIds)&&route.datasetIds.every((id:unknown)=>typeof id==='string'&&id.length))consistency.datasetIds=route.datasetIds;
           for(const key of ['groupPage','memberPage','galleryPage'] as const)if(Number.isSafeInteger(route[key]) && route[key]>0)consistency[key]=route[key];
           if(consistencyRouteEnums.differenceFilter.includes(route.differenceFilter))consistency.differenceFilter=route.differenceFilter;
           if(consistencyRouteEnums.modelFilter.includes(route.modelFilter))consistency.modelFilter=route.modelFilter;
@@ -166,12 +167,11 @@ export class Workspace {
           const view = { ...defaultView(route.pageId), explorationPrompt: stored?.explorationPrompt || null, explorationPromptBase: stored?.explorationPromptBase || "" };
           for (const key of ["checkId", "explorationVersion", "explorationNormalCount", "explorationDefectCount", "explorationObjective", "selected", "scopeRunId", "scopeSessionId", "conflictId", "tab", "version", "miningCount", "miningPreset", "miningSearch", "normalVersion", "defectVersion", "job", "historySearch", "historySampleId", "knowledgeSearch"] as const) if (typeof route[key] === "string") view[key] = route[key];
           if (route.datasetSettingsTab === "directories" || route.datasetSettingsTab === "basic") view.datasetSettingsTab = route.datasetSettingsTab;
-          if (['exact','visual','combined'].includes(route.auditConsistencyMode)) view.auditConsistencyMode = route.auditConsistencyMode;
           if (["uncovered", "all", "recheck"].includes(route.miningSourceMode)) view.miningSourceMode = route.miningSourceMode;
           if (typeof route.miningContinuous === "boolean") view.miningContinuous = route.miningContinuous;
           if (typeof route.knowledgeStatus === "string" && (route.knowledgeStatus === "" || Object.hasOwn(knowledgeStatuses, route.knowledgeStatus))) view.knowledgeStatus = route.knowledgeStatus;
           if (Number.isInteger(route.miningPage) && route.miningPage > 0) view.miningPage = route.miningPage;
-          for (const key of ["miningImages", "explorationNormalImages", "explorationDefectImages"] as const)
+          for (const key of ["datasetIds", "miningImages", "explorationNormalImages", "explorationDefectImages"] as const)
             if (Array.isArray(route[key]) && route[key].every((id: unknown) => typeof id === "string")) view[key] = route[key];
           view.inspection = restoreInspection(route.inspection, route.datasetId, view.selected);
           if (Number.isInteger(route.page) && route.page > 0) view.page = route.page;

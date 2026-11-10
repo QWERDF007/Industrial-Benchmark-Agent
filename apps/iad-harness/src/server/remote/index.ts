@@ -69,7 +69,7 @@ export class IadRemoteService extends TypertRemoteService {
 
   @Remote
   async auditStart(args: AuditStartRequest) {
-    return this.bridge.execute("audit_start", { ...args });
+    return this.bridge.execute("audit_start", {request:args});
   }
 
   @Remote

@@ -5,7 +5,7 @@ import {queryClient} from './query-client.js';
 
 export function useResource<T>(path:string|null,revision:number|string=0) {
   const result=useQuery({queryKey:['iad','resource',path],enabled:!!path,
-    queryFn:()=>request<T>(path!),
+    queryFn:({signal})=>request<T>(path!,undefined,undefined,signal),
   },queryClient);
   const previous=useRef({path,revision});
   useEffect(()=>{

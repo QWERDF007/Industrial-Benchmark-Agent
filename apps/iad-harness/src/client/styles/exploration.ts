@@ -26,7 +26,7 @@ export const explorationStyles = `
 .exp-select{min-width:260px}
 .exp-sync{display:flex;align-items:center;gap:13px;min-height:36px;font-size:12px;color:#6a7a91;margin:0 0 11px}
 .exp-sync strong{color:#38506c;font-weight:500}.exp-sync .subtle-icon{margin-left:auto}
-.exp-panel{border:1px solid var(--border);background:#fff;border-radius:6px;padding:21px 23px;margin:0 0 16px}
+.exp-panel{border:1px solid var(--border);background:#fff;border-radius:6px;padding:21px 23px;margin:0 0 var(--iad-layout-gap)}
 .exp-panel h2{font-size:16px;font-weight:650;margin:0}.exp-panel h3{font-size:13px;font-weight:600;margin:0}
 .exp-panel-title{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:17px;min-height:26px}
 .exp-lead{font-size:12px;color:#6c7b90;margin:6px 0 0}
@@ -115,16 +115,16 @@ export const explorationStyles = `
 .exp-add-image.exp-add-empty svg{width:23px;height:23px}
 
 
-.exp-scope{margin-top:4px;margin-bottom:12px}
 .exp-job-list-actions{display:flex;align-items:center;gap:12px}
-.exp-job-list-actions .exp-input{min-width:154px;gap:0}
-.exp-job-list-actions select{height:35px;width:158px}
+.exp-job-list-actions .exp-input{gap:0}
 .exp-job-count{color:#77869a;font-size:12px}
 .exp-job-table-wrap{overflow-x:auto}
 .exp-job-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .exp-job-table thead{background:#f2f5fa}
-.exp-job-table th{padding:12px 18px;text-align:left;color:#172338;font-weight:600;font-size:13px;border-bottom:1px solid #dfe6f0;white-space:nowrap}
-.exp-job-table td{padding:16px 18px;border-bottom:1px solid #e5eaf1;font-size:13px;color:#172338;vertical-align:middle}
+.exp-job-table th{text-align:left;color:#172338;font-weight:600;font-size:13px;border-bottom:1px solid #dfe6f0;white-space:nowrap}
+.exp-job-table td{border-bottom:1px solid #e5eaf1;font-size:13px;color:#172338;vertical-align:middle}
+.exp-job-table:not(.iad-job-table-grid) th{padding:12px 18px}
+.exp-job-table:not(.iad-job-table-grid) td{padding:16px 18px}
 .exp-job-table tbody tr:last-child td{border-bottom:none}
 .exp-job-table tbody tr[data-action]{cursor:pointer}
 .exp-job-table tbody tr[data-action]:hover{background:#f5f8ff}
@@ -145,8 +145,8 @@ export const explorationStyles = `
 @media(max-width:650px){.exp-job-list-actions{width:100%;justify-content:space-between}}
 
 
-.exp-unified-layout{display:flex;flex-direction:column;gap:18px;min-width:0}
-.exp-unified-layout>.exp-panel{width:100%;min-width:0;box-sizing:border-box}
+.exp-unified-layout{display:flex;flex-direction:column;gap:var(--iad-layout-gap);min-width:0}
+.exp-unified-layout>:is(.exp-panel,.iad-job-list){width:100%;min-width:0;box-sizing:border-box;margin:0}
 .exp-job-table tbody tr[data-action="select-job"]{cursor:pointer;transition:background .12s}
 .exp-job-table tbody tr[data-action="select-job"]:hover{background:#f6f9ff}
 .exp-job-table tbody tr[data-selected="true"]{background:#eaf0ff}
@@ -245,10 +245,6 @@ export const explorationStyles = `
   padding:16px 18px;
 }
 
-/* Unified Icon Button styles with Dataset Manager and Image Browsing */
-
-.exp-unified-layout .exp-job-list .exp-job-table thead th{position:static;background:#f2f5fa}
-.exp-unified-layout .exp-job-list.iba-job-multipage .exp-job-table-wrap{min-height:640px}
 /* 结果面板及候选方向完整参与页面滚动，不保留任何内部纵向滚动高度限制。 */
 .exp-unified-layout .exp-selected-result:not(.exp-empty-result){
   max-height:none!important;height:auto!important;overflow:visible!important;
@@ -257,12 +253,6 @@ export const explorationStyles = `
 .exp-result-content > .exp-job-table-wrap{max-height:none!important;overflow-y:visible;overflow-x:auto}
 .exp-result-empty-message{color:#6c7d93;font-size:13px;line-height:1.75;padding:8px 0 16px}
 .exp-empty-result{min-height:165px!important}
-
-/* 两种作业共享同一分页样式，沿用已有按钮颜色、字号、边界、圆角。 */
-
-@media(max-width:650px){
-  .exp-unified-layout .exp-job-list.iba-job-multipage .exp-job-table-wrap{min-height:640px}
-}
 
 .exp-selected-result .exp-direction-table{width:100%!important;table-layout:fixed!important;min-width:850px!important}
 .exp-selected-result .exp-direction-table th:nth-child(1){width:25%!important}

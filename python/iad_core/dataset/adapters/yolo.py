@@ -1,7 +1,7 @@
 import os
 from typing import List, Optional
-from iad_core.dataset.adapters.base import DatasetAdapter, RawImage, RawAnnotation
-from iad_core.storage.models import AnnotationType, AnnotationSource
+from iad_core.dataset.adapters.base import AnnotationDocument, DatasetAdapter, RawImage, RawAnnotation
+from iad_core.storage.models import AnnotationType
 
 
 class YOLOAdapter(DatasetAdapter):
@@ -48,10 +48,10 @@ class YOLOAdapter(DatasetAdapter):
 
     def load_annotations(
         self, image: RawImage, width: int, height: int
-    ) -> List[RawAnnotation]:
+    ) -> AnnotationDocument:
         label_file = self.find_label_file(image)
-        if not label_file or not os.path.exists(label_file):
-            return []
+        if label_file is None:
+            return self.missing_annotations(image)
 
         annotations: List[RawAnnotation] = []
         try:
@@ -63,7 +63,7 @@ class YOLOAdapter(DatasetAdapter):
         for line_num, line in enumerate(lines, 1):
             parts = line.split()
             if len(parts) < 5:
-                continue
+                raise ValueError(f'Malformed annotation in YOLO line {line_num} in {label_file}')
             raw_label = parts[0]
             try:
                 xc = float(parts[1]) * width
@@ -89,4 +89,4 @@ class YOLOAdapter(DatasetAdapter):
                 )
             )
 
-        return annotations
+        return AnnotationDocument.from_file(annotations, label_file)

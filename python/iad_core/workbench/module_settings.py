@@ -1,12 +1,15 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
-from iad_core.consistency.models import DEFAULT_MIN_SIMILARITY, SimilarityThreshold
+from iad_core.consistency.models import ConsistencyRetrievalSettings
 from iad_core.storage.database import Database
+from iad_core.workbench.model_profile import GenerationLimits
+from iad_core.workbench.analysis_sampling import DEFAULT_SAMPLING_RATIO, SamplingRatio
 
 BusinessModule = Literal['exploration', 'knowledge', 'consistency', 'audit']
+JobConcurrency = Annotated[int, Field(ge=1, strict=True)]
 
 
 class ModuleModelReference(AnalysisModel):
@@ -18,21 +21,39 @@ class ModuleSettingsValues(AnalysisModel):
     model: ModuleModelReference | None = None
 
 
-class ConsistencySettingsValues(ModuleSettingsValues):
-    mode: Literal['exact', 'combined'] = 'combined'
-    min_similarity: SimilarityThreshold = DEFAULT_MIN_SIMILARITY
+class ExplorationSettingsValues(ModuleSettingsValues):
+    batch_size: int = Field(default=4, ge=1, strict=True)
+    sampling_ratio: SamplingRatio = DEFAULT_SAMPLING_RATIO
+    whole_image_max_side: int | None = Field(default=None, ge=1, strict=True)
+    agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
+
+
+class KnowledgeSettingsValues(ExplorationSettingsValues):
+    batch_size: int = Field(default=12, ge=1, le=200, strict=True)
+
+
+class AuditSettingsValues(ModuleSettingsValues):
+    whole_image_max_side: int | None = Field(default=None, ge=1, strict=True)
+    concurrency: JobConcurrency = 1
+    agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
+
+
+class ConsistencySettingsValues(ModuleSettingsValues, ConsistencyRetrievalSettings):
+    concurrency: JobConcurrency = 1
+    agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 
 class ModuleSettingsPayload(AnalysisModel):
     module: BusinessModule
-    settings: ModuleSettingsValues | ConsistencySettingsValues
+    settings: ModuleSettingsValues | ExplorationSettingsValues | KnowledgeSettingsValues | ConsistencySettingsValues | AuditSettingsValues
 
     @model_validator(mode='before')
     @classmethod
     def module_values(cls, value):
         if isinstance(value, dict):
             value = dict(value)
-            schema = ConsistencySettingsValues if value.get('module') == 'consistency' else ModuleSettingsValues
+            schema = {'consistency': ConsistencySettingsValues, 'exploration': ExplorationSettingsValues,
+                'knowledge': KnowledgeSettingsValues, 'audit': AuditSettingsValues}.get(value.get('module'), ModuleSettingsValues)
             value['settings'] = schema.model_validate(value['settings'])
         return value
 
@@ -76,7 +97,7 @@ class ModuleSettings:
         return ModuleSettingsSnapshot(module=edit.module, revision=revision + 1, settings=values)
 
     def consistency_request(self, request: dict) -> dict:
-        defaults = self.read('consistency').settings.model_dump(exclude={'model'})
+        defaults = self.read('consistency').settings.model_dump(include={'mode', 'min_similarity'})
         return {**defaults, **request}
 
 

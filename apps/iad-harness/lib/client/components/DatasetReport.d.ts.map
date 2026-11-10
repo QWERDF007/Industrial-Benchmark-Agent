@@ -1,1 +1,0 @@
-{"version":3,"file":"DatasetReport.d.ts","sourceRoot":"","sources":["../../../src/client/components/DatasetReport.tsx"],"names":[],"mappings":"AAEA,OAAO,KAAqC,MAAM,OAAO,CAAC;AAC1D,OAAO,KAAK,EAAC,eAAe,EAAiE,MAAM,kCAAkC,CAAC;AA0BtI,wBAAgB,aAAa,CAAC,EAAC,UAAU,EAAC,QAAQ,EAAC,EAAE;IAAC,UAAU,EAAC,MAAM,EAAE,CAAC;IAAA,QAAQ,CAAC,MAAM,EAAC,eAAe,GAAE,IAAI,CAAA;CAAC,qBA8E/G"}

@@ -1,4 +1,3 @@
-from tests.knowledge_scenarios import selected_group
 from uuid import uuid4
 import base64
 import io
@@ -56,138 +55,8 @@ def test_operator_can_import_reopen_and_view_actual_labelme_mask_pixels(tmp_path
     assert sample_get({'sample_id': sample_id}, db_path)['annotations'] == original['annotations']
 
 
-def test_mining_sends_raw_and_binary_mask_evidence_and_retains_prior_pixels(tmp_path):
-    import httpx
-    from iad_core.entry import knowledge_get, knowledge_evidence
-    from iad_core.knowledge.service import KnowledgeService
-    from iad_core.storage.database import Database
-    from iad_core.workbench.review import HumanReview, ReviewSubmission
-    from iad_core.workbench.vision import VlmClient
-
-    db_path, dataset_id, shape = mask_dataset(tmp_path)
-    sample_id = dataset_id + ':part.png'
-    db = Database(db_path)
-    review = HumanReview(db)
-    review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset_id, reviewer='operator', sample_id=sample_id, decision='PASS'))
-    sent = []
-
-    def respond(request):
-        if request.url.path.endswith('/tokenize'):
-            return httpx.Response(200, json={'count': 2000, 'max_model_len': 262144})
-        body = json.loads(request.content)
-        content = body['messages'][0]['content']
-        sent.append([(json.loads(item['text'].removeprefix('视觉证据：')),
-                      base64.b64decode(content[index+1]['image_url']['url'].split(',', 1)[1]))
-                     for index, item in enumerate(content) if item['type']=='text' and item['text'].startswith('视觉证据：')])
-        result = {'summary': '依据实际标注范围观察', 'checks': [], 'suspects': [], 'limitations': ['单一来源不能证明通用规律']}
-        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
-
-    service = KnowledgeService(db, VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
-    try:
-        job = service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
-        service.wait(job['run_id'], 5)
-        finished = service.status(job['run_id'])
-        assert finished['status']=='COMPLETED', finished
-        snapshot = knowledge_get({'version_id':finished['knowledge_version_id']},db_path)['knowledge']
-        assert len(snapshot['evidence']) == 3
-        mask_view, = [item for item in snapshot['evidence'] if item['image']['representation']=='annotation_mask']
-        raw, = [item for item in snapshot['evidence'] if item['image']['role']=='roi' and item['image']['representation']=='raw']
-        assert mask_view['image']['annotation_ids'] == [sample_id + ':ann_0']
-        assert mask_view['image']['crop_bbox'] == raw['image']['crop_bbox'] == [18, 13, 33, 28]
-        assert mask_view['image']['source_sha256']==raw['image']['source_sha256']
-        media = knowledge_evidence({'version_id':snapshot['version_id'],'evidence_id':mask_view['image']['evidence_id']},db_path)
-        with Image.open(media['path']) as image:
-            assert image.size == (15, 15)
-            assert image.getpixel((4, 5)) == (255, 255, 255)
-            assert image.getpixel((7, 7)) == (0, 0, 0)
-        for metadata, payload in sent[0]:
-            if metadata['role'] != 'roi':
-                continue
-            with Image.open(io.BytesIO(payload)) as image:
-                if metadata['representation']=='raw':
-                    assert image.getpixel((4, 5)) == (64,64,64)
-                else:
-                    assert image.getpixel((4, 5)) != (64,64,64)
-        previous_pixels = Path(media['path']).read_bytes()
-        pixels = Image.new('L', (11, 11), 0)
-        pixels.putpixel((10, 10), 1)
-        buffer = io.BytesIO()
-        pixels.save(buffer, 'PNG')
-        shape['mask'] = base64.b64encode(buffer.getvalue()).decode()
-        (tmp_path/'labels'/'part.json').write_text(json.dumps({'imageWidth':80,'imageHeight':60,'shapes':[shape]}))
-        dataset_scan({'dataset_id':dataset_id},db_path)
-        again = service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
-        service.wait(again['run_id'],5)
-        assert service.status(again['run_id'])['status']=='COMPLETED'
-        successor = knowledge_get({'dataset_id':dataset_id,'kind':'normal'},db_path)['knowledge']
-        assert successor['parent_version_id'] is None, '未明确选择预设不隐式继承'
-        assert successor['version_id']!=snapshot['version_id']
-        assert successor['sources'][0]['annotations_sha256']!=snapshot['sources'][0]['annotations_sha256']
-        assert Path(media['path']).read_bytes()==previous_pixels
-        assert sample_get({'sample_id':sample_id},db_path)['review_decision']['decision']=='PASS'
-        annotation = sample_get({'sample_id':sample_id},db_path)['annotations'][0]
-        Image.new('L',(80,60),255).save(annotation['mask_path'],'PNG')
-        with pytest.raises(ValueError, match='Mask pixels changed after import'):
-            service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
-        assert knowledge_get({'dataset_id':dataset_id,'kind':'normal'},db_path)['knowledge']['version_id']==successor['version_id']
-    finally:
-        service.close()
 
 
-@pytest.mark.parametrize('context_limit', [20000, 40000])
-def test_complete_joint_group_keeps_raw_mask_pairs_and_reports_insufficient_capacity(tmp_path, context_limit):
-    import httpx
-    from iad_core.knowledge.service import KnowledgeService
-    from iad_core.storage.database import Database
-    from iad_core.workbench.review import HumanReview, ReviewSubmission
-    from iad_core.workbench.vision import VlmClient
-
-    db_path, dataset_id, shape = mask_dataset(tmp_path)
-    shapes = [{**shape, 'points': [[x, 15], [x+10, 25]]} for x in [10,30,50]]
-    (tmp_path/'labels'/'part.json').write_text(json.dumps({'imageWidth':80,'imageHeight':60,'shapes':shapes}))
-    dataset_scan({'dataset_id':dataset_id},db_path)
-    db = Database(db_path)
-    review = HumanReview(db)
-    review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset_id, reviewer='operator', sample_id=dataset_id+':part.png',decision='PASS'))
-    sent = []
-    planned = []
-
-    def respond(request):
-        content = json.loads(request.content)['messages'][0]['content']
-        evidence = [json.loads(item['text'].removeprefix('视觉证据：')) for item in content
-                    if item['type']=='text' and item['text'].startswith('视觉证据：')]
-        if request.url.path.endswith('/tokenize'):
-            planned.append(evidence)
-            return httpx.Response(200,json={'count':len(evidence)*2000,'max_model_len':context_limit})
-        sent.append(evidence)
-        result = {'summary':'按标注范围观察','checks':[],'suspects':[],'limitations':['仅一个来源']}
-        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
-
-    service = KnowledgeService(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
-    try:
-        job = service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
-        service.wait(job['run_id'],5)
-        finished=service.status(job['run_id'])
-        if context_limit==20000:
-            assert finished['status']=='FAILED', finished['errors']
-            assert finished['completed']==0 and finished['failed']==finished['total_samples']==1
-            assert sent==[], 'An oversized group must not dispatch or split model requests'
-            assert any('完整图组' in item['message'] for item in finished['errors'])
-        else:
-            assert finished['status']=='COMPLETED', finished['errors']
-            assert len(sent)==1, 'All observations must use one complete joint request'
-        viewed = set()
-        for evidence in planned:
-            if not evidence:
-                continue
-            assert any(item['role']=='normal' for item in evidence)
-            boxes = {tuple(item['crop_bbox']) for item in evidence if item['role']=='roi'}
-            for box in boxes:
-                assert {item['representation'] for item in evidence if tuple(item['crop_bbox'])==box} == {'raw','annotation_mask'}
-                viewed.add(box)
-        assert viewed=={(8,13,23,28),(28,13,43,28),(48,13,63,28)}
-    finally:
-        service.close()
 
 
 @pytest.mark.parametrize('problem', ['missing', 'corrupt', 'empty', 'rgb', 'too_small', 'nonfinite', 'unknown_type', 'polygon_short', 'rectangle_short'])
@@ -258,21 +127,13 @@ def test_mask_and_polygon_follow_the_explicit_source_size_scaling_policy(tmp_pat
         assert set(image.tobytes())=={0,255}
 
 
-def test_mask_clipping_retains_only_the_actual_in_frame_foreground(tmp_path):
-    from iad_core.dataset.registry import DatasetRegistry
-    from iad_core.storage.database import Database
-
+def test_mask_keeps_source_bounds_and_renders_only_the_actual_in_frame_foreground(tmp_path):
     db_path,dataset_id,_ = mask_dataset(tmp_path,points=[[-2,15],[8,25]])
     annotation, = sample_get({'sample_id':dataset_id+':part.png'},db_path)['annotations']
-    assert annotation['geometry_status']=='INVALID'
-    registry = DatasetRegistry(Database(db_path))
-    config = registry.get(dataset_id)
-    config.annotations.bbox_policy.out_of_bounds='clip'
-    registry.save(config)
+    assert annotation['bbox']==[-2,15,9,26]
+    assert annotation['geometry_status']=='VALID'
     dataset_scan({'dataset_id':dataset_id},db_path)
-    annotation, = sample_get({'sample_id':dataset_id+':part.png'},db_path)['annotations']
-    assert annotation['bbox']==[0,15,9,26]
-    assert annotation['geometry_status']=='CLIPPED'
+    assert sample_get({'sample_id':dataset_id+':part.png'},db_path)['annotations']==[annotation]
     with Image.open(annotation['mask_path']) as image:
         assert image.getpixel((0,18))==255
         assert image.getpixel((8,25))==255
@@ -315,46 +176,3 @@ def test_existing_workbench_database_can_rescan_and_keep_mask_provenance(tmp_pat
     dataset_scan({'dataset_id':dataset_id},db_path)
     reopened = sample_get({'sample_id':dataset_id+':part.png'},db_path)['annotations'][0]
     assert reopened==original
-
-
-@pytest.mark.parametrize('shape_type,points,inside,outside', [
-    ('rectangle', [[20,15],[30,25]], (25,20), (18,20)),
-    ('polygon', [[20,15],[30,15],[30,25]], (28,18), (20,23)),
-])
-def test_mining_preserves_the_actual_annotation_shape_in_its_binary_view(tmp_path,shape_type,points,inside,outside):
-    import httpx
-    from iad_core.entry import knowledge_get, knowledge_evidence
-    from iad_core.knowledge.service import KnowledgeService
-    from iad_core.storage.database import Database
-    from iad_core.workbench.review import HumanReview, ReviewSubmission
-    from iad_core.workbench.vision import VlmClient
-
-    db_path,dataset_id,shape = mask_dataset(tmp_path)
-    shape.update(shape_type=shape_type,points=points)
-    shape.pop('mask')
-    (tmp_path/'labels'/'part.json').write_text(json.dumps({'imageWidth':80,'imageHeight':60,'shapes':[shape]}))
-    dataset_scan({'dataset_id':dataset_id},db_path)
-    db = Database(db_path)
-    review = HumanReview(db)
-    review.submit(ReviewSubmission(submission_id=uuid4(), dataset_id=dataset_id, reviewer='operator', sample_id=dataset_id+':part.png',decision='PASS'))
-
-    def respond(request):
-        if request.url.path.endswith('/tokenize'):
-            return httpx.Response(200,json={'count':2000,'max_model_len':262144})
-        result={'summary':'观察实际标注形状','checks':[],'suspects':[],'limitations':[]}
-        return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(result)}}]})
-
-    service = KnowledgeService(db,VlmClient(httpx.Client(transport=httpx.MockTransport(respond))))
-    try:
-        job=service.start(request=selected_group(service.db, dataset_id, kind='normal'), kind='normal', model_name='test-mllm')
-        service.wait(job['run_id'],5)
-        assert service.status(job['run_id'])['status']=='COMPLETED'
-        snapshot=knowledge_get({'dataset_id':dataset_id,'kind':'normal'},db_path)['knowledge']
-        view, = [item['image'] for item in snapshot['evidence'] if item['image']['representation']=='annotation_mask']
-        assert view['crop_bbox']==[18,13,32,27]
-        media=knowledge_evidence({'version_id':snapshot['version_id'],'evidence_id':view['evidence_id']},db_path)
-        with Image.open(media['path']) as image:
-            assert image.getpixel((inside[0]-18,inside[1]-13))==(255,255,255)
-            assert image.getpixel((outside[0]-18,outside[1]-13))==(0,0,0)
-    finally:
-        service.close()

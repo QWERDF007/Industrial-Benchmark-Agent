@@ -64,6 +64,13 @@ class PreparedImage:
         return context
 
 
+@dataclass(frozen=True)
+class PreparedImageBundle:
+    evidence_id: str
+    context: dict
+    images: tuple[PreparedImage, ...]
+
+
 class RegionView(RegionOrigin):
     origins: List[RegionOrigin]
     crop_bbox: List[int]
@@ -90,7 +97,8 @@ class EvidenceImages:
     def capture(self, sample: Sample, role: str, source: str, bbox: Optional[List[int]] = None,
                 source_sha256: Optional[str] = None, annotations: Optional[List[Annotation]] = None,
                 annotation_mode: Literal["annotation_mask", "annotation_overlay"] = "annotation_overlay",
-                max_side: Optional[int] = None, *, full_resolution: bool = False) -> PreparedImage:
+                max_side: Optional[int] = None, *, full_resolution: bool = False,
+                min_side: Optional[int] = None) -> PreparedImage:
         box = bbox or [0, 0, sample.width, sample.height]
         original_bytes = Path(sample.image_path).read_bytes()
         source_sha = hashlib.sha256(original_bytes).hexdigest()
@@ -104,12 +112,18 @@ class EvidenceImages:
                 image = (annotation_mask(sample, annotations, box).convert("RGB") if annotation_mode == "annotation_mask"
                          else annotation_overlay(sample, image, annotations, box))
             if max_side is not None:
-                if not 1<=max_side<=OVERVIEW_MAX_SIDE:raise ValueError('Invalid preview size budget')
+                if max_side < 1:raise ValueError('Invalid preview size budget')
                 image.thumbnail((max_side,max_side),Image.Resampling.LANCZOS)
             elif role != "roi" and not full_resolution:
                 image.thumbnail((OVERVIEW_MAX_SIDE, OVERVIEW_MAX_SIDE), Image.Resampling.LANCZOS)
             elif role == 'roi' and max(image.size) > ROI_MAX_SIDE:
                 raise ValueError("ROI must be tiled before encoding")
+            if min_side is not None:
+                if role != 'roi' or not 1 <= min_side <= ROI_MAX_SIDE:
+                    raise ValueError('局部放大尺寸必须处于局部视图预算内')
+                scale = min(math.ceil(min_side / min(image.size)), ROI_MAX_SIDE // max(image.size))
+                if scale > 1:
+                    image = image.resize((image.width * scale, image.height * scale), Image.Resampling.NEAREST)
             buffer = io.BytesIO()
             image.save(buffer, "PNG")
             sent_size = list(image.size)
@@ -147,16 +161,18 @@ class EvidenceImages:
         return views
 
     @staticmethod
-    def tiles(sample: Sample, bbox: List[int], padding: float) -> List[List[int]]:
-        if not (0 <= bbox[0] < bbox[2] <= sample.width and 0 <= bbox[1] < bbox[3] <= sample.height):
-            raise ValueError(f"Invalid original image region: {bbox}")
-        x1, y1, x2, y2 = padded_bbox(sample, bbox, padding)
+    def tiles(sample: Sample, bbox: List[int], padding: float, *, padding_pixels: int = 0, max_side: int = ROI_MAX_SIDE) -> List[List[int]]:
+        if not 1 <= max_side <= ROI_MAX_SIDE:
+            raise ValueError('局部分块尺寸必须位于原像素窗口预算内')
+        x1, y1, x2, y2 = padded_bbox(sample, bbox, padding, padding_pixels=padding_pixels)
+        if x1 >= x2 or y1 >= y2:
+            return []
         axes = []
         for start, end in [(x1, x2), (y1, y2)]:
-            distance = max(0, end - start - ROI_MAX_SIDE)
-            steps = math.ceil(distance / (ROI_MAX_SIDE * 0.8))
+            distance = max(0, end - start - max_side)
+            steps = math.ceil(distance / (max_side * 0.8))
             axes.append([start + round(distance * i / steps) for i in range(steps + 1)] if steps else [start])
-        return [[x, y, min(x + ROI_MAX_SIDE, x2), min(y + ROI_MAX_SIDE, y2)] for y in axes[1] for x in axes[0]]
+        return [[x, y, min(x + max_side, x2), min(y + max_side, y2)] for y in axes[1] for x in axes[0]]
 
     def plan(self, sample: Sample, annotations: List[Annotation], proposals: List[RegionProposal]) -> List[RegionView]:
         requested = []

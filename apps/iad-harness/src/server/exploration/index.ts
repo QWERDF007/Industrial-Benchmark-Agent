@@ -1,62 +1,51 @@
-import type { Context } from "@deepseek-ai/cordis";
-import { defineTool } from "@deepseek-ai/dsh-tools";
-import type { SkillRegistration } from "@deepseek-ai/dsh-skill";
-import type { ExplorationCatalog } from "../../shared/domain.generated.js";
-import { explorationParameters, explorationPresetParameters, directionAdoptionParameters } from "../../shared/exploration.parameters.generated.js";
-import { PythonBridge } from "../python-bridge/index.js";
-import { workbenchJsonOutput } from "../tool-output.js";
-import { knowledgeJobOutput, knowledgePromptOutput } from "../knowledge/output.js";
-import { jobStatusParameters, waitForJobStatus } from "../job-status.js";
-import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
+import type {Context} from '@deepseek-ai/cordis';
+import {defineTool} from '@deepseek-ai/dsh-tools';
+import type {SkillRegistration} from '@deepseek-ai/dsh-skill';
+import {explorationAgentStartParameters, analysisScopeParameters} from '../../shared/analysis-agent.parameters.generated.js';
+import {explorationPresetParameters} from '../../shared/exploration.parameters.generated.js';
+import type {PythonBridge} from '../python-bridge/index.js';
+import {workbenchJsonOutput} from '../tool-output.js';
+import {analysisJobOutput} from '../analysis/output.js';
+import {jobStatusParameters, waitForJobStatus} from '../job-status.js';
+import {evidenceOutput, readEvidenceAttachment} from '../evidence-attachment.js';
 
 export const DIRECTION_EXPLORATION_SKILL: SkillRegistration = {
-  name: "explore-inspection-directions",
-  description: "用户明确要求时，同时观察一组候选良品与异常图，探索可编辑的检查方向；结果可在知识挖掘中勾选采用。",
-  source: "bundled",
-  provider: "iad-harness",
-  content: `用户要求探索检查方向时才执行本技能。它独立于导入、知识挖掘和审计，不因导入完成自动启动。
-1. dataset_list确认数据集。用knowledge_sources分别按kind:normal和defect查询真实候选sample_id，两组都需要。
-2. 用户指定数量就按该数量选取；未指定时先建议各10张并等待确认，不默认全库。图组必须同数据集、无重复，角色是候选来源，不是质量真值。
-3. direction_exploration_presets读取可编辑正文；用户可另存自定义预设。direction_exploration_start传dataset_id、normal_images、defect_images、可选prompt完整正文及补充objective；未指定prompt时由服务端冻结默认正文。全部两组一次联合输入，不拆组或按图逐个归纳，不把当前通用方向当固定答案。
-4. 用direction_exploration_status等待同一run_id的终态；失败先报告真实原因并等用户决定重试或降低数量，不能自行重试。用户要求停止调用direction_exploration_cancel。
-5. 成功后direction_exploration_get读取实际版本、方向与限制，可分页；必要时direction_exploration_evidence查看原图。方向只是候选检查议题，不是已证实知识。
-6. 告知用户在侧栏方向探索查阅结果，在知识挖掘的探索方向组选用。只有用户明确要求采用时，先knowledge_prompt_get读取当前配置及revision，用knowledge_directions_adopt传所选direction_id和可选名称/说明，服务端保留其他配置；可按用户要求修改名称和说明。遵守applies_to的normal/defect/both适用范围。
-7. 不因探索完成自动启动知识挖掘或审计，不写原始标签、人审或Gold。模型与容量从当前配置及实际服务信息读取，不假定模型名称。`,
+  name: 'explore-inspection-directions',
+  description: '用户明确要求时，在选定范围探索可复查的检查方向，正式发布后可在知识挖掘中显式采用。',
+  source: 'bundled', provider: 'iad-harness',
+  content: `探索独立于导入、知识挖掘和审计，只执行用户已请求的阶段。
+1. dataset_list确认子数据集，analysis_sources读取真实登记sample_id供用户选择首轮样例。良品/异常栏是选样角色，不是质量真值；可以只选一侧，合计至少一张。同一登记不能同时扮演两种角色，不自动补图。
+2. direction_exploration_presets读取完整可编辑正文；用户可改写或另存。direction_exploration_start传submission_id、dataset_ids、手选normal_images/defect_images与prompt完整正文。同一次创建重传保持submission_id和输入不变。
+3. 首轮严格按手选，后续在同一个Session中自动按模块设置观察完整登记范围，无需用户逐轮确认。设置的后续批量、整图分辨率和分析模型在创建时冻结，不传旧initial_batch_size或每请求批量。
+4. direction_exploration_status等待同一run_id。用direction_exploration_get读取该作业的正式方向、支持反例、限制和真实覆盖；失败/取消也可有正式部分成果，无发布版本时如实说明。需要图片时用direction_exploration_evidence读取固定版本证据。
+5. 用户要求停止调用direction_exploration_cancel；明确继续时调用direction_exploration_retry沿原Session继续，不重建范围。不要因一场发布自动启动下一模块。
+6. 用户要挖掘时，用knowledge_direction_choices读取可选方向，在knowledge_mine的mining_prompt.directions中保留完整source及本场有效标题/指令；正文可编辑，结构化source决定正式关联身份。不通过改写历史方向或保存一套隐式配置完成采用。
+7. 不写原始标签、人工核实或Gold；模型和容量从实际模块配置读取。`,
 };
 
 export function createExplorationTools(bridge: PythonBridge, ctx: Context) {
   return [
-    defineTool({ name: "direction_exploration_presets", description: "读取可编辑的方向探索提示词预设目录，不启动模型。", parameters: {}, output: workbenchJsonOutput,
-      execute: (args, exec) => bridge.execute("direction_exploration_presets", args, exec.signal) }),
-    defineTool({ name: "direction_exploration_preset_save", description: "将完整提示词正文另存为新预设，不覆盖内置预设或已提交作业。", parameters: explorationPresetParameters, output: workbenchJsonOutput,
-      execute: (args, exec) => bridge.execute("direction_exploration_preset_save", args, exec.signal) }),
-    defineTool({ name: "direction_exploration_start", description: "仅用户明确要求时，一次联合观察已确认的良品与异常图组，提出待选方向；不发布质量知识或自动挖掘。失败后等待用户决定，不自动拆组、减张或重试。",
-      parameters: explorationParameters, output: knowledgeJobOutput,
-      execute: (args, exec) => bridge.execute("direction_exploration_start", { request: args, origin_session_id: exec.agent?.id || null }, exec.signal) }),
-    defineTool({ name: "direction_exploration_status", description: "查询并等待同一个方向探索作业的实际状态，RUNNING不代表完成。", parameters: jobStatusParameters,
-      output: knowledgeJobOutput, execute: (args, exec) => waitForJobStatus(bridge, "direction_exploration_status", args, exec.signal) }),
-    ...(["cancel", "retry", "delete"] as const).map(action => defineTool({ name: `direction_exploration_${action}`,
-      description: action === "cancel" ? "用户要求停止时取消方向探索。" : action === "delete" ? "删除方向探索作业及关联版本。" : "仅用户明确要求时按原冻结图组重试方向探索；来源变化要求重新启动。",
-      parameters: { run_id: { type: "string", required: true } } as const, output: knowledgeJobOutput,
-      execute: (args, exec) => bridge.execute(`direction_exploration_${action}`, args, exec.signal) })),
-    defineTool({ name: "direction_exploration_get", description: "分页查阅数据集方向探索结果、版本与证据引用，不启动模型。",
-      parameters: { dataset_id: { type: "string", required: true }, version_id: { type: "string" }, direction_id: { type: "string", description: "按已采用方向ID追溯原探索版本" }, page: { type: "number" }, page_size: { type: "number" } } as const,
-      output: workbenchJsonOutput,
-      execute: async ({ page = 1, page_size = 20, ...args }, exec) => {
-        if (!Number.isInteger(page) || page < 1 || !Number.isInteger(page_size) || page_size < 1 || page_size > 100) throw new Error("页码需为正整数，每页1..100项");
-        const result = await bridge.execute<ExplorationCatalog>("direction_exploration_get", args, exec.signal);
-        const s = result.exploration;
-        return { dataset_id: result.dataset_id, versions: result.versions.slice(0, 10).map(v => ({ ...v })), exploration: s ? {
-          version_id: s.version_id, run_id: s.run_id, summary: s.summary, limitations: s.limitations, model_name: s.model_name,
-          normal_count: s.request.normal_images.length, defect_count: s.request.defect_images.length,
-          total: s.directions.length, page, page_size, directions: s.directions.slice((page - 1) * page_size, page * page_size).map(d => ({ ...d })),
-        } : null };
-      } }),
-    defineTool({ name: "direction_exploration_evidence", description: "读取指定方向探索版本真正送入模型的图像附件。",
-      parameters: { version_id: { type: "string", required: true }, evidence_id: { type: "string", required: true } } as const,
-      output: evidenceOutput, execute: (args, exec) => readEvidenceAttachment(bridge, ctx, "direction_exploration_evidence", args, exec.signal) }),
-    defineTool({ name: "knowledge_directions_adopt", description: "仅用户明确要求采用或调整方向时采用所选探索方向；先读取knowledge_prompt_get，传expected_revision、真实direction_id和可选名称/说明，服务端保留其他选项。不改历史作业或人审。",
-      parameters: directionAdoptionParameters, output: knowledgePromptOutput,
-      execute: (args, exec) => bridge.execute("knowledge_directions_adopt", args, exec.signal) }),
+    defineTool({name:'analysis_sources', description:'只读列出所选子数据集全部登记图像的真实ID与路径，用于首轮显式选样；不按标签补图，也不排除未知或不可读登记。',
+      parameters:analysisScopeParameters, output:workbenchJsonOutput,
+      execute:(args, execution)=>bridge.execute('analysis_sources', args, execution.signal)}),
+    defineTool({name:'direction_exploration_presets', description:'读取完整可编辑的探索提示词预设，不启动模型。',
+      parameters:{}, output:workbenchJsonOutput, execute:(args, execution)=>bridge.execute('direction_exploration_presets', args, execution.signal)}),
+    defineTool({name:'direction_exploration_preset_save', description:'另存完整探索提示词为新预设，不改已受理作业。',
+      parameters:explorationPresetParameters, output:workbenchJsonOutput, execute:(args, execution)=>bridge.execute('direction_exploration_preset_save', args, execution.signal)}),
+    defineTool({name:'direction_exploration_start', description:'按用户选定子数据集和至少一张首轮样例，启动一场探索。首轮不补图，后续自动观察整个登记范围；submission_id用于同次创建重传，模型/分辨率/批量取模块设置。',
+      parameters:explorationAgentStartParameters, output:analysisJobOutput,
+      execute:(args, execution)=>bridge.execute('analysis_start', {request:{...args, analysis_kind:'exploration'}}, execution.signal)}),
+    defineTool({name:'direction_exploration_status', description:'等待同一探索作业的真实状态和发布版本，报告完成/失败/未处理数量。',
+      parameters:jobStatusParameters, output:analysisJobOutput, execute:(args, execution)=>waitForJobStatus(bridge,'analysis_status',args,execution.signal)}),
+    ...(['cancel','retry','delete'] as const).map(action=>defineTool({name:`direction_exploration_${action}`,
+      description:action==='cancel'?'停止探索并保留已提交成果。':action==='delete'?'删除所选探索作业及关联产物。':'按用户要求继续原冻结范围和同一Session，不重做已完成登记。',
+      parameters:{run_id:{type:'string',required:true}} as const, output:analysisJobOutput,
+      execute:(args, execution)=>bridge.execute(`analysis_${action}`,args,execution.signal)})),
+    defineTool({name:'direction_exploration_get', description:'按所选run_id读取正式方向目录、覆盖及支持反例，失败/取消时也读取该作业已发布部分成果；历史作业保留原结果。',
+      parameters:{run_id:{type:'string',required:true}} as const, output:workbenchJsonOutput,
+      execute:(args, execution)=>bridge.execute('analysis_results',args,execution.signal)}),
+    defineTool({name:'direction_exploration_evidence', description:'读取固定探索版本的真实图像证据。',
+      parameters:{version_id:{type:'string',required:true},evidence_id:{type:'string',required:true}} as const,
+      output:evidenceOutput, execute:(args, execution)=>readEvidenceAttachment(bridge,ctx,'direction_exploration_evidence',args,execution.signal)}),
   ];
 }

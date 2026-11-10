@@ -6,15 +6,22 @@ from iad_core.storage.review_schema import init_review_schema
 from iad_core.storage.job_schema import migrate_audit_jobs
 from iad_core.storage.knowledge_schema import migrate_knowledge_sources, migrate_unified_knowledge
 from iad_core.storage.consistency_schema import init_content_index_schema
+from iad_core.storage.analysis_schema import initialize_analysis_schema
+from iad_core.storage.audit_schema import initialize_audit_schema
 
 
 def initialize_schema(conn: Connection) -> bool:
     conn.execute("BEGIN IMMEDIATE")
     cursor = conn.cursor()
+    initialize_analysis_schema(conn)
+    initialize_audit_schema(conn)
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS workbench_module_settings (
         module TEXT PRIMARY KEY CHECK(module IN ('exploration','knowledge','consistency','audit')),
         revision INTEGER NOT NULL CHECK(revision>0), settings_json TEXT NOT NULL)''')
+
+    cursor.execute("""UPDATE workbench_module_settings SET settings_json=json_remove(settings_json,'$.agent_model')
+        WHERE module='consistency' AND json_type(settings_json,'$.agent_model') IS NOT NULL""")
 
     cursor.execute('''CREATE TABLE IF NOT EXISTS workbench_model_settings (
         id INTEGER PRIMARY KEY CHECK(id=1), revision INTEGER NOT NULL CHECK(revision>0),
@@ -70,6 +77,8 @@ def initialize_schema(conn: Connection) -> bool:
     )
     """)
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_task_id ON samples(task_id)")
+    if 'annotation_availability_json' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
+        cursor.execute("ALTER TABLE samples ADD COLUMN annotation_availability_json TEXT NOT NULL DEFAULT '{}'")
     if 'source_fingerprint' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
         cursor.execute('ALTER TABLE samples ADD COLUMN source_fingerprint TEXT')
     if 'is_excluded' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:

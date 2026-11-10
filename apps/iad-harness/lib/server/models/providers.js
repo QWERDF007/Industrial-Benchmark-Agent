@@ -1,5 +1,6 @@
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import { assertUsableApiKey } from '@deepseek-ai/dsh-llm';
+import { defaultModelLimits } from '../../shared/model-settings.generated.js';
 export class ModelConfigurationError extends Error {
     statusCode = 422;
 }
@@ -12,11 +13,13 @@ const apiEndpoint = (value) => {
     return url.href.replace(/\/$/, '').replace(/\/chat\/completions$/, '');
 };
 export class NativeProviders {
-    ctx;
+    context;
     editing = new Set();
-    constructor(ctx) {
-        this.ctx = ctx;
+    constructor(context) {
+        this.context = context;
     }
+    get ctx() { return this.context(); }
+    get credentials() { return this.ctx.credentials; }
     namespace() {
         const namespace = this.ctx.settings.describe({ redactSecrets: true }).find(row => row.ns === 'llm-pi-ai');
         if (!namespace)
@@ -75,7 +78,7 @@ export class NativeProviders {
             return row;
         }));
     }
-    async resolve(selection, purpose, signal) {
+    async configuration(selection, role, requireCapacity, signal) {
         signal?.throwIfAborted();
         const source = this.source(selection.provider_id);
         if (source.error)
@@ -86,20 +89,57 @@ export class NativeProviders {
         if (!listed)
             throw new ModelConfigurationError('所选模型已移除，请重新选择');
         const metadata = await this.ctx.llm.resolveModelInfo(selection.provider_id, selection.model_id, signal);
-        if (!metadata.inputModalities?.includes('image'))
-            throw new ModelConfigurationError('所选模型未声明图像输入能力，请核实提供商的模型配置');
-        if (purpose !== 'probe' && selection.limits.capacity_mode !== 'vllm_tokenize')
+        if (!metadata.inputModalities?.includes(role === 'vision' ? 'image' : 'text'))
+            throw new ModelConfigurationError(role === 'vision' ? '所选模型未声明图像输入能力，请核实提供商的模型配置' : 'Agent 模型未声明文本输入能力');
+        if (requireCapacity && selection.limits.capacity_mode !== 'vllm_tokenize')
             throw new ModelConfigurationError('请在高级设置中选择已确认的容量预检协议');
         const endpoint = base + '/chat/completions';
         const cap = (configured, declared) => declared && declared > 0
             ? Math.min(configured ?? declared, declared) : configured;
         const declared = Array.isArray(source.profile.models)
-            ? object(source.profile.models.find(item => object(item).id === selection.model_id)) : {};
+            ? object(source.profile.models.find(item => object(item).id === selection.model_id))
+            : object(object(source.profile.modelOverrides)[selection.model_id]);
         const profile = { ...selection.limits, endpoint, api: 'openai-completions',
             provider_id: selection.provider_id, provider_name: source.entry.displayName, model_id: selection.model_id,
             credential_ref: typeof source.profile.apiKeyEnv === 'string' && source.profile.apiKeyEnv ? source.profile.apiKeyEnv : null,
-            context_tokens: cap(selection.limits.context_tokens, typeof declared.contextWindow === 'number' ? declared.contextWindow : undefined),
-            max_output_tokens: cap(selection.limits.max_output_tokens, typeof declared.maxTokens === 'number' ? declared.maxTokens : undefined) };
+            context_tokens: cap(selection.limits.context_tokens, typeof declared.contextWindow === 'number' ? declared.contextWindow : metadata.context?.contextWindow),
+            max_output_tokens: cap(selection.limits.max_output_tokens, typeof declared.maxTokens === 'number' ? declared.maxTokens : metadata.defaultMaxTokens) };
+        return { profile, source, metadata, declared };
+    }
+    async freeze(reference, limits, role) {
+        if (!reference)
+            return { profile: null, input_modalities: [], native_profile: null, error: null };
+        try {
+            const { profile, source, metadata, declared } = await this.configuration({ ...reference, limits: { ...defaultModelLimits, ...limits } }, role, role === 'vision');
+            if (role === 'agent' && !profile.max_output_tokens)
+                throw new ModelConfigurationError('请在提供商的模型设置中声明输出上限，或设置本模块的 Agent 输出上限');
+            const model = { ...declared, id: reference.model_id, contextWindow: profile.context_tokens,
+                maxTokens: profile.max_output_tokens, input: metadata.inputModalities };
+            const native = { ...source.profile, models: [model] };
+            delete native.modelOverrides;
+            if (profile.generation_timeout_seconds !== null)
+                native.timeoutMs = profile.generation_timeout_seconds * 1000;
+            if (role === 'agent') {
+                const parameters = profile.request_parameters;
+                const unsupported = Object.keys(parameters).filter(name => !['temperature', 'stop', 'chat_template_kwargs'].includes(name));
+                if (unsupported.length)
+                    throw new ModelConfigurationError('Agent 适配器不支持生成参数：' + unsupported.join('、'));
+                if (parameters.chat_template_kwargs) {
+                    const compat = { ...object(source.profile.compat), ...object(declared.compat) };
+                    if (compat.thinkingFormat !== 'chat-template' || !metadata.reasoning)
+                        throw new ModelConfigurationError('Agent 的 chat_template_kwargs 需要提供商声明 chat-template 协议及 reasoningEfforts');
+                    native.models = [{ ...model,
+                            compat: { ...object(declared.compat), chatTemplateKwargs: parameters.chat_template_kwargs } }];
+                }
+            }
+            return { profile, input_modalities: [...metadata.inputModalities], native_profile: native, error: null };
+        }
+        catch (error) {
+            return { profile: null, input_modalities: [], native_profile: null, error: error instanceof Error ? error.message : String(error) };
+        }
+    }
+    async resolve(selection, purpose, signal) {
+        const { profile, source } = await this.configuration(selection, 'vision', purpose !== 'probe', signal);
         let key = null;
         if (profile.credential_ref) {
             const ref = credentialRef(profile.credential_ref);

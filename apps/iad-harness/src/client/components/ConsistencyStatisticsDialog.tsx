@@ -43,9 +43,10 @@ export function ConsistencyStatisticsDialog({items,onFilter,onClose}:{items:Conf
   onFilter(action:ConsistencyStatisticAction,id:string):void;onClose():void}) {
   const original=conflictCategories.filter(name=>items.some(item=>item.types.includes(name)))
     .map(name=>({name,count:items.filter(item=>item.types.includes(name)).length}));
-  const model=[...new Set(items.map(item=>item.model.modelType))].map(name=>({name,count:items.filter(item=>item.model.modelType===name).length}));
-  const agreement=[{name:'一致',id:'same',count:items.filter(item=>item.model.status==='conflict').length},
-    {name:'不一致',id:'different',count:items.filter(item=>item.model.status==='no_conflict').length}];
+  const judged=items.filter(item=>item.model.status!=='unknown');
+  const model=[...new Set(judged.map(item=>item.model.modelType))].map(name=>({name,count:judged.filter(item=>item.model.modelType===name).length}));
+  const agreement=[{name:'一致',id:'same',count:items.filter(item=>item.agreement==='same').length},
+    {name:'不一致',id:'different',count:items.filter(item=>item.agreement==='different').length}];
   const distributionAxis=niceAxis(Math.max(1,...original.map(row=>row.count),...model.map(row=>row.count)));
   return <Modal title="标注冲突统计" size="form" className="dc-stats-dialog" onClose={onClose}>
     <div className="dc-stats-content"><div className="dc-stats-charts">

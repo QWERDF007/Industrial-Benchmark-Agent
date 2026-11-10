@@ -6,14 +6,28 @@ export const knowledgeDetailParameters = {
         "required": true
     },
     "check_id": {
-        "type": "string",
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
         "title": "Check Id"
     },
     "evidence_role": {
-        "type": "string",
-        "enum": [
-            "support",
-            "counter"
+        "oneOf": [
+            {
+                "type": "string",
+                "enum": [
+                    "support",
+                    "counter"
+                ]
+            },
+            {
+                "type": "null"
+            }
         ],
         "title": "Evidence Role"
     },

@@ -1,133 +1,40 @@
-import type { Context } from "@deepseek-ai/cordis";
-import { defineTool, type ToolDefinition } from "@deepseek-ai/dsh-tools";
-import { PythonBridge } from "../python-bridge/index.js";
-import { workbenchJsonOutput } from "../tool-output.js";
-import { evidenceOutput, readEvidenceAttachment } from "../evidence-attachment.js";
-import { jobRetryParameters, jobStatusParameters, waitForJobStatus } from "../job-status.js";
-import { miningParameters } from "../../shared/mining.parameters.generated.js";
-import { knowledgeOutput, knowledgeScopeOutput, knowledgeJobOutput, knowledgePromptOutput } from "./output.js";
-import { knowledgeScopeParameters } from "../../shared/knowledge-scope.parameters.generated.js";
-import { knowledgeDetailParameters } from "../../shared/knowledge-detail.parameters.generated.js";
-import { knowledgeSourceParameters } from "../../shared/knowledge-source.parameters.generated.js";
+import type {Context} from '@deepseek-ai/cordis';
+import {defineTool} from '@deepseek-ai/dsh-tools';
+import {knowledgeAgentStartParameters, analysisScopeParameters} from '../../shared/analysis-agent.parameters.generated.js';
+import {knowledgeDetailParameters} from '../../shared/knowledge-detail.parameters.generated.js';
+import type {PythonBridge} from '../python-bridge/index.js';
+import {workbenchJsonOutput} from '../tool-output.js';
+import {evidenceOutput, readEvidenceAttachment} from '../evidence-attachment.js';
+import {jobStatusParameters, waitForJobStatus} from '../job-status.js';
+import {analysisJobOutput} from '../analysis/output.js';
 
-const groupPolicy = " 用户确认多少张就联合输入完整图组，不自动拆组或减张。失败时说明真实原因并询问用户是否降低数量或按原组重试；收到用户回复前停止后续挖掘，不自行重试、减张或继续下一组。";
-
-export function createKnowledgeTools(bridge: PythonBridge, ctx: Context): ToolDefinition[] {
+export function createKnowledgeTools(bridge: PythonBridge, ctx: Context) {
   return [
-    defineTool({
-      name: "knowledge_prompt_get",
-      description: "只读查阅当前数据集、良品或异常的挖掘目标、已选通用方向和数据集专属方向。仅供查阅，不替代本次提交的完整mining_prompt；不修改配置、不启动作业，仍允许模型发现清单之外的新方向。",
-      parameters: { dataset_id: { type: "string", required: true }, kind: { type: "string", enum: ["normal", "defect"], required: true } },
-      output: knowledgePromptOutput,
-      execute: (args, exec) => bridge.execute("knowledge_prompt_get", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_scope_open",
-      description: "仅在用户明确要求连续处理整个范围时，保存授权任务与当前候选范围；此操作不发模型请求。objective记录实际用户意图，search/seed冻结筛选及顺序，可提供starting_version_id。只看一组不建立范围。每次数量仍由Agent在三输入图组工具中选择，不增加循环或首批参数。",
-      parameters: knowledgeScopeParameters,
-      output: knowledgeScopeOutput,
-      execute: (args, exec) => bridge.execute("knowledge_scope_open", { request: args, origin_session_id: exec.agent?.id || null }, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_scope_get",
-      description: "读取连续范围真实版本、已观察/待核验/剩余及活动作业。传scope_run_id，或dataset_id查询当前会话活动范围。首组完成不等于整个范围完成。用scope_run_id查询knowledge_sources下一组，等待上组发布，显式携带刚返回的current_version_id继续，直到真实剩余耗尽；不重发全部历史图，不枚举全库。",
-      parameters: { scope_run_id: { type: "string" }, dataset_id: { type: "string" } },
-      output: knowledgeScopeOutput,
-      execute: (args, exec) => bridge.execute("knowledge_scope_get", { ...args, origin_session_id: exec.agent?.id || null }, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_scope_stop",
-      description: "用户要求停止连续挖掘时撤销范围继续执行并取消其活动知识作业，保留实际观察与版本；停止会话不代表后台已停。",
-      parameters: { scope_run_id: { type: "string", required: true } },
-      output: knowledgeScopeOutput,
-      execute: (args, exec) => bridge.execute("knowledge_scope_stop", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_scope_resume",
-      description: "仅用户明确继续原连续任务时重新关联该范围到当前会话；不启动模型，不扩展冻结来源。先查询其真实进度，运行中作业不重复启动；来源或知识变化不得混用。" + groupPolicy,
-      parameters: { scope_run_id: { type: "string", required: true } },
-      output: knowledgeScopeOutput,
-      execute: (args, exec) => bridge.execute("knowledge_scope_resume", { ...args, origin_session_id: exec.agent?.id || null }, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_sources",
-      description: "只读分页查询合格来源，返回真实sample_id、路径和资格。page_size范围1..200，默认10；只查询当前已确认图组所需引用，不预先枚举全库。用户未给图组数量时先建议10或20张并等待确认，不能把未给数量理解为全部来源。连续任务传scope_run_id查询冻结范围内真实剩余；不传时覆盖登记图像，search筛选路径。结果资格是候选身份，不是视觉真值；不会启动作业。",
-      parameters: knowledgeSourceParameters,
+    defineTool({name: 'knowledge_presets', description: '读取当前预设方向、完整来源身份和可编辑的默认挖掘正文。只选有效探索方向时预设目录可以为空。',
+      parameters: {}, output: workbenchJsonOutput,
+      execute: (args, execution) => bridge.execute('knowledge_presets', args, execution.signal)}),
+    defineTool({name: 'knowledge_direction_choices', description: '读取所选范围已正式发布的探索方向，包括部分失败作业成果。采用时保留完整source，不用同名标题或局部ID代替版本身份。',
+      parameters: analysisScopeParameters, output: workbenchJsonOutput,
+      execute: (args, execution) => bridge.execute('analysis_direction_choices', args, execution.signal)}),
+    defineTool({name: 'knowledge_mine', description: '按用户选择的子数据集、方向来源和完整正文启动一个原生挖掘作业。整个登记范围自动分批，一场一个Session；不传图组数量、父知识或每请求批量。submission_id标识同一次创建，重传保持不变。',
+      parameters: knowledgeAgentStartParameters, output: analysisJobOutput,
+      execute: (args, execution) => bridge.execute('analysis_start', {request: {...args, analysis_kind: 'knowledge'}}, execution.signal)}),
+    defineTool({name: 'knowledge_job_status', description: '等待同一个挖掘作业的真实状态、完成/失败/未处理数量和发布版本。运行中不是完成；失败时报告真实错误与已发布部分成果。',
+      parameters: jobStatusParameters, output: analysisJobOutput,
+      execute: (args, execution) => waitForJobStatus(bridge, 'analysis_status', args, execution.signal)}),
+    ...(['cancel', 'retry'] as const).map(action => defineTool({name: `knowledge_job_${action}`,
+      description: action === 'cancel' ? '停止当前挖掘作业，保留已提交观察与可发布成果。' : '按用户要求继续原冻结登记范围和同一Session，保留已完成观察；不新建子作业或混入新输入。',
+      parameters: {run_id: {type: 'string', required: true}} as const, output: analysisJobOutput,
+      execute: (args, execution) => bridge.execute(`analysis_${action}`, args, execution.signal)})),
+    defineTool({name: 'knowledge_get', description: '按run_id读取该作业的正式成果与覆盖，或按version_id读取固定发布版本。不默认采用其他作业的知识。',
+      parameters: {run_id: {type:'string'}, version_id: {type:'string'}} as const,
       output: workbenchJsonOutput,
-      execute: (args, exec) => bridge.execute("knowledge_sources", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_mine",
-      description: "联合观察明确图组，按用户手选方向与完整提示词归纳规律、差异及正反证据。mining_prompt必须包含本次最终全文；原始标签不预设支持/反对资格。可显式续用一个父知识版本，数量与images严格一致。" + groupPolicy,
-      parameters: miningParameters,
-      output: knowledgeJobOutput,
-      execute: (args, exec) => {
-        const {mining_prompt, ...request}=args;
-        return bridge.execute("knowledge_start", {request,mining_prompt,origin_session_id:exec.agent?.id || null},exec.signal);
-      },
-    }),
-    defineTool({
-      name: "knowledge_job_observations",
-      description: "只读分页查阅同一知识作业实际规划和已接受的观察证据，包含失败/取消/尚未发布的作业；observed不代表已发布或人工确认。图像用knowledge_evidence传run_id读取。",
-      parameters: { run_id: { type: "string", required: true }, page: { type: "integer", default: 1 }, page_size: { type: "integer", default: 10 } },
-      output: workbenchJsonOutput,
-      execute: (args, exec) => bridge.execute("knowledge_observations", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_job_status",
-      description: "读取同一知识作业的真实完成、失败、未处理数量及已发布版本；RUNNING 不表示完成。" + groupPolicy,
-      parameters: jobStatusParameters,
-      output: knowledgeJobOutput,
-      execute: (args, exec) => waitForJobStatus(bridge, "knowledge_status", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_job_cancel",
-      description: "请求停止知识作业，保留已完成记录；当前模型请求返回后停止，之后查询最终状态。",
-      parameters: { run_id: { type: "string", required: true } },
-      output: knowledgeJobOutput,
-      execute: (args, exec) => bridge.execute("knowledge_cancel", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_job_retry",
-      description: "仅用户明确要求后，用全部冻结来源重试失败、取消或中断的联合知识挖掘，核验原图、标注、反馈及冻结版本；保留原运行和已发布知识，变化时要求重新启动。降低数量须用户确认后重新选择图组。",
-      parameters: { run_id: jobRetryParameters.run_id },
-      output: knowledgeJobOutput,
-      execute: (args, exec) => bridge.execute("knowledge_retry", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_get",
-      description: "读取知识版本、真实计数、新鲜度和最多三个优先疑点的紧凑摘要。指定version_id，或dataset_id读取单一当前版本。判据与证据用knowledge_details按需分页；观察方向用section=discovery查阅，未记录不等于覆盖完整。冲突用knowledge_conflict_context读取。不会展开全库或改写历史。",
-      parameters: {
-        version_id: { type: "string" },
-        dataset_id: { type: "string" },
-      },
-      output: knowledgeOutput,
-      execute: (args, exec) => bridge.execute("knowledge_get", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_details",
-      description: "只读分页获取固定版本的完整判据。section=discovery读取生成时可见部件与各方向观察，direction_id为空是模型新增方向，未记录不等于覆盖完整；不可同时传check_id。默认checks；提供check_id分页读取真实支持/反对证据元数据，再用knowledge_evidence读取图像。page_size默认10，上限50。",
-      parameters: knowledgeDetailParameters,
-      output: workbenchJsonOutput,
-      execute: (args, exec) => bridge.execute("knowledge_details", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_conflict_context",
-      description: "只读解析固定版本冲突、关联判据、真实新旧证据及人工处置记录。只供解释和定位，不能提交或代填人工裁决；图像用knowledge_evidence读取。",
-      parameters: {version_id: {type: "string", required: true}, conflict_id: {type: "string", required: true}},
-      output: workbenchJsonOutput,
-      execute: (args, exec) => bridge.execute("knowledge_review_context", args, exec.signal),
-    }),
-    defineTool({
-      name: "knowledge_evidence",
-      description: "读取冻结全图、原生ROI或二值标注图；提供已发布version_id或作业run_id之一，返回真实图像附件。拒绝不属于所选版本/作业的证据，不补造缺失图像。",
-      parameters: {
-        run_id: { type: "string" },
-        version_id: { type: "string" },
-        evidence_id: { type: "string", required: true },
-      },
-      output: evidenceOutput,
-      execute: (args, exec) => readEvidenceAttachment(bridge, ctx, "knowledge_evidence", args, exec.signal),
-    }),
+      execute: (args, execution) => bridge.execute('knowledge_get', args, execution.signal)}),
+    defineTool({name: 'knowledge_details', description: '分页读取固定知识版本的判据、支持/反对证据及人工核实记录。提供check_id查对应证据，图片通过knowledge_evidence读取。',
+      parameters: knowledgeDetailParameters, output: workbenchJsonOutput,
+      execute: (args, execution) => bridge.execute('knowledge_details', args, execution.signal)}),
+    defineTool({name: 'knowledge_evidence', description: '按固定version_id读取本场原图、原始ROI或标注定位图的真实附件。不补造缺失证据。',
+      parameters: {version_id:{type:'string',required:true}, evidence_id:{type:'string', required:true}} as const,
+      output: evidenceOutput, execute: (args, execution) => readEvidenceAttachment(bridge, ctx, 'knowledge_evidence', args, execution.signal)}),
   ];
 }

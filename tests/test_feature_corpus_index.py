@@ -57,6 +57,30 @@ def test_cross_dataset_index_uses_one_row_per_content_and_exact_cosine_ranking(c
         assert indexes.stats().builds==1 and indexes.stats().disk_loads==0
 
 
+@pytest.mark.parametrize('stored_precision', [False, True])
+def test_similarity_threshold_includes_its_stored_value_and_excludes_the_next_lower_score(corpus_vectors, stored_precision):
+    db, _, _, profile, _, groups = corpus_vectors
+    boundary = np.float32(.95)
+    scores = ([np.nextafter(boundary, np.float32(-np.inf)), boundary,
+        np.nextafter(boundary, np.float32(np.inf))] if stored_precision else [.94996, .95, .951])
+    for group, score in zip(groups, scores):
+        vector = np.zeros(profile.dim, dtype=np.float32)
+        vector[:2] = score, np.sqrt(1 - float(score) ** 2)
+        FeatureRepository(db).upsert(FeatureRecord(content_group_id=group, profile_id=profile.profile_id,
+            dim=profile.dim, dtype='float32', embedding_blob=vector.tobytes()))
+    query = np.zeros((1, profile.dim), dtype=np.float32)
+    query[0, 0] = 1
+    minimum = float(boundary) if stored_precision else .95
+    with CorpusIndexes(db) as indexes, indexes.acquire({'kind': 'all_registered'}, profile.profile_id) as index:
+        results = index.search(query, top_k=None, min_similarity=minimum)[0]
+        assert [hit.group_id for hit in results] == [groups[2], groups[1]]
+        assert results[1].score == float(boundary)
+        if stored_precision:
+            assert results[0].score == float(scores[2])
+        else:
+            assert results[0].score == pytest.approx(.951, abs=2e-7, rel=0)
+
+
 def test_hot_queries_reuse_memory_and_a_new_pool_loads_one_complete_artifact(corpus_vectors):
     db,_,_,profile,_,_=corpus_vectors
     query=np.zeros((1,512),dtype=np.float32);query[0,0]=1

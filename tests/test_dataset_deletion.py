@@ -7,7 +7,6 @@ from PIL import Image
 
 from iad_core.dataset.registry import DatasetImport
 from iad_core.entry import dataset_delete, dataset_list
-from iad_core.workbench.audit import AuditService, VlmClient
 from iad_core.workbench.review import HumanReview, ReviewSubmission
 
 
@@ -31,22 +30,14 @@ def sqlite_work(dataset, monkeypatch):
     return work
 
 
-def test_delete_removes_owned_records_and_preserves_other_dataset_and_sources(dataset, mllm_api, tmp_path):
+def test_delete_removes_owned_records_and_preserves_other_dataset_and_sources(dataset, native_knowledge_versions, tmp_path):
     db, registry, config = dataset
     images, labels = tmp_path / 'other-images', tmp_path / 'other-labels'
     images.mkdir(); labels.mkdir()
     Image.new('RGB', (32, 32), 'green').save(images / 'other.png')
     (labels / 'other.json').write_text(json.dumps({'imageWidth':32,'imageHeight':32,'shapes':[{'label':'保留标注','shape_type':'rectangle','points':[[5,5],[10,10]]}]}))
     other = registry.import_labelme(DatasetImport(format='labelme', name='保留数据集', image_dir=str(images), annotation_dir=str(labels)))
-    client, _, _ = mllm_api
-    service = AuditService(db, VlmClient(http_client=client))
     target = config.dataset.id + ':dent.png'
-    try:
-        job = service.start(dataset_id=config.dataset.id, sample_ids=[target])
-        service.wait(job['run_id'], 15)
-        assert service.status(job['run_id'])['status'] == 'COMPLETED'
-    finally:
-        service.close()
     HumanReview(db).submit(ReviewSubmission(dataset_id=config.dataset.id, sample_id=target,
         submission_id=uuid4(), reviewer='复核人', decision='PASS'))
     source_files = {p: p.read_bytes() for root in (config.root, config.annotations.root) for p in Path(root).rglob('*') if p.is_file()}
@@ -54,13 +45,13 @@ def test_delete_removes_owned_records_and_preserves_other_dataset_and_sources(da
         other_samples = [tuple(r) for r in conn.execute('SELECT * FROM samples WHERE dataset_id=?', (other.dataset.id,))]
         other_annotations = [tuple(r) for r in conn.execute('SELECT a.* FROM annotations a JOIN samples s ON a.sample_id=s.sample_id WHERE s.dataset_id=?', (other.dataset.id,))]
         assert conn.execute('SELECT count(*) FROM model_calls').fetchone()[0] > 0
-        assert conn.execute('SELECT count(*) FROM knowledge_versions').fetchone()[0] > 0
+        assert conn.execute('SELECT count(*) FROM analysis_publications').fetchone()[0] == 2
     assert dataset_delete({'dataset_id':config.dataset.id}, db.db_path) == {'deleted_dataset_id':config.dataset.id}
     assert [d['dataset_id'] for d in dataset_list({}, db.db_path)['datasets']] == [other.dataset.id]
     with db.connection() as conn:
         assert [tuple(r) for r in conn.execute('SELECT * FROM samples')] == other_samples
         assert [tuple(r) for r in conn.execute('SELECT * FROM annotations')] == other_annotations
-        for table in ('review_decisions','review_sessions','knowledge_heads','knowledge_versions','model_calls','job_runs','audit_suggestions'):
+        for table in ('review_decisions','review_sessions','analysis_workflow_runs','analysis_publications','analysis_sample_media','analysis_sample_observations','model_calls','job_runs'):
             assert conn.execute(f'SELECT count(*) FROM {table}').fetchone()[0] == 0, table
         assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
     assert all(p.read_bytes() == content for p, content in source_files.items())

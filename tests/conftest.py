@@ -1,10 +1,8 @@
-from tests.knowledge_scenarios import selected_group, frozen_observation_response
 import base64
 import io
 import json
 import os
 
-import httpx
 import pytest
 from PIL import Image, ImageDraw
 
@@ -26,6 +24,36 @@ def configured_test_mllm(monkeypatch):
 def self_discovery_prompt():
     from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPromptConfiguration
     return FrozenMiningPrompt.capture(MiningPromptConfiguration(objective='观察实际图组并保留分歧', directions=[]))
+
+
+@pytest.fixture
+def advisory_record():
+    from uuid import uuid4
+    from iad_core.advisory.analysis import AuditAnalysis, AuditFinding, Coverage, GlobalAnalysis, VlmResult
+    from iad_core.advisory.repository import AuditSuggestionRepository
+    from iad_core.advisory.schemas import AuditSuggestion, HypothesisItem
+    from iad_core.evidence.images import EvidenceImages
+    from iad_core.evidence.sources import SampleContent
+    from iad_core.storage.repositories import SampleRepository
+
+    def save(db, sample_id, *, label='PASS', knowledge_version_id=None, missing_evidence=(), conflicts=(), finding_count=0, structured=True):
+        sample=SampleRepository(db).get(sample_id)
+        content=SampleContent.capture(db,sample_id)
+        image=EvidenceImages(db.db_path).capture(sample,'overview','global',source_sha256=content.sha256,full_resolution=True)
+        observation=dict(description='模型建议中的可见观察。',position_analysis='主体',illumination_analysis='当前视野')
+        conclusion=VlmResult(**observation,suggested_label=label,reason_category='shape',confidence=.9,
+            evidence_ids=[image.evidence.evidence_id],missing_evidence=list(missing_evidence),conflicts=list(conflicts))
+        analysis=AuditAnalysis(knowledge_version_id=knowledge_version_id,overview=image.evidence,
+            coverage=Coverage(planned_regions=0,inspected_regions=0,complete=True),global_view=GlobalAnalysis(**observation),regions=[],
+            conclusion=conclusion,findings=[AuditFinding(finding_id='F'+str(index),source_step_ids=[],check_ids=[],
+                location={'scope':'global','description':'主体'},description='待复核现象'+str(index),hypothesis='需要比较外观',
+                normal_explanation='成像变化',review_action='复查原图',priority='medium',evidence_ids=[image.evidence.evidence_id])
+                for index in range(finding_count)]) if structured else None
+        return AuditSuggestionRepository(db).save(AuditSuggestion(suggestion_id='suggestion_'+uuid4().hex,
+            task_id=sample.task_id,sample_id=sample_id,confidence=conclusion.confidence,audit_run_id='advisory_'+uuid4().hex,
+            source_fingerprint=content.fingerprint,analysis=analysis,hypotheses=[HypothesisItem(label=label)]))
+
+    return save
 
 
 @pytest.fixture
@@ -99,88 +127,135 @@ def dataset(tmp_path):
 
 
 @pytest.fixture
-def finding_response():
-    return {'location': {'scope': 'global', 'bbox': None, 'description': '主体结构'}, 'description': '需要核对外观判据',
-        'hypothesis': '可能偏离产品判据', 'normal_explanation': '需排除正常成像变化', 'review_action': '核对全图与实际局部', 'priority': 'high'}
+def agent_jobs(dataset):
+    from iad_core.analysis.jobs import AnalysisAgentJobs
+    from iad_core.workbench.runtime import WorkbenchRuntime
+    db, _, config = dataset
+    runtime = WorkbenchRuntime(db)
+    jobs = AnalysisAgentJobs(runtime)
+    from iad_core.workbench.module_settings import ModuleSettings
+    ModuleSettings(db).save({'module': 'exploration', 'expected_revision': 0, 'settings': {
+        'model': {'provider_id': 'swift-30003', 'model_id': 'fixture'}, 'batch_size': 1}})
+    role = {'profile': {'endpoint': 'http://127.0.0.1:30003/v1/chat/completions',
+        'provider_id': 'swift-30003', 'model_id': 'fixture', 'context_tokens': 262144, 'max_output_tokens': 4096},
+        'native_profile': {'api': 'openai-completions', 'baseURL': 'http://127.0.0.1:30003/v1'},
+        'input_modalities': ['text', 'image']}
+    try:
+        yield jobs, config.dataset.id, role
+    finally:
+        runtime.close()
 
 
 @pytest.fixture
-def mllm_api(dataset, finding_response, monkeypatch):
-    monkeypatch.setenv('IAD_KNOWLEDGE_MIN_SUPPORT_SOURCES', '2')
-    bodies = []
-    patterns = {"summary": "可见蓝色表面", "checks": [{"title": "表面外观", "subject": "主体", "location": "全图", "criterion": "可见蓝色表面", "allowed_variations": ["亮度变化"], "support_evidence_ids": [], "counter_evidence_ids": [], "limitations": [], "status": "supported"}], "suspects": [], "limitations": []}
-    view = {"description": "可观察证据", "position_analysis": "位置合理", "illumination_analysis": "反光已核实"}
-    responses = {"KnowledgeDraft": patterns, "GlobalAnalysis": view, "ViewAnalysis": view,
-                 "VlmResult": {**view, "suggested_label": "PASS", "reason_category": "NORMAL", "confidence": 0.8}}
-    def respond(request):
-        observation = frozen_observation_response(request)
-        if observation is not None:
-            return observation
-        body = json.loads(request.content)
-        if request.url.path.endswith('/tokenize'):
-            capacity = responses.get('Tokenize', {'count':1000,'max_model_len':262144})
-            count = capacity.get('count', sum(part['type']=='image_url' for part in body['messages'][0]['content']) * capacity.get('tokens_per_image', 1000))
-            return httpx.Response(200,json={'count':count,'max_model_len':capacity['max_model_len']})
-        bodies.append(body)
-        schema = body['response_format']['json_schema']['schema']
-        if schema['title'] == 'KnowledgeDraft':
-            answer = {**patterns, 'checks': [{**check, 'support_evidence_ids': [json.loads(part['text'][5:])['evidence_id'] for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]} for check in patterns['checks']]}
-        elif schema['title'] == 'KnowledgeVerification':
-            payload = json.loads(body['messages'][0]['content'][0]['text'].split('待核验疑点：', 1)[1].split('\n请根据图像', 1)[0])
-            metadata = [json.loads(part['text'].split('视觉证据：')[1]) for part in body['messages'][0]['content'] if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
-            evidence_ids = [m['evidence_id'] for m in metadata]
-            answer = {'findings': [{
-                'finding_id': target['finding_id'],
-                'status': 'supported',
-                'affected_check_titles': [check['title'] for check in payload.get('checks', patterns['checks'])],
-                'description': '异常表现已核实',
-                'normal_explanation': '非正常外观',
-                'limitations': [],
-                'evidence_ids': evidence_ids if evidence_ids else ['placeholder_evidence'],
-                'conflicts': []
-            } for target in payload.get('findings', [])]}
-        elif schema['title'] == 'AuditConclusion':
-            content = body['messages'][0]['content']
-            frozen = json.loads(content[0]['text'].split('\n冻结综合审计：', 1)[1])
-            metadata = [json.loads(part['text'][5:]) for part in content
-                if part['type'] == 'text' and part['text'].startswith('视觉证据：')]
-            refs = [image['evidence_id'] for image in metadata if image['representation'] == 'raw']
-            answer = responses.get('AuditConclusion', dict(responses['VlmResult'], evidence_ids=refs,
-                analysis_text='结合整体外观、实际比较图和一致性结果观察主体表面，保留可见差异及正常成像解释。',
-                observation='可见蓝色主体表面', applicable_rule='主体外观判据', normal_alternative='正常成像变化',
-                label_relation='undetermined', proposed_slice=[],
-                basis=[dict(text='按独立比较图核对主体外观', evidence_ids=refs,
-                    knowledge_check_ids=[check['check_id'] for check in frozen['knowledge']['checks']],
-                    consistency_result_ids=[result['result_id'] for result in frozen['consistency']['results']])]))
-        elif schema['title'] == 'JointAnalysis':
-            metadata=[json.loads(part['text'].split('视觉证据：')[1]) for part in body['messages'][0]['content'] if part['type']=='text' and part['text'].startswith('视觉证据：')]
-            answer={**responses['VlmResult'],'global_view':responses['GlobalAnalysis'],
-                    'region_observations':[{**responses['ViewAnalysis'],'region_index':index} for index, image in enumerate(
-                        [image for image in metadata if image['role'] == 'roi' and image['representation'] == 'raw'], 1)]}
-            answer.setdefault('evidence_ids',[image['evidence_id'] for image in metadata])
-            criteria = json.loads(body['messages'][0]['content'][0]['text'].split('冻结知识：')[1].split('\n')[0])
-            answer['check_assessments'] = responses.get('CheckAssessments', [{**responses['ViewAnalysis'], 'check_id': check['check_id'],
-                'status': 'anomaly' if answer['suggested_label'] == 'FAIL' else 'normal' if answer['suggested_label'] == 'PASS' else 'insufficient',
-                'evidence_ids': [metadata[0]['evidence_id']]} for check in criteria['checks']])
-            answer['findings'] = responses.get('Findings', [{
-                **finding_response, 'check_ids': [assessment['check_id']], 'description': assessment['description'],
-                'evidence_ids': [metadata[0]['evidence_id']],
-            } for assessment in answer['check_assessments'] if assessment['status'] == 'anomaly'])
-            answer['resolved_findings'] = responses.get('ResolvedFindings', [])
-        else:
-            answer = dict(responses[schema['title']])
-            if schema['title'] == 'VlmResult':
-                answer.setdefault('evidence_ids', [json.loads(c['text'].split('视觉证据：')[1])['evidence_id'] for c in body['messages'][0]['content'] if c['type']=='text' and c['text'].startswith('视觉证据：')])
-        return httpx.Response(200, json={"choices": [{"message": {"content": json.dumps(answer)}}]})
-    client = httpx.Client(transport=httpx.MockTransport(respond))
-    from iad_core.knowledge.service import KnowledgeService
-    from iad_core.workbench.vision import VlmClient
-    db, _, config = dataset
-    mining = KnowledgeService(db, VlmClient(http_client=client))
-    from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningPromptConfiguration
-    job = mining.start(request=selected_group(mining.db, config.dataset.id, kind='normal'),
-        mining_prompt=FrozenMiningPrompt.capture(MiningPromptConfiguration(objective='观察实际外观',directions=[])), model_name='test-mllm')
-    mining.wait(job['run_id'], 5)
-    assert mining.status(job['run_id'])['status'] == 'COMPLETED', mining.status(job['run_id'])
-    mining.jobs.close()
-    return client, bodies, responses
+def native_knowledge_versions(agent_jobs):
+    from uuid import uuid4
+    from iad_core.analysis.commits import AnalysisCommits
+    from iad_core.analysis.evidence import AnalysisEvidence
+    from iad_core.analysis.publications import AnalysisPublications
+    from iad_core.knowledge.instructions import default_directions
+    from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
+    from iad_core.workbench.module_settings import ModuleSettings
+    jobs, dataset_id, role = agent_jobs
+    ModuleSettings(jobs.db).save({'module':'knowledge', 'expected_revision':0,
+        'settings':{'model':{'provider_id':'swift-30003','model_id':'fixture'},'batch_size':4}})
+    publications = []
+    for _ in range(2):
+        started = jobs.start(dict(submission_id=str(uuid4()),analysis_kind='knowledge',dataset_ids=[dataset_id],
+            mining_prompt=dict(objective='逐登记核对边缘。',instruction='保留整图、局部与反例。',
+                directions=[default_directions()[0].model_dump(mode='json')])),agent=role)
+        run_id = started['run_id']
+        context = jobs.context(run_id)
+        pages = [AnalysisEvidence(jobs).read(run_id,{'sample_id':target.sample_id}) for target in context.round.targets]
+        call = NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:00:00Z',
+            request={'fixture':'knowledge review and evidence projection'})
+        ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=context.session_id,attempt=1)
+        AnalysisEvidence(jobs).delivered(run_id,call.call_id,[item.image.evidence_id for page in pages for item in page.images])
+        ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,
+            finished_at='2026-11-09T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
+        support = [page.images[0].image.evidence_id for page in pages[:3]]
+        counter = [pages[-1].images[0].image.evidence_id]
+        named = {page.sample_id.split(':',1)[1]:page.images[0].image.evidence_id for page in pages}
+        check = dict(check_id='C1',title='孔位关系',subject='主体',location='边缘',criterion='可见连续外轮廓。',
+            allowed_variations=[],limitations=['当前视角。'],status='conflicted',support_evidence_ids=support,
+            counter_evidence_ids=counter,direction_refs=['D1'],dataset_ids=[dataset_id],
+            key_evidence=[dict(evidence_id=named['normal.png'],role='support',reason='展示主体轮廓。'),
+                dict(evidence_id=named['normal2.png'],role='support',reason='展示另一亮度下的轮廓。'),
+                dict(evidence_id=counter[0],role='counter',reason='展示反例位置。')])
+        AnalysisCommits(jobs).accept(run_id,dict(commit_key='observed',base_revision=0,round_id=1,
+            observations=[dict(sample_id=page.sample_id,dataset_id=dataset_id,description='本登记可见边缘。',
+                evidence_ids=[item.image.evidence_id for item in page.images],
+                directions=[dict(direction_ref='D1',status='applicable',reason='边缘可观察。')]) for page in pages],
+            checks=[check],summary='保留支持与反例。',limitations=['当前视角。'],unresolved_questions=[]))
+        jobs.jobs.finish_external(run_id)
+        publications.append(AnalysisPublications(jobs.db).publish(run_id))
+    return jobs.db, dataset_id, publications
+
+
+@pytest.fixture
+def native_audit(knowledge_dataset):
+    from uuid import uuid4
+    from iad_core.audit.jobs import AuditAgentJobs
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+    from iad_core.workbench.module_settings import ModuleSettings
+    from iad_core.workbench.runtime import WorkbenchRuntime
+    db, config = knowledge_dataset
+    runtime = WorkbenchRuntime(db)
+    checks = ConsistencyAgentJobs(runtime)
+    upstream = checks.start({'submission_id':str(uuid4()), 'dataset_ids':[config.dataset.id], 'mode':'exact'})
+    for anchor in checks.anchors(upstream['run_id']):
+        checks.session_created(upstream['run_id'], anchor.anchor_id)
+        assert checks.retrieve(upstream['run_id'], anchor.anchor_id).candidates == []
+        checks.submit_empty(upstream['run_id'], anchor.anchor_id)
+    runtime.jobs.finish_external(upstream['run_id'])
+    ModuleSettings(db).save({'module':'audit', 'expected_revision':0,
+        'settings':{'model':{'provider_id':'swift-30003', 'model_id':'fixture'}, 'concurrency':2}})
+    role = {'profile':{'endpoint':'http://127.0.0.1:30003/v1/chat/completions', 'capacity_mode':'vllm_tokenize',
+        'provider_id':'swift-30003', 'model_id':'fixture', 'context_tokens':262144, 'max_output_tokens':4096},
+        'native_profile':{'api':'openai-completions', 'baseURL':'http://127.0.0.1:30003/v1'}, 'input_modalities':['text','image']}
+    try:
+        yield AuditAgentJobs(runtime), config.dataset.id, upstream['run_id'], role
+    finally:
+        runtime.close()
+
+
+@pytest.fixture
+def observed_claim(agent_jobs, request):
+    from iad_core.analysis.commits import AnalysisCommits
+    from iad_core.analysis.evidence import AnalysisEvidence
+    from iad_core.knowledge.instructions import default_directions
+    from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
+    from iad_core.workbench.module_settings import ModuleSettings
+    from uuid import uuid4
+    jobs, dataset_id, role = agent_jobs
+    ModuleSettings(jobs.db).save(dict(module='knowledge', expected_revision=0,
+        settings=dict(model=dict(provider_id='swift-30003', model_id='fixture'), batch_size=1)))
+    started = jobs.start(dict(submission_id=str(uuid4()), analysis_kind='knowledge', dataset_ids=[dataset_id],
+        mining_prompt=dict(objective='核对主体边界。', instruction='逐登记核对相同主张。',
+            directions=[default_directions()[0].model_dump(mode='json')])), agent=role)
+    run_id = started['run_id']
+    evidence, commits = AnalysisEvidence(jobs), AnalysisCommits(jobs)
+    whole_ids = []
+    case = getattr(request, 'param', 4)
+    for index in range(4 if case == 'empty' else case):
+        context = jobs.context(run_id)
+        target = context.round.targets[0]
+        page = evidence.read(run_id, dict(sample_id=target.sample_id))
+        ids = [image.image.evidence_id for image in page.images]
+        whole_ids.append(next(image.image.evidence_id for image in page.images if image.image.is_whole_image))
+        call = NativeModelCallStart(call_id='call_'+uuid4().hex, started_at='2026-11-09T12:00:00Z',
+            request={'fixture':'actual full image and required annotations'})
+        ModelCalls(jobs.db).start_native(run_id, call, sample_id=None, session_id=context.session_id, attempt=1)
+        evidence.delivered(run_id, call.call_id, ids)
+        ModelCalls(jobs.db).finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
+            finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
+        check = dict(check_id='edge', title='主体边界连续性', subject='主体', location='外缘',
+            criterion='主体外缘可辨时，沿外缘复核轮廓是否连续。', allowed_variations=[], limitations=[],
+            status='supported', support_evidence_ids=list(whole_ids), counter_evidence_ids=[],
+            direction_refs=['D1'], dataset_ids=[dataset_id])
+        submission = dict(commit_key='observed-'+str(index), base_revision=context.revision,
+            round_id=context.round.round_id, summary='主体边界可沿原图复核。', limitations=[], unresolved_questions=[],
+            observations=[dict(sample_id=page.sample_id, dataset_id=dataset_id, description='主体外缘在原图中可辨。',
+                evidence_ids=ids, directions=[dict(direction_ref='D1', status='applicable', reason='主体外缘可见。')])],
+            checks=[] if case == 'empty' else [check])
+        commits.accept(run_id, submission)
+    return jobs, run_id, submission, whole_ids

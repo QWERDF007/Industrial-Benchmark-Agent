@@ -42,6 +42,8 @@ export const reviewLabel = (decision: string) => reviewLabels[decision as Decisi
 export const modelLabels: Record<AuditAnalysis["conclusion"]["suggested_label"], string> = { PASS: "无明显异常", FAIL: "发现疑点", UNCERTAIN: "证据不足" };
 
 export const auditEvidenceUrl = (suggestionId: string, image: Pick<VisualEvidence, "evidence_id">) => `/api/iad/evidence/${encodeURIComponent(suggestionId)}/${encodeURIComponent(image.evidence_id)}`;
+export const nativeAuditEvidenceUrl = (runId:string,sampleId:string,image:Pick<VisualEvidence,'evidence_id'>) =>
+  `/api/iad/audit/jobs/${encodeURIComponent(runId)}/samples/${encodeURIComponent(sampleId)}/evidence/${encodeURIComponent(image.evidence_id)}`;
 export const regionSources = { annotation: "Labelme 线索", model: "MLLM 候选", coverage: "细节覆盖" };
 
 export const auditImageIndex = (analysis: AuditAnalysis) => new Map([analysis.overview, ...analysis.regions.map(region => region.image), ...analysis.auxiliary_evidence, ...analysis.reference_evidence].map(image => [image.evidence_id, image] as const));

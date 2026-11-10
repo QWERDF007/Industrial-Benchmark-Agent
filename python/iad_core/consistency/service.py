@@ -94,9 +94,7 @@ class ConsistencyService:
             if checkpoint:
                 checkpoint()
             chunk = requests[offset:offset + limit]
-            scope = ConsistencyScopes(self.db).resolve(first.corpus_scope)
-            if frozen_scope is not None and scope.scope_id != frozen_scope.scope_id:
-                raise ConsistencyError('SOURCE_UNAVAILABLE', 'Frozen retrieval corpus changed; start a new batch')
+            scope = frozen_scope or ConsistencyScopes(self.db).resolve(first.corpus_scope)
             visuals = VisualQueries(self.runtime).search(chunk, scope, owner_id=owner_id, config=encoder,
                 checkpoint=checkpoint, prepare=prepare_query) if first.mode != 'exact' else [None] * len(chunk)
             for request, visual in zip(chunk, visuals):

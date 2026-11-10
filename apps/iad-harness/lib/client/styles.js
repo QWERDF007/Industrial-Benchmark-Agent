@@ -22,7 +22,9 @@ import { pageHeadingStyles } from './styles/page-heading.js';
 import { reportStyles } from './styles/reports.js';
 import { tabStyles } from './styles/tabs.js';
 import { selectStyles } from './styles/selects.js';
+import { layoutStyles } from './styles/layout.js';
 export const workbenchStyles = themeStyles
+    + layoutStyles
     + modelsStyles
     + explorationStyles
     + baseStyles

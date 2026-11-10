@@ -42,7 +42,7 @@ export const datasetsStyles = `
 }
 
 .iad-dataset-form{--iba-dialog-edit-width:740px}
-.iad-manager-search-wrap{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.iad-manager-search-wrap{display:flex;align-items:center;gap:8px;margin-bottom:var(--iad-layout-gap)}
 .iad-manager-search-wrap .search{width:220px;height:var(--iad-control-height)}
 
 .search {

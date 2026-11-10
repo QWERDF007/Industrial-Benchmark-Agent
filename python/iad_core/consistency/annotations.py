@@ -16,7 +16,7 @@ from iad_core.consistency.policy import AnnotationPolicy
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.duplicate.index import PixelIndex
 from iad_core.storage.database import Database
-from iad_core.storage.models import Annotation, QualityStatus
+from iad_core.storage.models import Annotation, AnnotationAvailability, QualityStatus
 from iad_core.consistency.annotation_inventory import AnnotationInventory
 from iad_core.consistency.conflict_categories import ConflictCategory
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
@@ -30,9 +30,16 @@ class AnnotationSet(AnalysisModel):
     quality_status: QualityStatus
     quality_source: str | None
     annotations: list[Annotation]
+    availability: AnnotationAvailability = Field(default_factory=AnnotationAvailability)
+    dataset_format: Literal['labelme', 'folder_classification'] | None = None
     policy: AnnotationPolicy = Field(default_factory=AnnotationPolicy)
     errors: list[str] = Field(default_factory=list)
     annotation_coordinates: Literal['RAW', 'EXIF_AMBIGUOUS', 'UNKNOWN'] = 'RAW'
+
+    @property
+    def supports_absence(self) -> bool:
+        return (self.availability.status in ('VALID_EMPTY', 'VALID_NONEMPTY')
+            and self.policy.annotation_coverage == 'EXHAUSTIVE')
 
     @classmethod
     def capture(cls, db: Database, sample_id: str, connection=None) -> 'AnnotationSet':
@@ -44,14 +51,16 @@ class AnnotationSet(AnalysisModel):
                 raise LookupError('Sample not found')
             if sample.is_excluded:
                 raise ValueError('Excluded sample cannot enter annotation reconciliation')
-            policy = DatasetRegistry(db).get(sample.dataset_id, connection=connection).annotations
+            config = DatasetRegistry(db).get(sample.dataset_id, connection=connection)
+            policy = config.annotations
             pixel = PixelIndex(db).get(sample_id, connection=connection)
             annotations = AnnotationRepository(db).list_by_sample(sample_id, connection=connection)
             errors = [row[0] for row in connection.execute('''SELECT message FROM import_issues
                 WHERE sample_id=? AND upper(issue_type) IN ('ANNOTATION_PARSE_ERROR','INVALID_MASK')''', (sample_id,))]
         return cls(sample_id=sample_id, dataset_id=sample.dataset_id, width=sample.width, height=sample.height,
             quality_status=sample.quality_status, quality_source=sample.quality_source,
-            annotations=annotations, errors=errors,
+            annotations=annotations, errors=errors, availability=sample.annotation_availability,
+            dataset_format=config.dataset.format,
             policy=AnnotationPolicy(**policy.model_dump(include=set(AnnotationPolicy.model_fields))),
             annotation_coordinates=pixel.descriptor.annotation_coordinates if pixel else 'UNKNOWN')
 
@@ -95,7 +104,7 @@ class AnnotationMatcher:
         ignore_regions, masking = domain.ignore_regions, domain.masking
         for issue in domain.issues:
             indices = [issue.index] if issue.index is not None else []
-            facts = {'reason': issue.reason, 'side': ['left', 'right'][issue.side]}
+            facts = {'reason': issue.reason, 'side': ['left', 'right'][issue.side], 'code': issue.code}
             if issue.source_errors:
                 facts['errors'] = issue.source_errors
             difference('ANNOTATION_UNREADABLE', indices if issue.side == 0 else [], indices if issue.side == 1 else [], facts=facts)
@@ -238,7 +247,7 @@ class AnnotationMatcher:
                     difference('AMBIGUOUS_MATCH',[index] if side_index==0 else [],[index] if side_index==1 else [],region,
                         facts={'reason':'Tiny unmatched instance has insufficient geometric evidence'},extra_pending=['Confirm the tiny instance before inferring a missing annotation'])
                     continue
-                suspect=comparable and not invalid[other] and sides[other].policy.annotation_coverage=='EXHAUSTIVE'
+                suspect=comparable and not invalid[other] and sides[other].supports_absence
                 if invalid[other]:
                     difference('ANNOTATION_UNREADABLE',[index] if side_index==0 else [],[index] if side_index==1 else [],region,
                         facts={'reason':'Opposite annotation set is incomplete or unreadable'})

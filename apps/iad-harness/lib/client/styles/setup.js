@@ -2,5 +2,6 @@ export const setupStyles = `.iad-setup {max-width:1040px;min-width:0;padding:24p
 .iad-setup-section {padding:var(--iad-space-6) 0;border-bottom:1px solid var(--iad-border);}
 .iad-setup-section:first-of-type {padding-top:0;}.iad-setup-section:last-child {border:0;}
 .iad-setup-section>h3 {margin:0 0 var(--iad-space-4);}
+.iad-agent-prompts{display:grid;gap:16px;min-width:0}
 .iad-setup-section .iad-info-group {background:transparent;padding:0;margin:0;}
 `;

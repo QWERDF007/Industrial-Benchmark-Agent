@@ -1,9 +1,13 @@
 import {SectionHeading} from './layout/SectionHeading.js';
+import {AnalysisExportButton} from './AnalysisExportButton.js';
+import {AnalysisEvidenceViewer} from './AnalysisEvidenceViewer.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {ExplorationPresetDialog} from './ExplorationPresetDialog.js';
 import {ExplorationSourceDialog} from './ExplorationSourceDialog.js';
 import {PromptDrawer} from './PromptDrawer.js';
+import {AgentPromptEditors} from './AgentPromptEditors.js';
+import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
 import {JobListPanel} from './JobListPanel.js';
 import {Select} from './Select.js';
@@ -13,10 +17,9 @@ import {ThumbnailCard} from "./ThumbnailCard.js";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Dataset, JobSnapshot } from "../../shared/contracts.js";
 import { mediaUrl, message, request } from "../api.js";
-import {useWorkbenchModel} from "../models.js";
 import {useJobs} from "../useJobs.js";
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
-import {jobStatuses} from "../../shared/job-display.js";
+import {formatJobTime,jobStatuses} from "../../shared/job-display.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import {PlusIcon} from "../AuditIcon.js";
 import { IconButton } from "./IconButton.js";
@@ -27,8 +30,10 @@ import { FullscreenViewer, type FullscreenViewerItem } from "./FullscreenViewer.
 import { Pagination, IBA_JOBS_PAGE_SIZE } from "./Pagination.js";
 import { ClearFilterButton } from "./CommonFilterControls.js";
 
-import type {ExplorationResults, DirectionRemoval, ExplorationPromptPreset, ExplorationWorkflowStart} from "../../shared/domain.generated.js";
+import type {AnalysisPublicationView, DirectionRemoval, ExplorationPromptPreset, ExplorationAgentStart} from "../../shared/domain.generated.js";
+import {useModuleSettings} from '../useModuleSettings.js';
 import {useResource} from "../useResource.js";
+import {useWorkspace} from '../workspace.js';
 import {explorationCandidates,explorationDirections,type ExplorationCandidate} from "../exploration-view.js";
 
 function expElapsed(sec: number): string {
@@ -44,7 +49,11 @@ export function ExplorationPage({
   dataset: Dataset;
   refreshRevision: number;
 }) {
-  const model=useWorkbenchModel();
+  const {workspace}=useWorkspace();
+  const route=workspace.view('industrial-exploration');
+  const selectedJobId=route.job;
+  const selectJob=(job:string)=>workspace.updateView('industrial-exploration',{job,version:'',selected:''});
+  const configuration=useModuleSettings('exploration');
   const catalog=useDatasetCatalog();
   const datasets=catalog.data?.datasets || [dataset], groups=catalog.data?.groups || [];
   const initialParentId = getDatasetGroupId(dataset);
@@ -61,7 +70,6 @@ export function ExplorationPage({
   const [jobFilter, setJobFilter] = useState("全部");
   const [jobSearch, setJobSearch] = useState("");
   const [statusJobId, setStatusJobId] = useState<string | null>(null);
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [jobPage, setJobPage] = useState<number>(1);
   const [refreshTick, setRefreshTick] = useState(0);
 
@@ -76,21 +84,23 @@ export function ExplorationPage({
   const [presets, setPresets] = useState<ExplorationPromptPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.exploration);
   const [originalPrompt, setOriginalPrompt] = useState("");
 
   // Modals
   const [modal, setModal] = useState<"" | "source" | "save" | "direction" | "prompt">("");
   const [promptText, setPromptText] = useState<string | null>(null);
+  const [promptSystemText,setPromptSystemText]=useState<string|null>(null);
   const [viewingDirection, setViewingDirection] = useState<DirectionItem | null>(null);
 
   // Direction detail interaction
-  const [highlightRef, setHighlightRef] = useState<string | null>(null);
 
   // Fullscreen Viewer state (reusing shared FullscreenViewer.tsx)
   const [viewerData, setViewerData] = useState<{
     items: FullscreenViewerItem[];
     currentIndex: number;
   } | null>(null);
+  const [analysisImage,setAnalysisImage]=useState<{versionId:string;source:FullscreenViewerItem&{sampleId:string}}|null>(null);
 
 
 
@@ -100,7 +110,7 @@ export function ExplorationPage({
   const sampleById=useMemo(()=>new Map(samplePool.map(item=>[item.id,item])),[samplePool]);
 
   const progress=useCallback(()=>setRefreshTick(value=>value+1),[]);
-  const jobQuery=useJobs('exploration',selectedChildIds,progress,'',refreshRevision);
+  const jobQuery=useJobs('exploration',selectedChildIds,progress,selectedJobId,refreshRevision);
   const jobs=jobQuery.jobs;
   const refreshJobs=()=>{jobQuery.refresh();progress();};
 
@@ -167,44 +177,55 @@ export function ExplorationPage({
   const selectedJob: JobSnapshot | null = useMemo(() => {
     if (!shownJobs.length) return null;
     if (selectedJobId) {
-      const match = shownJobs.find((j: JobSnapshot) => j.root_run_id === selectedJobId || j.run_id === selectedJobId);
+      const match = filteredJobs.find((j: JobSnapshot) => j.root_run_id === selectedJobId || j.run_id === selectedJobId);
       if (match) return match;
     }
     return shownJobs[0] || null;
-  }, [shownJobs, selectedJobId]);
+  }, [shownJobs, filteredJobs, selectedJobId]);
 
-  const selectedSnapshot=selectedJob;
-  const versionKey=(selectedSnapshot?.dataset_results||[]).map(result=>result.exploration_version_id||'').join('|');
-  const results=useResource<ExplorationResults>(selectedJob?`/analysis/results/${encodeURIComponent(selectedJob.run_id)}`:null,`${versionKey}|${refreshTick}`);
-  const snapshots=useMemo(()=>(results.data?.snapshots||[]).filter(snapshot=>selectedChildIds.includes(snapshot.dataset_id)),
-    [results.data,selectedChildIds]);
-  const selectedJobDirections=useMemo(()=>explorationDirections(snapshots,results.data?.removed_direction_ids),[snapshots,results.data]);
-  const selectedJobLimitations=snapshots.flatMap(snapshot=>snapshot.limitations);
-  const selectedJobSummary=snapshots.map(snapshot=>snapshot.summary).join('\n');
+  useEffect(()=>{
+    if(!selectedJobId)return;
+    const index=filteredJobs.findIndex(job=>job.run_id===selectedJobId||job.root_run_id===selectedJobId);
+    if(index>=0)setJobPage(Math.floor(index/IBA_JOBS_PAGE_SIZE)+1);
+  },[selectedJobId,filteredJobs]);
+  const versionId=route.job===selectedJob?.run_id&&route.version?route.version:selectedJob?.analysis_version_id;
+  const results=useResource<AnalysisPublicationView>(versionId?`/analysis/publications/${encodeURIComponent(versionId)}`:null,refreshTick);
+  const publication=results.data;
+  const selectedJobDirections=useMemo(()=>explorationDirections(publication,route.selected),[publication,route.selected]);
+  const selectedJobLimitations=publication?.catalog.limitations||[];
+  const selectedJobSummary=publication?.catalog.summary||'';
+  useEffect(()=>{
+    if(!route.selected||!publication)return;
+    const direction=selectedJobDirections.find(item=>item.id===route.selected);
+    if(direction){setViewingDirection(direction);setModal('direction');}
+  },[route.selected,publication?.version_id]);
 
   const handleJobPageChange = (newPage: number) => {
     const targetPage = Math.max(1, Math.min(jobPages, newPage));
     setJobPage(targetPage);
     const firstOnPage = filteredJobs[(targetPage - 1) * IBA_JOBS_PAGE_SIZE];
     if (firstOnPage) {
-      setSelectedJobId(firstOnPage.root_run_id);
+      selectJob(firstOnPage.root_run_id);
     }
   };
 
   const runningJob = jobs.find((j) => j.status === "RUNNING" || j.status === "PENDING");
   const runReason=runningJob ? '已有探索作业正在运行' : !selectedChildIds.length ? '请选择子数据集'
+    : !normalSelected.length && !defectSelected.length ? '至少选择一张样例图像'
+    : normalSelected.some(id=>defectSelected.includes(id)) ? '同一图像不能同时作为良品和异常样例'
     : ![...normalSelected,...defectSelected].every(id=>sampleById.has(id)) ? '图像不可用，请重新选择'
-    : !model.ready ? model.loading ? '正在读取模型' : '请先配置工作台模型'
-    : !prompt.trim() ? '请填写探索提示词' : '';
+    : !configuration.settings?.model ? configuration.loading ? '正在读取模型' : '请先配置方向探索分析模型'
+    : !systemPrompt.trim() ? '请填写系统提示词' : !prompt.trim() ? '请填写用户提示词' : '';
   const canRun = !submitting && !runReason;
 
-  const resetSamples = () => {
+  const resetScope = () => {
     setSamplePool([]);setNormalSelected([]);setDefectSelected([]);setSamplesLoaded(false);setSamplesLoading(false);
+    selectJob('');
   };
   const openSetup = async (copy?:JobSnapshot) => {
     setSubmitting(true);setError('');
     try {
-      const frozen=copy ? await request<JobSnapshot & {request:{submission:ExplorationWorkflowStart}}>(`/analysis/node/${encodeURIComponent(copy.root_run_id)}`) : null;
+      const frozen=copy ? await request<JobSnapshot & {request:{submission:ExplorationAgentStart}}>(`/analysis/node/${encodeURIComponent(copy.root_run_id)}`) : null;
       const original=frozen?.request.submission;
       const ids=original?.dataset_ids || selectedChildIds;
       const normals=original?.normal_images || [],defects=original?.defect_images || [];
@@ -212,6 +233,7 @@ export function ExplorationPage({
       setSelectedChildIds(ids);setSamplePool(pool);setSamplesLoaded(pool.length>0);
       setNormalSelected(normals);setDefectSelected(defects);
       const frozenPrompt=original?.prompt || copy?.exploration_prompt;
+      setSystemPrompt(copy?.system_prompt ?? promptDefaults.system.exploration);
       if(frozenPrompt){setPrompt(frozenPrompt.text);setOriginalPrompt(frozenPrompt.text);setSelectedPresetId(frozenPrompt.preset_id || '');}
       setView('setup');
     } catch(error){setError(message(error));} finally {setSubmitting(false);}
@@ -219,7 +241,7 @@ export function ExplorationPage({
 
   // Handle parent group change
   const handleParentChange = (newParentId: string) => {
-    resetSamples();
+    resetScope();
     setSelectedParentId(newParentId);
     const children = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
     setSelectedChildIds(children.map((c) => c.dataset_id));
@@ -228,7 +250,7 @@ export function ExplorationPage({
 
   // Toggle child dataset selection
   const handleChildToggle = (cid: string) => {
-    resetSamples();
+    resetScope();
     setSelectedChildIds((prev) =>
       prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]
     );
@@ -249,33 +271,29 @@ export function ExplorationPage({
     if(!canRun)return;
     setSubmitting(true);setError('');
     try {
-      const key=JSON.stringify([selectedChildIds,normalSelected,defectSelected,prompt,selectedPresetId]);
+      const key=JSON.stringify([selectedChildIds,normalSelected,defectSelected,systemPrompt,prompt,selectedPresetId]);
       if(submission.current?.key!==key)submission.current={key,id:uuid()};
       const res=await request<JobSnapshot>('/analysis/start',{submission_id:submission.current.id,analysis_kind:'exploration',
-        dataset_ids:selectedChildIds,normal_images:normalSelected,defect_images:defectSelected,
+        dataset_ids:selectedChildIds,normal_images:normalSelected,defect_images:defectSelected,system_prompt:systemPrompt,
         prompt:{preset_id:selectedPresetId,preset_name:presets.find(preset=>preset.id===selectedPresetId)?.name||'自定义',text:prompt}});
-      setSelectedJobId(res.run_id);setJobPage(1);refreshJobs();setView('jobs');submission.current=null;
+      selectJob(res.run_id);setJobPage(1);refreshJobs();setView('jobs');submission.current=null;
     } catch(error){setError(message(error));} finally {setSubmitting(false);}
   };
 
-  const currentEvidence=useMemo(()=>{
-    const all=viewingDirection?.evidences||[];
-    return {normals:all.filter(item=>item.kind==='normal'),defects:all.filter(item=>item.kind==='defect'),all};
-  },[viewingDirection]);
-
-  // Scroll evidence into view when hovering or clicking chips
-  const handleChipFocus = (ref: string) => {
-    setHighlightRef(ref);
-  };
+  const currentEvidence=viewingDirection?.evidences||[];
 
   // Open FullscreenViewer on evidence click
   const handleOpenEvidenceFullscreen = (clickedRef: string) => {
-    const allItems: FullscreenViewerItem[] = currentEvidence.all.map((item) => ({
+    const selected=currentEvidence.find(item=>item.ref===clickedRef);
+    if(selected&&viewingDirection?.versionId.startsWith('analysis_version_')){
+      setAnalysisImage({versionId:viewingDirection.versionId,source:{id:selected.evidenceId,sampleId:selected.sampleId,title:selected.filename,imageUrl:selected.fullUrl}});return;
+    }
+    const allItems: FullscreenViewerItem[] = currentEvidence.map((item) => ({
       id: item.ref,sampleId:item.sampleId,
-      title: `${item.label} ${item.filename}`,
+      title: item.filename,
       imageUrl: item.fullUrl,
     }));
-    const index = currentEvidence.all.findIndex((item) => item.ref === clickedRef);
+    const index = currentEvidence.findIndex((item) => item.ref === clickedRef);
     if(index<0){setError('图像证据不可用');return;}
     setViewerData({
       items: allItems,
@@ -413,15 +431,8 @@ export function ExplorationPage({
                 另存为预设
               </Button>
             </div>
-            <label className="exp-input">
-              提示词正文
-              <textarea
-                id="exp-prompt"
-                rows={7}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-              />
-            </label>
+            <AgentPromptEditors id="exp-prompt" system={systemPrompt} user={prompt}
+              onSystemChange={setSystemPrompt} onUserChange={setPrompt} disabled={submitting}/>
           </section>
 
           {/* Step 3: Confirm and Start */}
@@ -432,7 +443,7 @@ export function ExplorationPage({
             <div className="exp-brief">
               <span>所选子数据集 {selectedChildIds.length} 个</span>
               <span>优先样例：良品 {normalSelected.length}，异常 {defectSelected.length}</span>
-              <span>模型 {model.view?.selection?.model_id || '未配置'}</span>
+              <span>模型 {configuration.settings?.model?.model_id || '未配置'}</span>
               <span>执行：所选子集全量分批迭代</span>
             </div>
             <div className="exp-summarybar">
@@ -454,7 +465,7 @@ export function ExplorationPage({
         /* Unified Workspace Layout */
         <div className="exp-unified-layout">
           {/* Upper Panel: 探索作业 */}
-          <JobListPanel title="探索作业" className={`exp-job-list ${jobPages > 1 ? 'iba-job-multipage' : ''}`} actions={jobs.length>0&&
+          <JobListPanel title="探索作业" className="exp-job-list" actions={jobs.length>0&&
               <div className="exp-job-list-actions">
                 <label className="exp-input exp-filter-control" aria-label="搜索作业">
                   <input
@@ -500,8 +511,8 @@ export function ExplorationPage({
 
             {filteredJobs.length ? (
               <>
-                <div className="exp-job-table-wrap" role="region" aria-label="探索作业列表" tabIndex={0}>
-                  <table className="exp-job-table">
+                <div className="exp-job-table-wrap iad-job-table-scroll" role="region" aria-label="探索作业列表" tabIndex={0}>
+                  <table className="exp-job-table iad-job-table-grid">
                     <thead>
                       <tr>
                         <th>作业 ID</th>
@@ -525,15 +536,15 @@ export function ExplorationPage({
                           aria-selected={selectedJob?.run_id === j.run_id}
                           tabIndex={0}
                           aria-label={`选择作业 ${j.run_id}`}
-                          onClick={() => setSelectedJobId(j.root_run_id)}
-                          onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='Enter'||event.key===' ')){event.preventDefault();setSelectedJobId(j.root_run_id);}}}
+                          onClick={() => selectJob(j.root_run_id)}
+                          onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='Enter'||event.key===' ')){event.preventDefault();selectJob(j.root_run_id);}}}
                         >
                           <td>
                             <strong className="exp-row-title">{j.run_id}</strong>
                           </td>
                           <td><JobStatusButton job={j} onClick={()=>setStatusJobId(j.root_run_id)} /></td>
                           <td><div className="exp-job-dataset" title={datasetNames}><span className="exp-job-dataset-name">{datasetNames}</span></div></td>
-                          <td className="exp-job-time">{new Date(j.submitted_at).toLocaleString('zh-CN',{hour12:false})}</td>
+                          <td className="exp-job-time">{formatJobTime(j.submitted_at)}</td>
                           <td className="exp-job-duration">
                             {j.status === "PENDING" ? "—" : expElapsed(elapsed)}
                           </td>
@@ -544,6 +555,7 @@ export function ExplorationPage({
                                 disabled={!!runningJob||submitting} onClick={()=>void openSetup(j)} />}
                               <IconButton icon="prompt" label="查看提示词" title="查看提示词" data-exp="show-prompt" data-id={j.run_id} onClick={() => {
                                   setPromptText(j.exploration_prompt?.text||'');
+                                  setPromptSystemText(j.system_prompt||null);
                                   setModal("prompt");
                                 }} />
                               <DeleteAction title="删除探索作业" name={j.run_id} confirmLabel="删除作业" confirmation={<>确定删除作业 {j.run_id} 吗？</>} description="删除后不再显示该作业及其探索结果。" disabled={j.status === 'RUNNING' || j.status === 'PENDING'}
@@ -582,15 +594,16 @@ export function ExplorationPage({
                 当前没有探索结果
               </div>
             </section>
-          ) : ['PENDING','RUNNING'].includes(selectedJob.status) ? (
+          ) : !publication && ['PENDING','RUNNING'].includes(selectedJob.status) ? (
             <section className="exp-panel exp-selected-result" aria-label="探索结果"><SectionHeading title="探索结果" />
               <p className="iad-result-empty" role="status">当前作业没有已发布结果</p></section>
-          ) : ['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status) ? (
+          ) : !publication && ['FAILED','CANCELLED','INTERRUPTED'].includes(selectedJob.status) ? (
             <section className="exp-panel exp-selected-result" aria-label="探索结果"><SectionHeading title="探索结果" />
               <p className="iad-result-empty" role="status">当前作业没有已发布结果</p></section>
           ) : (
             <section className="exp-panel exp-selected-result" aria-label="所选作业的探索结果">
-              <SectionHeading title="探索结果"><span className="exp-selected-sub">{selectedJob.run_id}</span></SectionHeading>
+              <SectionHeading title="探索结果"><span className="exp-selected-sub">{selectedJob.run_id}</span>
+                {publication&&<AnalysisExportButton versionId={publication.version_id}/>}</SectionHeading>
               <div className="exp-result-content">
               {selectedJobSummary && <p className="exp-result-summary">{selectedJobSummary}</p>}
               {selectedJobDirections.length > 0 ? (
@@ -671,7 +684,7 @@ export function ExplorationPage({
 
             {/* Prompt Drawer */}
       {modal === "prompt" && promptText !== null && <PromptDrawer title="探索提示词"
-        text={promptText || '本次作业未记录提示词正文。'} onClose={()=>setModal('')} />}
+        text={promptText || '本次作业未记录提示词正文。'} systemText={promptSystemText} onClose={()=>setModal('')} />}
 
       {modal === 'save' && <ExplorationPresetDialog text={prompt} onClose={()=>setModal('')} onSaved={saved=>{
         setPresets(values=>[...values,saved]);setSelectedPresetId(saved.id);setOriginalPrompt(saved.text);setModal('');
@@ -684,16 +697,13 @@ export function ExplorationPage({
       {modal === "direction" && viewingDirection && (
         <DirectionDetailDialog
           direction={viewingDirection}
-          evidence={currentEvidence}
-          highlightRef={highlightRef}
-          onHighlightRef={setHighlightRef}
-          onChipFocus={handleChipFocus}
           onOpenFullscreen={handleOpenEvidenceFullscreen}
-          onClose={() => {setModal("");setViewingDirection(null);}}
+          onClose={() => {setModal("");setViewingDirection(null);workspace.updateView('industrial-exploration',{selected:''});}}
         />
       )}
 
       {/* Fullscreen Viewer (reused from FullscreenViewer.tsx) */}
+      {analysisImage&&<AnalysisEvidenceViewer {...analysisImage} onClose={()=>setAnalysisImage(null)}/>}
       {viewerData && (
         <FullscreenViewer
           open={true}

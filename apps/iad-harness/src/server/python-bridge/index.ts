@@ -1,6 +1,7 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import {createInterface} from "node:readline";
 import {queryOperations} from "../../shared/execution.generated.js";
 
 const queryOperationNames = new Set<string>(queryOperations);
@@ -74,7 +75,6 @@ class PythonWorker {
 
   private worker: ChildProcess | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
-  private stdoutAccum = "";
   private stderrAccum = "";
 
   constructor(config: PythonBridgeConfig, private readonly role: "workbench" | "query") {
@@ -103,43 +103,35 @@ class PythonWorker {
       stdio: ["pipe", "pipe", "pipe"],
     });
 
-    this.stdoutAccum = "";
     this.stderrAccum = "";
 
-    child.stdout.setEncoding("utf8");
-    child.stdout.on("data", (chunk: string) => {
-      this.stdoutAccum += chunk;
-      const lines = this.stdoutAccum.split("\n");
-      this.stdoutAccum = lines.pop() || "";
+    createInterface({input:child.stdout,crlfDelay:Infinity}).on("line", (line: string) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+      try {
+        const parsed = JSON.parse(trimmed);
+        const reqId = parsed.request_id;
+        if (!reqId) return;
+        const pending = this.pendingRequests.get(reqId);
+        if (!pending) return;
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const parsed = JSON.parse(trimmed);
-          const reqId = parsed.request_id;
-          if (!reqId) continue;
-          const pending = this.pendingRequests.get(reqId);
-          if (!pending) continue;
-
-          if (parsed.event === "progress") {
-            pending.onProgress?.(parsed);
-          } else if (parsed.event === "result") {
-            if (pending.timer) clearTimeout(pending.timer);
-            this.pendingRequests.delete(reqId);
-            pending.resolve(parsed.data !== undefined ? parsed.data : parsed);
-          } else if (parsed.event === "error") {
-            if (pending.timer) clearTimeout(pending.timer);
-            this.pendingRequests.delete(reqId);
-            const errPayload = parsed.error || {};
-            const err = new Error(errPayload.message || "Python bridge error");
-            (err as any).code = errPayload.code;
-            (err as any).details = errPayload.details;
-            pending.reject(err);
-          }
-        } catch {
-          // ignore non-json line
+        if (parsed.event === "progress") {
+          pending.onProgress?.(parsed);
+        } else if (parsed.event === "result") {
+          if (pending.timer) clearTimeout(pending.timer);
+          this.pendingRequests.delete(reqId);
+          pending.resolve(parsed.data !== undefined ? parsed.data : parsed);
+        } else if (parsed.event === "error") {
+          if (pending.timer) clearTimeout(pending.timer);
+          this.pendingRequests.delete(reqId);
+          const errPayload = parsed.error || {};
+          const err = new Error(errPayload.message || "Python bridge error");
+          (err as any).code = errPayload.code;
+          (err as any).details = errPayload.details;
+          pending.reject(err);
         }
+      } catch {
+        // ignore non-json line
       }
     });
 

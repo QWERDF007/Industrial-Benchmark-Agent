@@ -1,13 +1,13 @@
-import type { Annotation, AuditAnalysis, KnowledgeSnapshot, AuditStart, DatasetReport as Report, FolderRule, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
+import type { Annotation, AuditAnalysis, AnalysisPublicationView, AuditAgentStart, DatasetReport as Report, FolderRule, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
 export type { Annotation, ReviewDecisionRecord, ReviewSubmission } from "./domain.generated.js";
 export type { ReviewHistoryQuery, ReviewHistoryPage } from "./domain.generated.js";
 export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnalysis, JointAnalysis, SynthesisStep, ViewAnalysis, KnowledgeSnapshot, JobRetry, DatasetImport as DatasetImportRequest, LabelmeImport, FolderClassificationImport, FolderRule, FolderPreview, FolderPreviewItem, ArchiveInspection, DatasetReport as Report } from "./domain.generated.js";
-export type KnowledgeSummary = Omit<KnowledgeSnapshot, "mining_steps" | "verification_steps">;
+export type { AnalysisPublicationView } from "./domain.generated.js";
 export type { KnowledgeCheck, KnowledgeCorrection } from "./domain.generated.js";
 export type { KnowledgeQuery, KnowledgeFreshness } from "./domain.generated.js";
 export type { JobView as JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
 export type { InspectionReference, InspectionSnapshot } from "./domain.generated.js";
-export type { KnowledgeVersion, KnowledgeSourcePage, MiningStart as KnowledgeGroup, MiningRequest as KnowledgeStartRequest } from "./domain.generated.js";
+export type { KnowledgeVersion, KnowledgeSourcePage } from "./domain.generated.js";
 export type { ScanResult } from "./domain.generated.js";
 export type { ImageRetrieve, RetrievalPage, RetrievalGroup, RetrievalMember, RetrievalBranchPage, RetrievalOrigin, TemporaryImageRef } from "./domain.generated.js";
 export type {ConsistencyCompare,ConsistencyResult,EvidenceBundle,ArtifactRef} from './domain.generated.js';
@@ -58,7 +58,7 @@ export interface SampleIdentity {
   task_id: string;
   dataset_id: string;
   relative_path: string;
-  quality_status: string;
+  quality_status: import('./domain.generated.js').Sample['quality_status'];
   quality_source?: string;
   width: number;
   height: number;
@@ -76,7 +76,7 @@ export interface Sample extends SampleIdentity {
 export interface SamplePage { items: Sample[]; total: number }
 export interface SampleDetail {
   consistency: import('./domain.generated.js').AuditConsistencyView | null;
-  knowledge: KnowledgeSummary | null;
+  knowledge: AnalysisPublicationView | null;
   sample: SampleIdentity;
   annotations: Annotation[];
   technical_issues: Array<{ issue_type: string; severity: string; message: string }>;
@@ -87,4 +87,4 @@ export interface SampleDetail {
   review_history: ReviewDecisionRecord[];
 }
 export interface DirectoryListing { path: string; parent: string; directories: Array<{ name: string; path: string }>; file_counts: Record<string, number>; files: Array<{name: string; path: string}>; total_files: number; next_file_offset: number | null }
-export type AuditStartRequest = Omit<AuditStart, "filters"> & { filters?: Partial<Filters> };
+export type AuditStartRequest = AuditAgentStart;

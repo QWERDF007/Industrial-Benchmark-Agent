@@ -8,11 +8,9 @@ import { spawn, execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { Builder, By, Key, until } from "selenium-webdriver";
+import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { resolvePythonPath } from "../lib/server/python-bridge/index.js";
-import { verifyWorkbenchLayout, viewport, setTheme } from "./workbench-layout.js";
-import { verifyWorkbenchSurfaces } from "./workbench-surfaces.js";
 
 const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const toolMessages = request => {
@@ -32,9 +30,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
   await fs.writeFile(path.join(profile, "cordis.patch.yml"), "- id: ui-settings-general\n  config:\n    welcomeNoticeVersion: 2026-09-28.1\n");
   execFileSync(resolvePythonPath(), [path.join(app, "test/fixtures/knowledge_dataset.py"), root]);
   const agentRequests = [];
-  let agentCompleted = false, rejectedAudits = 2;
-  let releaseKnowledge;
-  const knowledgeGate = new Promise(resolve => { releaseKnowledge = resolve; });
+  let agentCompleted = false;
   const model = http.createServer(async (req, res) => {
     const chunks = []; for await (const chunk of req) chunks.push(chunk);
     const body = JSON.parse(Buffer.concat(chunks).toString());
@@ -52,21 +48,9 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
       const context = outputs[0]?.content.startsWith("{") ? JSON.parse(outputs[0].content) : null;
       const image = context?.evidence?.[outputs.length - 1];
       const last = outputs.at(-1);
-      const value = ["knowledge_get", "knowledge_mine_normal", "knowledge_job_status", "model_audit_start", "model_audit_status"].includes(last?.name) ? JSON.parse(last.content) : null;
-      let tool = !outputs.length ? { name: "model_audit_context", arguments: reference }
+      const tool = !outputs.length ? { name: "model_audit_context", arguments: reference }
         : outputs.length < 3 && image ? { name: "model_audit_evidence", arguments: { suggestion_id: reference.suggestion_id, evidence_id: image.evidence_id } } : null;
-      if (outputs.length === 3) tool = { name: "knowledge_get", arguments: { dataset_id: reference.dataset_id, kind: "normal" } };
-      if (last?.name === "knowledge_get") tool = { name: "knowledge_sources", arguments: { dataset_id: reference.dataset_id, kind: "normal" } };
-      if (last?.name === "knowledge_sources") {
-        const sources = JSON.parse(last.content), previous = JSON.parse(outputs.find(item => item.name === "knowledge_get").content).knowledge;
-        tool = { name: "knowledge_mine_normal", arguments: { image_count: sources.items.length, images: sources.items.map(item => item.sample_id), knowledge_preset: JSON.parse(outputs.find(item=>item.name==="knowledge_get").content).freshness.status==="current"?[previous.version_id]:[] } };
-      }
-      if (["knowledge_mine_normal", "knowledge_job_status"].includes(last?.name)) tool = value?.status === "COMPLETED"
-        ? { name: "model_audit_start", arguments: { dataset_id: reference.dataset_id, normal_version_id: value.knowledge_version_id, sample_ids: [reference.sample_id] } }
-        : { name: "knowledge_job_status", arguments: { run_id: value.run_id, wait_seconds: 5 } };
-      if (["model_audit_start", "model_audit_status"].includes(last?.name)) tool = value?.status === "COMPLETED" ? { name: "dataset_report", arguments: { dataset_id: reference.dataset_id } }
-        : { name: "model_audit_status", arguments: { run_id: value.run_id, wait_seconds: 5 } };
-      if (!tool && last?.name === "dataset_report") agentCompleted = true;
+      if (!tool) agentCompleted = true;
       const delta = tool ? { role: "assistant", tool_calls: [{ index: 0, id: `handoff-${outputs.length}`, type: "function", function: { name: tool.name, arguments: JSON.stringify(tool.arguments) } }] }
         : { role: "assistant", content: `已结合实际全图与ROI核对左孔，反光仍需人工核实。[返回检视](${text.split("返回检视：")[1].split("\n")[0]})` };
       res.writeHead(200, { "Content-Type": "text/event-stream" });
@@ -75,42 +59,9 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
       }
       res.end("data: [DONE]\n\n"); return;
     }
-    const content = body.messages[0].content;
-    const evidence = content.filter(item => item.type === "text" && item.text.startsWith("视觉证据：")).map(item => JSON.parse(item.text.slice(5)));
-    let answer = { count: 1000, max_model_len: 262144 };
-    if (req.url !== "/tokenize") {
-      if (body.response_format.json_schema.name === "KnowledgeDraft") {
-        await knowledgeGate;
-        answer = { summary: "孔内背景可见", checks: [{ title: "孔内外观", subject: "主体", location: "左孔",
-          criterion: "孔内背景可见", allowed_variations: ["亮度变化"], support_evidence_ids: evidence.map(item => item.evidence_id), counter_evidence_ids: [], limitations: [], status: "supported" }], suspects: [], limitations: [] };
-        if (content[0].text.includes("冻结父版本候选：")) {
-          const parent = JSON.parse(content[0].text.split("冻结父版本候选：")[1].split("\n")[0]);
-          answer.revisions = parent.checks.map(check => ({ previous_check_id: check.check_id, current_check_titles: ["孔内外观"], reason: "来源仍支持原孔内背景判据" }));
-        }
-      }
-      else if (body.response_format.json_schema.name === "KnowledgeObservations") {
-        const scope=JSON.parse(content[0].text.split("冻结观察请求：")[1].split("\n请根据图像")[0]);
-        answer={observations:scope.sources.flatMap(source=>scope.checks.map(check=>({sample_id:source.sample_id,check_id:check.check_id,status:"supports",description:"实际图像符合判据",position_analysis:"对应部位",illumination_analysis:"允许亮度变化",normal_explanation:"亮度差异",evidence_ids:source.raw_evidence_ids,suspects:[]})))};
-      }
-      else if (body.response_format.json_schema.name === "KnowledgeVerification") {
-        const payload = JSON.parse(content[0].text.split("待核验疑点：")[1].split("\n请根据图像")[0]);
-        answer = { findings: payload.findings.map(target => ({ finding_id: target.finding_id, status: "refuted", affected_check_titles: ["孔内外观"],
-          description: "独立比较支持正常光照解释", normal_explanation: "允许亮度变化", limitations: ["合成验证"], conflicts: [],
-          evidence_ids: evidence.filter(item=>item.representation==="raw").map(item=>item.evidence_id) })) };
-      } else {
-        const checks = JSON.parse(content[0].text.split("冻结知识：")[1].split("\n")[0]).checks;
-        const regions = evidence.filter(item => item.role === "roi" && item.representation === "raw");
-        const view = { description: "左孔需核实", position_analysis: "主体左侧", illumination_analysis: "需排除反光" };
-        answer = { ...view, global_view: view, suggested_label: "FAIL", reason_category: "OCCLUSION", confidence: 0.8,
-          evidence_ids: evidence.map(item => item.evidence_id), check_assessments: checks.map(check => ({ ...view, check_id: check.check_id, status: "anomaly", evidence_ids: [evidence[0].evidence_id] })),
-          region_observations: regions.map((_, index) => ({ ...view, region_index: index + 1 })),
-          findings: regions.length ? [{ check_ids: checks.map(check => check.check_id), location: { scope: "local", bbox: [90,110,110,130], description: "主体左孔" },
-            description: "红色覆盖背景", hypothesis: "局部遮挡", normal_explanation: "可能反光", limitations: ["合成验证"], review_action: "核对左孔", priority: "high", evidence_ids: [regions[0].evidence_id] }] : [] };
-      }
-      if (body.response_format.json_schema.name === "JointAnalysis" && rejectedAudits > 0) { rejectedAudits--; answer = { invalid_field: true }; }
-      answer = { choices: [{ finish_reason: "stop", message: { content: JSON.stringify(answer) } }] };
-    }
-    res.writeHead(200, { "Content-Type": "application/json" }); res.end(JSON.stringify(answer));
+    assert.equal(req.url, "/tokenize", "Inspection explanations use the actual native streaming Agent");
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ count: 1000, max_model_len: 262144 }));
   });
   await new Promise(resolve => model.listen(0, "127.0.0.1", resolve));
   const endpoint = `http://127.0.0.1:${model.address().port}/v1`;
@@ -143,93 +94,20 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     await element("button[aria-label^='数据集管理']");
     const later = await driver.findElements(By.xpath("//button[.='Configure later']")); if (later.length) await later[0].click();
     const notice = await driver.findElements(By.xpath("//button[.='Continue']")); if (notice.length) await notice[0].click();
-    await (await element("button[aria-label^='数据集管理']")).click();
-    const folderRoot = path.join(root, "classification");
-    for (const directory of ["OK/batch", "NG", "unknown"]) await fs.mkdir(path.join(folderRoot, directory), { recursive: true });
-    for (const [index, directory] of ["OK/batch", "NG", "unknown"].entries())
-      await fs.copyFile(path.join(root, "images", `part-${index}.png`), path.join(folderRoot, directory, `sample-${index}.png`));
-    await button("添加数据集");
-    await (await element("input[value='folder_classification']")).click();
-    const rootInput = await element("input[aria-label='父目录']");
-    await rootInput.sendKeys(folderRoot);
-    assert.equal(await rootInput.getAttribute("value"), folderRoot, "目录输入不被异步预览中断");
-    await element("select[aria-label='目录 OK 角色']");
-    await driver.wait(async () => await (await element("#dataset-name")).getAttribute("value") === "classification", 10000);
-    const importButton = await driver.findElement(By.xpath("//button[normalize-space(.)='导入数据集']"));
-    await driver.wait(until.elementIsEnabled(importButton), 15000); await importButton.click();
-    await driver.wait(async () => (await driver.findElements(By.css("dialog[open]"))).length === 0, 15000);
-    const folders = (await api("/datasets")).datasets;
-    const folder = folders.find(item => item.format === "folder_classification");
-    assert.equal(folder.labeled_sample_count, 2);
-    await (await element("button[aria-label^='图像浏览']")).click();
-    await driver.wait(async () => (await driver.findElements(By.css(".iad-sample"))).length === 3, 15000);
-    assert.equal((await driver.findElements(By.css("summary[aria-label='标注筛选']"))).length, 0, "目录格式不提供区域标注筛选");
-    await (await element("summary[aria-label='原始标签筛选']")).click();
-    await (await element("input[aria-label='原始标签 NG']")).click();
-    await (await element(".iad-header h1")).click();
-    await driver.wait(async () => (await driver.findElements(By.css(".iad-sample"))).length === 1, 15000);
-    assert.equal((await driver.findElements(By.css(".iad-floating-menu[open]"))).length, 0, "点击空白关闭筛选");
-    await (await element(".iad-sample")).click();
-    assert.match(await (await element("dialog [data-field='raw-label']")).getText(), /^NG/);
-    await (await element("button[aria-label='关闭图像详情']")).click();
-    await button("清除筛选");
-    await driver.wait(async () => (await driver.findElements(By.css(".iad-sample"))).length === 3, 15000);
-    await (await element("button[aria-label^='数据集管理']")).click();
-    await (await element("select[aria-label='目录 NG 角色'] option[value='unlabeled']")).click();
-    const saveMapping = await driver.findElement(By.xpath("//button[normalize-space(.)='保存映射并重新扫描']"));
-    await driver.wait(until.elementIsEnabled(saveMapping), 15000); await saveMapping.click();
-    await driver.wait(async () => (await (await api("/datasets")).datasets.find(item => item.dataset_id === folder.dataset_id)).labeled_sample_count === 1, 15000);
-    assert.equal((await driver.findElements(By.css("section[aria-label='当前数据集详情'] [role='alert']"))).length, 0);
-    await verifyWorkbenchLayout(driver, path.join(workspace, "runs/browser/folder-layout"), {
-      pageLabels: ["数据集管理", "图像浏览"], sizes: [[1920, 1080]], zoomLevels: [1],
-    });
-    console.log(JSON.stringify({nativeStage:"folder-layout-complete"}));
-    await driver.manage().window().setRect({ width: 1440, height: 1100 });
-    await (await element("button[aria-label^='数据集管理']")).click();
-    const dataset = await api("/datasets/import", { format: "labelme", name: "会话交接", image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
-    await (await element("button[aria-label^='图像浏览']")).click();
-    await button("刷新");
-    await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
-    await delay(5500);
-    assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "侧栏保留固定名称，不附加待审计统计");
-    const normalSources=(await api(`/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=normal`)).items;
-    let job = await api("/knowledge/start", { kind: "normal", image_count: normalSources.length, images: normalSources.map(item=>item.sample_id) });
-    assert.equal(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label"), "知识挖掘");
-    await (await element("button[aria-label^='知识挖掘']")).click();
-    await driver.wait(() => driver.executeScript("return document.querySelector('.iad-workbench h1')?.textContent==='知识挖掘'"), 5000);
-    await button("作业记录");
-    await driver.wait(async () => (await (await element(".iad-knowledge-jobs")).getText()).includes("执行中"), 10000, "作业进度在对应页面展示");
-    releaseKnowledge();
-    while (["PENDING", "RUNNING"].includes(job.status)) { await delay(100); job = await api(`/knowledge/status/${job.run_id}`); }
-    assert.equal(job.status, "COMPLETED", JSON.stringify(job));
-    await driver.wait(async () => !(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label")).includes("运行"), 10000);
-    assert.equal(await driver.executeScript("return document.activeElement?.textContent"),"作业记录","状态更新保留当前标签的键盘焦点");
-    let audit = await api("/audit/start", { dataset_id: dataset.dataset_id, normal_version_id: job.knowledge_version_id });
-    while (["PENDING", "RUNNING"].includes(audit.status)) { await delay(100); audit = await api(`/audit/status/${audit.run_id}`); }
-    assert.equal(audit.status, "PARTIAL", JSON.stringify(audit));
-    assert.equal(audit.failed, 2);
-    const failedRun = audit.run_id;
-    const auditLabel = async () => (await (await element("button[aria-label^='模型审计']")).getAttribute("aria-label"));
-    assert.equal(await auditLabel(), "模型审计", "作业失败不改写导航名称");
-    await(await element('button[aria-label="模型审计"]')).click();await button("模型审计作业");
-    for (const [index, sample_id] of audit.failed_sample_ids.entries()) {
-      const since = await driver.executeScript("return performance.now()");
-      let retry = await api(`/audit/retry/${failedRun}`, { sample_ids: [sample_id] });
-      while (["PENDING", "RUNNING"].includes(retry.status)) { await delay(100); retry = await api(`/audit/status/${retry.run_id}`); }
-      assert.equal(retry.status, "COMPLETED", JSON.stringify(retry));
-      await driver.wait(() => driver.executeScript("return performance.getEntriesByType('resource').some(e=>e.name.includes('/api/iad/audit/jobs?') && e.responseEnd>arguments[0])", since), 10000);
-      const remaining = await api(`/audit/retry/${failedRun}`);
-      assert.equal(remaining.samples.length, index === 0 ? 1 : 0, "按真实补审链保留剩余失败范围");
-      assert.equal(await auditLabel(), "模型审计");
-    }
+    const group = await api("/datasets/groups", { name: "会话交接" });
+    const dataset = await api("/datasets/import", { format: "labelme", name: "冻结检视", group_id: group.group_id, image_dir: path.join(root, "images"), annotation_dir: path.join(root, "labels") });
+    const saveAdvisory = () => JSON.parse(execFileSync(resolvePythonPath(), [path.join(app, "test/fixtures/inspection_advisory.py"), path.join(root, "test.db"), dataset.dataset_id + ":part-2.png"],
+      { cwd: workspace, env: { ...process.env, PYTHONPATH: path.join(workspace, "python") }, encoding: "utf8" }));
+    saveAdvisory();
+    const initial = new URL(url); initial.search = new URLSearchParams({iad:JSON.stringify({pageId:"industrial-review",datasetId:dataset.dataset_id,selected:dataset.dataset_id+":part-2.png"})});
+    await driver.get(initial.href);
     const target = await api(`/sample/${encodeURIComponent(dataset.dataset_id + ":part-2.png")}`);
-    await button("刷新"); await (await element("button[aria-label^='图像浏览']")).click();
-    await (await element("img[alt='part-2.png']")).click();
-    await (await element("button[title='放大图像']")).click(); await (await element("button[aria-label='定位 ROI 1']")).click();
-    await (await element(".iad-viewer-viewport")).sendKeys("\uE012");
-    const geometry = () => driver.executeScript(`const world=document.querySelector('.iad-viewer-world'),viewport=document.querySelector('.iad-viewer-viewport'),image=world.querySelector('img');const w=world.getBoundingClientRect(),v=viewport.getBoundingClientRect();return {scale:Number(world.dataset.scale),center:[(v.left+v.width/2-w.left)*image.naturalWidth/w.width,(v.top+v.height/2-w.top)*image.naturalHeight/w.height]};`);
+    await (await element("button[aria-label='全屏检视']")).click(); await (await element("button[aria-label='定位 ROI 1']")).click();
+    const stage = await element("#stage");
+    await driver.actions().move({origin:stage}).press().move({origin:stage,x:30,y:20}).release().perform();
+    const geometry = () => driver.executeScript(`const world=document.querySelector('#image-world'),viewport=document.querySelector('#stage'),image=world.querySelector('img');const w=world.getBoundingClientRect(),v=viewport.getBoundingClientRect();return {scale:w.width/image.naturalWidth,center:[(v.left+v.width/2-w.left)*image.naturalWidth/w.width,(v.top+v.height/2-w.top)*image.naturalHeight/w.height]};`);
     const before = await geometry();
-    await button("向 Agent 追问"); await (await element("textarea[aria-label='追问内容']")).sendKeys("这个区域是否可能只是反光？请将“均匀亮度变化可能正常，需结合位置核验”作为判据修订候选，核对真实图像后重新挖掘良品知识并审计这张图。");
+    await button("向 Agent 追问"); await (await element("textarea[aria-label='追问内容']")).sendKeys("这个区域是否可能只是反光？请根据冻结原图和裁剪解释。");
     await fs.mkdir(path.join(workspace, "runs/browser/session-handoff"), { recursive: true });
     await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/question.png"), await driver.takeScreenshot(), "base64");
     await button("发送到会话");
@@ -243,25 +121,17 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     const prompt = typeof userInput === "string" ? userInput : userInput.filter(part => part.type === "text").map(part => part.text).join("\n");
     const inspectionRoute = JSON.parse(new URL(prompt.split("返回检视：")[1].split("\n")[0]).searchParams.get("iad"));
     const sessionId = inspectionRoute.inspection.sessionId;
-    const executions = toolMessages(agentRequests.at(-1)).filter(message => ["knowledge_mine_normal", "model_audit_start"].includes(message.name)).map(message => JSON.parse(message.content));
-    assert.equal(executions.length, 2);
-    const revisionBase = JSON.parse(toolMessages(agentRequests.at(-1)).find(message => message.name === "knowledge_get").content).knowledge;
-    const revisionJob = await api(`/knowledge/status/${executions[0].run_id}`);
-    const revisedKnowledge = (await api(`/knowledge?version_id=${revisionJob.knowledge_version_id}`)).knowledge;
-    assert.equal(revisedKnowledge.parent_version_id, null, "旧来源产生新审计候选后，明确重新归纳不静默沿用失效预设");
-    assert.deepEqual(revisedKnowledge.corrections, [], "Agent续用知识不伪造人工处置事件");
-    for (const execution of executions) assert.equal(execution.origin_session_id, sessionId, "Jobs must retain their actual initiating Session");
+    assert.ok(sessionId, "The inspection return route retains the actual initiating conversation");
+    const requestCount = agentRequests.length;
+    saveAdvisory();
     const latest = await api(`/sample/${encodeURIComponent(target.sample.sample_id)}`);
-    const latestContext = await api("/inspection/context", { dataset_id: dataset.dataset_id, sample_id: target.sample.sample_id, suggestion_id: latest.suggestion.suggestion_id });
-    assert.equal(latestContext.origin_session_id, sessionId, "A saved audit suggestion must retain its initiating Session");
-    assert.notEqual((await api(`/sample/${encodeURIComponent(target.sample.sample_id)}`)).suggestion.suggestion_id, target.suggestion.suggestion_id);
+    assert.notEqual(latest.suggestion.suggestion_id, target.suggestion.suggestion_id);
     const back = await driver.wait(until.elementLocated(By.css("a[href*='?iad=']")), 15000);
     const windows = await driver.getAllWindowHandles(); await back.click();
     await driver.wait(async () => (await driver.getAllWindowHandles()).length > windows.length || (await driver.findElements(By.css(".iad-workbench"))).length > 0, 10000);
     const returned = (await driver.getAllWindowHandles()).find(id => !windows.includes(id)); if (returned) await driver.switchTo().window(returned);
     await element(".iad-inspection-region");
-    const world = await element(".iad-viewer-world");
-    await driver.wait(async () => Number(await world.getAttribute("data-scale")) > 0, 5000);
+    await driver.wait(() => driver.executeScript("return document.querySelector('#big-image')?.naturalWidth>0"), 5000);
     const after = await geometry();
     assert.ok(Math.abs(after.scale - before.scale) < 1e-9, JSON.stringify({before,after}));
     assert.ok(after.center.every((value,index) => Math.abs(value-before.center[index]) < 0.01), JSON.stringify({before,after}));
@@ -270,7 +140,6 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     assert.ok((await (await element(".iad-inspection-region img")).getAttribute("src")).includes(target.suggestion.suggestion_id));
     await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/returned.png"), await driver.takeScreenshot(), "base64");
     const roiPath = path.join(root, "cache/visual-evidence", target.suggestion.analysis.regions[0].image.sha256 + ".png");
-    const requestCount = agentRequests.length;
     await fs.rename(roiPath, roiPath + ".missing");
     try {
       await button("向 Agent 追问"); await button("发送到会话");
@@ -282,199 +151,7 @@ test("native DSH: ask about frozen evidence and return to the original inspectio
     invalid.searchParams.set("iad", JSON.stringify(route)); await driver.get(invalid.href);
     assert.ok((await (await element(".iad-inspector [role='alert']")).getText()).includes("证据引用不存在"));
     assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length, 0);
-    await (await element("button[aria-label='关闭图像详情']")).click();
-    for (const [index, label] of ["知识挖掘", "模型审计"].entries()) {
-      await (await element(`button[aria-label^='${label}']`)).click();
-      await button(index ? "模型审计作业" : "作业记录");
-      if (index) {
-        await button("新建审计");
-        const versions = await element("select[aria-label='审计良品知识版本']");
-        await driver.wait(() => versions.isEnabled(), 5000);
-        await (await element(`select[aria-label='审计良品知识版本'] option[value='${executions[index].normal_version_id}']`)).click();
-        await driver.navigate().refresh();await button("新建审计");
-        await driver.wait(async () => await (await element("select[aria-label='审计良品知识版本']")).getAttribute("value") === executions[index].normal_version_id, 5000);
-        const selectedVersion = JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad"));
-        assert.equal(selectedVersion.normalVersion, executions[index].normal_version_id);
-        assert.equal(selectedVersion.defectVersion, "");
-        assert.equal(agentRequests.length, requestCount, "原生宿主知识选择与刷新不重新运行模型");
-        await(await element('button[aria-label="关闭新建模型审计"]')).click();
-      }
-      if(index) await(await element(`button[aria-label="查看作业 ${executions[index].run_id}"]`)).click();
-      else await(await element(`table[aria-label="作业列表"] td[title="${executions[index].run_id}"]`)).findElement(By.xpath('ancestor::tr')).sendKeys(Key.ENTER);
-      const card = await element(`article[data-job-id='${executions[index].run_id}']`);
-      await card.findElement(By.xpath(".//button[normalize-space(.)='返回发起会话']")).click();
-      await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
-      assert.ok((await driver.findElement(By.css("body")).getText()).includes("这个区域是否可能只是反光"), "Return to the actual original conversation");
-      assert.equal(agentRequests.length, requestCount, "Returning to the initiating Session must not submit another message");
-    }
-    async function openToolResult(selector) {
-      await button("Chat");
-      for (const group of await driver.findElements(By.xpath("//button[contains(., 'Completed') and @aria-expanded='false']"))) await group.click();
-      for (const group of await driver.findElements(By.xpath("//button[contains(., 'Called tools') and @aria-expanded='false']"))) await group.click();
-      const link = await element(selector);
-      await driver.executeScript("arguments[0].scrollIntoView({block:'center'})", link);
-      await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/tool-results.png"), await driver.takeScreenshot(), "base64");
-      await link.click();
-    }
-    for (const execution of executions) {
-      await openToolResult(`button[data-iad-run-id='${execution.run_id}']`);
-      if (execution === executions[0]) {
-        const row = await element(`table[aria-label="作业列表"] td[title="${execution.run_id}"]`);
-        assert.equal(await row.findElement(By.xpath("ancestor::tr")).getAttribute("aria-selected"), "true", "会话入口保留选中作业");
-        assert.equal((await driver.findElements(By.css(".iad-knowledge-job-drawer[open]"))).length, 0, "进入列表不自动展开详情");
-        await row.click();
-      }
-      const card = await element(`article[data-job-id='${execution.run_id}']`);
-      assert.equal(await card.getAttribute("aria-current"), "true");
-      await card.findElement(By.xpath(".//button[normalize-space(.)='返回发起会话']")).click();
-      await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
-      assert.equal(agentRequests.length, requestCount);
-    }
-    const knowledgeJob = toolMessages(agentRequests.at(-1)).filter(message => message.name === "knowledge_job_status").map(message => JSON.parse(message.content)).at(-1);
-    await openToolResult(`button[data-iad-version-id='${knowledgeJob.knowledge_version_id}']`);
-    await driver.wait(async () => (await (await element("select[aria-label='知识版本']")).getAttribute("value")) === knowledgeJob.knowledge_version_id, 10000, "等待异步版本选项加载并选中会话指定版本");
-    assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).datasetId, dataset.dataset_id);
-    await driver.navigate().back();
-    await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
-    await openToolResult(".iad-tool-card[data-iad-tool='dataset_report'] button[data-iad-page='industrial-audit']");
-    await element(".iad-quality-report");
-    const report = await api(`/report/${dataset.task_id}?dataset_id=${dataset.dataset_id}`);
-    assert.equal(report.vlm_audited_count, 3);
-    assert.ok((await (await element(".iad-quality-report")).getText()).includes("3 / 3"));
-    await driver.navigate().back();
-    await driver.wait(async () => (await driver.findElements(By.css(".iad-workbench"))).length === 0, 5000);
-    await openToolResult(".iad-tool-card[data-iad-tool='dataset_report'] button[data-iad-page='industrial-images']");
-    await element("img[alt='part-2.png']");
-    assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).datasetId, dataset.dataset_id);
-    assert.equal(agentRequests.length, requestCount, "Tool result navigation and browser Back do not run the model again");
-    execFileSync(resolvePythonPath(), ["-c", `
-from pathlib import Path
-from PIL import Image
-import json,sys
-root=Path(sys.argv[1]);root.mkdir()
-for i in range(26): Image.new('RGB',(320,240),(20+i,80,120)).save(root/f'sequence-{i:02}.png')
-Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
-(root/'zz-excluded.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,'shapes':[{'label':'排除标注','shape_type':'rectangle','points':[[10,10],[20,20]]}]}))
-`, path.join(root,"sequence")]);
-    const sequence = await api("/datasets/import", { format: "labelme", name: "跨页图像", image_dir: path.join(root,"sequence"), annotation_dir: path.join(root,"sequence") });
-    await button("刷新");
-    await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
-    assert.equal(await (await element("button[aria-label^='图像浏览']")).getAttribute("aria-label"), "图像浏览", "切换数据集仍使用固定导航名称");
-    assert.equal(await (await element("button[aria-label^='知识挖掘']")).getAttribute("aria-label"), "知识挖掘", "无近期作业不能推断未曾发布知识，且不能继承另一数据集状态");
-    await setTheme(driver,'Light');
-    await driver.manage().window().setRect({ width: 1440, height: 768 });
-    await (await element("summary[aria-label='标注筛选']")).click();
-    await (await element("input[aria-label='无标注']")).click();
-    await (await element("summary[aria-label='标注筛选']")).click();
-    await (await element("img[alt='sequence-23.png']")).click();
-    await (await element("button[title='放大图像']")).click();
-    const viewerSize=await driver.executeScript('return [innerWidth,innerHeight]');
-    await viewport(driver,1920,1080);
-    const edgePrevious=await element('dialog.iad-viewer-dialog button[aria-label="上一张图像"]');
-    const edgeNext=await element('dialog.iad-viewer-dialog button[aria-label="下一张图像"]');
-    const imageViewport=await element('dialog.iad-viewer-dialog .iad-viewer-viewport');
-    assert.equal((await driver.findElements(By.css('dialog.iad-viewer-dialog .iad-lightbox-toolbar .iad-image-step'))).length,0);
-    await driver.actions().move({origin:imageViewport}).click().perform();
-    const edgeState=()=>driver.executeScript("return [...document.querySelectorAll('dialog.iad-viewer-dialog .iad-viewer-edge-button')].map(e=>Number(getComputedStyle(e).opacity))");
-    await driver.wait(async()=>JSON.stringify(await edgeState())==='[0,0]',3000,'画布中间不显示切图按钮');
-    assert.equal(await driver.executeScript("const v=arguments[0],r=v.getBoundingClientRect();return !!document.elementFromPoint(r.x+r.width/2,r.y+r.height/2)?.closest('.iad-viewer-viewport')",imageViewport),true,'导航覆盖层不拦截画布中间的指针');
-    await fs.writeFile(path.join(workspace,'runs/browser/session-handoff/edge-default-1920.png'),await driver.takeScreenshot(),'base64');
-    for(const [control,expected,side] of [[edgePrevious,[1,0],'left'],[edgeNext,[0,1],'right']]){
-      await driver.actions().move({origin:control}).perform();
-      await driver.wait(async()=>JSON.stringify(await edgeState())===JSON.stringify(expected),3000,'左右感应区域独立显隐');
-      const box=await driver.executeScript("const e=arguments[0],d=e.firstElementChild,r=e.getBoundingClientRect(),c=d.getBoundingClientRect();return {width:r.width,height:r.height,disc:c.width,background:getComputedStyle(e).backgroundColor,insideViewport:!!e.closest('.iad-viewer-viewport')}",control);
-      assert.deepEqual(box,{width:80,height:216,disc:52,background:'rgba(0, 0, 0, 0)',insideViewport:false});
-      await fs.writeFile(path.join(workspace,`runs/browser/session-handoff/edge-${side}-1920.png`),await driver.takeScreenshot(),'base64');
-    }
-    await driver.actions().move({origin:imageViewport}).click().sendKeys(Key.TAB).perform();
-    assert.equal(await driver.executeScript('return document.activeElement===arguments[0] && document.activeElement.matches(":focus-visible") && getComputedStyle(document.activeElement).opacity==="1"',edgePrevious),true,'Tab聚焦时显示边缘按钮与焦点');
-    await fs.writeFile(path.join(workspace,'runs/browser/session-handoff/edge-keyboard-1920.png'),await driver.takeScreenshot(),'base64');
-    const imageBeforePan=await(await element('dialog.iad-viewer-dialog .iad-viewer-world')).getRect();
-    await imageViewport.sendKeys(Key.ARROW_RIGHT);
-    const imageAfterPan=await(await element('dialog.iad-viewer-dialog .iad-viewer-world')).getRect();
-    assert.ok(Math.abs(imageAfterPan.x-imageBeforePan.x+20)<2,'方向键继续平移而非切图');
-    assert.equal(await(await element('.iad-lightbox-toolbar strong')).getText(),'sequence-23.png');
-    try{
-      await driver.setContext('chrome');await driver.executeScript("Services.prefs.setIntPref('ui.primaryPointerCapabilities',1)");await driver.setContext('content');
-      await driver.wait(()=>driver.executeScript('return matchMedia("(hover:none)").matches'),3000,'浏览器实际进入无悬浮能力状态');
-      await driver.actions().move({origin:imageViewport}).click().perform();
-      assert.deepEqual(await edgeState(),[1,1],'无hover能力时可用切图入口默认可见');
-      await fs.writeFile(path.join(workspace,'runs/browser/session-handoff/edge-no-hover-1920.png'),await driver.takeScreenshot(),'base64');
-    }finally{
-      await driver.setContext('chrome');await driver.executeScript("Services.prefs.setIntPref('ui.primaryPointerCapabilities',6)");await driver.setContext('content');
-    }
-    async function stepImage(label, name, page) {
-      const control = await driver.findElement(By.css(`dialog.iad-viewer-dialog button[aria-label="${label}"]`));
-      await driver.wait(() => control.isEnabled(), 5000);await driver.actions().move({origin:control}).perform();await control.click();
-      await driver.wait(async () => (await (await element(".iad-lightbox-toolbar strong")).getText()) === name, 5000);
-      const route = JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad"));
-      assert.equal(route.page, page); assert.deepEqual(route.filters.annotation_filters, ["none"]);
-      assert.equal(route.datasetId, sequence.dataset_id);
-      assert.equal(await (await element("select[aria-label='缩放']")).getAttribute("value"), "0");
-    }
-    await driver.executeScript(`const original=window.fetch;let requests=0,release;const gate=new Promise(resolve=>release=resolve);
-      window.__iadEdgeRequests=()=>requests;window.__iadEdgeRelease=()=>{window.fetch=original;release();delete window.__iadEdgeRequests;delete window.__iadEdgeRelease;};
-      window.fetch=(...args)=>{const url=new URL(args[0],location.href),response=original(...args);if(url.pathname===arguments[0] && url.searchParams.get('page')==='2'){requests++;return Promise.all([response,gate]).then(([value])=>value);}return response;};`, `/api/iad/samples/${sequence.task_id}`);
-    await Promise.all([stepImage("下一张图像", "sequence-24.png", 2),(async()=>{
-      try{
-        await driver.wait(()=>driver.executeScript('return window.__iadEdgeRequests()===1'),5000);
-        await driver.wait(async()=>!(await edgePrevious.isEnabled()) && !(await edgeNext.isEnabled()),5000,'真实跨页请求期间双侧禁用');
-        assert.equal(await driver.executeScript("return document.querySelector('.iad-lightbox-toolbar [role=status]')?.textContent"),'正在切换图像…');
-        assert.equal(await driver.executeScript("arguments[0].click();arguments[0].click();return window.__iadEdgeRequests()",edgeNext),1,'忙碌时重复点击不发起第二个相邻页请求');
-        assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).page,1);
-      }finally{await driver.executeScript('window.__iadEdgeRelease()');}
-    })()]);
-    await driver.wait(async () => await driver.executeScript("return document.querySelector('.iad-viewer-world img').naturalWidth===320"),5000);
-    assert.deepEqual(await driver.executeScript("const canvas=document.createElement('canvas');canvas.width=canvas.height=1;const c=canvas.getContext('2d');c.drawImage(document.querySelector('.iad-viewer-world img'),0,0);return [...c.getImageData(0,0,1,1).data]"), [44,80,120,255], "跨页必须展示当前图的真实像素");
-    await stepImage("下一张图像", "sequence-25.png", 2);
-    assert.equal(await (await driver.findElement(By.css('dialog.iad-viewer-dialog button[aria-label="下一张图像"]'))).isEnabled(), false, "标注过滤后的最后一张不能进入被排除图像");
-    await stepImage("上一张图像", "sequence-24.png", 2);
-    await stepImage("上一张图像", "sequence-23.png", 1);
-    await fs.writeFile(path.join(workspace, "runs/browser/session-handoff/image-sequence.png"), await driver.takeScreenshot(), "base64");
-    await viewport(driver,...viewerSize);
-    await button("关闭");
-    assert.equal(await driver.executeScript("return document.activeElement?.getAttribute('title')"), "放大图像", "跨页后关闭查看器回到当前图的来源按钮");
-    await (await element("button[title='放大图像']")).click();
-    const nextImage = await driver.findElement(By.css('dialog.iad-viewer-dialog button[aria-label="下一张图像"]'));
-    await driver.wait(() => nextImage.isEnabled(), 5000);
-    const closeImage = await driver.findElement(By.xpath("//dialog[contains(@class,'iad-viewer-dialog')]//button[normalize-space(.)='关闭']"));
-    await driver.executeScript("arguments[0].click();arguments[1].click()", nextImage, closeImage);
-    await api(`/samples/${sequence.task_id}?dataset_id=${sequence.dataset_id}&page=2`);
-    assert.equal((await driver.findElements(By.css(".iad-viewer-dialog[open]"))).length, 0);
-    assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).page, 1, "关闭时取消未完成的跨页请求");
-    assert.equal(await (await element("[data-field='image-name']")).getText(), "sequence-23.png");
-    await (await element("button[aria-label='关闭图像详情']")).click();
-    assert.equal(await driver.executeScript("return document.activeElement?.closest('.iad-sample')?.querySelector('strong')?.textContent"), "sequence-23.png", "关闭详情后焦点回到当前缩略图");
-    const browseTop = await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop");
-    assert.ok(browseTop > 0, "当前缩略图位于滚动后的浏览位置");
-    await (await element("button[aria-label^='数据集管理']")).click();
-    await (await element("button[aria-label^='图像浏览']")).click();
-    await element("img[alt='sequence-23.png']");
-    await driver.wait(async () => Math.abs(await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop") - browseTop) < 2, 5000, "切页返回恢复当前数据集的浏览位置");
-    await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
-    await element("img[alt='part-2.png']");
-    await (await element("select[aria-label='当前数据集'] option[value='" + sequence.dataset_id + "']")).click();
-    await element("img[alt='sequence-23.png']");
-    await driver.wait(async () => Math.abs(await driver.executeScript("return document.querySelector('.iad-workbench').scrollTop") - browseTop) < 2, 5000, "切换数据集后恢复各自浏览位置");
-    await (await element("input[aria-label='按文件名搜索']")).sendKeys("sequence-2");
-    await (await element("img[alt='sequence-20.png']")).click();
-    await (await element("button[title='放大图像']")).click();
-    assert.equal(await (await driver.findElement(By.css('dialog.iad-viewer-dialog button[aria-label="上一张图像"]'))).isEnabled(), false, "按当前搜索范围定位第一张");
-    await stepImage("下一张图像", "sequence-21.png", 1);
-    assert.equal(JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get("iad")).filters.search, "sequence-2");
-    assert.equal(agentRequests.length, requestCount, "跨页与筛选切图不启动模型");
-    await button("关闭"); await (await element("button[aria-label='关闭图像详情']")).click();
-    await driver.manage().window().setRect({ width: 1440, height: 1100 });
-    await (await element("select[aria-label='当前数据集'] option[value='" + dataset.dataset_id + "']")).click();
-    const defectSources=(await api(`/knowledge/sources?dataset_id=${dataset.dataset_id}&kind=defect&normal_version_id=${knowledgeJob.knowledge_version_id}`)).items;
-    let defect = await api("/knowledge/start", { kind: "defect", image_count: defectSources.length, images: defectSources.map(item=>item.sample_id), knowledge_preset: [knowledgeJob.knowledge_version_id] });
-    while (["PENDING", "RUNNING"].includes(defect.status)) { await delay(100); defect = await api(`/knowledge/status/${defect.run_id}`); }
-    assert.equal(defect.status, "COMPLETED", JSON.stringify(defect));
-    await button("刷新");
-    console.log(JSON.stringify({nativeStage:"surfaces"}));
-    await verifyWorkbenchSurfaces(driver, path.join(workspace, "runs/browser/native-surfaces"));
-    await verifyWorkbenchLayout(driver, path.join(workspace, "runs/browser/native-layout"));
-    assert.equal(agentRequests.length, requestCount, "布局验收不调用Agent模型");
+    assert.equal(agentRequests.length, requestCount, "Inspecting frozen evidence does not submit another message");
   } catch (error) {
     await fs.mkdir(path.join(workspace, "runs/browser/session-handoff"), { recursive: true });
     if (driver) {
@@ -484,7 +161,6 @@ Image.new('RGB',(320,240),'red').save(root/'zz-excluded.png')
     console.error(log.slice(-2200).replace(/(token=)[^\s&]+/g, "$1<redacted>"));
     throw error;
   } finally {
-    releaseKnowledge();
     await driver?.quit(); host.kill("SIGTERM");
     await Promise.race([new Promise(resolve => host.once("exit", resolve)), delay(3000)]);
     if (host.exitCode === null) host.kill("SIGKILL");

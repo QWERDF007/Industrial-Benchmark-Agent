@@ -121,21 +121,6 @@ export const knowledgeStyles = `
 }
 
 /* Context scope bar */
-.kb-v45 .context {
-  display: flex;
-  align-items: flex-end;
-  gap: 14px;
-  margin-bottom: 18px;
-}
-
-.kb-v45 .context .control:first-child {
-  width: min(310px, 32%);
-}
-
-.kb-v45 .context .control:nth-child(2) {
-  width: min(410px, 40%);
-}
-
 .kb-v45 .kb-context-actions {
   display: flex;
   align-items: center;
@@ -152,7 +137,7 @@ export const knowledgeStyles = `
   background: white;
   border: 1px solid #dbe2eb;
   border-radius: 6px;
-  margin-bottom: 20px;
+  margin-bottom: var(--iad-layout-gap);
   overflow: hidden;
   box-shadow: none;
 }
@@ -170,11 +155,6 @@ export const knowledgeStyles = `
   gap: 9px;
 }
 
-.kb-v45 .filterset .f {
-  height: 34px;
-  min-height: 34px;
-}
-
 /* Jobs Table */
 .kb-v45 .tableframe {
   overflow-x: auto;
@@ -189,21 +169,16 @@ export const knowledgeStyles = `
 }
 
 .kb-v45 .jobs-table th {
-  height: 43px;
-  background: #f1f4f9;
   border-top: 1px solid #e6ebf1;
   border-bottom: 1px solid #dfe6f0;
   color: #172338 !important;
   font-size: 13px !important;
   font-weight: 600 !important;
-  padding: 12px 16px;
   white-space: nowrap;
 }
 
 .kb-v45 .jobs-table td {
-  height: 58px;
   border-bottom: 1px solid #e5eaf1;
-  padding: 13px 16px;
   white-space: nowrap;
   color: #172338 !important;
   font-size: 13px !important;

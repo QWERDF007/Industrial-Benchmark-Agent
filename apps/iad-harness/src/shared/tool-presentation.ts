@@ -8,11 +8,10 @@ export const workbenchTools = {
   consistency_groups:'严格同图组',consistency_group_members:'同图组成员',consistency_compare:'保存比较证据',
   consistency_context:'解释比较证据',consistency_evidence:'查看冻结事实',consistency_evidence_media:'读取冻结图片',consistency_evidence_export:'导出比较证据',
   direction_exploration_start: "探索检查方向", direction_exploration_status: "方向探索状态", direction_exploration_get: "方向探索结果",
-  direction_exploration_cancel: "停止方向探索", direction_exploration_retry: "重试方向探索", knowledge_directions_adopt: "采用探索方向",
+  direction_exploration_cancel: "停止方向探索", direction_exploration_retry: "重试方向探索",
   dataset_list: "数据集列表", dataset_import: "接入数据集", dataset_rescan: "重新扫描目录", dataset_report: "数据集质量报告", knowledge_get: "知识版本",
-  knowledge_scope_open: "建立知识范围", knowledge_scope_get: "知识范围进度", knowledge_scope_stop: "停止知识范围", knowledge_scope_resume: "继续知识范围",
   knowledge_details: "知识条目", knowledge_conflict_context: "知识冲突", knowledge_job_observations: "知识观察证据",
-  knowledge_sources: "查询知识来源", knowledge_mine_normal: "挖掘良品知识", knowledge_mine_defect: "挖掘不良品知识",
+  analysis_sources: "查询登记图像", knowledge_presets: "挖掘预设方向", knowledge_direction_choices: "可选探索方向", knowledge_mine: "启动知识挖掘",
   knowledge_job_status: "知识作业状态", knowledge_job_cancel: "停止知识作业", knowledge_job_retry: "重试知识作业",
   model_audit_start: "启动模型审计", model_audit_status: "审计作业状态", model_audit_cancel: "停止模型审计", model_audit_retry: "重试模型审计",
 } as const;
@@ -51,7 +50,7 @@ export function toolPresentation(value: unknown): ToolPresentation | null {
     if (typeof record.scope_run_id === "string") links.push({ label: "查看连续范围", location: { pageId: "industrial-knowledge", datasetId, scopeRunId: record.scope_run_id, tab: "results" } });
 
     if (typeof record.run_id === "string") {
-      const pageId = record.job_type === "DIRECTION_EXPLORATION" ? "industrial-exploration" : (record.job_type === "MODEL_AUDIT" || record.job_type === "MODEL_AUDIT_SAMPLE") ? "industrial-audit" : "industrial-knowledge";
+      const pageId = record.analysis_kind === 'exploration' || record.job_type === "DIRECTION_EXPLORATION" ? "industrial-exploration" : (record.job_type === "MODEL_AUDIT" || record.job_type === "MODEL_AUDIT_SAMPLE") ? "industrial-audit" : "industrial-knowledge";
       links.push({ label: "查看作业", location: { pageId, datasetId, job: record.run_id, tab: "jobs" } });
       if (typeof record.status === "string" && record.status in jobStatuses && typeof record.completed === "number" && typeof record.failed === "number" && typeof record.total_samples === "number") {
         job = { status: record.status as JobSnapshot["status"], completed: record.completed, failed: record.failed, total_samples: record.total_samples };

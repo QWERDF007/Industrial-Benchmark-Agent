@@ -1,0 +1,1 @@
+{"version":3,"file":"output.d.ts","sourceRoot":"","sources":["../../../src/server/analysis/output.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAC,YAAY,EAAC,MAAM,sBAAsB,CAAC;AACvD,OAAO,KAAK,EAAC,UAAU,EAAC,MAAM,wBAAwB,CAAC;AAIvD,eAAO,MAAM,iBAAiB;;;;;;;kBAEd,OAAO,SAAS,UAAU,CAAC;QAAC,IAAI,EAAC,MAAM,CAAA;KAAC,CAAC,GAAG,YAAY,EAAE;CAQzE,CAAC"}
