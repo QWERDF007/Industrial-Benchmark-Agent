@@ -6,7 +6,6 @@ from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.consistency.group_review import ConsistencyGroupReview
 from iad_core.storage.database import Database
-from iad_core.workbench.analysis_job_views import AnalysisJobViews
 from iad_core.workbench.runtime import workbench
 
 
@@ -157,9 +156,7 @@ def consistency_agent_interrupt(args, db_path):
 
 
 def consistency_agent_finish(args, db_path):
-    runtime = workbench(db_path)
-    job = runtime.jobs.finish_external(args['run_id'])
-    return AnalysisJobViews(runtime.db).view(job['run_id'])
+    return ConsistencyAgentJobs(workbench(db_path)).finish(args['run_id'])
 
 
 def consistency_agent_context(args, db_path):

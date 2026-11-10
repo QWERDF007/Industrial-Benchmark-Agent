@@ -5,6 +5,7 @@ import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {ConsistencyStatisticsDialog,type ConsistencyStatisticAction} from './ConsistencyStatisticsDialog.js';
 import {ConsistencyConflictDialog} from './ConsistencyConflictDialog.js';
 import {ConsistencyImages} from './ConsistencyImages.js';
+import {useConsistencyImages} from '../useConsistencyImages.js';
 import {ConsistencyGallery} from './ConsistencyGallery.js';
 import {ConsistencyFilters} from './ConsistencyFilters.js';
 import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
@@ -30,7 +31,7 @@ import {consistencyTaskCategories} from '../../shared/prompt-defaults.generated.
 import {ConsistencyCheckCreate} from './ConsistencyCheckCreate.js';
 import {identityPromptFields} from '../consistency-prompts.js';
 import {usePagePosition} from '../usePagePosition.js';
-import {ConsistencyView,type ConflictCardItem,type ConsistencyFilterValues} from '../consistency-view.js';
+import {ConsistencyView,consistencyImageGroups,type ConsistencyImageGroup,type ConflictCardItem,type ConsistencyFilterValues} from '../consistency-view.js';
 import {useConsistencyJobs,type ConsistencyJob} from '../useConsistencyJobs.js';
 import {formatJobTime,jobStatuses} from '../../shared/job-display.js';
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
@@ -178,6 +179,11 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     return shownJobs[0] || null;
   }, [shownJobs, selectedJobId]);
 
+  const images=useConsistencyImages(selectedJob?.analysis.consistency_check_version===1?selectedJob.analysis.run_id:undefined,
+    `${revision}:${selectedJob?.status}`,!!selectedJob&&['PENDING','RUNNING'].includes(selectedJob.status));
+  const imageGroup:ConsistencyImageGroup|null=kind==='images'||Object.hasOwn(consistencyImageGroups,kind)
+    ?kind as ConsistencyImageGroup:null;
+
   const handleJobPageChange = (newPage: number) => {
     const targetPage = Math.max(1, Math.min(jobPages, newPage));
     setJobPage(targetPage);
@@ -280,7 +286,8 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
       .flatMap(dataset=>conflictCategoryDefaults[dataset.format]));
     return [...(selectedJob?.analysis.consistency_check_version===1?[{value:'images',label:'全部图像'}]:[]),
       {value: 'all', label: '全部冲突'}, ...Object.entries(conflictCategoryLabels)
-      .filter(([value])=>defaults.has(value)).map(([value,label])=>({value,label}))];
+      .filter(([value])=>defaults.has(value)).map(([value,label])=>({value,label})),
+      ...(selectedJob?.analysis.consistency_check_version===1?Object.entries(consistencyImageGroups).map(([value,label])=>({value,label})):[])];
   }, [datasets,taskType,selectedJob?.dataset_ids,selectedJob?.analysis.consistency_check_version]);
 
   useEffect(()=>{
@@ -469,13 +476,13 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               {/* Conflict Type Tabs */}
               <TabBar label="原始标注冲突类型" value={kind} onChange={value => {setKind(value); setPage(1);}}
                 items={conflictTabs.map(tab => ({id: tab.value, label: <><span>{tab.label}</span><span className="iad-tab-count">{
-                  tab.value==='images' ? selectedJob.analysis.total_samples : tab.value === 'all' ? jobConflicts.length : jobConflicts.filter(conflict => conflict.types.some(type=>type===tab.value)).length
+                  tab.value==='images' ? selectedJob.analysis.total_samples : Object.hasOwn(consistencyImageGroups,tab.value)
+                    ?images.items.filter(image=>image.reason===tab.value).length : tab.value === 'all' ? jobConflicts.length : jobConflicts.filter(conflict => conflict.types.some(type=>type===tab.value)).length
                 }</span></>, buttonProps: {'data-dc': 'raw-tab', 'data-id': tab.value}}))} />
 
               <div className="dc-result-panel" role="tabpanel" aria-label={conflictTabs.find(tab=>tab.value===kind)?.label}>
-              {kind==='images' ? <ConsistencyImages key={selectedJob.analysis.run_id} jobId={selectedJob.analysis.run_id}
-                filters={{search,model:modelFilter,agreement,review:reviewFilter}} running={['PENDING','RUNNING'].includes(selectedJob.status)}
-                revision={`${revision}:${selectedJob.status}`} onReviewed={()=>setRevision(value=>value+1)}/> : !['COMPLETED','PARTIAL'].includes(selectedJob.status) ? (
+              {imageGroup ? <ConsistencyImages key={selectedJob.analysis.run_id} jobId={selectedJob.analysis.run_id} images={images} group={imageGroup}
+                filters={{search,model:modelFilter,agreement,review:reviewFilter}} onReviewed={()=>setRevision(value=>value+1)}/> : !['COMPLETED','PARTIAL'].includes(selectedJob.status) ? (
                   <p className="iad-result-empty" role="status">当前作业没有已发布结果</p>
                 ) : conflictsLoading ? <p className="iad-result-empty" role="status">正在读取结果…</p>
                 : !jobConflicts.length ? <p className="iad-result-empty" role="status">当前没有结果</p> : <>

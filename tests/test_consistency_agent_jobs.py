@@ -108,6 +108,8 @@ def test_an_empty_anchor_result_is_submitted_once_through_the_existing_job_progr
         anchor_id = config.dataset.id + ':normal.png'
         started = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})
+        with pytest.raises(ValueError, match='全部主图处理结束'):
+            checks.finish(started['run_id'])
         created = checks.session_created(started['run_id'], anchor_id)
         assert created.session_created
         selected = checks.retrieve(started['run_id'], anchor_id)
@@ -115,7 +117,9 @@ def test_an_empty_anchor_result_is_submitted_once_through_the_existing_job_progr
         result = checks.submit_empty(started['run_id'], anchor_id)
         assert result.verdict == 'EQUIVALENT' and result.reason == 'NO_CANDIDATES'
         assert checks.submit_empty(started['run_id'], anchor_id) == result
-        finished = runtime.jobs.finish_external(started['run_id'])
+        finished = checks.finish(started['run_id'])
+        assert finished['phase'] == 'SUMMARIZING_CONSISTENCY_RESULTS'
+        assert finished['phase_timings'][-1]['finished_at'] is not None
         assert finished['completed'] == 1 and finished['total_samples'] == 1
         assert finished['status'] == 'COMPLETED'
         assert checks.anchors(started['run_id'])[0].result == result

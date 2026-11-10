@@ -15,7 +15,6 @@ const cancellationRoutes:Partial<Record<JobSnapshot['job_type'],string>>={
 };
 
 export function JobStatusButton({job, onClick, children}: {job: JobSnapshot; onClick(): void; children?: React.ReactNode}) {
-  if (job.status === 'COMPLETED') return <span>{children || jobStatuses[job.status]}</span>;
   return <button type="button" className="iad-job-status-button" data-job-root={job.root_run_id} aria-label={`查看作业状态 ${job.run_id}`}
     onClick={event => {event.stopPropagation(); onClick();}} onKeyDown={event => event.stopPropagation()}>
     {children || jobStatuses[job.status]}
@@ -23,7 +22,7 @@ export function JobStatusButton({job, onClick, children}: {job: JobSnapshot; onC
 }
 
 export function JobStatusAction({job,onClick}: {job:JobSnapshot;onClick():void}) {
-  return job.status === 'COMPLETED' ? null : <IconButton icon="clock" label={`查看作业状态 ${job.run_id}`} title="查看作业状态"
+  return <IconButton icon="clock" label={`查看作业状态 ${job.run_id}`} title="查看作业状态"
     onClick={event=>{event.stopPropagation();onClick();}} />;
 }
 

@@ -10,11 +10,11 @@ import firefox from 'selenium-webdriver/firefox.js';
 const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 test('job status drawer follows supplied snapshots and restores focus without polling', {timeout:60000},async()=>{
  const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';
-import {JobStatusDrawer,JobStatusButton} from './src/client/components/JobStatusDrawer.tsx';import {WorkspaceContext} from './src/client/workspace.tsx';import {workbenchStyles} from './src/client/styles.ts';
+import {JobStatusDrawer,JobStatusButton,JobStatusAction} from './src/client/components/JobStatusDrawer.tsx';import {WorkspaceContext} from './src/client/workspace.tsx';import {workbenchStyles} from './src/client/styles.ts';
 const workspace={subscribe:()=>()=>{},getSnapshot:()=>state,view:()=>({job:''})},state={pageId:'industrial-consistency'};
 window.__jobNow=Date.parse('2026-11-05T12:00:10Z');Date.now=()=>window.__jobNow;
 const initial={submitted_at:'2026-11-04T18:04:03Z',current_sample:{sample_id:'sample-current',sample_uuid:'current',relative_path:'current-image.png'},phase_timings:[{phase:'ENCODING',started_at:'2026-11-05T11:00:00Z',finished_at:'2026-11-05T11:00:02.500Z'},{phase:'INDEXING',started_at:'2026-11-05T11:00:02.500Z',finished_at:'2026-11-05T11:00:05Z'},{phase:'AGENT_REVIEWING',started_at:'2026-11-05T12:00:00Z',finished_at:null}],run_id:'analysis-real-contract',root_run_id:'analysis-real-contract',job_type:'ANALYSIS_WORKFLOW',analysis_kind:'consistency',status:'RUNNING',phase:'ANALYZING_CONFLICT_GROUPS',phase_started_at:'2026-11-05T12:00:00Z',message:'比较真实图组',completed:0,failed:0,unprocessed:100,total_samples:100,progress:0,total_gallery_groups:99,completed_gallery_groups:14,started_at:'2026-11-05T11:00:00Z',errors:[],batch_runs:[]};
-function App(){const [open,setOpen]=React.useState(false),[job,setJob]=React.useState(initial);return <WorkspaceContext.Provider value={workspace}><style>{workbenchStyles}</style><main className="iad-workbench"><div id="completed"><JobStatusButton job={{...initial,status:'COMPLETED'}} onClick={()=>setOpen(true)}/></div><div id="running"><JobStatusButton job={initial} onClick={()=>setOpen(true)}/></div><button key={job.run_id} data-job-root="analysis-real-contract" id="launch" onClick={()=>setOpen(true)}>查看状态</button><button id="stop" onClick={()=>setJob({...initial,run_id:'analysis-retry-attempt',status:'FAILED',message:'模型调用失败',failed:1,unprocessed:99,errors:[{sample_id:'sample-1',relative_path:'image.png',code:'MODEL_OUTPUT_INVALID',message:'真实响应格式不完整',source_run_id:'real-child-step',source_phase:'EXPLORING_DIRECTIONS'}]})}>更新服务快照</button>{open&&<JobStatusDrawer job={job} onClose={()=>setOpen(false)}/>}</main></WorkspaceContext.Provider>}
+function App(){const [open,setOpen]=React.useState(false),[job,setJob]=React.useState(initial);return <WorkspaceContext.Provider value={workspace}><style>{workbenchStyles}</style><main className="iad-workbench">{['exploration','knowledge','consistency','audit'].map(module=>{const completed={...initial,status:'COMPLETED',analysis_kind:module,job_type:module==='audit'?'MODEL_AUDIT':'ANALYSIS_WORKFLOW',finished_at:'2026-11-05T12:00:20Z',completed:100,unprocessed:0,progress:1};const show=()=>{setJob(completed);setOpen(true);};return <div id={'completed-'+module} key={module}><JobStatusButton job={completed} onClick={show}/><JobStatusAction job={completed} onClick={show}/></div>;})}<button id="finish" onClick={()=>setJob(previous=>({...previous,status:'COMPLETED',finished_at:'2026-11-05T12:00:20Z',completed:100,unprocessed:0,progress:1}))}>完成快照</button><div id="running"><JobStatusButton job={initial} onClick={()=>{setJob(initial);setOpen(true);}}/></div><button key={job.run_id} data-job-root="analysis-real-contract" id="launch" onClick={()=>setOpen(true)}>查看状态</button><button id="stop" onClick={()=>setJob({...initial,run_id:'analysis-retry-attempt',status:'FAILED',message:'模型调用失败',failed:1,unprocessed:99,errors:[{sample_id:'sample-1',relative_path:'image.png',code:'MODEL_OUTPUT_INVALID',message:'真实响应格式不完整',source_run_id:'real-child-step',source_phase:'EXPLORING_DIRECTIONS'}]})}>更新服务快照</button>{open&&<JobStatusDrawer job={job} onClose={()=>setOpen(false)}/>}</main></WorkspaceContext.Provider>}
 createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
  let cancelRequests=0;
  const server=http.createServer((req,res)=>{
@@ -30,7 +30,42 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver').setEnvironment({...process.env,TZ:'Asia/Shanghai'})).build();
   await driver.manage().window().setRect({width:1600,height:1000});await driver.get(`http://127.0.0.1:${server.address().port}`);
   const el=id=>driver.wait(until.elementLocated(By.id(id)),5000), click=async id=>(await el(id)).click();
-  assert.equal((await driver.findElements(By.css('#completed button'))).length,0,'成功状态仅显示文本，不打开状态抽屉');
+  for(const module of ['exploration','knowledge','consistency','audit']) {
+   const buttons=await driver.findElements(By.css('#completed-'+module+' button'));
+   assert.equal(buttons.length,2,'完成作业保留状态文字和查看状态按钮：'+module);
+   for(const button of buttons) {
+    await button.click();
+    const completedDrawer=await driver.wait(until.elementLocated(By.css('dialog[open]')),5000);
+    assert.match(await completedDrawer.getText(),/已完成/);
+    assert.equal(await driver.executeScript('return [...document.querySelectorAll(".iad-job-meta dt")].some(node=>["作业类型","阶段开始"].includes(node.textContent))'),false);
+    assert.equal((await completedDrawer.findElements(By.css('.iad-job-stage small'))).length,0,'完成阶段不添加提示文案');
+    assert.match(await completedDrawer.getText(),/100 \/ 100/);
+    assert.equal((await completedDrawer.findElements(By.css('footer button'))).length,0);
+    await driver.actions().sendKeys(Key.ESCAPE).perform();
+    await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,5000);
+    assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',button),true);
+   }
+  }
+  await driver.navigate().refresh();
+  const restored=await driver.wait(until.elementLocated(By.css('#completed-consistency .iad-job-status-button')),5000);
+  await restored.click();
+  let completeDrawer=await driver.wait(until.elementLocated(By.css('dialog[open]')),5000);
+  const duration=()=>driver.executeScript('return [...document.querySelectorAll(".iad-job-meta dt")].find(node=>node.textContent==="耗时").nextElementSibling.textContent');
+  const finalDuration=await duration();
+  await driver.executeScript('window.__jobNow+=120000');
+  assert.equal(await duration(),finalDuration,'完成作业耗时使用保存的结束时间');
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,5000);
+  await driver.executeScript("window.__jobNow=Date.parse('2026-11-05T12:00:10Z')");
+  await (await driver.findElement(By.css('#running button'))).click();
+  await driver.executeScript("document.getElementById('finish').click()");
+  completeDrawer=await driver.wait(until.elementLocated(By.css('dialog[open]')),5000);
+  await driver.wait(async()=>/已完成/.test(await completeDrawer.getText()),5000);
+  assert.equal((await completeDrawer.findElements(By.css('footer button'))).length,0);
+  await driver.actions().sendKeys(Key.ESCAPE).perform();
+  await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,5000);
+  await driver.navigate().refresh();
+  await driver.wait(until.elementLocated(By.id('launch')),5000);
   assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector("#running button")).borderWidth'),'0px','状态文字不套按钮边框');
   await click('launch');const drawer=await driver.wait(until.elementLocated(By.css('dialog[open]')),5000);
   assert.equal(await drawer.getAttribute('aria-label'),'作业状态');
@@ -45,12 +80,12 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   assert.equal(appearance.sectionBorder,'0px','阶段区域只有分割线，不套卡片边框');
   assert.equal(appearance.top,64,'抽屉正文紧接64px标题栏');
   assert.equal((await drawer.findElements(By.css('.iad-job-metrics,.iad-job-progress-card,.iad-retry-scope'))).length,0,'抽屉不添加原型之外的统计卡片和表单');
-  assert.equal((await drawer.findElements(By.css('.iad-job-stage'))).length,4,'阶段列表沿用HTML结构');
+  assert.equal((await drawer.findElements(By.css('.iad-job-stage'))).length,3,'数据一致性展示三个作业级阶段');
   assert.equal((await drawer.findElements(By.css('.iad-job-stage[data-state="current"] small'))).length,0,'当前阶段使用高亮标识，不重复显示文字');
   const phaseTimes=()=>driver.executeScript('return [...document.querySelectorAll(".iad-job-stage-time")].map(node=>node.textContent)');
-  assert.deepEqual(await phaseTimes(),['5.0s','','10.0s',''],'同一业务阶段累计底层阶段耗时，没有记录的阶段留空');
+  assert.deepEqual(await phaseTimes(),['5.0s','10.0s',''],'同一业务阶段累计底层阶段耗时，没有记录的阶段留空');
   await driver.executeScript('window.__jobNow+=65000');
-  await driver.wait(async()=>(await phaseTimes())[2]==='01:15',3000,'当前阶段耗时随时钟更新');
+  await driver.wait(async()=>(await phaseTimes())[1]==='01:15',3000,'当前阶段耗时随时钟更新');
   await driver.manage().window().setRect({width:420,height:900});
   const timeFits=await driver.executeScript('return [...document.querySelectorAll(".iad-job-stage")].every(row=>{const title=row.querySelector("strong").getBoundingClientRect(),time=row.querySelector(".iad-job-stage-time").getBoundingClientRect();return title.right<=time.left+1&&time.right<=row.getBoundingClientRect().right+1})');
   assert.equal(timeFits,true,'窄屏阶段名称与耗时不重叠');
@@ -83,6 +118,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   assert.deepEqual(await Promise.all((await drawer.findElements(By.css('footer button'))).map(button=>button.getText())),[]);
   await driver.executeScript("document.getElementById('stop').click()");
   await driver.wait(async()=>/真实响应格式不完整/.test(await drawer.getText()),5000);
+  assert.equal((await drawer.findElements(By.css('.iad-job-stage small'))).length,0,'失败阶段不添加提示文案');
   assert.match(await drawer.getText(),/MODEL_OUTPUT_INVALID/);assert.match(await drawer.getText(),/image.png/);assert.match(await drawer.getText(),/real-child-step/);assert.match(await drawer.getText(),/模型联合分析/);
   const output=path.resolve(app,'../../runs/verification/job-status');await fs.mkdir(output,{recursive:true});
   await fs.writeFile(path.join(output,'drawer-without-current-image.png'),await driver.takeScreenshot(),'base64');

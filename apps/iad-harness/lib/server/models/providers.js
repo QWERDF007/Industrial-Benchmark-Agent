@@ -116,10 +116,8 @@ export class NativeProviders {
             return { profile: null, input_modalities: [], native_profile: null, error: null };
         try {
             const { profile, source, metadata, declared } = await this.configuration({ ...reference, limits: { ...defaultModelLimits, ...limits } }, role, role === 'vision');
-            if (role === 'agent' && !profile.max_output_tokens)
-                throw new ModelConfigurationError('请在提供商的模型设置中声明输出上限，或设置本模块的 Agent 输出上限');
             const model = { ...declared, id: reference.model_id, contextWindow: profile.context_tokens,
-                maxTokens: profile.max_output_tokens, input: metadata.inputModalities };
+                ...(profile.max_output_tokens === null ? {} : { maxTokens: profile.max_output_tokens }), input: metadata.inputModalities };
             const native = { ...source.profile, models: [model] };
             if (reasoningEffort !== null) {
                 if (profile.api !== 'openai-responses' || !metadata.reasoning?.efforts.some(option => option.id === reasoningEffort))

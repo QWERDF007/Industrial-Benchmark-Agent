@@ -1,10 +1,11 @@
 import React from 'react';
-import { type ConsistencyFilterValues } from '../consistency-view.js';
-export declare function ConsistencyImages({ jobId, revision, filters, running, onReviewed }: {
+import { type ConsistencyFilterValues, type ConsistencyImageGroup } from '../consistency-view.js';
+import type { ConsistencyImageCollection } from '../useConsistencyImages.js';
+export declare function ConsistencyImages({ jobId, images, filters, group, onReviewed }: {
     jobId: string;
-    revision: string;
+    images: ConsistencyImageCollection;
     filters: ConsistencyFilterValues;
-    running: boolean;
+    group: ConsistencyImageGroup;
     onReviewed(): void;
 }): React.JSX.Element;
 //# sourceMappingURL=ConsistencyImages.d.ts.map

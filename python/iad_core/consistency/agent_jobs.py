@@ -133,6 +133,18 @@ class ConsistencyAgentJobs:
         self.jobs.resume_external(run_id, persist=persist)
         return AnalysisJobViews(self.db).view(run_id)
 
+    def finish(self, run_id: str) -> dict:
+        state = self.jobs.status(run_id)
+        if state['completed'] + state['failed'] != state['total_samples']:
+            raise ValueError('全部主图处理结束后才能汇总结果')
+        self.jobs.update(run_id, phase='SUMMARIZING_CONSISTENCY_RESULTS')
+        report = self.results.report(run_id)
+        if (report.total, report.completed, report.states['FAILED']) != (
+                state['total_samples'], state['completed'], state['failed']):
+            raise ValueError('主图结果统计与作业进度不一致，不能完成汇总')
+        job = self.jobs.finish_external(run_id)
+        return AnalysisJobViews(self.db).view(job['run_id'])
+
     def interrupt(self, run_id: str) -> dict:
         self.snapshot(run_id)
         self.jobs.interrupt_external(run_id)

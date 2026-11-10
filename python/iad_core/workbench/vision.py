@@ -92,7 +92,7 @@ class VlmClient:
     def _headers(self) -> dict[str, str]:
         return {"Authorization": "Bearer " + self._api_key} if self._api_key else {}
 
-    def token_budget(self, body: dict, output_reserve: int, schema_name: str) -> TokenBudget:
+    def token_budget(self, body: dict, output_reserve: int | None, schema_name: str) -> TokenBudget:
         root = self.endpoint.rsplit('/chat/completions', 1)[0].removesuffix('/v1')
         request = self.client.build_request('POST', root + '/tokenize', headers=self._headers,
             json={key: body[key] for key in ('model', 'messages', 'tools', 'tool_choice',
@@ -100,8 +100,12 @@ class VlmClient:
         with ModelCalls.exchange(self.client, request, 'tokenize', schema_name) as response:
             raise_for_model_status(response)
             capacity = TokenCapacity.model_validate(response.json())
-        return TokenBudget(input_tokens=capacity.count,
-            context_tokens=min(capacity.max_model_len, self.profile.context_tokens or capacity.max_model_len),
+        context_tokens = min(capacity.max_model_len, self.profile.context_tokens or capacity.max_model_len)
+        if output_reserve is None:
+            output_reserve = body.get('max_completion_tokens', body.get('max_tokens'))
+        if output_reserve is None:
+            output_reserve = max(1, context_tokens - capacity.count)
+        return TokenBudget(input_tokens=capacity.count, context_tokens=context_tokens,
             output_reserve=min(output_reserve, self.profile.max_output_tokens or output_reserve))
 
     def plan(self, response_type: Type[T], instruction: str, images: List[PreparedImage | PreparedImageBundle], model_name: str,
@@ -152,9 +156,10 @@ class VlmClient:
         if not self.within_limits(body, visual_inputs):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
         if self.profile.capacity_mode == 'provider_managed':
-            if self.profile.api != 'openai-responses' or not self.profile.context_tokens or not self.profile.max_output_tokens:
-                raise ValueError('Responses 需要冻结的上下文及输出上限')
-            body['max_output_tokens'] = min(self.profile.context_tokens, self.profile.max_output_tokens)
+            if self.profile.api != 'openai-responses':
+                raise ValueError('提供商管理容量仅适用于 Responses 协议')
+            if self.profile.max_output_tokens is not None:
+                body['max_output_tokens'] = min(self.profile.context_tokens, self.profile.max_output_tokens) if self.profile.context_tokens else self.profile.max_output_tokens
         else:
             budget = self.token_budget(body, output_reserve, response_type.__name__)
             if not budget.fits:

@@ -36,7 +36,7 @@ export class AnalysisWorkflowAgent {
       if (finalization.complete) return;
     }
     const {profile, native_profile} = snapshot.agent;
-    if (!profile?.model_id || !profile.max_output_tokens || !native_profile) throw new Error('作业缺少冻结的原生分析模型');
+    if (!profile?.model_id || !native_profile) throw new Error('作业缺少冻结的原生分析模型');
     const location = await this.bridge.execute<AnalysisSessionLocation>('analysis_agent_session_location', {session_id: initial.session_id});
     if (!initial.session_created) {
       await this.host.create(initial.session_id);
@@ -49,7 +49,7 @@ export class AnalysisWorkflowAgent {
     const maxRejectedCommits = 3;
     const commitCalls = new Set<string>();
     await this.host.withAgent(initial.session_id, {signal,
-      agentOptions: {provider, model: profile.model_id, maxTokens: profile.max_output_tokens},
+      agentOptions: {provider, model: profile.model_id, maxTokens: profile.max_output_tokens ?? undefined},
       setup: async scope => {
         const attachments = new NativeMediaAttachments(scope,path.dirname(analysisSessionPath(this.dataRoot,location)));
         if (profile.credential_ref) scope.provide('credentials', this.providers.credentials);
@@ -80,7 +80,7 @@ export class AnalysisWorkflowAgent {
           if (event.type === 'tool/result' && commitCalls.delete(event.data.message.toolCallId))
             rejectedCommits = event.data.message.isError ? rejectedCommits + 1 : 0;
           if (event.type === 'turn/end' && event.data.reason.kind === 'max-tokens')
-            failure = new LlmError('Agent 达到冻结输出上限，未提交本轮观察', 'MAX_TOKENS');
+            failure = new LlmError('Agent 输出达到本次请求上限，未提交本轮观察', 'MAX_TOKENS');
         });
         scope.on('agent/request', async (_event, next) => ({...await next(),
           ...(profile.request_parameters.temperature !== undefined ? {temperature: profile.request_parameters.temperature as number} : {}),

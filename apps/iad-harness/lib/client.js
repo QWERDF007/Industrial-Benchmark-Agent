@@ -45,7 +45,7 @@ var __IadClientBundle__ = (() => {
     inject: () => inject,
     name: () => name
   });
-  var import_react85 = __toESM(__require("react"), 1);
+  var import_react86 = __toESM(__require("react"), 1);
 
   // apps/iad-harness/src/client/AuditIcon.tsx
   var import_jsx_runtime = __require("react/jsx-runtime");
@@ -12888,7 +12888,8 @@ var __IadClientBundle__ = (() => {
     VERIFYING_CONTENT: "\u6838\u5BF9\u56FE\u50CF\u5185\u5BB9",
     OBSERVING_ANCHOR: "\u89C6\u89C9\u6838\u5BF9",
     AWAITING_SUBMISSION: "\u6821\u9A8C\u4E3B\u56FE\u7ED3\u8BBA",
-    AGENT_REVIEWING: "\u4E3B\u56FE\u5BA1\u6838"
+    AGENT_REVIEWING: "\u4E3B\u56FE\u5BA1\u6838",
+    SUMMARIZING_CONSISTENCY_RESULTS: "\u6C47\u603B\u7ED3\u679C"
   };
   var workflows = {
     exploration: { title: "\u65B9\u5411\u63A2\u7D22", stages: [
@@ -12905,10 +12906,24 @@ var __IadClientBundle__ = (() => {
       { title: "\u53D1\u5E03\u77E5\u8BC6\u7248\u672C", phases: ["ANALYSIS_PUBLISHED", "KNOWLEDGE_PUBLISHED", "KNOWLEDGE_REUSED"] }
     ] },
     consistency: { title: "\u6570\u636E\u4E00\u81F4\u6027", stages: [
-      { title: "\u51C6\u5907\u8F93\u5165\u53CA\u7D22\u5F15", phases: ["ENCODING", "INDEXING", "CREATING_ANCHOR_SESSIONS", "PREPARING_SHARED_INDEX", "SHARED_INDEX_READY"] },
-      { title: "\u68C0\u7D22\u5019\u9009\u56FE\u50CF", phases: ["ANALYZING_SELECTED_DATASETS", "COMPARING_SELECTED_DATASETS", "RETRIEVING_ANCHOR"] },
-      { title: "\u51B2\u7A81\u6BD4\u5BF9\u4E0E\u5206\u6790", phases: ["COMPARING", "ANALYZING_CONFLICT_GROUPS", "ANALYZING_GROUP_BATCHES", "SUMMARIZING_GROUP_BATCHES", "ANALYZING_CONSISTENCY_BATCHES", "VERIFYING_CONTENT", "PLANNING_VISUAL_PAGES", "AWAITING_REVIEW", "OBSERVING_ANCHOR", "AGENT_REVIEWING"] },
-      { title: "\u53D1\u5E03\u68C0\u67E5\u7ED3\u679C", phases: ["CONSISTENCY_FINISHED", "CONSISTENCY_MODEL_BATCHES_FINISHED", "AWAITING_SUBMISSION"] }
+      { title: "\u51C6\u5907\u68C0\u67E5", phases: ["ENCODING", "INDEXING", "CREATING_ANCHOR_SESSIONS", "PREPARING_SHARED_INDEX", "SHARED_INDEX_READY"] },
+      { title: "\u9010\u56FE\u68C0\u67E5", phases: [
+        "ANALYZING_SELECTED_DATASETS",
+        "COMPARING_SELECTED_DATASETS",
+        "RETRIEVING_ANCHOR",
+        "COMPARING",
+        "ANALYZING_CONFLICT_GROUPS",
+        "ANALYZING_GROUP_BATCHES",
+        "SUMMARIZING_GROUP_BATCHES",
+        "ANALYZING_CONSISTENCY_BATCHES",
+        "VERIFYING_CONTENT",
+        "PLANNING_VISUAL_PAGES",
+        "AWAITING_REVIEW",
+        "OBSERVING_ANCHOR",
+        "AGENT_REVIEWING",
+        "AWAITING_SUBMISSION"
+      ] },
+      { title: "\u6C47\u603B\u7ED3\u679C", phases: ["SUMMARIZING_CONSISTENCY_RESULTS", "CONSISTENCY_FINISHED", "CONSISTENCY_MODEL_BATCHES_FINISHED"] }
     ] },
     audit: { title: "\u6A21\u578B\u5BA1\u8BA1", stages: [
       { title: "\u51C6\u5907\u6837\u672C\u548C\u77E5\u8BC6", phases: ["PREPARING_KNOWLEDGE"] },
@@ -12933,7 +12948,7 @@ var __IadClientBundle__ = (() => {
       }
       return { ...stage, elapsedSeconds: durations.length ? durations.reduce((sum, value) => sum + value, 0) : null };
     });
-    return { ...workflow, stages, index: stages.findIndex((stage) => stage.phases.includes(job.phase || "")) };
+    return { ...workflow, stages, index: kind === "consistency" && job.status === "COMPLETED" ? stages.length - 1 : stages.findIndex((stage) => stage.phases.includes(job.phase || "")) };
   }
 
   // apps/iad-harness/src/client/dataset-image-annotations.ts
@@ -13480,15 +13495,13 @@ var __IadClientBundle__ = (() => {
     const elapsed = seconds === null ? "\u2014" : `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
     const meta = [
       ["\u4F5C\u4E1A ID", job.run_id],
-      ["\u4F5C\u4E1A\u7C7B\u578B", workflow.title],
       ["\u63D0\u4EA4\u65F6\u95F4", job.submitted_at ? formatJobTime(job.submitted_at) : "\u672A\u8BB0\u5F55"],
       ...job.model_name ? [["\u6A21\u578B", job.model_name]] : [],
       ["\u5F00\u59CB\u65F6\u95F4", job.started_at ? formatJobTime(job.started_at) : "\u672A\u5F00\u59CB"],
       ["\u8017\u65F6", elapsed],
       ["\u6837\u672C\u8FDB\u5EA6", `${job.completed} / ${job.total_samples}${job.failed ? `\uFF0C\u5931\u8D25 ${job.failed}` : ""}`],
       ...job.queue_position != null ? [["\u6392\u961F\u4F4D\u7F6E", String(job.queue_position)]] : [],
-      ...job.total_gallery_groups != null ? [["\u56FE\u7EC4\u8FDB\u5EA6", `${job.completed_gallery_groups ?? 0} / ${job.total_gallery_groups}`]] : [],
-      ...job.phase_started_at ? [["\u9636\u6BB5\u5F00\u59CB", formatJobTime(job.phase_started_at)]] : []
+      ...job.total_gallery_groups != null ? [["\u56FE\u7EC4\u8FDB\u5EA6", `${job.completed_gallery_groups ?? 0} / ${job.total_gallery_groups}`]] : []
     ];
     return /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("div", { className: "iad-job-drawer-body", children: [
       /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("div", { className: "iad-job-statusline", children: [
@@ -13507,10 +13520,7 @@ var __IadClientBundle__ = (() => {
           const state = current ? failed ? "error" : job.status === "RUNNING" ? "current" : job.status === "COMPLETED" ? "done" : "waiting" : "waiting";
           return /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("div", { className: "iad-job-stage", "data-state": state, "aria-current": current ? "step" : void 0, children: [
             /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { className: "iad-job-dot", children: state === "done" ? "\u2713" : position + 1 }),
-            /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("div", { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("strong", { children: stage.title }),
-              current && job.status !== "RUNNING" && /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("small", { children: failed || job.status === "CANCELLED" ? "\u505C\u6B62\u4E8E\u6B64\u9636\u6BB5" : "\u5DF2\u7ED3\u675F" })
-            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("div", { children: /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("strong", { children: stage.title }) }),
             /* @__PURE__ */ (0, import_jsx_runtime45.jsx)("span", { className: "iad-job-stage-time", "aria-label": `${stage.title}\u8017\u65F6`, children: stage.elapsedSeconds === null ? "" : stage.elapsedSeconds < 60 ? `${stage.elapsedSeconds.toFixed(1)}s` : `${String(Math.floor(stage.elapsedSeconds / 60)).padStart(2, "0")}:${String(Math.floor(stage.elapsedSeconds % 60)).padStart(2, "0")}` })
           ] }, stage.title);
         }) })
@@ -13548,7 +13558,6 @@ var __IadClientBundle__ = (() => {
     DEFECT_KNOWLEDGE: "knowledge"
   };
   function JobStatusButton({ job, onClick, children }) {
-    if (job.status === "COMPLETED") return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { children: children || jobStatuses[job.status] });
     return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
       "button",
       {
@@ -13566,7 +13575,7 @@ var __IadClientBundle__ = (() => {
     );
   }
   function JobStatusAction({ job, onClick }) {
-    return job.status === "COMPLETED" ? null : /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime46.jsx)(
       IconButton,
       {
         icon: "clock",
@@ -22279,6 +22288,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   var import_react72 = __require("react");
 
   // apps/iad-harness/src/client/consistency-view.ts
+  var consistencyImageGroups = { NO_CANDIDATES: "\u65E0\u5019\u9009", NO_ELIGIBLE_CANDIDATES: "\u65E0\u6709\u6548\u5019\u9009" };
   var initialConsistencyFilters = { search: "", model: "all", agreement: "all", review: "all" };
   var ConsistencyView = class {
     static modelConclusion(value, verdict) {
@@ -22289,9 +22299,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       if (!model) return null;
       return program === model || program === modelConclusionLabels[model] ? "same" : "different";
     }
-    static filter(items, filters) {
+    static filter(items, filters, reason) {
       const search = filters.search.trim().toLowerCase();
-      return items.filter((item) => (!search || item.filename.toLowerCase().includes(search)) && (filters.model === "all" || item.model.modelType === filters.model) && (filters.agreement === "all" || item.agreement === filters.agreement) && (filters.review === "all" || item.review === filters.review));
+      return items.filter((item) => (!reason || item.reason === reason) && (!search || item.filename.toLowerCase().includes(search)) && (filters.model === "all" || item.model.modelType === filters.model) && (filters.agreement === "all" || item.agreement === filters.agreement) && (filters.review === "all" || item.review === filters.review));
     }
     static media(image, thumbnail = false) {
       return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-original${thumbnail ? "?max_side=480" : ""}`;
@@ -22356,6 +22366,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       return items.map(({ sample, summary, image, review_state }) => ({
         id: sample.sample_id,
         type: summary.program_conclusion,
+        reason: summary.reason,
         filename: (image?.sample.relative_path || sample.sample_id.slice(sample.sample_id.indexOf(":") + 1)).split("/").pop(),
         url: image ? this.media(image, true) : mediaUrl(sample, "thumbnail"),
         fullUrl: image ? this.media(image) : mediaUrl(sample),
@@ -22846,27 +22857,21 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // apps/iad-harness/src/client/components/ConsistencyImages.tsx
   var import_jsx_runtime87 = __require("react/jsx-runtime");
-  function ConsistencyImages({ jobId, revision, filters, running, onReviewed }) {
+  function ConsistencyImages({ jobId, images, filters, group, onReviewed }) {
     const [page, setPage] = (0, import_react73.useState)(1);
     const [selectedId, setSelectedId] = (0, import_react73.useState)("");
-    const result = useQuery({
-      queryKey: ["iad", "consistency-images", jobId],
-      queryFn: ({ signal }) => ConsistencyView.loadImages(jobId, signal),
-      refetchInterval: running ? 5e3 : false
-    }, queryClient);
-    const previous = (0, import_react73.useRef)(revision);
-    (0, import_react73.useEffect)(() => {
-      if (previous.current !== revision) void result.refetch({ cancelRefetch: false });
-      previous.current = revision;
-    }, [revision, result.refetch]);
     (0, import_react73.useEffect)(() => {
       setPage(1);
-    }, [filters.search, filters.model, filters.agreement, filters.review]);
-    const cards = (0, import_react73.useMemo)(() => ConsistencyView.filter(result.data || [], filters), [result.data, filters.search, filters.model, filters.agreement, filters.review]);
+      setSelectedId("");
+    }, [group, filters.search, filters.model, filters.agreement, filters.review]);
+    const cards = (0, import_react73.useMemo)(
+      () => ConsistencyView.filter(images.items, filters, group === "images" ? void 0 : group),
+      [images.items, group, filters.search, filters.model, filters.agreement, filters.review]
+    );
     const currentPage = Math.min(page, Math.max(1, Math.ceil(cards.length / 18)));
     const selected = cards.find((item) => item.id === selectedId);
     return /* @__PURE__ */ (0, import_jsx_runtime87.jsxs)(import_jsx_runtime87.Fragment, { children: [
-      result.isPending ? /* @__PURE__ */ (0, import_jsx_runtime87.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" }) : result.error ? /* @__PURE__ */ (0, import_jsx_runtime87.jsx)("p", { className: "iad-error", role: "alert", children: message(result.error) }) : result.data && /* @__PURE__ */ (0, import_jsx_runtime87.jsxs)(import_jsx_runtime87.Fragment, { children: [
+      images.pending ? /* @__PURE__ */ (0, import_jsx_runtime87.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" }) : images.error ? /* @__PURE__ */ (0, import_jsx_runtime87.jsx)("p", { className: "iad-error", role: "alert", children: images.error }) : /* @__PURE__ */ (0, import_jsx_runtime87.jsxs)(import_jsx_runtime87.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime87.jsx)("div", { className: "iad-thumbnail-grid dc-conflict-grid", children: cards.slice((currentPage - 1) * 18, currentPage * 18).map((item) => /* @__PURE__ */ (0, import_jsx_runtime87.jsx)(ConsistencyResultCard, { item, action: "job-image", onOpen: () => setSelectedId(item.id) }, item.id)) }),
         /* @__PURE__ */ (0, import_jsx_runtime87.jsx)(Pagination, { total: cards.length, page: currentPage, size: 18, unit: "\u5F20", onPage: setPage })
       ] }),
@@ -22884,8 +22889,25 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
+  // apps/iad-harness/src/client/useConsistencyImages.ts
+  var import_react74 = __require("react");
+  function useConsistencyImages(jobId, revision, running) {
+    const result = useQuery({
+      queryKey: ["iad", "consistency-images", jobId],
+      enabled: !!jobId,
+      queryFn: ({ signal }) => ConsistencyView.loadImages(jobId, signal),
+      refetchInterval: running ? 5e3 : false
+    }, queryClient);
+    const previous = (0, import_react74.useRef)(revision);
+    (0, import_react74.useEffect)(() => {
+      if (jobId && previous.current !== revision) void result.refetch({ cancelRefetch: false });
+      previous.current = revision;
+    }, [jobId, revision, result.refetch]);
+    return { items: result.data || [], pending: result.isPending, error: result.error ? message(result.error) : null };
+  }
+
   // apps/iad-harness/src/client/components/ConsistencyGallery.tsx
-  var import_react79 = __require("react");
+  var import_react80 = __require("react");
 
   // apps/iad-harness/src/client/consistency-images.ts
   function frozenConsistencyImage(bundle, side) {
@@ -22924,14 +22946,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   var galleryImageUrl = (image) => `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-preview?max_side=360`;
 
   // apps/iad-harness/src/client/components/ConsistencyGroupDialog.tsx
-  var import_react78 = __require("react");
+  var import_react79 = __require("react");
 
   // apps/iad-harness/src/client/useConsistencyEvidence.ts
-  var import_react74 = __require("react");
+  var import_react75 = __require("react");
   function useConsistencyEvidence(evidenceId) {
-    const [loaded, setLoaded] = (0, import_react74.useState)(null), [error2, setError] = (0, import_react74.useState)("");
+    const [loaded, setLoaded] = (0, import_react75.useState)(null), [error2, setError] = (0, import_react75.useState)("");
     const bundle = loaded?.result.evidence_id === evidenceId ? loaded : null;
-    (0, import_react74.useEffect)(() => {
+    (0, import_react75.useEffect)(() => {
       const controller = new AbortController();
       setLoaded(null);
       setError("");
@@ -22946,12 +22968,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // apps/iad-harness/src/client/components/AnnotatedImagePair.tsx
-  var import_react75 = __require("react");
+  var import_react76 = __require("react");
   var import_jsx_runtime88 = __require("react/jsx-runtime");
   function AnnotatedImagePair({ sources, labels, synchronized = false, focusRegion, overlays, onExpand }) {
-    const [transform, setTransform] = (0, import_react75.useState)({ zoom: 0, x: 0, y: 0 });
-    const [rightTransform, setRightTransform] = (0, import_react75.useState)({ zoom: 0, x: 0, y: 0 });
-    (0, import_react75.useLayoutEffect)(() => {
+    const [transform, setTransform] = (0, import_react76.useState)({ zoom: 0, x: 0, y: 0 });
+    const [rightTransform, setRightTransform] = (0, import_react76.useState)({ zoom: 0, x: 0, y: 0 });
+    (0, import_react76.useLayoutEffect)(() => {
       if (!synchronized) setRightTransform(transform);
     }, [synchronized]);
     return /* @__PURE__ */ (0, import_jsx_runtime88.jsx)("div", { className: "iad-image-pair", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime88.jsxs)("div", { className: "iad-image-pair-side", children: [
@@ -23094,16 +23116,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // apps/iad-harness/src/client/components/ConsistencyReviewPanel.tsx
-  var import_react77 = __require("react");
+  var import_react78 = __require("react");
 
   // apps/iad-harness/src/client/components/ConsistencyRegionProposal.tsx
-  var import_react76 = __require("react");
+  var import_react77 = __require("react");
   var import_jsx_runtime92 = __require("react/jsx-runtime");
   function ConsistencyRegionProposal({ sources, differences, onChange }) {
-    const [sampleId, setSampleId] = (0, import_react76.useState)(""), [annotationId, setAnnotationId] = (0, import_react76.useState)(""), [operation, setOperation] = (0, import_react76.useState)("relabel");
-    const [category, setCategory] = (0, import_react76.useState)(""), [geometryKind, setGeometryKind] = (0, import_react76.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react76.useState)("");
+    const [sampleId, setSampleId] = (0, import_react77.useState)(""), [annotationId, setAnnotationId] = (0, import_react77.useState)(""), [operation, setOperation] = (0, import_react77.useState)("relabel");
+    const [category, setCategory] = (0, import_react77.useState)(""), [geometryKind, setGeometryKind] = (0, import_react77.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react77.useState)("");
     const annotations = differences.flatMap((diff) => [...diff.left, ...diff.right]).filter((item, index3, items) => items.findIndex((other) => other.annotation_id === item.annotation_id) === index3 && item.sample_id === sampleId);
-    const value = (0, import_react76.useMemo)(() => {
+    const value = (0, import_react77.useMemo)(() => {
       if (!sampleId || operation !== "add" && !annotationId) return null;
       if (operation === "remove") return { kind: "PROPOSE_REGION_CHANGE", changes: [{ operation, sample_id: sampleId, annotation_id: annotationId }] };
       if (operation === "relabel") return category.trim() ? { kind: "PROPOSE_REGION_CHANGE", changes: [{ operation, sample_id: sampleId, annotation_id: annotationId, category: category.trim() }] } : null;
@@ -23115,7 +23137,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       const change = operation === "add" ? { operation, sample_id: sampleId, category: category.trim(), geometry } : { operation, sample_id: sampleId, annotation_id: annotationId, geometry };
       return { kind: "PROPOSE_REGION_CHANGE", changes: [change] };
     }, [sampleId, annotationId, operation, category, geometryKind, geometryText]);
-    (0, import_react76.useEffect)(() => onChange(value), [value, onChange]);
+    (0, import_react77.useEffect)(() => onChange(value), [value, onChange]);
     return /* @__PURE__ */ (0, import_jsx_runtime92.jsxs)("section", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE", children: [
       /* @__PURE__ */ (0, import_jsx_runtime92.jsx)("p", { className: "iad-muted", children: "\u5EFA\u8BAE\u4E0D\u4F1A\u6539\u5199\u6E90\u6807\u6CE8\u3002\u5B9E\u9645\u4FEE\u6B63\u5E76\u91CD\u626B\u540E\u518D\u9A8C\u8BC1\u3002" }),
       /* @__PURE__ */ (0, import_jsx_runtime92.jsxs)("div", { className: "iad-config-bar", children: [
@@ -23178,15 +23200,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   function ConsistencyReviewPanel({ bundle }) {
     const { workspace } = useWorkspace();
     const { result } = bundle, key = "iad.consistency-pending:" + result.evidence_id;
-    const [context, setContext] = (0, import_react77.useState)(null), [error2, setError] = (0, import_react77.useState)(""), [notice, setNotice] = (0, import_react77.useState)(""), [busy, setBusy] = (0, import_react77.useState)(false);
-    const [selected, setSelected] = (0, import_react77.useState)([]), [kind, setKind] = (0, import_react77.useState)("CONFIRM_DIFFERENCE");
-    const [reviewer, setReviewer] = (0, import_react77.useState)(() => localStorage.getItem("iad.reviewer") || "auditor_qc"), [comment, setComment] = (0, import_react77.useState)("");
-    const [quality, setQuality] = (0, import_react77.useState)({});
-    const [region, setRegion] = (0, import_react77.useState)(null);
-    const pending = (0, import_react77.useRef)(null), active = (0, import_react77.useRef)(true);
-    const [hasPending, setHasPending] = (0, import_react77.useState)(false);
+    const [context, setContext] = (0, import_react78.useState)(null), [error2, setError] = (0, import_react78.useState)(""), [notice, setNotice] = (0, import_react78.useState)(""), [busy, setBusy] = (0, import_react78.useState)(false);
+    const [selected, setSelected] = (0, import_react78.useState)([]), [kind, setKind] = (0, import_react78.useState)("CONFIRM_DIFFERENCE");
+    const [reviewer, setReviewer] = (0, import_react78.useState)(() => localStorage.getItem("iad.reviewer") || "auditor_qc"), [comment, setComment] = (0, import_react78.useState)("");
+    const [quality, setQuality] = (0, import_react78.useState)({});
+    const [region, setRegion] = (0, import_react78.useState)(null);
+    const pending = (0, import_react78.useRef)(null), active = (0, import_react78.useRef)(true);
+    const [hasPending, setHasPending] = (0, import_react78.useState)(false);
     const sources = [bundle.sources.left, bundle.sources.right];
-    (0, import_react77.useEffect)(() => {
+    (0, import_react78.useEffect)(() => {
       active.current = true;
       const controller = new AbortController();
       try {
@@ -23368,10 +23390,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   var tabs = [{ id: "summary", label: "MLLM \u5206\u6790" }, { id: "evidence", label: "\u8BC1\u636E\u6E05\u5355" }, { id: "review", label: "\u4EBA\u5DE5\u590D\u6838" }];
   function ConsistencyGroupDialog({ queryId, kind, item, position, total, onMove, onClose, onExpired, restoreFocus }) {
     const { state, workspace } = useWorkspace(), location2 = state.consistency;
-    const [members, setMembers] = (0, import_react78.useState)(null), [error2, setError] = (0, import_react78.useState)(""), [asking, setAsking] = (0, import_react78.useState)(false);
-    const [lightbox, setLightbox] = (0, import_react78.useState)(null);
+    const [members, setMembers] = (0, import_react79.useState)(null), [error2, setError] = (0, import_react79.useState)(""), [asking, setAsking] = (0, import_react79.useState)(false);
+    const [lightbox, setLightbox] = (0, import_react79.useState)(null);
     const memberPage = location2.memberPage || 1, tab = location2.detailTab || "summary";
-    (0, import_react78.useEffect)(() => {
+    (0, import_react79.useEffect)(() => {
       const controller = new AbortController();
       setMembers(null);
       setError("");
@@ -23503,12 +23525,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   var import_jsx_runtime95 = __require("react/jsx-runtime");
   function ConsistencyGallery({ queryId, kind, onExpired }) {
     const { state, workspace } = useWorkspace(), location2 = state.consistency;
-    const [page, setPage] = (0, import_react79.useState)(null), [error2, setError] = (0, import_react79.useState)("");
-    const pendingMove = (0, import_react79.useRef)(null);
-    const cards = (0, import_react79.useRef)(/* @__PURE__ */ new Map()), focus = (0, import_react79.useRef)(null);
+    const [page, setPage] = (0, import_react80.useState)(null), [error2, setError] = (0, import_react80.useState)("");
+    const pendingMove = (0, import_react80.useRef)(null);
+    const cards = (0, import_react80.useRef)(/* @__PURE__ */ new Map()), focus = (0, import_react80.useRef)(null);
     const search = location2.gallerySearch || "", order = location2.galleryOrder || "recent", number = location2.galleryPage || 1, differenceFilter = location2.differenceFilter || "all";
     const modelFilter = location2.modelFilter || "all";
-    (0, import_react79.useEffect)(() => {
+    (0, import_react80.useEffect)(() => {
       const controller = new AbortController();
       setPage(null);
       setError("");
@@ -23703,23 +23725,23 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // apps/iad-harness/src/client/components/ConsistencyPage.tsx
-  var import_react84 = __require("react");
+  var import_react85 = __require("react");
 
   // apps/iad-harness/src/client/components/ConsistencyEvidencePage.tsx
-  var import_react81 = __require("react");
+  var import_react82 = __require("react");
 
   // apps/iad-harness/src/client/components/ConsistencyComparison.tsx
-  var import_react80 = __require("react");
+  var import_react81 = __require("react");
   var import_jsx_runtime97 = __require("react/jsx-runtime");
   function ConsistencyComparison({ member, query, temporary, differenceId, onDifference, frozen }) {
     const { workspace } = useWorkspace();
-    const [saving, setSaving] = (0, import_react80.useState)(false);
-    const saveRequest = (0, import_react80.useRef)(null);
-    (0, import_react80.useEffect)(() => () => saveRequest.current?.abort(), []);
-    const [detail, setDetail] = (0, import_react80.useState)(null), [error2, setError] = (0, import_react80.useState)("");
-    const [synchronized, setSynchronized] = (0, import_react80.useState)(true);
-    const [showDifferences, setShowDifferences] = (0, import_react80.useState)(true);
-    (0, import_react80.useEffect)(() => {
+    const [saving, setSaving] = (0, import_react81.useState)(false);
+    const saveRequest = (0, import_react81.useRef)(null);
+    (0, import_react81.useEffect)(() => () => saveRequest.current?.abort(), []);
+    const [detail, setDetail] = (0, import_react81.useState)(null), [error2, setError] = (0, import_react81.useState)("");
+    const [synchronized, setSynchronized] = (0, import_react81.useState)(true);
+    const [showDifferences, setShowDifferences] = (0, import_react81.useState)(true);
+    (0, import_react81.useEffect)(() => {
       if (frozen) return;
       const controller = new AbortController();
       request(`/sample/${encodeURIComponent(member.sample_id)}`, void 0, void 0, controller.signal).then((data) => {
@@ -23798,9 +23820,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   var sourceStates = { CURRENT: "\u6765\u6E90\u4E0E\u5F53\u6B21\u68C0\u67E5\u4E00\u81F4", CHANGED: "\u6765\u6E90\u5DF2\u53D8\u5316", MISSING: "\u6765\u6E90\u5DF2\u79FB\u9664", UNKNOWN: "\u6765\u6E90\u72B6\u6001\u672A\u77E5" };
   function ConsistencyEvidencePage({ evidenceId }) {
     const { workspace, state } = useWorkspace();
-    const [bundle, setBundle] = (0, import_react81.useState)(null), [error2, setError] = (0, import_react81.useState)("");
-    const [asking, setAsking] = (0, import_react81.useState)(false);
-    (0, import_react81.useEffect)(() => {
+    const [bundle, setBundle] = (0, import_react82.useState)(null), [error2, setError] = (0, import_react82.useState)("");
+    const [asking, setAsking] = (0, import_react82.useState)(false);
+    (0, import_react82.useEffect)(() => {
       const controller = new AbortController();
       setBundle(null);
       setError("");
@@ -23854,7 +23876,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // apps/iad-harness/src/client/components/ConsistencyCheckCreate.tsx
-  var import_react82 = __require("react");
+  var import_react83 = __require("react");
 
   // apps/iad-harness/src/client/consistency-prompts.ts
   var identityPromptFields = [
@@ -23866,12 +23888,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   // apps/iad-harness/src/client/components/ConsistencyCheckCreate.tsx
   var import_jsx_runtime100 = __require("react/jsx-runtime");
   function ConsistencyCheckCreate({ datasets, groups, parentId, datasetIds, onCancel, onStarted }) {
-    const [parent, setParent] = (0, import_react82.useState)(parentId), [selectedIds, setSelectedIds] = (0, import_react82.useState)(datasetIds);
-    const [busy, setBusy] = (0, import_react82.useState)(false), [error2, setError] = (0, import_react82.useState)("");
-    const [drafts, setDrafts] = (0, import_react82.useState)({ ...consistencyTaskPrompts });
-    const [identity, setIdentity] = (0, import_react82.useState)({ ...consistencyIdentityPrompts });
-    const submission = (0, import_react82.useRef)(null);
-    const submitButton = (0, import_react82.useRef)(null), confirmButton = (0, import_react82.useRef)(null);
+    const [parent, setParent] = (0, import_react83.useState)(parentId), [selectedIds, setSelectedIds] = (0, import_react83.useState)(datasetIds);
+    const [busy, setBusy] = (0, import_react83.useState)(false), [error2, setError] = (0, import_react83.useState)("");
+    const [drafts, setDrafts] = (0, import_react83.useState)({ ...consistencyTaskPrompts });
+    const [identity, setIdentity] = (0, import_react83.useState)({ ...consistencyIdentityPrompts });
+    const submission = (0, import_react83.useRef)(null);
+    const submitButton = (0, import_react83.useRef)(null), confirmButton = (0, import_react83.useRef)(null);
     const taskTypes = [...new Set(datasets.filter((dataset) => selectedIds.includes(dataset.dataset_id)).map((dataset) => consistencyTaskFormats[dataset.format]))];
     const task = taskTypes.length === 1 ? taskTypes[0] : null;
     const system = task ? drafts[task].system : "", user = task ? drafts[task].user : "";
@@ -23969,7 +23991,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // apps/iad-harness/src/client/useConsistencyJobs.ts
-  var import_react83 = __require("react");
+  var import_react84 = __require("react");
   function useConsistencyJobs(datasetIds, onProgress) {
     const polling = useJobs("consistency", datasetIds, onProgress);
     const programIds = [...new Set(polling.jobs.flatMap((job) => job.program_batch_id ? [job.program_batch_id] : []))].sort();
@@ -23993,7 +24015,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       conflict_count: job.consistency_check_version === 1 ? checks.find((item) => item.data?.job_id === job.run_id)?.data?.original_conflicts ?? null : programs.find((item) => item.data?.batch_id === job.program_batch_id)?.data?.conflict_count ?? null,
       duration_seconds: job.finished_at && job.started_at ? Math.max(0, Math.round((Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1e3)) : null
     }));
-    const refresh = (0, import_react83.useCallback)(() => {
+    const refresh = (0, import_react84.useCallback)(() => {
       polling.refresh();
       resources.forEach((resource) => void resource.refetch({ cancelRefetch: false }));
     }, [polling.refresh, programs, checks]);
@@ -24030,11 +24052,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const catalog = useDatasetCatalog();
     const evidenceId = state.consistency.evidenceId;
     const queryId = state.consistency.queryId;
-    const [queryError, setQueryError] = (0, import_react84.useState)("");
-    const onExpired = (0, import_react84.useCallback)(() => setQueryError("\u51BB\u7ED3\u67E5\u8BE2\u5DF2\u5931\u6548\uFF0C\u8BF7\u4ECE\u68C0\u67E5\u4F5C\u4E1A\u6253\u5F00\u7ED3\u679C\u3002"), []);
-    const [visited, setVisited] = (0, import_react84.useState)(!evidenceId);
-    (0, import_react84.useEffect)(() => setQueryError(""), [queryId]);
-    (0, import_react84.useEffect)(() => {
+    const [queryError, setQueryError] = (0, import_react85.useState)("");
+    const onExpired = (0, import_react85.useCallback)(() => setQueryError("\u51BB\u7ED3\u67E5\u8BE2\u5DF2\u5931\u6548\uFF0C\u8BF7\u4ECE\u68C0\u67E5\u4F5C\u4E1A\u6253\u5F00\u7ED3\u679C\u3002"), []);
+    const [visited, setVisited] = (0, import_react85.useState)(!evidenceId);
+    (0, import_react85.useEffect)(() => setQueryError(""), [queryId]);
+    (0, import_react85.useEffect)(() => {
       if (!evidenceId) setVisited(true);
     }, [evidenceId]);
     return /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)(import_jsx_runtime101.Fragment, { children: [
@@ -24063,38 +24085,38 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const initialParent = buildHierarchyGroups(datasets, groups)[0]?.group_id || "";
     const selectedParentId = state.consistency.parentId ?? initialParent;
     const selectedChildIds = state.consistency.datasetIds ?? datasets.filter((item) => getDatasetGroupId(item) === selectedParentId).map((item) => item.dataset_id);
-    const [error2, setError] = (0, import_react84.useState)("");
-    const [statusJobId, setStatusJobId] = (0, import_react84.useState)("");
+    const [error2, setError] = (0, import_react85.useState)("");
+    const [statusJobId, setStatusJobId] = (0, import_react85.useState)("");
     const selectedJobId = state.consistency.batchId || "";
-    const setSelectedJobId = (0, import_react84.useCallback)((batchId) => workspace.updateConsistency({ batchId: batchId || void 0 }, true), [workspace]);
-    const [jobPage, setJobPage] = (0, import_react84.useState)(1);
-    const [revision, setRevision] = (0, import_react84.useState)(0);
-    const [jobConflicts, setJobConflicts] = (0, import_react84.useState)([]);
-    const [conflictsLoading, setConflictsLoading] = (0, import_react84.useState)(false);
-    const [kind, setKind] = (0, import_react84.useState)("all");
-    const [modelFilter, setModelFilter] = (0, import_react84.useState)("all");
-    const [agreement, setAgreement] = (0, import_react84.useState)("all");
-    const [search, setSearch] = (0, import_react84.useState)("");
-    const [page, setPage] = (0, import_react84.useState)(1);
-    const [reviewFilter, setReviewFilter] = (0, import_react84.useState)("all");
+    const setSelectedJobId = (0, import_react85.useCallback)((batchId) => workspace.updateConsistency({ batchId: batchId || void 0 }, true), [workspace]);
+    const [jobPage, setJobPage] = (0, import_react85.useState)(1);
+    const [revision, setRevision] = (0, import_react85.useState)(0);
+    const [jobConflicts, setJobConflicts] = (0, import_react85.useState)([]);
+    const [conflictsLoading, setConflictsLoading] = (0, import_react85.useState)(false);
+    const [kind, setKind] = (0, import_react85.useState)("all");
+    const [modelFilter, setModelFilter] = (0, import_react85.useState)("all");
+    const [agreement, setAgreement] = (0, import_react85.useState)("all");
+    const [search, setSearch] = (0, import_react85.useState)("");
+    const [page, setPage] = (0, import_react85.useState)(1);
+    const [reviewFilter, setReviewFilter] = (0, import_react85.useState)("all");
     const createOpen = state.consistency.view === "setup";
-    const [modal, setModal] = (0, import_react84.useState)("");
-    const [currentConflictId, setCurrentConflictId] = (0, import_react84.useState)("");
-    const [statsModalJobId, setStatsModalJobId] = (0, import_react84.useState)("");
-    const [promptJob, setPromptJob] = (0, import_react84.useState)(null);
-    const hierarchyGroups = (0, import_react84.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-    const currentParent = (0, import_react84.useMemo)(
+    const [modal, setModal] = (0, import_react85.useState)("");
+    const [currentConflictId, setCurrentConflictId] = (0, import_react85.useState)("");
+    const [statsModalJobId, setStatsModalJobId] = (0, import_react85.useState)("");
+    const [promptJob, setPromptJob] = (0, import_react85.useState)(null);
+    const hierarchyGroups = (0, import_react85.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const currentParent = (0, import_react85.useMemo)(
       () => hierarchyGroups.find((g) => g.group_id === selectedParentId) || hierarchyGroups[0],
       [hierarchyGroups, selectedParentId]
     );
-    const currentChildDatasets = (0, import_react84.useMemo)(
+    const currentChildDatasets = (0, import_react85.useMemo)(
       () => datasets.filter((d) => getDatasetGroupId(d) === currentParent?.group_id),
       [datasets, hierarchyGroups, currentParent]
     );
-    const progress = (0, import_react84.useCallback)(() => setRevision((value) => value + 1), []);
+    const progress = (0, import_react85.useCallback)(() => setRevision((value) => value + 1), []);
     const polling = useConsistencyJobs(selectedChildIds, progress);
     const batches = polling.jobs;
-    const availableJobs = (0, import_react84.useMemo)(() => {
+    const availableJobs = (0, import_react85.useMemo)(() => {
       if (!selectedChildIds.length) {
         return [];
       }
@@ -24105,13 +24127,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     }, [batches, selectedChildIds]);
     const jobPages = Math.max(1, Math.ceil(availableJobs.length / IBA_JOBS_PAGE_SIZE));
     const currentJobPage = Math.max(1, Math.min(jobPages, jobPage));
-    const shownJobs = (0, import_react84.useMemo)(() => {
+    const shownJobs = (0, import_react85.useMemo)(() => {
       return availableJobs.slice(
         (currentJobPage - 1) * IBA_JOBS_PAGE_SIZE,
         currentJobPage * IBA_JOBS_PAGE_SIZE
       );
     }, [availableJobs, currentJobPage]);
-    const selectedJob = (0, import_react84.useMemo)(() => {
+    const selectedJob = (0, import_react85.useMemo)(() => {
       if (!shownJobs.length) return null;
       if (selectedJobId) {
         const match = shownJobs.find((j) => j.analysis.root_run_id === selectedJobId || j.batch_id === selectedJobId);
@@ -24125,6 +24147,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       if (completed) return completed;
       return shownJobs[0] || null;
     }, [shownJobs, selectedJobId]);
+    const images = useConsistencyImages(
+      selectedJob?.analysis.consistency_check_version === 1 ? selectedJob.analysis.run_id : void 0,
+      `${revision}:${selectedJob?.status}`,
+      !!selectedJob && ["PENDING", "RUNNING"].includes(selectedJob.status)
+    );
+    const imageGroup = kind === "images" || Object.hasOwn(consistencyImageGroups, kind) ? kind : null;
     const handleJobPageChange = (newPage) => {
       const targetPage = Math.max(1, Math.min(jobPages, newPage));
       setJobPage(targetPage);
@@ -24134,7 +24162,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       }
       setPage(1);
     };
-    (0, import_react84.useEffect)(() => {
+    (0, import_react85.useEffect)(() => {
       const controller = new AbortController();
       setJobConflicts([]);
       setError("");
@@ -24151,7 +24179,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       });
       return () => controller.abort();
     }, [selectedJob?.batch_id, selectedJob?.status, revision]);
-    const visibleConflicts = (0, import_react84.useMemo)(
+    const visibleConflicts = (0, import_react85.useMemo)(
       () => ConsistencyView.filter(
         jobConflicts,
         { search, model: modelFilter, agreement, review: reviewFilter }
@@ -24160,11 +24188,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     );
     const totalPages = Math.max(1, Math.ceil(visibleConflicts.length / 18));
     const currentPage = Math.min(totalPages, Math.max(1, page));
-    const paginatedConflicts = (0, import_react84.useMemo)(() => {
+    const paginatedConflicts = (0, import_react85.useMemo)(() => {
       const start = (currentPage - 1) * 18;
       return visibleConflicts.slice(start, start + 18);
     }, [visibleConflicts, currentPage]);
-    const handleParentChange = (0, import_react84.useCallback)(
+    const handleParentChange = (0, import_react85.useCallback)(
       (newParentId) => {
         const newChildren = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
         workspace.updateConsistency({ parentId: newParentId, datasetIds: newChildren.map((c) => c.dataset_id), batchId: void 0 }, true);
@@ -24178,7 +24206,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       },
       [datasets, workspace]
     );
-    const handleChildToggle = (0, import_react84.useCallback)((childId) => {
+    const handleChildToggle = (0, import_react85.useCallback)((childId) => {
       workspace.updateConsistency({ parentId: selectedParentId, datasetIds: selectedChildIds.includes(childId) ? selectedChildIds.filter((id) => id !== childId) : [...selectedChildIds, childId], batchId: void 0 }, true);
       setJobPage(1);
       setSearch("");
@@ -24187,7 +24215,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       setModelFilter("all");
       setAgreement("all");
     }, [workspace, selectedChildIds, selectedParentId]);
-    const selectJob = (0, import_react84.useCallback)((runId) => {
+    const selectJob = (0, import_react85.useCallback)((runId) => {
       setSelectedJobId(runId);
       setSearch("");
       setPage(1);
@@ -24196,12 +24224,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       setAgreement("all");
       setReviewFilter("all");
     }, [setSelectedJobId]);
-    const handleRefresh = (0, import_react84.useCallback)(() => {
+    const handleRefresh = (0, import_react85.useCallback)(() => {
       setJobPage(1);
       polling.refresh();
       setRevision((v) => v + 1);
     }, [polling.refresh]);
-    const currentConflict = (0, import_react84.useMemo)(
+    const currentConflict = (0, import_react85.useMemo)(
       () => jobConflicts.find((c) => c.id === currentConflictId) || null,
       [jobConflicts, currentConflictId]
     );
@@ -24211,19 +24239,20 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     }
     const taskType = selectedJob?.analysis.consistency_task_type;
     const modelTypes = Object.entries(modelConclusionLabels).filter(([value]) => value === "EQUIVALENT" || !taskType || consistencyTaskCategories[taskType].some((category) => category === value)).map(([value, label]) => ({ value, label }));
-    const conflictTabs = (0, import_react84.useMemo)(() => {
+    const conflictTabs = (0, import_react85.useMemo)(() => {
       const defaults = new Set(taskType ? consistencyTaskCategories[taskType] : datasets.filter((dataset) => selectedJob?.dataset_ids.includes(dataset.dataset_id)).flatMap((dataset) => conflictCategoryDefaults[dataset.format]));
       return [
         ...selectedJob?.analysis.consistency_check_version === 1 ? [{ value: "images", label: "\u5168\u90E8\u56FE\u50CF" }] : [],
         { value: "all", label: "\u5168\u90E8\u51B2\u7A81" },
-        ...Object.entries(conflictCategoryLabels).filter(([value]) => defaults.has(value)).map(([value, label]) => ({ value, label }))
+        ...Object.entries(conflictCategoryLabels).filter(([value]) => defaults.has(value)).map(([value, label]) => ({ value, label })),
+        ...selectedJob?.analysis.consistency_check_version === 1 ? Object.entries(consistencyImageGroups).map(([value, label]) => ({ value, label })) : []
       ];
     }, [datasets, taskType, selectedJob?.dataset_ids, selectedJob?.analysis.consistency_check_version]);
-    (0, import_react84.useEffect)(() => {
+    (0, import_react85.useEffect)(() => {
       if (!conflictTabs.some((tab) => tab.value === kind)) setKind("all");
       if (modelFilter !== "all" && !modelTypes.some((option) => option.value === modelFilter)) setModelFilter("all");
     }, [conflictTabs, taskType, kind, modelFilter]);
-    const handleStatClick = (0, import_react84.useCallback)(
+    const handleStatClick = (0, import_react85.useCallback)(
       (action, id) => {
         if (action === "stat-category") {
           setKind(id);
@@ -24415,17 +24444,17 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                 },
                 items: conflictTabs.map((tab) => ({ id: tab.value, label: /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)(import_jsx_runtime101.Fragment, { children: [
                   /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("span", { children: tab.label }),
-                  /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("span", { className: "iad-tab-count", children: tab.value === "images" ? selectedJob.analysis.total_samples : tab.value === "all" ? jobConflicts.length : jobConflicts.filter((conflict) => conflict.types.some((type) => type === tab.value)).length })
+                  /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("span", { className: "iad-tab-count", children: tab.value === "images" ? selectedJob.analysis.total_samples : Object.hasOwn(consistencyImageGroups, tab.value) ? images.items.filter((image) => image.reason === tab.value).length : tab.value === "all" ? jobConflicts.length : jobConflicts.filter((conflict) => conflict.types.some((type) => type === tab.value)).length })
                 ] }), buttonProps: { "data-dc": "raw-tab", "data-id": tab.value } }))
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("div", { className: "dc-result-panel", role: "tabpanel", "aria-label": conflictTabs.find((tab) => tab.value === kind)?.label, children: kind === "images" ? /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("div", { className: "dc-result-panel", role: "tabpanel", "aria-label": conflictTabs.find((tab) => tab.value === kind)?.label, children: imageGroup ? /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
               ConsistencyImages,
               {
                 jobId: selectedJob.analysis.run_id,
+                images,
+                group: imageGroup,
                 filters: { search, model: modelFilter, agreement, review: reviewFilter },
-                running: ["PENDING", "RUNNING"].includes(selectedJob.status),
-                revision: `${revision}:${selectedJob.status}`,
                 onReviewed: () => setRevision((value) => value + 1)
               },
               selectedJob.analysis.run_id
@@ -24498,7 +24527,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const icons2 = { "industrial-datasets": DatasetIcon, "industrial-images": ImagesIcon, "industrial-exploration": ExplorationIcon, "industrial-knowledge": KnowledgeIcon, "industrial-consistency": ImagesIcon, "industrial-audit": AuditIcon, "industrial-review": ReviewIcon, "industrial-model-settings": ModelSettingsIcon };
     ctx.slots.inject("sidebar.content", () => ctx.slots.register({ name: "sidebar.content" }, IndustrialSidebar));
     ctx.slots.inject("tool.call.toolview", () => {
-      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react85.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react85.default.createElement(SessionResult, { ...props, title })));
+      for (const [key, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key }, (props) => import_react86.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react86.default.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
       const disposers = Object.entries(pages).filter(([id]) => id !== "industrial-model-settings").map(([id, label], index3) => ctx.slots.register({ name: "sidebar.panellist", id, order: index3 + 1, label }, icons2[id]));
@@ -24508,12 +24537,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       for (const id of Object.keys(pages)) {
         ctx.slots.register(
           { name: "main", key: id },
-          () => import_react85.default.createElement(WorkbenchProviders, { workspace, children: import_react85.default.createElement(
+          () => import_react86.default.createElement(WorkbenchProviders, { workspace, children: import_react86.default.createElement(
             "div",
             { className: "iad-workspace", onFocusCapture: (event) => {
               if (event.target instanceof HTMLElement) event.target.scrollIntoView({ block: "nearest", inline: "nearest" });
             }, style: { height: "100%", minWidth: 0, containerType: "inline-size", containerName: "workbench" } },
-            id === "industrial-model-settings" ? import_react85.default.createElement(ModelSettingsPage) : id === "industrial-consistency" ? import_react85.default.createElement(ConsistencyPage) : import_react85.default.createElement(WorkbenchPage, { pageId: id })
+            id === "industrial-model-settings" ? import_react86.default.createElement(ModelSettingsPage) : id === "industrial-consistency" ? import_react86.default.createElement(ConsistencyPage) : import_react86.default.createElement(WorkbenchPage, { pageId: id })
           ) })
         );
       }

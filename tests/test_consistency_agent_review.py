@@ -48,7 +48,6 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
                     assert pixels.convert('RGB').getpixel((0, 0)) == (0, 0, 255)
         answer = {'observations': [{'candidate_id': config.dataset.id + ':scratch.png',
             'description': '两侧原始像素相同，主图和参考图的类别名称不同',
-            'phenomena_comparable': True, 'appearance_explains_annotation_difference': False,
             'media_ids': sorted(expected_ids) if response_ids is None else response_ids,
             'limitations': ['仅核对标注一致性，不裁决哪侧标注正确']}]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
@@ -85,7 +84,6 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         assert [item.sha256 for item in observed.request.media] == [item['sha256'] for item in actual]
         assert any(item['source'] == 'annotation' and item['crop_bbox'] == [8, 8, 32, 32] and item['sent_size'] == [24, 24] for item in actual)
         assert all(item['representation'] == 'raw' for item in actual)
-        assert observed.result.observations[0].phenomena_comparable
         assert review.observe(job_id, anchor_id, request) == observed
         assert len(sent) == 1
         calls = ModelCalls(database).list(job_id)
@@ -251,8 +249,6 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
         else:
             answer = {'observations': [{'candidate_id': reference_id,
                 'description': '局部对象可比，框的位置不同，但没有可靠配准' if case == 'unregistered_position' else '两侧表面实际状态不同',
-                'phenomena_comparable': case == 'unregistered_position',
-                'appearance_explains_annotation_difference': case != 'unregistered_position',
                 'media_ids': media, 'limitations': []}]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
 

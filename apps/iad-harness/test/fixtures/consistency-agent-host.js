@@ -17,7 +17,7 @@ import {ConsistencyCheckScheduler} from '../../lib/server/consistency/scheduler.
 import {NativeProviders} from '../../lib/server/models/providers.js';
 import {chatRequest,sendResponses} from './responses.js';
 
-export async function createConsistencyAgentHost({multiCandidate = false, withSimilarCandidate = false, candidateCount, maxVisualInputs, maxCandidatesPerPage, observeAllPages = false, splitFirstPage = false, agentUsage, agentFinish, agentTokenize, agentServerContext = 32768, indexMode, afterSubmission, modelRouting, onGeneration, bridgeTimeoutMs, protocol='openai-completions', taskType='bbox_defect'} = {}) {
+export async function createConsistencyAgentHost({multiCandidate = false, withSimilarCandidate = false, candidateCount, maxVisualInputs, maxCandidatesPerPage, observeAllPages = false, splitFirstPage = false, agentUsage, agentFinish, agentTokenize, agentServerContext = 32768, indexMode, afterSubmission, modelRouting, onGeneration, bridgeTimeoutMs, protocol='openai-completions', agentMaxOutputTokens=4096, taskType='bbox_defect'} = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-anchor-agent-'));
   const workspace = findWorkspaceRoot();
   const database = path.join(root, 'checks.db');
@@ -63,6 +63,18 @@ export async function createConsistencyAgentHost({multiCandidate = false, withSi
       wires.push(body);
       if (onGeneration) await onGeneration(body,res);
       if(res.writableEnded)return;
+      if(protocol==='openai-responses'&&body.responses.text?.format?.type==='json_schema') {
+        const pending=[body.responses.text.format.schema];
+        while(pending.length) {
+          const schema=pending.pop();
+          if(!schema||typeof schema!=='object')continue;
+          if(schema.type==='object'&&schema.additionalProperties!==false) {
+            res.writeHead(400,{'Content-Type':'application/json'});
+            res.end(JSON.stringify({error:{message:'Strict Responses schemas require additionalProperties: false for every object',type:'invalid_request_error'}}));return;
+          }
+          pending.push(...Object.values(schema));
+        }
+      }
       const capacity = body.test_role === 'agent' && agentTokenize ? await agentTokenize(body) : undefined;
       if (capacity && capacity.count + (body.max_completion_tokens ?? body.max_tokens) > agentServerContext) {
         res.writeHead(400, {'Content-Type': 'application/json'});
@@ -98,7 +110,6 @@ export async function createConsistencyAgentHost({multiCandidate = false, withSi
         assert.ok(content.some(item => item.type === 'image_url' && item.image_url.url.startsWith('data:image/png;base64,')));
         delta = {content: JSON.stringify({observations: Object.keys(facts.candidates).map(candidate_id => ({
           candidate_id, description: '依据实际原图与原始标注核对两侧可比现象、类别与数量',
-          phenomena_comparable: true, appearance_explains_annotation_difference: false,
           media_ids: groups.filter(group => [facts.anchor.sample_id, candidate_id].includes(group.sample_id)).map(group => group.evidence_id), limitations: [],
         }))})};
         if (observationsBeforeHold > 0 && (heldAnchorId === undefined || facts.anchor.sample_id === heldAnchorId)
@@ -279,10 +290,10 @@ print(json.dumps({'dataset_id':config.dataset.id,'sample_ids':identities}))
     async session_id => imageSessionPath(path.join(root, 'sessions'), await bridge.execute('consistency_agent_session_location', {session_id})));
   const ctx = new Context();
   new LlmRuntime(ctx);
-  const providers = {isolated: {api: protocol, baseURL: endpoint.replace(/\/(?:chat\/completions|responses)$/, ''),
+  const providers = {isolated: {api: protocol, defaultMaxTokens:4096, baseURL: endpoint.replace(/\/(?:chat\/completions|responses)$/, ''),
     apiKeyEnv: 'LOCAL_TEST_KEY', retryPolicy: {mode: 'normal', maxRetries: 0}, models: [
       {id: 'planner', input: ['text'], contextWindow: 32768, maxTokens: 4096},
-      {id: 'vision', input: ['text', 'image'], contextWindow: 32768, maxTokens: 4096,
+      {id: 'vision', input: ['text', 'image'], contextWindow: 32768, ...(agentMaxOutputTokens===null?{}:{maxTokens:agentMaxOutputTokens}),
         ...(protocol==='openai-responses'?{reasoningEfforts:{low:'low',medium:'medium',high:'high',xhigh:'xhigh'}}:{})}]}};
   ctx.provide('settings', {configure: () => () => {}, describe: () => [{ns: 'llm-pi-ai', revision: 1, value: {providers}}]});
   ctx.provide('credentials', {resolve: async () => ({value: 'isolated-test-key'})});

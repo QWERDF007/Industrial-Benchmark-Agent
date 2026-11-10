@@ -1,5 +1,6 @@
 import { conflictCategories, modelConclusionLabels } from '../shared/consistency.parameters.generated.js';
 import { mediaUrl, request } from './api.js';
+export const consistencyImageGroups = { NO_CANDIDATES: '无候选', NO_ELIGIBLE_CANDIDATES: '无有效候选' };
 export const initialConsistencyFilters = { search: '', model: 'all', agreement: 'all', review: 'all' };
 export class ConsistencyView {
     static modelConclusion(value, verdict) {
@@ -12,9 +13,10 @@ export class ConsistencyView {
             return null;
         return program === model || program === modelConclusionLabels[model] ? 'same' : 'different';
     }
-    static filter(items, filters) {
+    static filter(items, filters, reason) {
         const search = filters.search.trim().toLowerCase();
-        return items.filter(item => (!search || item.filename.toLowerCase().includes(search))
+        return items.filter(item => (!reason || item.reason === reason)
+            && (!search || item.filename.toLowerCase().includes(search))
             && (filters.model === 'all' || item.model.modelType === filters.model)
             && (filters.agreement === 'all' || item.agreement === filters.agreement)
             && (filters.review === 'all' || item.review === filters.review));
@@ -69,7 +71,7 @@ export class ConsistencyView {
             agreement: this.agreement(item.annotation_conclusion, this.modelConclusion(item.model_conclusion, item.model_state)) }));
     }
     static imageCards(runId, items) {
-        return items.map(({ sample, summary, image, review_state }) => ({ id: sample.sample_id, type: summary.program_conclusion,
+        return items.map(({ sample, summary, image, review_state }) => ({ id: sample.sample_id, type: summary.program_conclusion, reason: summary.reason,
             filename: (image?.sample.relative_path || sample.sample_id.slice(sample.sample_id.indexOf(':') + 1)).split('/').pop(),
             url: image ? this.media(image, true) : mediaUrl(sample, 'thumbnail'), fullUrl: image ? this.media(image) : mediaUrl(sample),
             sourceWidth: image?.sample.width, sourceHeight: image?.sample.height, image: image ?? undefined,

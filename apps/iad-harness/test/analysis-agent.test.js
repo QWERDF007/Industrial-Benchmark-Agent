@@ -25,8 +25,9 @@ import {toolPresentation} from '../lib/shared/tool-presentation.js';
 
 for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'knowledge', capacityStop:true},
   {module:'exploration',emptyCatalog:true}, {module:'exploration',initialFailure:true},
-  {module:'exploration',protocol:'openai-responses'}, {module:'knowledge',protocol:'openai-responses'}]) test(`one native ${scenario.module} Agent ${scenario.initialFailure ? 'retains a first-call failure before any observation' : 'observes all 19 registrations in its own Session' + (scenario.emptyCatalog ? ' and publishes an empty catalog' : scenario.capacityStop ? ' after a 12/19 capacity failure and resume' : ' and retains a last-round discovery')}${scenario.protocol?' with Responses reasoning':''}`, {timeout: process.env.IAD_ANALYSIS_BROWSER ? 120000 : 60000}, async t => {
-  const {module, capacityStop, emptyCatalog, initialFailure,protocol='openai-completions'} = scenario;
+  {module:'exploration',protocol:'openai-responses'}, {module:'knowledge',protocol:'openai-responses'},
+  ...['exploration','knowledge'].flatMap(module=>['openai-completions','openai-responses'].map(protocol=>({module,protocol,optionalOutput:true})))]) test(`one native ${scenario.module} Agent ${scenario.initialFailure ? 'retains a first-call failure before any observation' : 'observes all 19 registrations in its own Session' + (scenario.emptyCatalog ? ' and publishes an empty catalog' : scenario.capacityStop ? ' after a 12/19 capacity failure and resume' : ' and retains a last-round discovery')}${scenario.protocol==='openai-responses'?' with Responses reasoning':''}${scenario.optionalOutput?' without a configured output limit':''}`, {timeout: process.env.IAD_ANALYSIS_BROWSER ? 120000 : 60000}, async t => {
+  const {module, capacityStop, emptyCatalog, initialFailure,protocol='openai-completions',optionalOutput=false} = scenario;
   const expectedCounts=module==='exploration'?[[8,2],[2,2],[2,2],[0,1]]:[[2,2],[2,2],[2,2],[3,1],[3,0]];
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-analysis-agent-'));
   const workspace = findWorkspaceRoot(), database = path.join(root, 'analysis.db');
@@ -181,7 +182,7 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
   new SystemPrompt(ctx, {});
   new ToolRuntime(ctx);
   const providers = {fixture: {api: protocol, baseURL: endpoint, apiKeyEnv: 'ANALYSIS_TEST_KEY',
-    models: [{id: 'native-image', input: protocol==='openai-responses'?['text']:['text','image'], contextWindow: 65536, maxTokens: 4096,
+    models: [{id: 'native-image', input: protocol==='openai-responses'?['text']:['text','image'], contextWindow: 65536, ...(optionalOutput?{}:{maxTokens:4096}),
       ...(protocol==='openai-responses'?{reasoningEfforts:{high:'high'}}:{})}]}};
   ctx.provide('settings', {configure: () => () => {}, describe: () => [{ns: 'llm-pi-ai', revision: 1, value: {providers}}]});
   ctx.provide('credentials', {resolve: async () => ({value: 'analysis-test-key'})});
@@ -226,6 +227,7 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     assert.equal(toolPresentation(started.value).links.find(link => link.label === '查看作业').location.pageId,
       module === 'exploration' ? 'industrial-exploration' : 'industrial-knowledge');
     const frozen=await bridge.execute('analysis_agent_snapshot',{run_id:job.run_id});
+    if(optionalOutput)assert.equal(frozen.agent.profile.max_output_tokens,null);
     assert.deepEqual(frozen.plan.sampling_ratio,{normal:1,abnormal:1});
     assert.deepEqual(frozen.plan.rounds.map(round=>[round.sampling_counts.normal,round.sampling_counts.abnormal]),expectedCounts);
     await scheduler.whenIdle();

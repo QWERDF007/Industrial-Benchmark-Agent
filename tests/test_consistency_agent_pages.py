@@ -45,7 +45,6 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
         if profile.max_request_bytes:
             assert len(request.content) <= profile.max_request_bytes
         answer = {'observations': [{'candidate_id': identity, 'description': '两侧均为有效空标注，图像已实际读取',
-            'phenomena_comparable': True, 'appearance_explains_annotation_difference': False,
             'media_ids': [group['evidence_id'] for group in groups if group['sample_id'] in (facts['anchor']['sample_id'], identity)], 'limitations': []}
             for identity in facts['candidates']]}
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})

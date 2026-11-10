@@ -57,6 +57,8 @@ print(json.dumps({'dataset_id':config.dataset.id}))
       await new Promise(resolve => setTimeout(resolve, 20));
     }
     assert.equal(status.status, 'COMPLETED', JSON.stringify(status));
+    assert.equal(status.phase,'SUMMARIZING_CONSISTENCY_RESULTS');
+    assert.ok(status.phase_timings.at(-1).finished_at);
     assert.equal(status.completed, 3);
     assert.equal(status.total_samples, 3);
     assert.deepEqual(unexpected, []);

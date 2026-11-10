@@ -53,3 +53,18 @@ test('all-image loading includes matches beyond the first API page before filter
     await new Promise(resolve=>server.close(resolve));
   }
 });
+
+
+test('no-candidate tabs select persisted reasons and share image filters without including failures or pending images',()=>{
+  const cards=ConsistencyView.imageCards('job',[
+    image('none-A.png',{reason:'NO_CANDIDATES',program_conclusion:'无候选',verdict:'EQUIVALENT'}),
+    image('rejected-B.png',{reason:'NO_ELIGIBLE_CANDIDATES',program_conclusion:'无有效候选',verdict:'EQUIVALENT'}),
+    image('failed.png',{reason:'FAILED',program_conclusion:'无候选'}),image('pending.png'),
+    image('reviewed.png',reviewed('一致',null,'EQUIVALENT')),
+  ]);
+  assert.deepEqual(ConsistencyView.filter(cards,filters,'NO_CANDIDATES').map(card=>card.filename),['none-A.png']);
+  assert.deepEqual(ConsistencyView.filter(cards,filters,'NO_ELIGIBLE_CANDIDATES').map(card=>card.filename),['rejected-B.png']);
+  assert.deepEqual(ConsistencyView.filter(cards,{...filters,search:'rejected'},'NO_CANDIDATES'),[]);
+  assert.deepEqual(ConsistencyView.filter(cards,{...filters,model:'EQUIVALENT'},'NO_CANDIDATES'),[]);
+  assert.deepEqual(ConsistencyView.filter(cards,{...filters,review:'confirmed'},'NO_ELIGIBLE_CANDIDATES'),[]);
+});

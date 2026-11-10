@@ -8,7 +8,7 @@ export declare function JobStatusButton({ job, onClick, children }: {
 export declare function JobStatusAction({ job, onClick }: {
     job: JobSnapshot;
     onClick(): void;
-}): React.JSX.Element | null;
+}): React.JSX.Element;
 export declare function JobStatusDrawer({ job, onClose, stale }: {
     job: JobSnapshot;
     onClose(): void;

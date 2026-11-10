@@ -22,8 +22,8 @@ export class ConsistencyAnchorReviewer {
         if (vision.error || !vision.profile)
             throw new Error('视觉模型角色不可用：' + (vision.error || '未配置'));
         const profile = agent.profile;
-        if (!profile.model_id || !profile.context_tokens || !profile.max_output_tokens)
-            throw new Error('Agent 模型角色缺少已声明的模型、上下文或输出容量');
+        if (!profile.model_id || !profile.context_tokens)
+            throw new Error('Agent 模型角色缺少已声明的模型或上下文容量');
         const provider = 'consistency-' + task.sessionId;
         const identity = { run_id: task.runId, anchor_id: task.anchorId, attempt: task.attempt };
         task.signal.throwIfAborted();
@@ -37,7 +37,7 @@ export class ConsistencyAnchorReviewer {
         let failure;
         await this.host.withAgent(task.sessionId, {
             signal: task.signal,
-            agentOptions: { provider, model: profile.model_id, maxTokens: profile.max_output_tokens },
+            agentOptions: { provider, model: profile.model_id, maxTokens: profile.max_output_tokens ?? undefined },
             setup: async (scope, currentAgent) => {
                 new NativeModelCalls().attach(scope, {
                     start: async (request) => { await this.bridge.execute('consistency_agent_model_call_start', { ...identity, request }); },
@@ -46,7 +46,7 @@ export class ConsistencyAnchorReviewer {
                 scope.on('agent/error', event => { failure ??= event.error; });
                 scope.on('session/event', (_session, event) => {
                     if (event.type === 'turn/end' && event.data.reason.kind === 'max-tokens')
-                        failure = new LlmError(`Agent 达到冻结的输出上限 ${profile.max_output_tokens} tokens，未提交主图终稿`, 'MAX_TOKENS');
+                        failure = new LlmError('Agent 输出达到本次请求上限，未提交主图终稿', 'MAX_TOKENS');
                 });
                 if (profile.credential_ref)
                     scope.provide('credentials', this.providers.credentials);

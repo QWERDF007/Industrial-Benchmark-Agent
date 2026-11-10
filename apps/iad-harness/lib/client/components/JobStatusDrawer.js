@@ -13,12 +13,10 @@ const cancellationRoutes = {
     KNOWLEDGE: 'knowledge', KNOWLEDGE_BATCH: 'knowledge', NORMAL_KNOWLEDGE: 'knowledge', DEFECT_KNOWLEDGE: 'knowledge',
 };
 export function JobStatusButton({ job, onClick, children }) {
-    if (job.status === 'COMPLETED')
-        return _jsx("span", { children: children || jobStatuses[job.status] });
     return _jsx("button", { type: "button", className: "iad-job-status-button", "data-job-root": job.root_run_id, "aria-label": `查看作业状态 ${job.run_id}`, onClick: event => { event.stopPropagation(); onClick(); }, onKeyDown: event => event.stopPropagation(), children: children || jobStatuses[job.status] });
 }
 export function JobStatusAction({ job, onClick }) {
-    return job.status === 'COMPLETED' ? null : _jsx(IconButton, { icon: "clock", label: `查看作业状态 ${job.run_id}`, title: "\u67E5\u770B\u4F5C\u4E1A\u72B6\u6001", onClick: event => { event.stopPropagation(); onClick(); } });
+    return _jsx(IconButton, { icon: "clock", label: `查看作业状态 ${job.run_id}`, title: "\u67E5\u770B\u4F5C\u4E1A\u72B6\u6001", onClick: event => { event.stopPropagation(); onClick(); } });
 }
 export function JobStatusDrawer({ job, onClose, stale }) {
     const { state } = useWorkspace();

@@ -35,6 +35,7 @@ export const jobPhases = {
     PREPARING_SHARED_INDEX: '准备共享图像索引', SHARED_INDEX_READY: '共享索引就绪',
     VERIFYING_CONTENT: '核对图像内容',
     OBSERVING_ANCHOR: '视觉核对', AWAITING_SUBMISSION: '校验主图结论', AGENT_REVIEWING: '主图审核',
+    SUMMARIZING_CONSISTENCY_RESULTS: '汇总结果',
 };
 const workflows = {
     exploration: { title: '方向探索', stages: [
@@ -51,10 +52,12 @@ const workflows = {
             { title: '发布知识版本', phases: ['ANALYSIS_PUBLISHED', 'KNOWLEDGE_PUBLISHED', 'KNOWLEDGE_REUSED'] }
         ] },
     consistency: { title: '数据一致性', stages: [
-            { title: '准备输入及索引', phases: ['ENCODING', 'INDEXING', 'CREATING_ANCHOR_SESSIONS', 'PREPARING_SHARED_INDEX', 'SHARED_INDEX_READY'] },
-            { title: '检索候选图像', phases: ['ANALYZING_SELECTED_DATASETS', 'COMPARING_SELECTED_DATASETS', 'RETRIEVING_ANCHOR'] },
-            { title: '冲突比对与分析', phases: ['COMPARING', 'ANALYZING_CONFLICT_GROUPS', 'ANALYZING_GROUP_BATCHES', 'SUMMARIZING_GROUP_BATCHES', 'ANALYZING_CONSISTENCY_BATCHES', 'VERIFYING_CONTENT', 'PLANNING_VISUAL_PAGES', 'AWAITING_REVIEW', 'OBSERVING_ANCHOR', 'AGENT_REVIEWING'] },
-            { title: '发布检查结果', phases: ['CONSISTENCY_FINISHED', 'CONSISTENCY_MODEL_BATCHES_FINISHED', 'AWAITING_SUBMISSION'] }
+            { title: '准备检查', phases: ['ENCODING', 'INDEXING', 'CREATING_ANCHOR_SESSIONS', 'PREPARING_SHARED_INDEX', 'SHARED_INDEX_READY'] },
+            { title: '逐图检查', phases: ['ANALYZING_SELECTED_DATASETS', 'COMPARING_SELECTED_DATASETS', 'RETRIEVING_ANCHOR',
+                    'COMPARING', 'ANALYZING_CONFLICT_GROUPS', 'ANALYZING_GROUP_BATCHES', 'SUMMARIZING_GROUP_BATCHES',
+                    'ANALYZING_CONSISTENCY_BATCHES', 'VERIFYING_CONTENT', 'PLANNING_VISUAL_PAGES', 'AWAITING_REVIEW',
+                    'OBSERVING_ANCHOR', 'AGENT_REVIEWING', 'AWAITING_SUBMISSION'] },
+            { title: '汇总结果', phases: ['SUMMARIZING_CONSISTENCY_RESULTS', 'CONSISTENCY_FINISHED', 'CONSISTENCY_MODEL_BATCHES_FINISHED'] }
         ] },
     audit: { title: '模型审计', stages: [
             { title: '准备样本和知识', phases: ['PREPARING_KNOWLEDGE'] },
@@ -82,5 +85,6 @@ export function jobWorkflow(job, now = Date.now()) {
         }
         return { ...stage, elapsedSeconds: durations.length ? durations.reduce((sum, value) => sum + value, 0) : null };
     });
-    return { ...workflow, stages, index: stages.findIndex(stage => stage.phases.includes(job.phase || '')) };
+    return { ...workflow, stages, index: kind === 'consistency' && job.status === 'COMPLETED'
+            ? stages.length - 1 : stages.findIndex(stage => stage.phases.includes(job.phase || '')) };
 }

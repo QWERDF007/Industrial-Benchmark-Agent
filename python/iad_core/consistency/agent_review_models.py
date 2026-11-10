@@ -47,7 +47,7 @@ class GateDispute(AnalysisModel):
 
 
 class CandidateVisualObservation(AnalysisModel):
-    model_config = ConfigDict(extra='allow', frozen=True)
+    model_config = ConfigDict(frozen=True)
 
     candidate_id: Identifier
     description: NonBlankText

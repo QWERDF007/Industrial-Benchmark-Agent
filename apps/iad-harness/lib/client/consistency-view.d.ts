@@ -1,5 +1,10 @@
 import type { AnchorImageItem, ConsistencyAnchorRun, GalleryItem, GalleryMember, GalleryReference } from '../shared/domain.generated.js';
 import { modelConclusionLabels } from '../shared/consistency.parameters.generated.js';
+export declare const consistencyImageGroups: {
+    readonly NO_CANDIDATES: '无候选';
+    readonly NO_ELIGIBLE_CANDIDATES: '无有效候选';
+};
+export type ConsistencyImageGroup = 'images' | keyof typeof consistencyImageGroups;
 export interface ConsistencyComparisonItem {
     id: string;
     type: string;
@@ -9,6 +14,7 @@ export interface ConsistencyComparisonItem {
     sourceWidth?: number;
     sourceHeight?: number;
     candidateCount: number;
+    reason?: AnchorImageItem['summary']['reason'];
     reference: ConsistencyAnalysisReference;
     image?: GalleryItem['anchor'];
     model: {
@@ -36,7 +42,7 @@ export type ConsistencyAnalysisReference = GalleryReference | AnchorReviewRefere
 export declare class ConsistencyView {
     static modelConclusion(value: string | null | undefined, verdict?: GalleryItem['model_state'] | null): keyof typeof modelConclusionLabels | '';
     static agreement(program: string, model: ConsistencyComparisonItem['model']['modelType']): ConsistencyComparisonItem['agreement'];
-    static filter<T extends ConsistencyComparisonItem>(items: T[], filters: ConsistencyFilterValues): T[];
+    static filter<T extends ConsistencyComparisonItem>(items: T[], filters: ConsistencyFilterValues, reason?: keyof typeof consistencyImageGroups): T[];
     static media(image: GalleryItem['anchor'], thumbnail?: boolean): string;
     static load(batchId: string, signal: AbortSignal): Promise<{
         queryId: string;

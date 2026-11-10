@@ -95,3 +95,23 @@ test('a Responses consistency check uses only its module-owned Agent and vision 
     assert.deepEqual(fixture.errors,[]);
   } finally {await fixture.close();}
 });
+
+
+for(const protocol of ['openai-completions','openai-responses']) test(`a consistency Agent completes without a configured output limit over ${protocol}`,{timeout:30000},async()=>{
+  const fixture=await createConsistencyAgentHost({protocol,agentMaxOutputTokens:null});
+  try {
+    const configuration=await fixture.bridge.execute('module_settings_get',{module:'consistency'});
+    await fixture.bridge.execute('module_settings_save',{module:'consistency',expected_revision:configuration.revision,
+      settings:{agent_limits:{...configuration.settings.agent_limits,max_output_tokens:null}}});
+    const started=await fixture.scheduler.start({submission_id:randomUUID(),dataset_ids:[fixture.datasetId],mode:'exact',
+      subjects:{kind:'samples',sample_ids:[fixture.sampleIds.A]}});
+    await fixture.scheduler.whenIdle();
+    const status=await fixture.bridge.execute('analysis_status',{run_id:started.run_id});
+    assert.equal(status.status,'COMPLETED',JSON.stringify(status.errors));
+    assert.deepEqual(fixture.errors,[]);
+    const snapshot=await fixture.bridge.execute('consistency_agent_snapshot',{run_id:started.run_id});
+    assert.equal(snapshot.roles.agent.profile.max_output_tokens,null);
+    assert.ok(fixture.wires.some(body=>body.test_role==='agent'));
+    assert.equal(fixture.tokenizations.length>0,protocol==='openai-completions');
+  } finally {await fixture.close();}
+});

@@ -52,7 +52,7 @@ def test_chat_model_receives_the_output_contract_when_server_ignores_response_fo
 
 @pytest.fixture
 def responses_model():
-    model = SimpleNamespace(requests=[], status='completed', text='{"description":"原始图像可见。"}', invalid_once=False, error=None)
+    model = SimpleNamespace(requests=[], status='completed', text='{"description":"原始图像可见。"}', invalid_once=False, error=None, require_closed_objects=False)
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
@@ -64,11 +64,23 @@ def responses_model():
             if self.path != '/v1/responses':
                 self.send_error(404)
                 return
-            if model.error is not None:
+            error = model.error
+            if model.require_closed_objects:
+                pending = [body['text']['format']['schema']]
+                while pending:
+                    schema = pending.pop()
+                    if isinstance(schema, dict):
+                        if schema.get('type') == 'object' and schema.get('additionalProperties') is not False:
+                            error = ("Invalid schema for response_format 'AnchorVisualResult': "
+                                "'additionalProperties' is required to be supplied and to be false.")
+                        pending.extend(schema.values())
+                    elif isinstance(schema, list):
+                        pending.extend(schema)
+            if error is not None:
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'error': {'message': model.error, 'type': 'invalid_request_error'}}).encode())
+                self.wfile.write(json.dumps({'error': {'message': error, 'type': 'invalid_request_error'}}).encode())
                 return
             result = {'id':'resp_fixture','created_at':1,'model':'gpt-6.1-sol','object':'response',
                 'status':model.status,'parallel_tool_calls':True,'tool_choice':'auto','tools':[],
@@ -131,6 +143,24 @@ def test_responses_vision_delivers_original_pixels_and_records_only_actual_usage
         assert record.finish_reason=='completed'
         assert record.usage['input_tokens']==300 and record.usage['output_tokens']==20
         assert record.response_id=='resp_fixture'
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize('context_tokens', [262144, None])
+def test_provider_managed_responses_can_generate_without_an_explicit_output_limit(responses_model, context_tokens):
+    client = VlmClient(profile=ModelProfile(endpoint=responses_model.endpoint, api='openai-responses',
+        model_id='gpt-6.1-sol', capacity_mode='provider_managed', context_tokens=context_tokens,
+        max_output_tokens=None, reasoning_effort='medium'))
+    try:
+        result = client.generate(client.plan(Observation, '核对实际图像内容。', [], client.resolve_model()))
+        assert result.description == '原始图像可见。'
+        path, body = responses_model.requests[0]
+        assert path == '/v1/responses'
+        assert 'max_output_tokens' not in body and 'max_tokens' not in body
+        assert body['reasoning'] == {'effort': 'medium'}
+        assert body['text']['format']['type'] == 'json_schema'
+        assert len(responses_model.requests) == 1
     finally:
         client.close()
 
@@ -239,5 +269,24 @@ def test_invalid_json_gets_one_model_repair_with_original_inputs_and_stays_stric
         assert requests[1]['messages'][2]['role']=='assistant'
         assert requests[1]['messages'][2]['content'].endswith('</end>')
         assert 'json_invalid' in requests[1]['messages'][3]['content']
+    finally:
+        client.close()
+
+
+def test_annotation_review_responses_contract_closes_all_nested_objects(responses_model):
+    from iad_core.consistency.agent_review_models import AnchorVisualResult
+
+    responses_model.require_closed_objects = True
+    responses_model.text = json.dumps({'observations': [{'candidate_id': 'candidate',
+        'description': '原始标注与可见区域对应。', 'media_ids': ['main-original', 'candidate-original'],
+        'limitations': [], 'gate_dispute': None}]}, ensure_ascii=False)
+    client = VlmClient(profile=ModelProfile(endpoint=responses_model.endpoint, api='openai-responses',
+        model_id='gpt-6.1-sol', capacity_mode='provider_managed', context_tokens=500000))
+    try:
+        result = client.generate_once(client.plan(AnchorVisualResult, '根据实际图组核对标注。', [], client.resolve_model()))
+        assert result.observations[0].candidate_id == 'candidate'
+        assert result.observations[0].description == '原始标注与可见区域对应。'
+        assert result.observations[0].gate_dispute is None
+        assert len(responses_model.requests) == 1
     finally:
         client.close()

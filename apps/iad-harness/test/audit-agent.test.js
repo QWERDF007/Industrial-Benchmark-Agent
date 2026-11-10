@@ -14,7 +14,8 @@ import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {fileURLToPath} from 'node:url';
 import {createAuditAgentHost} from './fixtures/audit-agent-host.js';
 
-for(const {withKnowledge,protocol='openai-completions'} of [{withKnowledge:false},{withKnowledge:true},{withKnowledge:false,protocol:'openai-responses'}])test(`${withKnowledge?'selected weak knowledge and counter evidence':'zero knowledge'} with no consistency candidates audits every image in independent native Sessions${protocol==='openai-responses'?' with Responses reasoning':''}`, {timeout:60000}, async t=>{
+for(const {withKnowledge,protocol='openai-completions',optionalOutput=false} of [{withKnowledge:false},{withKnowledge:true},{withKnowledge:false,protocol:'openai-responses'},
+  ...['openai-completions','openai-responses'].map(protocol=>({withKnowledge:false,protocol,optionalOutput:true}))])test(`${withKnowledge?'selected weak knowledge and counter evidence':'zero knowledge'} with no consistency candidates audits every image in independent native Sessions${protocol==='openai-responses'?' with Responses reasoning':''}${optionalOutput?' without a configured output limit':''}`, {timeout:60000}, async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-native-'));
   const workspace=findWorkspaceRoot(), database=path.join(root,'audit.db'), wire=[], errors=[];
   let runtime,bridge,host,ctx,scheduler,server;
@@ -75,7 +76,7 @@ for(const {withKnowledge,protocol='openai-completions'} of [{withKnowledge:false
   const data=JSON.parse(execFileSync(resolvePythonPath(),[fileURLToPath(new URL('./fixtures/audit_dataset.py',import.meta.url)),
     root,database,withKnowledge?'knowledge':'none',`http://127.0.0.1:${provider.address().port}/v1`],
     {cwd:workspace,env:{...process.env,PYTHONPATH:path.join(workspace,'python')},encoding:'utf8'}));
-  runtime=await createAuditAgentHost(root,`http://127.0.0.1:${provider.address().port}/v1`,{protocol,onError:error=>errors.push(String(error))});
+  runtime=await createAuditAgentHost(root,`http://127.0.0.1:${provider.address().port}/v1`,{protocol,optionalOutput,onError:error=>errors.push(String(error))});
   ({bridge,host,ctx,scheduler}=runtime);
   if(protocol==='openai-responses')await bridge.execute('module_settings_save',{module:'audit',expected_revision:1,settings:{reasoning_effort:'high'}});
   const notice=host.notice.bind(host);let noticeInterrupted=false;
@@ -102,6 +103,7 @@ for(const {withKnowledge,protocol='openai-completions'} of [{withKnowledge:false
   assert.equal(started.value.run_id,job.run_id);
   const status=await(await fetch(base+'/audit/status/'+job.run_id)).json();
   assert.equal(status.status,'COMPLETED',JSON.stringify(status.errors));assert.equal(status.completed,2);assert.equal(status.failed,0);
+  if(optionalOutput)assert.equal((await bridge.execute('audit_agent_snapshot',{run_id:job.run_id})).agent.profile.max_output_tokens,null);
   assert.equal(wire.length,withKnowledge?8:4);assert.deepEqual(errors,[]);
   for(const body of wire){
     assert.ok(body.messages.some(message=>(message.role==='system'||message.role==='developer')&&message.content.includes('系统自定义：审计工具流程。')));

@@ -25,7 +25,7 @@ export class AuditImageAgent {
     const sample=await this.bridge.execute<AuditSampleRun>('audit_agent_sample',identity);
     const location=await this.bridge.execute<ImageSessionLocation>('audit_agent_session_location',{session_id:sample.session_id});
     const {profile,native_profile}=snapshot.agent;
-    if (!profile?.model_id || !native_profile || !profile.max_output_tokens) throw new Error('审计缺少冻结的原生模型');
+    if (!profile?.model_id || !native_profile) throw new Error('审计缺少冻结的原生模型');
     if (!sample.session_created) {
       await this.host.create(sample.session_id);
       await this.host.notice(sample.session_id,{type:'iad/job',summary:'独立图像审计已受理',value:{job_id:runId,sample_id:sampleId}});
@@ -33,7 +33,7 @@ export class AuditImageAgent {
     }
     const provider='audit-'+sample.session_id;
     let failure:unknown;
-    await this.host.withAgent(sample.session_id,{signal,agentOptions:{provider,model:profile.model_id,maxTokens:profile.max_output_tokens},
+    await this.host.withAgent(sample.session_id,{signal,agentOptions:{provider,model:profile.model_id,maxTokens:profile.max_output_tokens ?? undefined},
       setup:async scope=>{
         const attachments=new NativeMediaAttachments(scope,path.join(path.dirname(auditSessionPath(this.dataRoot,location)),location.image_id));
         if(profile.credential_ref)scope.provide('credentials',this.providers.credentials);
@@ -54,7 +54,7 @@ export class AuditImageAgent {
         });
         scope.on('agent/error',event=>{failure=event.error;});
         scope.on('session/event',(_session,event)=>{
-          if(event.type==='turn/end'&&event.data.reason.kind==='max-tokens') failure=new LlmError('审计达到冻结输出上限，未提交本图终稿','MAX_TOKENS');
+          if(event.type==='turn/end'&&event.data.reason.kind==='max-tokens') failure=new LlmError('审计输出达到本次请求上限，未提交本图终稿','MAX_TOKENS');
         });
         scope.on('agent/request',async(_event,next)=>({...await next(),
           ...(profile.request_parameters.temperature!==undefined?{temperature:profile.request_parameters.temperature as number}:{}),

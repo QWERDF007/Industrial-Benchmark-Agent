@@ -46,8 +46,9 @@ test('review roles freeze native declarations without credential reads or provid
     assert.equal(unsupportedTemplate.profile, null);
     assert.match(unsupportedTemplate.error, /chat-template/);
     const missingOutput = await native.freeze({provider_id:'isolated',model_id:'undeclared-output'},defaultModelLimits,'agent');
-    assert.equal(missingOutput.profile,null);
-    assert.match(missingOutput.error,/输出上限/);
+    assert.equal(missingOutput.error,null);
+    assert.equal(missingOutput.profile.max_output_tokens,null);
+    assert.equal(missingOutput.native_profile.models[0].maxTokens,undefined);
     providers.isolated.baseURL = 'http://new.example/v1';
     assert.equal(agent.native_profile.baseURL, endpoint);
     assert.equal(agent.profile.endpoint, endpoint + '/chat/completions');

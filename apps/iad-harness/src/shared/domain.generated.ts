@@ -8180,7 +8180,6 @@ export interface CandidateVisualObservation {
    * 发现两侧实际内容不同或资格依据不足时报告争议；不能继续提交标注差异。
    */
   gate_dispute: GateDispute | null;
-  [k: string]: unknown;
 }
 export interface GateDispute {
   reason: Reason28;
