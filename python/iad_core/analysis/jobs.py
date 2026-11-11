@@ -56,8 +56,10 @@ class AnalysisAgentJobs:
         snapshot = AnalysisWorkflowSnapshot(**configured.model_dump(), schema_version=2, manifest=manifest, plan=plan,
             agent=role, instruction=prompt.text if prompt else mining.instruction,
             finalization_instruction=None if exploration else FINALIZATION_WORKFLOW, exploration_prompt=prompt, mining_prompt=mining,
+            exploration_tasks=ExplorationPrompts.tasks(manifest.records[0].dataset_format) if exploration else None,
             system_prompt=system_prompt,
-            observer_prompt=(selected.observer_prompt or AnalysisRolePrompts(system_prompt=system_prompt, user_prompt=prompt.text))
+            observer_prompt=(selected.observer_prompt or AnalysisRolePrompts(
+                system_prompt=ExplorationPrompts.system(manifest.records[0].dataset_format, 'observer'), user_prompt=prompt.text))
                 if exploration else None,
             support_policy=KnowledgeSupport.configured(), selected_directions=directions,
             input_organization='exploration-batch-v2' if exploration else 'registration-tools',

@@ -249,7 +249,10 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     const request = {dataset_ids: data.dataset_ids, analysis_kind: module, submission_id: randomUUID(),
       system_prompt:data.system_prompt[module]+'\n系统自定义：按工具提交。',
       ...(module === 'exploration' ? {normal_images: data.normal_images, defect_images:data.defect_images, prompt: data.exploration_prompt} : {mining_prompt: data.mining_prompt})};
-    if(module==='exploration')request.prompt={...request.prompt,text:'用户自定义：比较边缘。'};
+    if(module==='exploration'){
+      request.prompt={...request.prompt,text:'用户自定义：比较边缘。'};
+      request.observer_prompt={system_prompt:request.system_prompt,user_prompt:request.prompt.text};
+    }
     const {analysis_kind, ...toolArguments} = request;
     const started = await ctx.tools.execute({name: module === 'exploration' ? 'direction_exploration_start' : 'knowledge_mine',
       arguments: toolArguments, callId: 'start-analysis', signal: new AbortController().signal});

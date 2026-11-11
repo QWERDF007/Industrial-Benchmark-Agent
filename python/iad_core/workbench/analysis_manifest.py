@@ -1,5 +1,5 @@
 import json
-from collections import Counter
+from collections import Counter, deque
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Annotated, Literal
@@ -71,6 +71,18 @@ class AnalysisManifest(AnalysisModel):
         roles = {**dict.fromkeys(normal, 'normal'), **dict.fromkeys(defect, 'defect')}
         groups = {record.sample.sample_id:record.sampling_group or 'unclassified' for record in self.records}
         remaining = {sid:group for sid, group in groups.items() if sid not in roles}
+        if module == 'exploration':
+            pools: dict[str, dict[str, deque[str]]] = {}
+            for sid, group in remaining.items():
+                pools.setdefault(group, {}).setdefault(registered[sid].dataset_id, deque()).append(sid)
+            remaining = {}
+            for group, subsets in pools.items():
+                queues = deque(subsets.values())
+                while queues:
+                    queue = queues.popleft()
+                    remaining[queue.popleft()] = group
+                    if queue:
+                        queues.append(queue)
         batches = ([selected] if selected else []) + MixedSampling(remaining, batch_size, sampling_ratio).batches()
         return AnalysisPlan(module=module, batch_size=batch_size, sampling_ratio=sampling_ratio, rounds=[AnalysisRound(round_id=index + 1,
             sampling_counts=SamplingCounts(**Counter(groups[sid] for sid in batch)),

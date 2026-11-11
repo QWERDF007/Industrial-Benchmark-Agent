@@ -55,6 +55,11 @@ class AnalysisCoverageReader:
             observed = {}
             for item in conn.execute('SELECT sample_id,observation_json FROM analysis_sample_observations WHERE job_id=?', (run_id,)):
                 observed.setdefault(item['sample_id'],set()).update(json.loads(item['observation_json'])['evidence_ids'])
+            if snapshot.exploration_tasks is not None:
+                for sid in completed:
+                    if sid in media:
+                        observed.setdefault(sid, set()).update(item.image.evidence_id for item in media[sid].images
+                            if item.image.evidence_id in delivered)
         records = [AnalysisRecordCoverage(dataset_id=record.sample.dataset_id,sample_id=record.sample.sample_id,
             state='completed' if record.sample.sample_id in completed else 'failed' if record.sample.sample_id in failed else 'unprocessed',
             required_media=[image.image for image in media[record.sample.sample_id].images if image.required] if record.sample.sample_id in media else [],

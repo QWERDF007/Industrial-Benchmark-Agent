@@ -39,3 +39,27 @@ def test_exploration_sampling_uses_the_same_labelme_roles_as_source_selection(ag
     assert {record.sample.sample_id:record.sampling_group for record in snapshot.manifest.records} == {
         sid:'normal' if kind == 'normal' else 'abnormal' for sid,kind in roles.items()}
     assert AnalysisManifests(jobs.db).freeze(ids).model_dump(exclude={'frozen_at'}) == legacy.model_dump(exclude={'frozen_at'})
+
+
+def test_mixed_batches_rotate_subsets_without_changing_group_quotas(agent_jobs, tmp_path):
+    jobs, _, role = agent_jobs
+    datasets = []
+    for name, count in [('large', 8), ('small', 2)]:
+        directory = tmp_path / name
+        directory.mkdir()
+        for index in range(count * 2):
+            Image.new('RGB', (32, 24), 'gray').save(directory / f'{index:02}.png')
+            (directory / f'{index:02}.json').write_text(json.dumps(dict(imageWidth=32, imageHeight=24,
+                shapes=[] if index < count else [dict(label='18', shape_type='rectangle', points=[[5, 5], [10, 10]])])))
+        dataset = DatasetRegistry(jobs.db).import_labelme(DatasetImport(format='labelme', name=name,
+            image_dir=str(directory), annotation_dir=str(directory)))
+        datasets.append(dataset.dataset.id)
+    ModuleSettings(jobs.db).save(dict(module='exploration', expected_revision=1, settings=dict(batch_size=4)))
+    job = jobs.start(dict(submission_id=str(uuid4()), analysis_kind='exploration', dataset_ids=datasets,
+        normal_images=[datasets[0] + ':00.png'], defect_images=[datasets[0] + ':08.png'],
+        prompt=dict(text='联合比较两个子集。')), agent=role)
+    plan = jobs.snapshot(job['run_id']).plan
+    assert {target.dataset_id for target in plan.rounds[1].targets} == set(datasets)
+    assert plan.rounds[1].sampling_counts.model_dump() == dict(normal=2, abnormal=2, unclassified=0)
+    samples = [target.sample_id for round in plan.rounds for target in round.targets]
+    assert len(samples) == len(set(samples)) == 20

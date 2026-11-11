@@ -28,12 +28,15 @@ def test_source_errors_without_visual_observations_do_not_publish_a_version(agen
     for record in jobs.snapshot(run_id).manifest.records:
         Path(record.sample.image_path).unlink()
     for index in range(failure_count):
+        if jobs.jobs.status(run_id)['failed'] == failure_count:
+            break
         context = jobs.context(run_id)
-        page = AnalysisEvidence(jobs).read(run_id,dict(sample_id=context.round.targets[0].sample_id))
-        assert page.error and page.images == []
+        pages = ([AnalysisEvidence(jobs).read(run_id,dict(sample_id=target.sample_id)) for target in context.round.targets]
+            if module=='exploration' else [AnalysisEvidence(jobs).read(run_id,dict(sample_id=context.round.targets[0].sample_id))])
+        assert all(page.error and page.images == [] for page in pages)
         AnalysisCommits(jobs).accept(run_id,dict(commit_key='source-error-'+str(index),base_revision=context.revision,
             round_id=context.round.round_id,observations=[dict(dataset_id=dataset_id,sample_id=page.sample_id,
-                description='原始图像文件不可读，未形成视觉观察。',evidence_ids=[],report_preparation_error=True)],
+                description='原始图像文件不可读，未形成视觉观察。',evidence_ids=[],report_preparation_error=True) for page in pages],
             **{'directions' if module == 'exploration' else 'checks':[]},
             summary='图像文件不可读。',limitations=['没有可见图像依据。'],unresolved_questions=[]))
     if failure_count == 4:
@@ -63,10 +66,11 @@ def test_published_evidence_exposes_frozen_quality_groups_for_automatic_rounds(a
     evidence=AnalysisEvidence(jobs)
     for round_id in (1,2):
         context=jobs.context(run_id)
-        page=evidence.read(run_id,{'sample_id':context.round.targets[0].sample_id})
+        pages=evidence.batch(run_id).registrations
+        page=pages[0]
         call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:00:00Z',request={'fixture':'published identity'})
         ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=context.session_id,attempt=1)
-        evidence.delivered(run_id,call.call_id,[i.image.evidence_id for i in page.images])
+        evidence.delivered(run_id,call.call_id,[i.image.evidence_id for page in pages for i in page.images])
         ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,finished_at='2026-11-09T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
         AnalysisCommits(jobs).accept(run_id,dict(commit_key='observe',base_revision=context.revision,round_id=round_id,
             observations=[dict(sample_id=page.sample_id,dataset_id=dataset_id,description='完整可见观察。',evidence_ids=[i.image.evidence_id for i in page.images])],
@@ -75,7 +79,8 @@ def test_published_evidence_exposes_frozen_quality_groups_for_automatic_rounds(a
     view=AnalysisQueries(jobs.db).view(version_id)
     dent=next(i for i in view.evidence if i.sample_id==dataset_id+':dent.png')
     assert dent.sampling_group=='abnormal' and dent.candidate_role=='normal'
-    automatic=next(i for i in view.evidence if i.candidate_role is None)
+    manual={target.sample_id for target in jobs.snapshot(run_id).plan.rounds[0].targets}
+    automatic=next(i for i in view.evidence if i.sample_id not in manual)
     frozen=next(r for r in jobs.snapshot(run_id).manifest.records if r.sample.sample_id==automatic.sample_id)
     assert automatic.sampling_group==frozen.sampling_group
     config.quality.mapping={'normal':'FAIL','dent':'PASS'}
@@ -112,11 +117,17 @@ def test_partial_versions_keep_frozen_evidence_when_resume_releases_failed_media
     assert queries.sample_evidence(version_id,page.sample_id) == before
 
 
-def test_merge_preserves_counterexamples_and_partial_publication_can_seed_mining_without_presets(agent_jobs, tmp_path, monkeypatch):
+def test_historical_merge_preserves_counterexamples_and_partial_publication_can_seed_mining_without_presets(agent_jobs, tmp_path, monkeypatch):
     jobs, dataset_id, role = agent_jobs
     job = jobs.start({'submission_id': str(uuid4()), 'analysis_kind': 'exploration', 'dataset_ids': [dataset_id],
         'normal_images': [dataset_id + ':normal.png', dataset_id + ':dent.png'], 'prompt': {'text': '比较原图并保留反例。'}}, agent=role)
     run_id = job['run_id']
+    # Persist the historical snapshot shape used by this frozen-publication regression.
+    import json
+    with jobs.db.connection() as connection:
+        snapshot = json.loads(connection.execute('SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()[0])
+        snapshot.pop('exploration_tasks')
+        connection.execute('UPDATE analysis_workflow_runs SET snapshot_json=? WHERE job_id=?', (json.dumps(snapshot), run_id))
     evidence = AnalysisEvidence(jobs)
     pages = [evidence.read(run_id, {'sample_id': sid}) for sid in [dataset_id + ':normal.png', dataset_id + ':dent.png']]
     call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:00:00Z', request={'fixture': 'visual request'})

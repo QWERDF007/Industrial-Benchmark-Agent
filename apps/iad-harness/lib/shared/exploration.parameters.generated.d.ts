@@ -86,8 +86,8 @@ export declare const explorationBatchReportParameters: {
             };
             readonly title: "AnalysisSampleObservation";
         };
+        readonly description: "可选的明确图像事实；不要求本批每张图生成文字，方向关系和候选应自带可见依据。";
         readonly title: "Observations";
-        readonly required: true;
     };
     readonly assessments: {
         readonly type: "array";
@@ -191,6 +191,20 @@ export declare const explorationBatchReportParameters: {
         };
         readonly title: "Key Evidence Ids";
         readonly required: true;
+    };
+    readonly limitations: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly title: "Limitations";
+    };
+    readonly unresolved_questions: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly title: "Unresolved Questions";
     };
 };
 //# sourceMappingURL=exploration.parameters.generated.d.ts.map

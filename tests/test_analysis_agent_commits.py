@@ -126,7 +126,7 @@ def test_commit_keys_are_scoped_to_the_round_and_saved_receipts_survive_schema_u
         commits.accept(run_id, {**submissions[1], 'commit_key':'late'})
 
 
-def test_only_delivered_and_observed_media_counts_toward_coverage_and_commit_retry_is_idempotent(agent_jobs):
+def test_incomplete_batch_is_rejected_and_full_delivery_commit_is_idempotent(agent_jobs):
     jobs, dataset_id, role = agent_jobs
     started = jobs.start({'submission_id': str(uuid4()), 'analysis_kind': 'exploration', 'dataset_ids': [dataset_id],
         'normal_images': [dataset_id + ':dent.png'], 'prompt': {'text': '观察原图与所有标注局部。'}}, agent=role)
@@ -150,27 +150,21 @@ def test_only_delivered_and_observed_media_counts_toward_coverage_and_commit_ret
     evidence.delivered(run_id, call.call_id, ids[:1])
     ModelCalls(jobs.db).finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
         finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
-    receipt = commits.accept(run_id, submission)
-    assert receipt.completed_delta == 0
-    assert receipt.round_complete is False
-    assert jobs.jobs.status(run_id)['completed'] == 0
-    checkpoint = jobs.context(run_id)
-    progress = next(item for item in checkpoint.media_progress if item.sample_id == media.sample_id)
-    assert progress.observed_evidence_ids == [ids[0]]
-    assert len(progress.required_media) == media.total
-    assert checkpoint.accepted_observations[0].observation_id == receipt.observation_ids[0]
-    assert checkpoint.accepted_observations[0].description == '观察原图主体及原标注矩形。'
-    assert commits.accept(run_id, submission) == receipt
-    with pytest.raises(ValueError, match='提交键'):
-        commits.accept(run_id, {**submission, 'summary': '不同内容。'})
-    with pytest.raises(ValueError, match='目录版本'):
-        commits.accept(run_id, {**submission, 'commit_key': 'stale'})
+    with pytest.raises(ValueError, match='实际模型请求'):
+        commits.accept(run_id, submission)
+    assert jobs.context(run_id).revision == 0
+    assert jobs.context(run_id).accepted_observations == []
     crop_call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:01:00Z', request={'fixture': 'remaining views'})
     ModelCalls(jobs.db).start_native(run_id, crop_call, sample_id=None, session_id=jobs.state(run_id).session_id, attempt=1)
     evidence.delivered(run_id, crop_call.call_id, ids[1:])
     ModelCalls(jobs.db).finish_native(run_id, None, NativeModelCallEnd(call_id=crop_call.call_id,
         finished_at='2026-11-09T12:01:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
-    complete = commits.accept(run_id, {**submission, 'commit_key': 'round-1-b', 'base_revision': 1})
+    complete = commits.accept(run_id, submission)
+    assert commits.accept(run_id, submission) == complete
+    with pytest.raises(ValueError, match='提交键'):
+        commits.accept(run_id, {**submission, 'summary': '不同内容。'})
+    with pytest.raises(ValueError, match='目录版本'):
+        commits.accept(run_id, {**submission, 'commit_key': 'stale'})
     assert complete.completed_delta == 1
     assert complete.round_complete is True
     assert jobs.jobs.status(run_id)['completed'] == 1
@@ -196,7 +190,7 @@ def test_another_job_cannot_borrow_media_even_for_the_same_sample(agent_jobs):
 
 @pytest.mark.parametrize('module', ['exploration', 'knowledge'])
 @pytest.mark.parametrize('delivered_count', [6, 8])
-def test_eight_prepared_registrations_need_both_delivery_and_observation_before_counting_as_complete(agent_jobs, tmp_path, module, delivered_count):
+def test_eight_registrations_use_batch_delivery_for_exploration_and_observations_for_mining(agent_jobs, tmp_path, module, delivered_count):
     from PIL import Image
     from iad_core.analysis.coverage import AnalysisCoverageReader
     from iad_core.dataset.registry import DatasetImport, DatasetRegistry
@@ -250,6 +244,20 @@ def test_eight_prepared_registrations_need_both_delivery_and_observation_before_
             commits.accept(run_id, {**submission, 'observations': observations})
         assert jobs.context(run_id).revision == 0
         assert AnalysisCoverageReader(jobs.db).observations(run_id) == []
+    if module == 'exploration':
+        if delivered_count == 6:
+            with pytest.raises(ValueError, match='实际模型请求'):
+                commits.accept(run_id, submission)
+            assert jobs.state(run_id).revision == 0
+            deliver(pages[6:])
+        receipt = commits.accept(run_id, submission)
+        assert receipt.completed_delta == 8 and receipt.round_complete
+        coverage = AnalysisCoverageReader(jobs.db).read(run_id)
+        assert coverage.completed == coverage.whole_images_observed == 8
+        assert len(AnalysisCoverageReader(jobs.db).observations(run_id)) == 6
+        assert jobs.context(run_id).round is None
+        assert commits.accept(run_id, submission) == receipt
+        return
     receipt = commits.accept(run_id, submission)
     assert receipt.completed_delta == 6 and not receipt.round_complete
     coverage = AnalysisCoverageReader(jobs.db).read(run_id)
@@ -326,17 +334,18 @@ def test_key_support_reselection_keeps_observations_and_counterexamples(agent_jo
     from iad_core.workbench.module_settings import ModuleSettings
     jobs,dataset_id,role=agent_jobs
     request=dict(submission_id=str(uuid4()),analysis_kind=module,dataset_ids=[dataset_id])
-    if module=='exploration':request.update(normal_images=[dataset_id+':normal.png',dataset_id+':dent.png'],prompt={'text':'选择关键整图。'})
+    if module=='exploration':request.update(normal_images=[dataset_id+':'+name+'.png' for name in ['normal','dent','scratch','normal2']],prompt={'text':'选择关键整图。'})
     else:
         ModuleSettings(jobs.db).save(dict(module='knowledge',expected_revision=0,settings=dict(model=dict(provider_id='swift-30003',model_id='fixture'),batch_size=4)))
         request['mining_prompt']=dict(objective='核对原图。',instruction='选择关键整图。',directions=[default_directions()[0].model_dump(mode='json')])
     run_id=jobs.start(request,agent=role)['run_id'];evidence=AnalysisEvidence(jobs)
-    pages=[evidence.read(run_id,{'sample_id':dataset_id+':'+name+'.png'}) for name in ['normal','dent']]
+    pages=([evidence.read(run_id,{'sample_id':target.sample_id}) for target in jobs.context(run_id).round.targets]
+        if module=='exploration' else [evidence.read(run_id,{'sample_id':dataset_id+':'+name+'.png'}) for name in ['normal','dent']])
     call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:00:00Z',request={'fixture':'key whole images'})
     ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=jobs.context(run_id).session_id,attempt=1)
     evidence.delivered(run_id,call.call_id,[image.image.evidence_id for page in pages for image in page.images])
     ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,finished_at='2026-11-09T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
-    whole=[page.images[0].image.evidence_id for page in pages]
+    whole=[page.images[0].image.evidence_id for page in pages[:2]]
     support_field='evidence_ids' if module=='exploration' else 'support_evidence_ids'
     item=dict(title='边缘检查',dataset_ids=[dataset_id],counter_evidence_ids=[whole[0]],limitations=[],**{support_field:whole})
     if module=='exploration':item.update(direction_id='D1',instruction='比较边缘。',applies_to='both',rationale='边缘可见。')
@@ -347,7 +356,7 @@ def test_key_support_reselection_keeps_observations_and_counterexamples(agent_jo
     submission=dict(commit_key='all',base_revision=0,round_id=1,summary='保留观察及反例。',limitations=[],unresolved_questions=[],observations=observation,**{field:[item]})
     commits=AnalysisCommits(jobs);commits.accept(run_id,submission)
     context=jobs.context(run_id)
-    commits.accept(run_id,{**submission,'commit_key':'key','base_revision':context.revision,'round_id':context.round.round_id,'observations':[],
+    commits.accept(run_id,{**submission,'commit_key':'key','base_revision':context.revision,'round_id':context.round.round_id if context.round else 1,'observations':[],
         field:[{**item,support_field:[whole[1]],'counter_evidence_ids':[], 'key_evidence':[
             dict(evidence_id=whole[1],role='support',reason='边缘可见，展示复核动作。'),
             dict(evidence_id=whole[0],role='counter',reason='保留影响解释的边界差别。')]}]})
@@ -357,13 +366,13 @@ def test_key_support_reselection_keeps_observations_and_counterexamples(agent_jo
     assert selected.counter_evidence_ids==[whole[0]]
     context=jobs.context(run_id)
     receipt=commits.accept(run_id,{**submission,'commit_key':'observations-only','base_revision':context.revision,
-        'round_id':context.round.round_id,'observations':[],field:[],'summary':'保留已有关键证据与反例。'})
+        'round_id':context.round.round_id if context.round else 1,'observations':[],field:[],'summary':'保留已有关键证据与反例。'})
     assert receipt.completed_delta==0 and receipt.observation_ids==[]
     assert getattr(jobs.context(run_id).catalog,field)==[selected]
     assert jobs.context(run_id).catalog.summary=='保留已有关键证据与反例。'
     from iad_core.analysis.coverage import AnalysisCoverageReader
-    assert len(AnalysisCoverageReader(jobs.db).observations(run_id))==2
-    assert jobs.jobs.status(run_id)['completed']==2
+    assert len(AnalysisCoverageReader(jobs.db).observations(run_id))==len(pages)
+    assert jobs.jobs.status(run_id)['completed']==len(pages)
 
 
 @pytest.mark.parametrize('module',['exploration','knowledge'])
@@ -401,6 +410,13 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
         connection.execute('DELETE FROM analysis_claim_revisions WHERE job_id=?',(run_id,))
         connection.execute('UPDATE analysis_workflow_runs SET catalog_json=? WHERE job_id=?',(json.dumps(catalog),run_id))
     context=jobs.context(run_id)
+    if module=='exploration':
+        batch = evidence.batch(run_id)
+        call = NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:01:00Z',request={})
+        ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=context.session_id,attempt=1)
+        evidence.delivered(run_id,call.call_id,[item.image.evidence_id for page in batch.registrations for item in page.images])
+        ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,
+            finished_at='2026-11-09T12:01:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
     update={**submission,'commit_key':'correct-counter','base_revision':context.revision,'round_id':context.round.round_id,'observations':[],field:[]}
     with pytest.raises(ValueError,match='完整原图') as error:commits.accept(run_id,update)
     assert crop in str(error.value) and whole in str(error.value)
@@ -425,6 +441,6 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
     assert getattr(corrected,text_field)=='边缘可见['+whole+']。'
     assert corrected.title=='边缘反例'
     assert commits.accept(run_id,update).revision==context.revision+1
-    assert jobs.jobs.status(run_id)['completed']==2
+    assert jobs.jobs.status(run_id)['completed']==(3 if module=='exploration' else 2)
     from iad_core.analysis.coverage import AnalysisCoverageReader
     assert AnalysisCoverageReader(jobs.db).observations(run_id)[0].evidence_ids==ids

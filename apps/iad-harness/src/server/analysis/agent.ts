@@ -175,6 +175,8 @@ export class AnalysisWorkflowAgent {
           if (!batchInput && !context.round && snapshot.finalization_instruction)
             content.push({type:'text',text:'\n'+snapshot.finalization_instruction});
           if (snapshot.system_prompt) content.push({type:'text',text:(batchInput?'':'\n')+snapshot.instruction});
+          if(snapshot.exploration_tasks)content.push({type:'text',text:!context.round?snapshot.exploration_tasks.finalize
+            :review?snapshot.exploration_tasks.review:snapshot.exploration_tasks.initial});
           agent.followup({id:MessageId(randomUUID()),role:'user',source:{kind:'user'},content});
           await agent.whenIdle();
           if (failure) throw failure;

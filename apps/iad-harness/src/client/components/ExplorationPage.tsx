@@ -86,7 +86,7 @@ export function ExplorationPage({
   const [selectedPresetId, setSelectedPresetId] = useState("");
   const [prompt, setPrompt] = useState("");
   const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.explorationSystem[dataset.format]);
-  const [observerSystemPrompt,setObserverSystemPrompt]=useState<string>(promptDefaults.explorationSystem[dataset.format]);
+  const [observerSystemPrompt,setObserverSystemPrompt]=useState<string>(promptDefaults.explorationObserverSystem[dataset.format]);
   const [observerUserPrompt,setObserverUserPrompt]=useState('');
   const systemFormat=useRef(dataset.format);
   const [originalPrompt, setOriginalPrompt] = useState("");
@@ -165,7 +165,7 @@ export function ExplorationPage({
     if(scopeFormat&&scopeFormat!==systemFormat.current){
       systemFormat.current=scopeFormat;
       setSystemPrompt(promptDefaults.explorationSystem[scopeFormat]);
-      setObserverSystemPrompt(promptDefaults.explorationSystem[scopeFormat]);
+      setObserverSystemPrompt(promptDefaults.explorationObserverSystem[scopeFormat]);
     }
   },[scopeFormat]);
 
@@ -326,7 +326,7 @@ export function ExplorationPage({
                 resetScope();
                 const format=scopeFormat||dataset.format;
                 systemFormat.current=format;setSystemPrompt(promptDefaults.explorationSystem[format]);
-                setObserverSystemPrompt(promptDefaults.explorationSystem[format]);
+                setObserverSystemPrompt(promptDefaults.explorationObserverSystem[format]);
                 setView('setup');
               }}
             >
@@ -428,11 +428,11 @@ export function ExplorationPage({
 
                 disabled={prompt === originalPrompt && observerUserPrompt === originalPrompt
                   && systemPrompt === promptDefaults.explorationSystem[scopeFormat||dataset.format]
-                  && observerSystemPrompt === promptDefaults.explorationSystem[scopeFormat||dataset.format]}
+                  && observerSystemPrompt === promptDefaults.explorationObserverSystem[scopeFormat||dataset.format]}
                 onClick={() => {
                   const defaults=promptDefaults.explorationSystem[scopeFormat||dataset.format];
                   setPrompt(originalPrompt);setObserverUserPrompt(originalPrompt);
-                  setSystemPrompt(defaults);setObserverSystemPrompt(defaults);
+                  setSystemPrompt(defaults);setObserverSystemPrompt(promptDefaults.explorationObserverSystem[scopeFormat||dataset.format]);
                 }}
               >
                 重置为预设

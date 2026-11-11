@@ -6,6 +6,7 @@ from iad_core.analysis.catalog import AnalysisCatalogs
 from iad_core.analysis.models import (AnalysisCatalog, AnalysisCommitReceipt,
     ExplorationCommit, KnowledgeCommit)
 from iad_core.workbench.job_models import JobExecutionError
+from iad_core.exploration.batch_evidence import ExplorationBatchEvidence
 
 
 class AnalysisCommits:
@@ -33,7 +34,7 @@ class AnalysisCommits:
             if connection.execute('SELECT 1 FROM analysis_finalizations WHERE job_id=?',(run_id,)).fetchone():
                 raise ValueError('已进入全局定稿，请使用本模块的定稿工具')
             payload = json.loads(job['payload_json'])
-            state = connection.execute('SELECT revision,catalog_json FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
+            state = connection.execute('SELECT revision,catalog_json,session_id FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
             if state['revision'] != submission.base_revision:
                 raise ValueError('目录版本已变化，请读取当前目录后提交')
             processed = set(payload['completed_sample_ids'] + payload['failed_sample_ids'])
@@ -43,6 +44,7 @@ class AnalysisCommits:
             task = connection.execute('SELECT * FROM exploration_batch_tasks WHERE job_id=? AND round_id=?',
                 (run_id, current.round_id)).fetchone() if snapshot.execution_mode == 'dsh-subagents' else None
             rounds = [current]
+            batch_tasks, reports = {}, {}
             if task:
                 from iad_core.exploration.delegation_models import ExplorationBatchReport
                 if submission.observations:
@@ -55,8 +57,10 @@ class AnalysisCommits:
                 if len(reviews) != len(submission.report_reviews) or set(reviews) != {row['round_id'] for row in tasks}:
                     raise ValueError('必须一次复核本波全部待复核报告，不能遗漏或重复')
                 observations = []
+                batch_tasks = {row['round_id']:row for row in tasks}
                 for row in tasks:
                     report = ExplorationBatchReport.model_validate_json(row['report_json'])
+                    reports[row['round_id']] = report
                     decisions = reviews[row['round_id']]
                     if len(decisions) != len(report.discoveries) or {item.candidate_id for item in decisions} != {
                             item.candidate_id for item in report.discoveries}:
@@ -67,6 +71,19 @@ class AnalysisCommits:
             targets = {(target.dataset_id, target.sample_id):round.round_id for round in rounds for target in round.targets}
             media = {value.sample_id: value for row in connection.execute('SELECT media_json FROM analysis_sample_media WHERE job_id=?', (run_id,))
                 for value in [PreparedRegistration.model_validate_json(row[0])]}
+            batches = []
+            if snapshot.exploration_tasks is not None:
+                for round in rounds:
+                    session_id = batch_tasks[round.round_id]['session_id'] if task else state['session_id']
+                    batch = ExplorationBatchEvidence(connection, run_id, session_id, [target for target in round.targets if target.sample_id not in processed], media)
+                    batches.append(batch)
+                    facts = [(item.rationale, item.evidence_ids, item.limitations) for item in submission.directions]
+                    facts.extend((item.reason, [item.evidence_id], []) for item in submission.arguments)
+                    if task:
+                        report = reports[round.round_id]
+                        facts.extend((item.reason, item.evidence_ids, report.limitations) for item in report.assessments)
+                        facts.extend((item.rationale, item.evidence_ids, item.limitations) for item in report.discoveries)
+                    submission = submission.model_copy(update={'observations':batch.observations(submission.observations, facts)})
             delivered = {row[0] for row in connection.execute('''SELECT d.evidence_id FROM analysis_media_deliveries d
                 JOIN model_calls c ON c.call_id=d.call_id WHERE d.job_id=?
                 AND json_extract(c.summary_json,'$.finished_at') IS NOT NULL
@@ -108,6 +125,11 @@ class AnalysisCommits:
                 and media[sid].evidence_id in covered[sid]
                 and {image.image.evidence_id for image in media[sid].images if image.required}.issubset(delivered)]
             failures = [sid for sid in affected if sid in failure_reports]
+            if snapshot.exploration_tasks is not None:
+                successes, failures = [], []
+                for batch in batches:
+                    successes.extend(sid for sid in batch.completed if sid not in processed)
+                    failures.extend(sid for sid in batch.failed if sid not in processed)
             revision = state['revision'] + 1
             ids = ['observation_' + uuid5(NAMESPACE_URL, json.dumps([run_id, current.round_id, submission.commit_key, index])).hex
                 for index in range(len(submission.observations))]

@@ -1427,9 +1427,8 @@ export const explorationCommitParameters = {
       },
       "title": "AnalysisSampleObservation"
     },
-    "description": "本次新增或补充的实际逐图观察，可分次提交；无需重复输出已保存的观察。",
-    "title": "Observations",
-    "required": true
+    "description": "仅在需要时补充有明确图像引用的实际事实，不要求逐图填写；技术覆盖由整批媒体送达和正式提交核验。",
+    "title": "Observations"
   },
   "directions": {
     "type": "array",

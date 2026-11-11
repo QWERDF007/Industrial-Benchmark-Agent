@@ -3,6 +3,7 @@ from uuid import NAMESPACE_URL, uuid5
 
 from iad_core.evidence.registrations import PreparedRegistration
 from iad_core.exploration.delegation_models import ExplorationBatchReport, ExplorationBatchTask, ExplorationWave, ExplorationWorkerMaterials
+from iad_core.exploration.batch_evidence import ExplorationBatchEvidence
 
 
 class ExplorationDelegation:
@@ -62,20 +63,23 @@ class ExplorationDelegation:
                 raise ValueError('已保存的子代理报告不可用不同内容覆盖')
             return task
         expected = {(target.dataset_id, target.sample_id) for target in task.round.targets}
-        if len(report.observations) != len(expected) or {(item.dataset_id, item.sample_id) for item in report.observations} != expected:
-            raise ValueError('子代理报告必须逐一覆盖本批全部登记，不能借用其他批次')
+        joint = self.jobs.snapshot(run_id).exploration_tasks is not None
+        submitted = {(item.dataset_id, item.sample_id) for item in report.observations}
+        if submitted - expected or (not joint and (len(report.observations) != len(expected) or submitted != expected)):
+            raise ValueError('子代理观察只能引用本批登记；历史逐图协议还须覆盖全部登记')
         with self.jobs.jobs.lock, self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
             if connection.execute('SELECT status FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0] != 'RUNNING':
                 raise InterruptedError('作业已停止，不能提交子代理报告')
             media = {value.sample_id:value for row in connection.execute('SELECT media_json FROM analysis_sample_media WHERE job_id=?', (run_id,))
                 for value in [PreparedRegistration.model_validate_json(row[0])]}
-            delivered = {row[0] for row in connection.execute('''SELECT d.evidence_id FROM analysis_media_deliveries d
+            batch = ExplorationBatchEvidence(connection, run_id, session_id, task.round.targets, media) if joint else None
+            delivered = batch.evidence_ids if batch else {row[0] for row in connection.execute('''SELECT d.evidence_id FROM analysis_media_deliveries d
                 JOIN model_calls c ON c.call_id=d.call_id WHERE d.job_id=? AND json_extract(c.summary_json,'$.session_id')=?
                 AND json_extract(c.summary_json,'$.finished_at') IS NOT NULL
                 AND json_extract(c.summary_json,'$.finish_reason') NOT IN ('error','aborted')
                 AND json_extract(c.summary_json,'$.error') IS NULL''', (run_id, session_id))}
-            observed = set()
+            observed = set(batch.evidence_ids) if batch else set()
             for item in report.observations:
                 source = media.get(item.sample_id)
                 if source is None or set(item.evidence_ids) - {image.image.evidence_id for image in source.images}:
@@ -85,7 +89,7 @@ class ExplorationDelegation:
                 if item.report_preparation_error:
                     if not source.error:
                         raise ValueError('本批登记没有实际材料错误')
-                elif source.error or source.evidence_id not in item.evidence_ids or {
+                elif (source.error and not joint) or source.evidence_id not in item.evidence_ids or {
                         image.image.evidence_id for image in source.images if image.required} - delivered:
                     raise ValueError('子代理必须实际请求完整原图及全部必需局部后才能提交观察')
                 observed.update(item.evidence_ids)
@@ -95,8 +99,9 @@ class ExplorationDelegation:
             if set(references) - observed or set(references) - whole_samples.keys():
                 raise ValueError('报告引用必须是本批已观察的完整原图')
             known = {item.direction_id for item in task.catalog.directions}
-            if {item.direction_id for item in report.assessments} != known:
-                raise ValueError('必须分别核对冻结目录中的全部旧方向')
+            reported = {item.direction_id for item in report.assessments}
+            if reported - known or (not joint and reported != known):
+                raise ValueError('关系必须引用冻结目录中的方向；历史逐图协议还须核对全部旧方向')
             if len({item.candidate_id for item in report.discoveries}) != len(report.discoveries):
                 raise ValueError('新现象候选编号不得重复')
             selected = set(report.key_evidence_ids)

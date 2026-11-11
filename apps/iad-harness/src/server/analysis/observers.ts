@@ -17,7 +17,7 @@ export class ExplorationObservers {
 
   register(scope:Context):void {
     scope.tools.register(defineTool({name:'exploration_observe',
-      description:"子代理提交本批全部登记的实际视觉观察和冻结旧方向的核对，不修改全局目录。逐图observations必须引用实际看过的完整原图；取证失败只按真实error报告。assessments分别标明support支持、normal_control可比较正常对照、counter实质反例、not_comparable不可比、uncertain受限或not_present未出现；正常身份不自动构成反例。独立搜索目录之外现象：discoveries记录候选编号、部位现象、可执行动作和实际依据；无新发现也填写discovery_summary说明检查范围。不得为凑数拆分，也不得将不同检查动作塞进宽泛方向。每项新候选至少精选一张说明它的原图，key_evidence_ids按实际解释作用提供代表原图供主Agent复核，良品可说明正常结构、比较基准或相容变化；不要求良品和异常同时入选，无固定图片数。覆盖依据真实请求核验，工具成功结束本轮。",
+      description:"观察子代理一次正式提交本批报告，无全局目录写权限。observations可省略，仅填写明确图像事实；assessments只填有依据的冻结方向，同一方向可有不同关系，role为support、normal_control、counter、not_comparable、uncertain或not_present，reason写明所引原图的可见依据。normal_control只能引用真实良品组原图。discoveries填写唯一candidate_id、检查动作、原图引用及rationale；每个候选须在key_evidence_ids中至少有一张对应原图。discovery_summary说明实际检查范围，即使没有发现也须填写；limitations与unresolved_questions记录实际限制和未决问题。key_evidence_ids提供供主Agent复核的少数关键原图，不设良/异常配额。引用只能来自本批自身成功请求送达的完整原图；整批媒体与有效报告核验通过后保存，成功结束本轮。",
       parameters:explorationBatchReportParameters,output:workbenchJsonOutput,
       execute:async(report,execution)=>{
         if(!execution.agent)throw new Error('子代理执行身份缺失');
@@ -56,6 +56,7 @@ export class ExplorationObservers {
         content.push(...nativeMediaOutput.render({},await this.attachments.prepare(page,signal))
           .map(block=>block.type==='text'?{...block,text:block.text+'\n\n'}:block));
       content.push({type:'text',text:this.snapshot.observer_prompt?.user_prompt??this.snapshot.instruction});
+      if(this.snapshot.exploration_tasks)content.push({type:'text',text:this.snapshot.exploration_tasks.observe});
       const childId=SessionId(task.session_id);
       const abort=()=>this.subagents.interrupt(childId,{kind:'ancestor',agent:parent});
       signal.addEventListener('abort',abort,{once:true});

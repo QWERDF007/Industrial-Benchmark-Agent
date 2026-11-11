@@ -115,7 +115,9 @@ for module in ['exploration','knowledge','consistency']:
         assert.equal(await editor.isDisplayed(),true);assert.equal(await editor.isEnabled(),true);
       }
       assert.equal((await driver.findElements(By.css('textarea.iad-prompt-editor'))).length,4);
-      assert.equal(await(await element('#exp-observer-prompt-system')).getAttribute('value'),await system.getAttribute('value'));
+      assert.notEqual(await(await element('#exp-observer-prompt-system')).getAttribute('value'),await system.getAttribute('value'));
+      assert.match(await system.getAttribute('value'),/# 主 Agent：初探/);
+      assert.match(await(await element('#exp-observer-prompt-system')).getAttribute('value'),/# 观察子 Agent：整批联合探索/);
       assert.equal(await(await element('#exp-observer-prompt')).getAttribute('value'),await user.getAttribute('value'));
     }
     const dimensions=await driver.executeScript('return [...document.querySelectorAll("textarea[aria-label$=提示词],#dc-identity-gate_examples")].map(input=>({label:input.getAttribute("aria-label"),height:input.getBoundingClientRect().height,resize:getComputedStyle(input).resize}))');
@@ -129,7 +131,8 @@ for module in ['exploration','knowledge','consistency']:
     if(module==='exploration'){
       assert.equal((await driver.findElements(By.css('#exp-preset option'))).length,13);
       assert.equal(await(await element('#exp-preset')).getAttribute('value'),'P00');
-      const defaultSystem=await system.getAttribute('value'),defaultUser=await user.getAttribute('value');
+      const defaultSystem=await system.getAttribute('value'),defaultUser=await user.getAttribute('value'),
+        defaultObserverSystem=await(await element('#exp-observer-prompt-system')).getAttribute('value');
       await click('#exp-preset option[value=P12]');
       assert.match(await user.getAttribute('value'),/多区域一致性与对称关系/);
       assert.equal(await(await element('#exp-observer-prompt')).getAttribute('value'),await user.getAttribute('value'));
@@ -145,8 +148,8 @@ for module in ['exploration','knowledge','consistency']:
       assert.equal(await(await element('#exp-observer-prompt-system')).getAttribute('value'),'子系统同类型保留编辑');
       await driver.findElement(By.xpath('//label[contains(.,"另一Labelme子集")]/input')).click();
       await okng.click();
-      await driver.wait(async()=>(await system.getAttribute('value')).includes('只提供图像级 OK/NG 身份'),5000);
-      assert.equal(await(await element('#exp-observer-prompt-system')).getAttribute('value'),await system.getAttribute('value'));
+      await driver.wait(async()=>(await system.getAttribute('value')).includes('没有人工缺陷区域框'),5000);
+      assert.match(await(await element('#exp-observer-prompt-system')).getAttribute('value'),/没有人工缺陷区域框/);
       await click('#exp-child-toggle');
       await click('#exp-parent option[value="'+dataset.group_id+'"]');
       await driver.wait(async()=>(await system.getAttribute('value'))===defaultSystem,5000);
@@ -157,7 +160,7 @@ for module in ['exploration','knowledge','consistency']:
       await(await element('#exp-observer-prompt')).clear();await(await element('#exp-observer-prompt')).sendKeys('修改子任务');
       await driver.findElement(By.xpath('//button[normalize-space(.)="重置为预设"]')).click();
       assert.equal(await system.getAttribute('value'),defaultSystem);assert.equal(await user.getAttribute('value'),defaultUser);
-      assert.equal(await(await element('#exp-observer-prompt-system')).getAttribute('value'),defaultSystem);
+      assert.equal(await(await element('#exp-observer-prompt-system')).getAttribute('value'),defaultObserverSystem);
       assert.equal(await(await element('#exp-observer-prompt')).getAttribute('value'),defaultUser);
       await driver.findElement(By.xpath('//button[normalize-space(.)="另存为预设"]')).click();
       await(await element('#exp-new-preset')).sendKeys('自定义完整任务');
@@ -214,7 +217,9 @@ for module in ['exploration','knowledge','consistency']:
       await driver.wait(async()=>(await driver.findElements(By.css('dialog .iad-prompt-text'))).length===4,5000);
       const texts=await driver.findElements(By.css('dialog .iad-prompt-text'));
       assert.deepEqual(await Promise.all(texts.map(input=>input.getText())),[systemText,userText,
-        '子系统：逐图记录事实。','子任务：独立发现新现象。']);
+        '子系统：逐图记录事实。','子任务：独立发现新现象。'].map((text,index)=>index===1?[text,
+          snapshot.exploration_tasks.initial,snapshot.exploration_tasks.review,snapshot.exploration_tasks.finalize].join('\n\n'):
+          index===3?text+'\n\n'+snapshot.exploration_tasks.observe:text));
       await click('button[aria-label="关闭探索提示词抽屉"]');
       await driver.manage().window().setRect({width:1200,height:1080});
       const identity=await element('.exp-job-table .exp-row-title');

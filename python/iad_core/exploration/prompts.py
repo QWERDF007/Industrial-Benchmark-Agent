@@ -1,10 +1,12 @@
 import os
 import hashlib
 from pathlib import Path
+from typing import Literal
 
-from iad_core.exploration.models import ExplorationPromptPreset, ExplorationPresetEdit, FrozenExplorationPrompt
+from iad_core.exploration.models import ExplorationPromptPreset, ExplorationPresetEdit, FrozenExplorationPrompt, FrozenExplorationTasks
 from iad_core.prompt_files import PromptFiles
-from iad_core.exploration.prompt_text import CORE_SYSTEM_PROMPT, LABELME_ADAPTATION, OKNG_ADAPTATION, USER_TASK_TEMPLATE
+from iad_core.exploration.prompt_text import (CORE_SYSTEM_PROMPT, MAIN_ROLE, OBSERVER_ROLE, LABELME_ADAPTATION,
+    OKNG_ADAPTATION, INITIAL_TASK, OBSERVE_TASK, REVIEW_TASK, FINALIZE_TASK)
 
 
 class ExplorationPrompts:
@@ -17,16 +19,24 @@ class ExplorationPrompts:
     def list(self) -> list[ExplorationPromptPreset]:
         presets = []
         for preset in self.files.list():
-            text = preset.text.rstrip() + '\n\n' + USER_TASK_TEMPLATE if preset.id in {f'P{index:02}' for index in range(13)} else preset.text
+            text = preset.text
             presets.append(ExplorationPromptPreset(**preset.model_dump(exclude={'text'}), text=text,
                 builtin=not preset.id.startswith('custom_'),
                 revision=hashlib.sha256((preset.name + '\n' + text).encode()).hexdigest()))
         return presets
 
     @staticmethod
-    def system(dataset_format: str) -> str:
+    def system(dataset_format: str, role: Literal['main', 'observer'] = 'main') -> str:
         adaptation = {'labelme': LABELME_ADAPTATION, 'folder_classification': OKNG_ADAPTATION}[dataset_format]
-        return CORE_SYSTEM_PROMPT + '\n\n' + adaptation
+        return '\n\n'.join([CORE_SYSTEM_PROMPT, MAIN_ROLE if role == 'main' else OBSERVER_ROLE, adaptation])
+
+    @staticmethod
+    def tasks(dataset_format: str) -> FrozenExplorationTasks:
+        layers = dict(core=CORE_SYSTEM_PROMPT, main=MAIN_ROLE, observer=OBSERVER_ROLE,
+            adapter={'labelme': LABELME_ADAPTATION, 'folder_classification': OKNG_ADAPTATION}[dataset_format],
+            initial=INITIAL_TASK, observe=OBSERVE_TASK, review=REVIEW_TASK, finalize=FINALIZE_TASK)
+        return FrozenExplorationTasks(initial=INITIAL_TASK, observe=OBSERVE_TASK, review=REVIEW_TASK, finalize=FINALIZE_TASK,
+            versions={name:hashlib.sha256(text.encode()).hexdigest() for name, text in layers.items()})
 
     def freeze(self, prompt: FrozenExplorationPrompt) -> FrozenExplorationPrompt:
         preset = next((item for item in self.list() if item.id == prompt.preset_id), None)

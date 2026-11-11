@@ -19,11 +19,14 @@ class ExplorationDiscovery(DirectionContent):
 
 
 class ExplorationBatchReport(AnalysisModel):
-    observations: list[AnalysisSampleObservation] = Field(min_length=1)
+    observations: list[AnalysisSampleObservation] = Field(default_factory=list,
+        description='可选的明确图像事实；不要求本批每张图生成文字，方向关系和候选应自带可见依据。')
     assessments: list[ExplorationAssessment]
     discoveries: list[ExplorationDiscovery]
     discovery_summary: NonBlankText
     key_evidence_ids: list[NonBlankText]
+    limitations: list[str] = Field(default_factory=list)
+    unresolved_questions: list[str] = Field(default_factory=list)
 
 
 class ExplorationBatchArchive(AnalysisModel):

@@ -10,10 +10,10 @@ import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/i
 import {createAnalysisAgentHost} from './fixtures/analysis-agent-host.js';
 import {respondFixtureTools,finalizeFixtureCatalog} from './fixtures/analysis-finalization.js';
 
-for(const scenario of ['complete','failure','cancel'])test('DSH native children observe four mixed batches and retain six discoveries: '+scenario,{timeout:90000},async t=>{
+for(const scenario of ['complete','failure','cancel','empty'])test('DSH native children jointly observe four mixed batches: '+scenario,{timeout:90000},async t=>{
   const mainSystem='主系统：统一复核观察报告并更新方向目录。',mainUser='主任务：建立初始目录并全局定稿。';
-  const observerPrompt={system_prompt:'子系统：逐图观察，不修改全局目录。',user_prompt:'子任务：独立记录事实、支持、反例和新现象。'};
-  const resume=scenario!=='complete',cancel=scenario==='cancel',concurrency=scenario==='complete'?2:4;
+  const observerPrompt={system_prompt:'子系统：整批观察，不修改全局目录。',user_prompt:'子任务：独立记录事实、支持、反例和新现象。'};
+  const empty=scenario==='empty',resume=['failure','cancel'].includes(scenario),cancel=scenario==='cancel',concurrency=resume?4:2;
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-native-delegation-')),workspace=findWorkspaceRoot();
   let runtime,inflight=0,peak=0,release,failedOnce=false,partialArchive,waveStarted,cancelled=false,compactions=0;
   const started=new Promise(resolve=>{waveStarted=resolve;});
@@ -38,6 +38,11 @@ for(const scenario of ['complete','failure','cancel'])test('DSH native children 
       if(userIndex>=0){
         const userText=JSON.stringify(body.messages[userIndex].content);
         assert.ok(userText.includes(context.role==='observer'?observerPrompt.user_prompt:mainUser));
+        if(index===userIndex){
+          const tasks=userText.match(/# 当前任务：/g)||[];
+          const stage=context.role==='observer'?'当前批次联合探索':context.role==='reviewer'?'整波统一复核':context.phase==='finalize'?'全局定稿':'手选首批联合探索';
+          assert.equal(tasks.length,1);assert.ok(userText.includes('# 当前任务：'+stage));
+        }
       }
       const pages=context.role==='observer'&&index===restoredIndex?context.registrations:
         (Array.isArray(body.messages[index].content)?body.messages[index].content:[])
@@ -63,13 +68,12 @@ for(const scenario of ['complete','failure','cancel'])test('DSH native children 
         const names=body.tools.map(tool=>tool.function.name);
         assert.ok(!names.includes('exploration_commit')&&!names.includes('exploration_finalize')&&!names.includes('subagent'));
         const ids=pages.map(page=>page.evidence_id);
-        const discoveries=Array.from({length:context.task.round.round_id===2?3:1},(_,i)=>({candidate_id:'candidate-'+i,
+        const discoveries=empty?[]:Array.from({length:context.task.round.round_id===2?3:1},(_,i)=>({candidate_id:'candidate-'+i,
           title:'独立检查对象 '+context.task.round.round_id+'-'+i,instruction:'核对独立部位 '+context.task.round.round_id+'-'+i+' 的可见连续关系。',
           rationale:'该部位具备可重复的定位及观察动作。',applies_to:'both',evidence_ids:[ids[0],ids[2]],limitations:[]}));
         respondFixtureTools(res,[{name:'exploration_observe',arguments:{
-          observations:pages.map(page=>({sample_id:page.sample_id,dataset_id:page.images[0].dataset_id,description:'原图完整边缘及孔位可辨。',evidence_ids:[page.evidence_id]})),
-          assessments:context.task.catalog.directions.map(item=>({direction_id:item.direction_id,role:'support',evidence_ids:[ids[0]],reason:'同一可辨部位可复核。'})),
-          discoveries,discovery_summary:'独立核对孔、外缘及开放表面，记录不能由已有动作覆盖的候选。',key_evidence_ids:[ids[2]]}}]);return;
+          assessments:[],
+          discoveries,discovery_summary:'独立核对孔、外缘及开放表面，记录不能由已有动作覆盖的候选。',key_evidence_ids:empty?[]:[ids[2]]}}]);return;
       }
       if(context.role==='reviewer'){
         if(!outputs.length){respondFixtureTools(res,[{name:'analysis_context',arguments:{}}]);return;}
@@ -79,8 +83,8 @@ for(const scenario of ['complete','failure','cancel'])test('DSH native children 
       mainRequests.push(context);
       const reports=context.reports;
       const ids=pages.map(page=>page.evidence_id);
-      const observations=reports?[]:pages.map(page=>({sample_id:page.sample_id,dataset_id:page.images[0].dataset_id,description:'手选原图外缘可比较。',evidence_ids:[page.evidence_id]}));
-      const directions=reports?reports.flatMap(task=>task.report.discoveries.map(item=>({direction_id:'direction-'+task.round.round_id+'-'+item.candidate_id,
+      const observations=[];
+      const directions=empty?[]:reports?reports.flatMap(task=>task.report.discoveries.map(item=>({direction_id:'direction-'+task.round.round_id+'-'+item.candidate_id,
         title:item.title,instruction:item.instruction,rationale:item.rationale,applies_to:item.applies_to,evidence_ids:item.evidence_ids,
         counter_evidence_ids:[],limitations:[],dataset_ids:[data.dataset_id],
         key_evidence:[{evidence_id:item.evidence_ids[task.round.round_id%2?0:1],role:'support',reason:'该原图清楚说明独立可见关系。'}]}))):[{direction_id:'seed',title:'外缘连续性',
@@ -91,6 +95,7 @@ for(const scenario of ['complete','failure','cancel'])test('DSH native children 
         assert.equal(reports.length,concurrency);
         assert.ok(reports.every(task=>!('catalog' in task)),'复核包不按报告重复携带冻结目录');
         assert.equal(context.registrations.length,4*concurrency);
+        if(empty)assert.equal(pages.length,0,'没有精选图时主复核只收批次资料和报告，不重复发送全批图像');
       }
       respondFixtureTools(res,[{name:'exploration_commit',arguments:{commit_key:'main-'+context.round.round_id,
         base_revision:context.revision,round_id:context.round.round_id,observations,directions,
@@ -115,7 +120,7 @@ for i in range(20):
  im=Image.new('RGB',(100,80),(20+i,40,50));ImageDraw.Draw(im).rectangle([10,10,90,70],outline='white');im.save(d/f'{i:02}.png')
  (d/f'{i:02}.json').write_text(json.dumps(dict(imageWidth=100,imageHeight=80,shapes=[] if i<10 else [dict(label='18',shape_type='rectangle',points=[[10,10],[30,30]])])))
 db=Database(str(p/'pages.db'));ds=DatasetRegistry(db).import_labelme(DatasetImport(format='labelme',name='并行批次',image_dir=str(d),annotation_dir=str(d)))
-ModuleSettings(db).save(dict(module='exploration',expected_revision=0,settings=dict(model=dict(provider_id='fixture',model_id='native-image'),batch_size=4,**({} if sys.argv[2]=='complete' else dict(concurrency=4)))))
+ModuleSettings(db).save(dict(module='exploration',expected_revision=0,settings=dict(model=dict(provider_id='fixture',model_id='native-image'),batch_size=4,**({} if sys.argv[2] in ('complete','empty') else dict(concurrency=4)))))
 print(json.dumps(dict(dataset_id=ds.dataset.id)))
 `,root,scenario],{cwd:workspace,env:{...process.env,PYTHONPATH:path.join(workspace,'python')},encoding:'utf8'}));
   runtime=await createAnalysisAgentHost(root,`http://127.0.0.1:${provider.address().port}/v1`,{contextWindow:32768,onError:error=>errors.push(String(error.stack))});
@@ -142,13 +147,13 @@ print(json.dumps(dict(dataset_id=ds.dataset.id)))
   assert.deepEqual(new Set(children.map(task=>task.catalog_revision)),new Set(resume?[1]:[1,2]));
   assert.deepEqual(new Set(children.map(task=>task.wave_id)),new Set(resume?[1]:[1,2]));
   const publication=await runtime.bridge.execute('analysis_publication',{version_id:status.analysis_version_id});
-  assert.equal(publication.catalog.directions.length,7);assert.equal(publication.coverage.whole_images_observed,20);
+  assert.equal(publication.catalog.directions.length,empty?0:7);assert.equal(publication.coverage.whole_images_observed,20);
   assert.equal(new Set(status.model_calls.map(call=>call.session_id)).size,5);
   assert.equal(mainRequests.filter(item=>item.round.round_id===1).length,1,'子代理结束通知不能唤醒主Agent重复观察旧首批');
   const selectedGroups=publication.catalog.directions.map(item=>item.key_evidence.map(key=>
     publication.evidence.find(image=>image.evidence_id===key.evidence_id)?.sampling_group));
-  assert.ok(selectedGroups.some(groups=>groups.length===1&&groups[0]==='normal'),'良品可在观察阶段独立精选');
-  assert.ok(selectedGroups.some(groups=>groups.length===1&&groups[0]==='abnormal'),'有良品论据也允许仅精选异常代表');
+  if(!empty)assert.ok(selectedGroups.some(groups=>groups.length===1&&groups[0]==='normal'),'良品可在观察阶段独立精选');
+  if(!empty)assert.ok(selectedGroups.some(groups=>groups.length===1&&groups[0]==='abnormal'),'有良品论据也允许仅精选异常代表');
   assert.ok(mainRequests.filter(item=>item.round.round_id>1).every(item=>item.role==='reviewer'&&item.reports.length),
     JSON.stringify(mainRequests.map(item=>({round:item.round?.round_id,role:item.role,reports:item.reports?.length,phase:item.phase}))));
   const trace=await runtime.host.read(publication.session_id);
@@ -158,7 +163,7 @@ print(json.dumps(dict(dataset_id=ds.dataset.id)))
   assert.equal(mainRequests.length,1+4/concurrency,'整波只需一次主Agent目录提交');
   assert.equal(new Set(publication.delegations.map(task=>task.review_revision)).size,4/concurrency);
   t.diagnostic(`main commits=${mainRequests.length}, observer batches=4, peak=${peak}, compression=${compactions}`);
-  assert.ok(compactions>0,'默认DSH压缩实际运行后仍能读回完整复核上下文');
+  if(!empty)assert.ok(compactions>0,'默认DSH压缩实际运行后仍能读回完整复核上下文');
   const artifact=await runtime.bridge.execute('analysis_export',{version_id:publication.version_id});
   const exported=JSON.parse(execFileSync(resolvePythonPath(),['-c',`
 import json,sys,zipfile

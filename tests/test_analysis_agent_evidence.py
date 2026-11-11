@@ -135,9 +135,13 @@ def test_agent_crop_uses_frozen_raw_pixels_and_keeps_optional_evidence_out_of_re
         evidence.delivered(run_id,call.call_id,[item.image.evidence_id])
         ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,
             finished_at='2026-11-09T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
-        accepted=commits.accept(run_id,{**submission,'commit_key':str(index),'base_revision':index,
-            'observations':[{**submission['observations'][0],'evidence_ids':[item.image.evidence_id]}]})
-        assert accepted.completed_delta == index
+        if index == 0:
+            with pytest.raises(ValueError, match='实际模型请求'):
+                commits.accept(run_id, submission)
+            assert jobs.state(run_id).revision == 0
+        else:
+            accepted=commits.accept(run_id,submission)
+            assert accepted.completed_delta == 1
     coverage=AnalysisCoverageReader(jobs.db).read(run_id)
     assert len(coverage.records[0].required_media) == 1
     assert (coverage.completed,coverage.prepared_visuals,coverage.observed_visuals) == (1,2,2)
@@ -186,3 +190,32 @@ def test_crop_does_not_read_other_registrations_or_changed_source_pixels(scoped_
     with pytest.raises(ValueError,match='冻结清单'):
         evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,20,20]})
     assert len(evidence.prepare(run_id,sid).images) == 1
+
+
+@pytest.mark.parametrize('unreadable', ['annotation', 'image'])
+def test_batch_commit_preserves_source_errors_without_fabricating_facts(scoped_media, unreadable):
+    from iad_core.analysis.commits import AnalysisCommits
+    from iad_core.analysis.coverage import AnalysisCoverageReader
+    from iad_core.analysis.queries import AnalysisQueries
+    from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
+
+    jobs, create = scoped_media
+    run_id, sid, directory = create((64, 48), '{broken-json' if unreadable == 'annotation' else None)
+    if unreadable == 'image':
+        (directory / 'sample.png').write_bytes(b'broken image')
+    page = AnalysisEvidence(jobs).batch(run_id).registrations[0]
+    if page.images:
+        call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:00:00Z', request={})
+        calls = ModelCalls(jobs.db)
+        calls.start_native(run_id, call, sample_id=None, session_id=jobs.state(run_id).session_id, attempt=1)
+        AnalysisEvidence(jobs).delivered(run_id, call.call_id, [item.image.evidence_id for item in page.images])
+        calls.finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
+            finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
+    receipt = AnalysisCommits(jobs).accept(run_id, dict(commit_key='batch', base_revision=0, round_id=1,
+        directions=[], summary='没有可靠方向。', limitations=['材料受限。'], unresolved_questions=[]))
+    assert (receipt.completed_delta, receipt.failed_delta) == ((1, 0) if unreadable == 'annotation' else (0, 1))
+    record = AnalysisCoverageReader(jobs.db).read(run_id).records[0]
+    assert record.source_error == page.error
+    assert record.state == ('completed' if unreadable == 'annotation' else 'failed')
+    assert bool(record.observed_evidence_ids) == (unreadable == 'annotation')
+    assert AnalysisQueries(jobs.db).observation_history(run_id, {}).items == []

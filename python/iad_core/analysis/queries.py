@@ -29,8 +29,14 @@ class AnalysisQueries:
             raise LookupError('原生分析作业不存在')
         snapshot = AnalysisWorkflowSnapshot.model_validate_json(row['snapshot_json'])
         prompts = AnalysisRolePrompts(system_prompt=snapshot.system_prompt, user_prompt=snapshot.instruction)
-        return AnalysisJobPrompts(main=prompts,
-            observer=(snapshot.observer_prompt or prompts) if snapshot.execution_mode == 'dsh-subagents' else None)
+        observer = (snapshot.observer_prompt or prompts) if snapshot.execution_mode == 'dsh-subagents' else None
+        if snapshot.exploration_tasks is not None:
+            tasks = snapshot.exploration_tasks
+            prompts = prompts.model_copy(update={'user_prompt':'\n\n'.join([
+                prompts.user_prompt, tasks.initial, tasks.review, tasks.finalize])})
+            if observer is not None:
+                observer = observer.model_copy(update={'user_prompt':observer.user_prompt + '\n\n' + tasks.observe})
+        return AnalysisJobPrompts(main=prompts, observer=observer)
 
     def arguments(self, run_id: str, query: dict | AnalysisArgumentQuery) -> AnalysisArgumentPage:
         with self.db.connection() as connection:

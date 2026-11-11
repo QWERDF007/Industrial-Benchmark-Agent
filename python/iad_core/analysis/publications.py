@@ -26,8 +26,9 @@ class AnalysisPublications:
         with self.db.connection() as connection:
             rows = connection.execute('''SELECT r.job_id FROM analysis_workflow_runs r JOIN job_runs j ON j.job_id=r.job_id
                 WHERE j.status NOT IN ('PENDING','RUNNING')
-                AND EXISTS(SELECT 1 FROM analysis_sample_observations o WHERE o.job_id=r.job_id
-                    AND json_array_length(o.observation_json,'$.evidence_ids')>0)
+                AND (json_array_length(j.payload_json,'$.completed_sample_ids')>0
+                    OR EXISTS(SELECT 1 FROM analysis_sample_observations o WHERE o.job_id=r.job_id
+                        AND json_array_length(o.observation_json,'$.evidence_ids')>0))
                 AND NOT EXISTS(SELECT 1 FROM analysis_publications p WHERE p.job_id=r.job_id AND p.revision=r.revision AND p.execution_status=j.status)''').fetchall()
         for row in rows:
             self.publish(row['job_id'])

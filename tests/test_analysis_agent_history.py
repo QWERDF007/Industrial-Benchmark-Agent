@@ -22,14 +22,15 @@ def observed_round(agent_jobs):
 
     def observe(*, crop=False):
         context = jobs.context(run_id)
-        media = evidence.read(run_id, {'sample_id': context.round.targets[0].sample_id})
+        pages = evidence.batch(run_id).registrations
+        media = pages[0]
         images = list(media.images)
         if crop:
             images.extend(evidence.crop(run_id, {'sample_id': media.sample_id, 'bbox': [1, 2, 7, 9]}).images)
         ids = [item.image.evidence_id for item in images]
         call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:00:00Z', request={'fixture': 'prepared media'})
         ModelCalls(jobs.db).start_native(run_id, call, sample_id=None, session_id=context.session_id, attempt=1)
-        evidence.delivered(run_id, call.call_id, ids)
+        evidence.delivered(run_id, call.call_id, list(dict.fromkeys([*ids, *(item.image.evidence_id for page in pages for item in page.images)])))
         ModelCalls(jobs.db).finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
             finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
         AnalysisCommits(jobs).accept(run_id, dict(commit_key='complete', base_revision=context.revision,

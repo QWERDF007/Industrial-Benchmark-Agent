@@ -69,7 +69,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
     const [selectedPresetId, setSelectedPresetId] = useState("");
     const [prompt, setPrompt] = useState("");
     const [systemPrompt, setSystemPrompt] = useState(promptDefaults.explorationSystem[dataset.format]);
-    const [observerSystemPrompt, setObserverSystemPrompt] = useState(promptDefaults.explorationSystem[dataset.format]);
+    const [observerSystemPrompt, setObserverSystemPrompt] = useState(promptDefaults.explorationObserverSystem[dataset.format]);
     const [observerUserPrompt, setObserverUserPrompt] = useState('');
     const systemFormat = useRef(dataset.format);
     const [originalPrompt, setOriginalPrompt] = useState("");
@@ -142,7 +142,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
         if (scopeFormat && scopeFormat !== systemFormat.current) {
             systemFormat.current = scopeFormat;
             setSystemPrompt(promptDefaults.explorationSystem[scopeFormat]);
-            setObserverSystemPrompt(promptDefaults.explorationSystem[scopeFormat]);
+            setObserverSystemPrompt(promptDefaults.explorationObserverSystem[scopeFormat]);
         }
     }, [scopeFormat]);
     const filteredJobs = useMemo(() => {
@@ -298,7 +298,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
                             const format = scopeFormat || dataset.format;
                             systemFormat.current = format;
                             setSystemPrompt(promptDefaults.explorationSystem[format]);
-                            setObserverSystemPrompt(promptDefaults.explorationSystem[format]);
+                            setObserverSystemPrompt(promptDefaults.explorationObserverSystem[format]);
                             setView('setup');
                         }, children: "\u65B0\u5EFA\u63A2\u7D22" })) }) }), _jsx(DatasetScopeSelector, { className: "exp-scope", groups: parentGroups, selectedGroupId: selectedParentId, onGroupChange: handleParentChange, childDatasets: currentChildDatasets, selectedChildIds: selectedChildIds, onChildToggle: handleChildToggle, disabled: submitting, groupId: "exp-parent", childId: "exp-child-toggle", childMenuId: "exp-child-menu", children: _jsx(IconButton, { icon: "refresh", id: "refresh", type: "button", title: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", label: "\u5237\u65B0\u63A2\u7D22\u4F5C\u4E1A", disabled: submitting, onClick: () => {
                         refreshJobs();
@@ -319,12 +319,12 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
                                                     setModal("source");
                                                 }, children: [_jsx(PlusIcon, { size: 24 }), !(sampleTab === "normal" ? normalSelected : defectSelected).length && _jsx("span", { children: "\u6DFB\u52A0\u56FE\u50CF" })] }) })] }) })] }), _jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "\u63A2\u7D22\u63D0\u793A\u8BCD" }) }), _jsxs("div", { className: "exp-prompt-head", children: [_jsxs("label", { className: "exp-input", children: ["\u63D0\u793A\u8BCD\u9884\u8BBE", _jsx(Select, { id: "exp-preset", value: selectedPresetId, onChange: (e) => handlePresetChange(e.target.value), children: presets.map((p) => (_jsx("option", { value: p.id, children: p.name }, p.id))) })] }), _jsx(Button, { type: "button", disabled: prompt === originalPrompt && observerUserPrompt === originalPrompt
                                             && systemPrompt === promptDefaults.explorationSystem[scopeFormat || dataset.format]
-                                            && observerSystemPrompt === promptDefaults.explorationSystem[scopeFormat || dataset.format], onClick: () => {
+                                            && observerSystemPrompt === promptDefaults.explorationObserverSystem[scopeFormat || dataset.format], onClick: () => {
                                             const defaults = promptDefaults.explorationSystem[scopeFormat || dataset.format];
                                             setPrompt(originalPrompt);
                                             setObserverUserPrompt(originalPrompt);
                                             setSystemPrompt(defaults);
-                                            setObserverSystemPrompt(defaults);
+                                            setObserverSystemPrompt(promptDefaults.explorationObserverSystem[scopeFormat || dataset.format]);
                                         }, children: "\u91CD\u7F6E\u4E3A\u9884\u8BBE" }), _jsx(Button, { type: "button", disabled: !prompt.trim(), onClick: () => {
                                             setModal("save");
                                         }, children: "\u53E6\u5B58\u4E3A\u9884\u8BBE" })] }), _jsx(AgentPromptEditors, { id: "exp-prompt", agentLabel: "\u4E3B Agent", system: systemPrompt, user: prompt, onSystemChange: setSystemPrompt, onUserChange: setPrompt, disabled: submitting }), _jsx(AgentPromptEditors, { id: "exp-observer-prompt", agentLabel: "\u5B50 Agent", system: observerSystemPrompt, user: observerUserPrompt, onSystemChange: setObserverSystemPrompt, onUserChange: setObserverUserPrompt, disabled: submitting })] }), _jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", children: [_jsxs("span", { children: ["\u6240\u9009\u5B50\u6570\u636E\u96C6 ", selectedChildIds.length, " \u4E2A"] }), _jsxs("span", { children: ["\u4F18\u5148\u6837\u4F8B\uFF1A\u826F\u54C1 ", normalSelected.length, "\uFF0C\u5F02\u5E38 ", defectSelected.length] }), _jsxs("span", { children: ["\u6A21\u578B ", configuration.settings?.model?.model_id || '未配置'] }), _jsx("span", { children: "\u6267\u884C\uFF1A\u6240\u9009\u5B50\u96C6\u5168\u91CF\u5206\u6279\u8FED\u4EE3" })] }), _jsxs("div", { className: "exp-summarybar", children: [_jsx("span", { children: runReason || '可启动' }), _jsx(Button, { type: "button", variant: "primary", disabled: !canRun, onClick: handleStartExploration, children: "\u542F\u52A8\u8054\u5408\u63A2\u7D22" })] })] })] })) : (_jsxs("div", { className: "exp-unified-layout", children: [_jsx(JobListPanel, { title: "\u63A2\u7D22\u4F5C\u4E1A", className: "exp-job-list", actions: jobs.length > 0 &&

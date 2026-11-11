@@ -93,21 +93,29 @@ def test_knowledge_direction_files_reload_in_both_catalog_and_execution_prompt(a
     assert jobs.snapshot(first['run_id']) == before
 
 
-def test_v2_catalog_contains_thirteen_complete_user_prompts_and_typed_system_defaults(monkeypatch):
+def test_v3_catalog_has_thirteen_presets_separate_roles_and_versioned_stage_tasks(monkeypatch):
     from iad_core.exploration.prompts import ExplorationPrompts
     monkeypatch.delenv('IAD_EXPLORATION_PRESETS_DIR', raising=False)
     prompts = ExplorationPrompts()
     presets = prompts.list()
     assert [item.id for item in presets] == [f'P{index:02}' for index in range(13)]
     assert presets[0].name == 'P00 通用对比探索'
-    assert '请对当前选中子数据集的完整图集开展视觉方向探索' in presets[0].text
+    assert '请对当前选中子数据集的完整图集开展视觉方向探索' not in presets[0].text
     assert all(len(item.revision) == 64 for item in presets)
     labelme = prompts.system('labelme')
+    observer = prompts.system('labelme', 'observer')
     okng = prompts.system('folder_classification')
-    assert 'Labelme 人工区域标注' in labelme
-    assert '不执行标注正确/错误裁决' in labelme
-    assert '不要求类别释义' in labelme
-    assert '只提供图像级 OK/NG 身份' in okng
+    assert 'Labelme 矩形或多边形人工区域标注' in labelme
+    assert '# 主 Agent：初探' in labelme
+    assert '# 观察子 Agent：整批联合探索' in observer
+    assert '# 主 Agent：初探' not in observer
+    assert '不执行标注真值裁决' in labelme
+    assert '只有在系统明确采用' in labelme
+    assert '没有人工缺陷区域框' in okng
     assert '正常对照' in okng and '实质反例' in okng
-    assert '最后一批' in okng and '允许空结果' in okng
+    assert '末批' in okng and '允许空方向结果' in okng
     assert 'analysis_images' not in labelme + okng
+    tasks = prompts.tasks('labelme')
+    assert '4 张良品' not in tasks.initial
+    assert len(tasks.versions) == 8
+    assert all(len(version) == 64 for version in tasks.versions.values())

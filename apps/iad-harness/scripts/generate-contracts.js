@@ -127,7 +127,7 @@ schema['x-consistency-identity-prompts'] = identity_prompt_defaults()
 schema['x-consistency-task-formats'] = TASK_TYPES_BY_FORMAT
 schema['x-consistency-task-categories'] = TASK_CATEGORIES
 schema['x-prompt-defaults'] = {'audit':DEFAULT_AUDIT_USER_PROMPT, 'auditReport':DEFAULT_AUDIT_REPORT_PROMPT,
-    'knowledgeObjective':DEFAULT_OBJECTIVE, 'knowledgeInstruction':DEFAULT_KNOWLEDGE_USER_PROMPT, 'explorationSystem':{format:ExplorationPrompts.system(format) for format in ('labelme','folder_classification')}, 'system':{'audit':NATIVE_AUDIT_PROMPT,'exploration':ExplorationPrompts.system('labelme'),'knowledge':knowledge_agent_prompt()}}
+    'knowledgeObjective':DEFAULT_OBJECTIVE, 'knowledgeInstruction':DEFAULT_KNOWLEDGE_USER_PROMPT, 'explorationSystem':{format:ExplorationPrompts.system(format) for format in ('labelme','folder_classification')}, 'explorationObserverSystem':{format:ExplorationPrompts.system(format,'observer') for format in ('labelme','folder_classification')}, 'system':{'audit':NATIVE_AUDIT_PROMPT,'exploration':ExplorationPrompts.system('labelme'),'knowledge':knowledge_agent_prompt()}}
 schema['x-image-backbones'] = {name: vars(backbone) for name, backbone in BACKBONES.items()}
 schema['x-temporary-image-limits'] = TemporaryImageLimits().model_dump()
 print(json.dumps(schema))

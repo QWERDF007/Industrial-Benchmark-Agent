@@ -4,7 +4,7 @@ from uuid import UUID
 from pydantic import Field, RootModel, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence, VisualView
-from iad_core.exploration.models import DirectionContent, FrozenExplorationPrompt, ExplorationReportReview
+from iad_core.exploration.models import DirectionContent, FrozenExplorationPrompt, FrozenExplorationTasks, ExplorationReportReview
 from iad_core.evidence.registrations import RegistrationMediaPage
 from iad_core.knowledge.instructions import MiningDirection
 from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningDirectionSource, SubmittedMiningPrompt
@@ -117,6 +117,7 @@ class AnalysisWorkflowSnapshot(AnalysisAgentConfiguration):
     observer_prompt: AnalysisRolePrompts | None = None
     finalization_instruction: NonBlankText | None = None
     exploration_prompt: FrozenExplorationPrompt | None = None
+    exploration_tasks: FrozenExplorationTasks | None = None
     mining_prompt: FrozenMiningPrompt | None = None
     selected_directions: list[FrozenAnalysisDirection] = Field(default_factory=list)
     support_policy: KnowledgeSupportPolicy
@@ -284,6 +285,8 @@ CATALOG_EDITS_DESCRIPTION = ('JSON数组，不是包含JSON的字符串。只提
 
 
 class ExplorationCommit(AnalysisCommit):
+    observations: list[AnalysisSampleObservation] = Field(default_factory=list,
+        description='仅在需要时补充有明确图像引用的实际事实，不要求逐图填写；技术覆盖由整批媒体送达和正式提交核验。')
     directions: list[ProposedAnalysisDirection] = Field(description=CATALOG_EDITS_DESCRIPTION)
     report_reviews: list[ExplorationReportReview] = Field(default_factory=list,
         description='主Agent一次复核当前波全部报告，按各报告round.round_id填写。每份报告的discovery_decisions逐项处理全部候选：new新建、merge兼容归并、reject说明实际依据；无候选时填空数组。')

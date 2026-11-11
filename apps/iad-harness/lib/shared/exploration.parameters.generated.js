@@ -91,8 +91,8 @@ export const explorationBatchReportParameters = {
             },
             "title": "AnalysisSampleObservation"
         },
-        "title": "Observations",
-        "required": true
+        "description": "可选的明确图像事实；不要求本批每张图生成文字，方向关系和候选应自带可见依据。",
+        "title": "Observations"
     },
     "assessments": {
         "type": "array",
@@ -207,5 +207,19 @@ export const explorationBatchReportParameters = {
         },
         "title": "Key Evidence Ids",
         "required": true
+    },
+    "limitations": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        },
+        "title": "Limitations"
+    },
+    "unresolved_questions": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        },
+        "title": "Unresolved Questions"
     }
 };

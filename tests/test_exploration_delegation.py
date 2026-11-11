@@ -146,9 +146,13 @@ def test_prompt_view_shows_main_and_observer_system_and_user_texts_separately(de
     before = jobs.snapshot(run_id)
     prompts = AnalysisQueries(jobs.db).prompts(run_id)
     assert prompts.main.system_prompt == before.system_prompt
-    assert prompts.main.user_prompt == before.instruction
-    assert prompts.observer.system_prompt == before.system_prompt
-    assert prompts.observer.user_prompt == before.instruction
+    assert prompts.main.user_prompt.startswith(before.instruction)
+    for text in [before.exploration_tasks.initial, before.exploration_tasks.review, before.exploration_tasks.finalize]:
+        assert text in prompts.main.user_prompt
+    assert prompts.observer.system_prompt == before.observer_prompt.system_prompt
+    assert prompts.observer.user_prompt.startswith(before.observer_prompt.user_prompt)
+    assert before.exploration_tasks.observe in prompts.observer.user_prompt
+    assert before.exploration_tasks.review not in prompts.observer.user_prompt
     assert set(prompts.model_dump()) == {'main', 'observer'}
     assert jobs.snapshot(run_id) == before
 
@@ -165,6 +169,7 @@ def test_independent_observer_prompts_are_frozen_and_shown_verbatim(agent_jobs):
     assert frozen.observer_prompt.model_dump() == observer
     prompts = AnalysisQueries(jobs.db).prompts(run_id)
     assert prompts.main.system_prompt == '主系统：统一复核。'
-    assert prompts.main.user_prompt == '主任务：建立并定稿方向。'
-    assert prompts.observer.model_dump() == observer
+    assert prompts.main.user_prompt.startswith('主任务：建立并定稿方向。')
+    assert prompts.observer.system_prompt == observer['system_prompt']
+    assert prompts.observer.user_prompt.startswith(observer['user_prompt'])
     assert jobs.snapshot(run_id) == frozen
