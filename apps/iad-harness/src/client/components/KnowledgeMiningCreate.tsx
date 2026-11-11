@@ -38,6 +38,9 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   const [setupPrompt, setSetupPrompt] = useState("");
   const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.knowledge);
   const [setupPromptDirty, setSetupPromptDirty] = useState(false);
+  const [observerSystemPrompt,setObserverSystemPrompt]=useState<string>(promptDefaults.knowledgeObserverSystem);
+  const [observerUserPrompt,setObserverUserPrompt]=useState('');
+  const [observerPromptDirty,setObserverPromptDirty]=useState(false);
   const [formError, setFormError] = useState("");
   const [editingDir, setEditingDir] = useState<{ kind: "preset" | "explore"; id: string } | null>(null);
   const [editingName, setEditingName] = useState("");
@@ -117,13 +120,14 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   }, []);
 
   useEffect(() => {
-    if (setupPromptDirty) return;
     const parentName = currentSetupParent?.name || dataset.name;
     const subsetsNames = currentSetupChildDatasets
       .filter((c: Dataset) => setupSubsets.has(c.dataset_id))
       .map((c: Dataset) => c.name);
-    setSetupPrompt(generatePromptText(parentName, subsetsNames, allSelectedDirItems));
-  }, [setupPromptDirty, currentSetupParent, currentSetupChildDatasets, setupSubsets, allSelectedDirItems, generatePromptText, dataset.name]);
+    const generated=generatePromptText(parentName, subsetsNames, allSelectedDirItems);
+    if(!setupPromptDirty)setSetupPrompt(generated);
+    if(!observerPromptDirty)setObserverUserPrompt(generated);
+  }, [setupPromptDirty,observerPromptDirty, currentSetupParent, currentSetupChildDatasets, setupSubsets, allSelectedDirItems, generatePromptText, dataset.name]);
 
   const validationProblem = useMemo(() => {
     if (!configuration.settings?.model) return configuration.loading ? '正在读取模型' : '请先配置知识挖掘分析模型';
@@ -136,33 +140,23 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
     if (!allSelectedDirItems.length) return "请选择挖掘方向";
     if (!systemPrompt.trim()) return '请填写系统提示词';
     if (!setupPrompt.trim()) return '请填写用户提示词';
+    if (!observerSystemPrompt.trim() || !observerUserPrompt.trim()) return '请填写子 Agent 提示词';
     return "";
-  }, [setupSubsets.size, allSelectedDirItems.length, setupPrompt, systemPrompt, directionsError, presetsError, directionsLoading, presetsLoading, presetDirections.length, configuration.settings, configuration.loading, configuration.saving, configuration.error, batchSize]);
+  }, [setupSubsets.size, allSelectedDirItems.length, setupPrompt, systemPrompt, observerSystemPrompt, observerUserPrompt, directionsError, presetsError, directionsLoading, presetsLoading, presetDirections.length, configuration.settings, configuration.loading, configuration.saving, configuration.error, batchSize]);
 
   const handleRestorePrompt = () => {
-    if (setupPromptDirty && setupPrompt.trim()) {
-      setConfirmState({
-        title: "恢复自动生成提示词",
-        message: "恢复将覆盖手工修改的提示词。",
-        danger: false,
-        onConfirm: () => {
-          setSetupPromptDirty(false);
-          const parentName = currentSetupParent?.name || dataset.name;
-          const subsetsNames = currentSetupChildDatasets
-            .filter((c: Dataset) => setupSubsets.has(c.dataset_id))
-            .map((c: Dataset) => c.name);
-          setSetupPrompt(generatePromptText(parentName, subsetsNames, allSelectedDirItems));
-          setConfirmState(null);
-        }
-      });
-      return;
-    }
-    setSetupPromptDirty(false);
-    const parentName = currentSetupParent?.name || dataset.name;
-    const subsetsNames = currentSetupChildDatasets
-      .filter((c: Dataset) => setupSubsets.has(c.dataset_id))
-      .map((c: Dataset) => c.name);
-    setSetupPrompt(generatePromptText(parentName, subsetsNames, allSelectedDirItems));
+    const restore=()=>{
+      const parentName=currentSetupParent?.name||dataset.name;
+      const names=currentSetupChildDatasets.filter(c=>setupSubsets.has(c.dataset_id)).map(c=>c.name);
+      const generated=generatePromptText(parentName,names,allSelectedDirItems);
+      setSetupPromptDirty(false);setObserverPromptDirty(false);
+      setSetupPrompt(generated);setObserverUserPrompt(generated);
+      setSystemPrompt(promptDefaults.system.knowledge);setObserverSystemPrompt(promptDefaults.knowledgeObserverSystem);
+      setConfirmState(null);
+    };
+    if(setupPromptDirty||observerPromptDirty){
+      setConfirmState({title:'恢复自动生成提示词',message:'恢复将覆盖手工修改的提示词。',danger:false,onConfirm:restore});
+    }else restore();
   };
 
   const closeCreate = () => {
@@ -190,7 +184,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   };
 
   const [submitting, setSubmitting] = useState(false);
-  useEffect(()=>{if(!started.current)submission.current=null;},[setupDataset,setupPrompt,systemPrompt,batchSize,JSON.stringify(Array.from(setupSubsets).sort())]);
+  useEffect(()=>{if(!started.current)submission.current=null;},[setupDataset,setupPrompt,systemPrompt,observerSystemPrompt,observerUserPrompt,batchSize,JSON.stringify(Array.from(setupSubsets).sort())]);
   const handleSubmitJob = async () => {
     if (validationProblem || submitting) return;
     setSubmitting(true); setFormError('');
@@ -203,7 +197,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
       if(batchSize !== configuredBatch)await configuration.saveAsync({batch_size:batchSize!});
       submission.current ||= uuid();
       const job=await request<JobSnapshot>('/analysis/start',{submission_id:submission.current,analysis_kind:'knowledge',
-        dataset_ids:[...setupSubsets],system_prompt:systemPrompt,mining_prompt:miningPrompt});
+        dataset_ids:[...setupSubsets],system_prompt:systemPrompt,observer_prompt:{system_prompt:observerSystemPrompt,user_prompt:observerUserPrompt},mining_prompt:miningPrompt});
       started.current=job;
       onStarted([job]);
     } catch(error){setFormError(message(error));}finally{setSubmitting(false);}
@@ -381,12 +375,16 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
                     恢复自动生成
                   </Button>
                 </div>
-                <AgentPromptEditors id="prompt-text" system={systemPrompt} user={setupPrompt}
+                <AgentPromptEditors id="prompt-text" agentLabel="主 Agent" system={systemPrompt} user={setupPrompt}
                   onSystemChange={setSystemPrompt} onUserChange={text => {
                     setSetupPrompt(text);
                     setSetupPromptDirty(true);
                   }}
-                  disabled={submitting}/>
+                  disabled={submitting}>
+                  <AgentPromptEditors id="kb-observer-prompt" agentLabel="子 Agent" system={observerSystemPrompt} user={observerUserPrompt}
+                    onSystemChange={setObserverSystemPrompt} onUserChange={text=>{setObserverUserPrompt(text);setObserverPromptDirty(true);}}
+                    disabled={submitting}/>
+                </AgentPromptEditors>
                 <div className="kb-prompt-note" id="prompt-note" aria-live="polite">
                   {setupPromptDirty ? "已手动修改，方向调整后保持当前内容。" : ""}
                 </div>

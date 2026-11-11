@@ -2,7 +2,7 @@ import {SectionHeading} from './layout/SectionHeading.js';
 import {AnalysisExportButton} from './AnalysisExportButton.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
-import {PromptDrawer} from './PromptDrawer.js';
+import {AnalysisPromptDrawer} from './AnalysisPromptDrawer.js';
 import {Select} from './Select.js';
 import {DatasetScopeSelector} from './DatasetScopeSelector.js';
 import {useQueries} from '@tanstack/react-query';
@@ -45,8 +45,6 @@ interface UiJobItem {
   count: number | null;
   at: string;
   durationText: string;
-  prompt: string;
-  systemPrompt: string|null;
   knowledgeVersionId: string | null;
 }
 
@@ -123,8 +121,6 @@ export function KnowledgePage({
       statusBadgeClass: {completed:'green',running:'blue',interrupted:'gray',failed:'red'}[status],
       count: versions.find(version => version.version_id === job.knowledge_version_id)?.check_count ?? null,
       at: formatJobTime(job.submitted_at), durationText: formatDuration(seconds),
-      prompt: job.mining_prompt?.instruction || '',
-      systemPrompt:job.system_prompt||null,
       knowledgeVersionId: job.knowledge_version_id || null};
   });
 
@@ -512,7 +508,7 @@ export function KnowledgePage({
 
       {/* Overlays and Drawers */}
       {/* 1. Job Prompt Drawer */}
-      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.prompt || '该历史作业未记录冻结提示词。'} systemText={promptJob.systemPrompt} onClose={closePrompt} />}
+      {promptJob && <AnalysisPromptDrawer title="知识挖掘提示词" jobId={promptJob.id} onClose={closePrompt} />}
 
             {detailItem && <KnowledgeEntryDialog key={`${detailItem.versionId}:${detailItem.checkId}`} {...detailItem}
               onClose={closeDetail} onSaved={()=>{updated();toast('人工核实已保存');}} />}

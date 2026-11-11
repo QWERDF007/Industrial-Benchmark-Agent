@@ -25,7 +25,7 @@ def test_exploration_sampling_uses_the_same_labelme_roles_as_source_selection(ag
     assert list(roles.values()) == ['normal'] * 4 + ['defect'] * 4
     legacy = AnalysisManifests(jobs.db).freeze(ids)
     assert {record.sample.quality_status for record in legacy.records} == {'UNCERTAIN'}
-    assert {record.sampling_group for record in legacy.records} == {'unclassified'}
+    assert {record.sampling_group for record in legacy.records} == {'normal','abnormal'}
     ModuleSettings(jobs.db).save(dict(module='exploration', expected_revision=1, settings=dict(batch_size=4)))
     normal = [sid for sid, kind in roles.items() if kind == 'normal'][:2]
     defect = [sid for sid, kind in roles.items() if kind == 'defect'][:2]

@@ -1,7 +1,7 @@
 import json
 
 from iad_core.evidence.registrations import EvidenceReferenceQuery, RegistrationImages, RegistrationImageQuery, RegistrationMediaPage, RegistrationMediaQuery, RegistrationCropQuery, ExplorationCropQuery, PreparedRegistration
-from iad_core.analysis.models import ExplorationBatchMaterials
+from iad_core.analysis.models import AnalysisBatchMaterials
 
 
 class AnalysisEvidence:
@@ -11,8 +11,8 @@ class AnalysisEvidence:
 
     def prepare(self, run_id: str, sample_id: str, *, session_id: str | None = None) -> PreparedRegistration:
         if session_id:
-            from iad_core.exploration.delegation import ExplorationDelegation
-            task = ExplorationDelegation(self.jobs).task(run_id, session_id)
+            from iad_core.analysis.delegation import AnalysisDelegation
+            task = AnalysisDelegation(self.jobs).task(run_id, session_id)
             if sample_id not in {target.sample_id for target in task.round.targets}:
                 raise ValueError('图像不属于子代理本批目标')
         with self.db.connection() as connection:
@@ -24,7 +24,7 @@ class AnalysisEvidence:
         if not session_id and (context.round is None or sample_id not in {target.sample_id for target in context.round.targets}):
             raise ValueError('图像不属于本场当前轮目标，旧证据须按已保存引用读取')
         record = next(record for record in snapshot.manifest.records if record.sample.sample_id == sample_id)
-        batch_input = snapshot.input_organization == 'exploration-batch-v2'
+        batch_input = snapshot.input_organization != 'registration-tools'
         result = self.images.prepare(record, None if batch_input else snapshot.settings.whole_image_max_side,
             raw_annotations=batch_input, preserve_annotation_instances=batch_input)
         with self.db.connection() as connection:
@@ -32,15 +32,15 @@ class AnalysisEvidence:
                 (run_id, sample_id, result.model_dump_json()))
         return result
 
-    def batch(self, run_id: str) -> ExplorationBatchMaterials:
-        if self.jobs.snapshot(run_id).input_organization != 'exploration-batch-v2':
-            raise ValueError('当前作业不使用探索整批材料输入')
+    def batch(self, run_id: str) -> AnalysisBatchMaterials:
+        if self.jobs.snapshot(run_id).input_organization == 'registration-tools':
+            raise ValueError('当前作业不使用整批材料输入')
         context = self.jobs.context(run_id)
         registrations = [self.prepare(run_id, target.sample_id).page() for target in context.round.targets] if context.round else []
-        return ExplorationBatchMaterials(context=self.jobs.context(run_id), registrations=registrations)
+        return AnalysisBatchMaterials(context=self.jobs.context(run_id), registrations=registrations)
 
     def read(self, run_id: str, query: dict | RegistrationMediaQuery, *, session_id: str | None = None) -> RegistrationMediaPage:
-        if self.jobs.snapshot(run_id).input_organization == 'exploration-batch-v2':
+        if self.jobs.snapshot(run_id).input_organization != 'registration-tools':
             query = RegistrationImageQuery.model_validate(query)
             return self.prepare(run_id, query.sample_id, session_id=session_id).page()
         query = RegistrationMediaQuery.model_validate(query)
@@ -66,7 +66,7 @@ class AnalysisEvidence:
             connection.execute('BEGIN IMMEDIATE')
             call = connection.execute('SELECT summary_json FROM model_calls WHERE run_id=? AND call_id=?', (run_id, call_id)).fetchone()
             actual_session = json.loads(call[0]).get('session_id') if call else None
-            task = connection.execute('SELECT round_id FROM exploration_batch_tasks WHERE job_id=? AND session_id=?',
+            task = connection.execute('SELECT round_id FROM analysis_batch_tasks WHERE job_id=? AND session_id=?',
                 (run_id, actual_session)).fetchone()
             if call is None or actual_session != self.jobs.state(run_id).session_id and task is None:
                 raise ValueError('媒体回执没有本场实际模型请求')
@@ -79,13 +79,13 @@ class AnalysisEvidence:
                 [(run_id, call_id, evidence_id) for evidence_id in evidence_ids])
 
     def crop(self, run_id: str, query: dict, *, session_id: str | None = None) -> RegistrationMediaPage:
-        batch_input = self.jobs.snapshot(run_id).input_organization == 'exploration-batch-v2'
+        batch_input = self.jobs.snapshot(run_id).input_organization != 'registration-tools'
         query=(ExplorationCropQuery if batch_input else RegistrationCropQuery).model_validate(query)
         context=self.jobs.context(run_id)
         if not session_id and (context.round is None or query.sample_id not in {target.sample_id for target in context.round.targets}):
             raise ValueError('裁窗图像不属于本场当前轮目标')
         prepared=self.prepare(run_id,query.sample_id,session_id=session_id)
-        if prepared.error:
+        if prepared.error and (not batch_input or prepared.evidence_id is None):
             raise ValueError(prepared.error)
         record=next(record for record in self.jobs.snapshot(run_id).manifest.records if record.sample.sample_id==query.sample_id)
         cropped=self.images.crop(record,query.bbox,single_window=batch_input)

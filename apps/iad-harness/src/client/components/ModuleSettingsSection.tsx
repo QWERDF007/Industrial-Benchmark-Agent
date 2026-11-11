@@ -38,10 +38,10 @@ export function ModuleSettingsSection({module}:{module:BusinessModule}) {
         <ModuleNumberSetting label="异常品抽取权重" value={settings.sampling_ratio.abnormal} min={1} step={1}
           validationMessage="异常品抽取权重需要为正整数" onSave={abnormal=>save({sampling_ratio:{...settings.sampling_ratio,abnormal}})}/>
       </>}
-      {'concurrency' in settings && <ModuleNumberSetting label={module==='exploration'?'并行观察批次数':module==='consistency'?'同时检查的主图数':'同时审计的主图数'} value={settings.concurrency} min={1} step={1}
+      {'concurrency' in settings && <ModuleNumberSetting label={(module==='exploration'||module==='knowledge')?'并行观察批次数':module==='consistency'?'同时检查的主图数':'同时审计的主图数'} value={settings.concurrency} min={1} step={1}
         validationMessage="并发数量需要为正整数" onSave={concurrency=>save({concurrency})}/>}
       {module!=='audit'&&'whole_image_max_side' in settings && <>
-        <label className="iad-module-row"><span>整图输入分辨率</span><Select aria-label="整图输入分辨率" value={settings.whole_image_max_side ?? 0}
+        <label className="iad-module-row"><span>整图输入分辨率</span><Select aria-label="整图输入分辨率" value={module==='knowledge'||module==='exploration'?0:settings.whole_image_max_side ?? 0} disabled={module==='knowledge'||module==='exploration'}
           onChange={event=>save({whole_image_max_side:Number(event.target.value)||null})}>
           <option value={0}>使用原图</option>
           {settings.whole_image_max_side && ![512,1024,1280,2048].includes(settings.whole_image_max_side) && <option value={settings.whole_image_max_side}>最长边 {settings.whole_image_max_side}</option>}

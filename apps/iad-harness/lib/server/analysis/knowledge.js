@@ -2,7 +2,7 @@ import { defineTool } from '@deepseek-ai/dsh-tools';
 import { knowledgeCommitParameters, knowledgeFinalizeParameters } from '../../shared/analysis-agent.parameters.generated.js';
 import { workbenchJsonOutput } from '../tool-output.js';
 export function registerKnowledgeTools(scope, bridge, runId) {
-    scope.tools.register(defineTool({ name: 'knowledge_commit', description: '提交本轮逐登记观察与已选方向下的知识新增、修订或合并。每个登记恰好记录selected_directions全部ref的适用性及原因，不跳过登记。仅引用实际送达且已观察的完整原图ID，关联原始标注及全部局部；全部必需视图观察才计完成。同像素登记不增加独立支持。可分多次提交，成功回执返回revision、覆盖与完成状态并结束本次调用轮次；失败全部回滚，按错误修正重提。',
+    scope.tools.register(defineTool({ name: 'knowledge_commit', description: '主Agent正式提交首批或整波知识更新。首次observations简短记录本批每图全部selected_directions的适用性和依据；复核时observations传[]，宿主导入本波全部报告。report_reviews一次覆盖全部报告及候选，discovery_decisions的new/merge填写check_id，reject说明依据。checks只提交新增或修改项，未变项传[]；只增加论据可填arguments。正文不堆放图像、标注或作业ID，引用放在结构化字段。key_evidence从首批起持续维护最多4张典型完整原图，与完整支持及反例分开；不要求良品和异常同时入选。改变已有主张需change_reason并逐项复核旧有效论据。整批媒体须进入自身成功请求，取证错误须有实际回执。整波成功提交才推进覆盖，失败全部回滚。',
         parameters: knowledgeCommitParameters, output: workbenchJsonOutput,
         execute: async (submission, execution) => {
             const result = await bridge.execute('analysis_agent_commit', { run_id: runId, submission }, execution.signal);

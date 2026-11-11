@@ -39,7 +39,7 @@ def test_first_batch_can_complete_without_per_image_text_or_invented_observation
 
 
 def test_sparse_child_report_covers_the_batch_but_only_saves_cited_facts(agent_jobs):
-    from iad_core.exploration.delegation import ExplorationDelegation
+    from iad_core.analysis.delegation import AnalysisDelegation
     jobs, dataset_id, role = agent_jobs
     ModuleSettings(jobs.db).save(dict(module='exploration', expected_revision=1, settings=dict(batch_size=2)))
     run_id = jobs.start(dict(submission_id=str(uuid4()), analysis_kind='exploration', dataset_ids=[dataset_id],
@@ -51,7 +51,7 @@ def test_sparse_child_report_covers_the_batch_but_only_saves_cited_facts(agent_j
         directions=[dict(direction_id='edge', title='外缘', instruction='沿外缘核对连续性。',
             rationale='外缘轮廓连续可辨。', applies_to='both', dataset_ids=[dataset_id], evidence_ids=[eid], limitations=[])],
         summary='外缘可检查。', limitations=[], unresolved_questions=[]))
-    delegation = ExplorationDelegation(jobs)
+    delegation = AnalysisDelegation(jobs)
     tasks = delegation.wave(run_id).tasks
     for index, task in enumerate(tasks):
         pages = delegation.materials(run_id, task.session_id).registrations

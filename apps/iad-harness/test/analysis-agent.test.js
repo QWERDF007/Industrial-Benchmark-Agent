@@ -26,7 +26,7 @@ import {toolPresentation} from '../lib/shared/tool-presentation.js';
 for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'knowledge', capacityStop:true},
   {module:'exploration',emptyCatalog:true}, {module:'exploration',initialFailure:true},
   {module:'exploration',protocol:'openai-responses'}, {module:'knowledge',protocol:'openai-responses'},
-  ...['exploration','knowledge'].flatMap(module=>['openai-completions','openai-responses'].map(protocol=>({module,protocol,optionalOutput:true})))]) test(`one native ${scenario.module} Agent ${scenario.initialFailure ? 'retains a first-call failure before any observation' : 'observes all 19 registrations in its own Session' + (scenario.emptyCatalog ? ' and publishes an empty catalog' : scenario.capacityStop ? ' after a 12/19 capacity failure and resume' : ' and retains a last-round discovery')}${scenario.protocol==='openai-responses'?' with Responses reasoning':''}${scenario.optionalOutput?' without a configured output limit':''}`, {timeout: process.env.IAD_ANALYSIS_BROWSER ? 120000 : 60000}, async t => {
+  ...['exploration','knowledge'].flatMap(module=>['openai-completions','openai-responses'].map(protocol=>({module,protocol,optionalOutput:true})))]) test(`one native ${scenario.module==='knowledge'?'historical serial knowledge':scenario.module} Agent ${scenario.initialFailure ? 'retains a first-call failure before any observation' : 'observes all 19 registrations in its own Session' + (scenario.emptyCatalog ? ' and publishes an empty catalog' : scenario.capacityStop ? ' after a 12/19 capacity failure and resume' : ' and retains a last-round discovery')}${scenario.protocol==='openai-responses'?' with Responses reasoning':''}${scenario.optionalOutput?' without a configured output limit':''}`, {timeout: process.env.IAD_ANALYSIS_BROWSER ? 120000 : 60000}, async t => {
   const {module, capacityStop, emptyCatalog, initialFailure,protocol='openai-completions',optionalOutput=false} = scenario;
   const expectedCounts=module==='exploration'?[[8,2],[2,2],[2,2],[0,1]]:[[2,2],[2,2],[2,2],[3,1],[3,0]];
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-analysis-agent-'));
@@ -223,6 +223,31 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
   const plugin = await ctx.plugin(piAi, {providers});
   const native = new NativeProviders(() => ctx);
   const scheduler = new AnalysisWorkflowScheduler(bridge, native, {exploration: host, knowledge: host}, root, error => errors.push(String(error)));
+  // Load a stored serial knowledge snapshot before the scheduler starts its Session.
+  if(module==='knowledge'){
+    const execute=bridge.execute.bind(bridge);
+    bridge.execute=async(operation,...args)=>{
+      const result=await execute(operation,...args);
+      if(operation==='analysis_agent_start'&&result.created)execFileSync(resolvePythonPath(),['-c',`
+import json,sys,sqlite3
+c=sqlite3.connect(sys.argv[1])
+s=json.loads(c.execute('SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?',(sys.argv[2],)).fetchone()[0])
+s.pop('knowledge_tasks',None)
+s.update(execution_mode='serial',input_organization='registration-tools',observer_prompt=None)
+from iad_core.workbench.analysis_sampling import MixedSampling,SamplingRatio
+from collections import Counter
+records=s['manifest']['records']
+groups={r['sample']['sample_id']:r['sampling_group'] for r in records}
+owners={r['sample']['sample_id']:r['sample']['dataset_id'] for r in records}
+s['plan']['rounds']=[dict(round_id=i+1,targets=[dict(sample_id=sid,dataset_id=owners[sid],candidate_role=None) for sid in batch],
+ sampling_counts=dict(normal=Counter(groups[sid] for sid in batch)['normal'],abnormal=Counter(groups[sid] for sid in batch)['abnormal'],unclassified=0))
+ for i,batch in enumerate(MixedSampling(groups,s['settings']['batch_size'],SamplingRatio(**s['settings']['sampling_ratio'])).batches())]
+
+c.execute('UPDATE analysis_workflow_runs SET snapshot_json=? WHERE job_id=?',(json.dumps(s),sys.argv[2]));c.commit()
+`,database,result.run_id],{cwd:workspace,env:{...process.env,PYTHONPATH:path.join(workspace,'python')},encoding:'utf8'});
+      return result;
+    };
+  }
   const removeRouting = bridge.useModelRouting(scheduler);
   for (const tool of [...createExplorationTools(bridge, ctx), ...createKnowledgeTools(bridge, ctx)]) ctx.tools.register(tool);
   const browser = process.env.IAD_ANALYSIS_BROWSER ? await import('./fixtures/analysis-page.js') : null;

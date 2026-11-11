@@ -106,8 +106,9 @@ for module in ['exploration','knowledge','consistency']:
   for(const module of ['exploration','knowledge','consistency','audit']){
     await driver.get(`http://127.0.0.1:${server.address().port}/page?module=${module}`);
     await click({exploration:'#exp-new',knowledge:'#create-btn',consistency:'button[data-dc="start-check"]',audit:'button[title="新建审计"]'}[module]);
-    const system=await element(module==='exploration'?'#exp-prompt-system':'textarea[aria-label="系统提示词"]'),
-      user=await element(module==='exploration'?'#exp-prompt':'textarea[aria-label="用户提示词"]');
+    const system=await element(module==='exploration'?'#exp-prompt-system':module==='knowledge'?'#prompt-text-system':'textarea[aria-label="系统提示词"]'),
+      user=await element(module==='exploration'?'#exp-prompt':module==='knowledge'?'#prompt-text':'textarea[aria-label="用户提示词"]');
+    if(module==='knowledge')assert.equal((await driver.findElements(By.css('textarea.iad-prompt-editor'))).length,4);
     if(module==='exploration'){
       assert.equal((await driver.findElements(By.css('details.exp-observer-prompt'))).length,0);
       for(const label of ['主 Agent 系统提示词','主 Agent 用户提示词','子 Agent 系统提示词','子 Agent 用户提示词']){
@@ -193,7 +194,12 @@ for module in ['exploration','knowledge','consistency']:
       await(await driver.findElement(By.xpath('//button[@role="tab" and starts-with(normalize-space(.),"异常样例")]'))).click();
       await click('button[aria-label="继续添加异常图像"]');await click('.iad-thumbnail-option input');
       await(await driver.findElement(By.xpath('//button[normalize-space(.)="完成选择"]'))).click();
-    } else if(module==='knowledge')await click('#general-directions input[type="checkbox"]');
+    } else if(module==='knowledge'){
+      for(const [selector,text] of [['#kb-observer-prompt-system','知识子系统：记录实际事实。'],['#kb-observer-prompt','知识子任务：联合验证判据。']]){
+        const input=await element(selector);await input.clear();await input.sendKeys(text,Key.TAB);
+      }
+      await click('#general-directions input[type="checkbox"]');
+    }
     else if(module==='audit')await click(`input[aria-label="选择一致性作业 ${data.consistency_job_id}"]`);
     assert.equal(await system.getAttribute('value'),systemText);assert.equal(await user.getAttribute('value'),userText);
     const submit={exploration:'button[data-action="start-exploration"]',knowledge:'#submit-job',consistency:'button[data-dc="create-job"]',audit:'#audit-create-submit'}[module];
@@ -207,6 +213,18 @@ for module in ['exploration','knowledge','consistency']:
     await button.click();await driver.wait(()=>accepted.some(item=>item.module===module),10000);
     const {job,request}=accepted.find(item=>item.module===module);
     const snapshot=await bridge.execute(module==='consistency'?'consistency_agent_snapshot':module==='audit'?'audit_agent_snapshot':'analysis_agent_snapshot',{run_id:job.run_id});
+    if(module==='knowledge'){
+      assert.deepEqual(snapshot.observer_prompt,{system_prompt:'知识子系统：记录实际事实。',user_prompt:'知识子任务：联合验证判据。'});
+      const shown=await bridge.execute('analysis_prompts',{run_id:job.run_id});
+      assert.ok(shown.main.user_prompt.includes(snapshot.knowledge_tasks.review));
+      assert.ok(shown.observer.user_prompt.includes(snapshot.knowledge_tasks.observe));
+      await click('button[data-job-prompt="'+job.run_id+'"]');
+      await driver.wait(async()=>(await driver.findElements(By.css('dialog .iad-prompt-text'))).length===4,5000);
+      const displayed=await driver.findElements(By.css('dialog .iad-prompt-text'));
+      assert.deepEqual(await Promise.all(displayed.map(item=>item.getText())),[shown.main.system_prompt,shown.main.user_prompt,shown.observer.system_prompt,shown.observer.user_prompt]);
+      await click('button[aria-label="关闭知识挖掘提示词抽屉"]');
+
+    }
     assert.equal(request.system_prompt,systemText);assert.equal(snapshot.system_prompt,systemText);assert.equal(snapshot.instruction,userText);
     if(module==='exploration'){
       assert.deepEqual(request.observer_prompt,{system_prompt:'子系统：逐图记录事实。',user_prompt:'子任务：独立发现新现象。'});
@@ -231,7 +249,7 @@ for module in ['exploration','knowledge','consistency']:
       `,identity),true,'完整作业编号不得覆盖相邻状态列');
       await driver.manage().window().setRect({width:1440,height:1080});
     }
-    t.diagnostic(module+'：'+(module==='exploration'?'主子四段独立正文':'两个编辑值')+'已由真实作业快照保存');
+    t.diagnostic(module+'：'+(['exploration','knowledge'].includes(module)?'主子四段独立正文':'两个编辑值')+'已由真实作业快照保存');
   }
   await bridge.execute('analysis_agent_cancel',{run_id:accepted.find(item=>item.module==='exploration').job.run_id});
   await driver.get(`http://127.0.0.1:${server.address().port}/page?module=exploration`);
@@ -245,7 +263,10 @@ for module in ['exploration','knowledge','consistency']:
   assert.equal(await parallel.getAttribute('value'),'2');
   await parallel.clear();await parallel.sendKeys('3',Key.TAB);
   await driver.wait(async()=>(await bridge.execute('module_settings_get',{module:'exploration'})).settings.concurrency===3,5000);
-  assert.equal((await driver.findElements(By.css('[data-module-settings="knowledge"] input[aria-label="并行观察批次数"]'))).length,0);
+  assert.equal((await driver.findElements(By.css('[data-module-settings="knowledge"] input[aria-label="并行观察批次数"]'))).length,1);
+  assert.equal((await bridge.execute('module_settings_get',{module:'knowledge'})).settings.concurrency,2);
+  const imageSize=await element('[data-module-settings="knowledge"] select[aria-label="整图输入分辨率"]');
+  assert.equal(await imageSize.getAttribute('value'),'0');assert.equal(await imageSize.isEnabled(),false);
   const frozen=await bridge.execute('analysis_agent_snapshot',{run_id:accepted.find(item=>item.module==='exploration').job.run_id});
   assert.equal(frozen.settings.concurrency,2);
 });

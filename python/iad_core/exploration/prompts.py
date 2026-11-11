@@ -3,7 +3,8 @@ import hashlib
 from pathlib import Path
 from typing import Literal
 
-from iad_core.exploration.models import ExplorationPromptPreset, ExplorationPresetEdit, FrozenExplorationPrompt, FrozenExplorationTasks
+from iad_core.exploration.models import ExplorationPromptPreset, ExplorationPresetEdit, FrozenExplorationPrompt
+from iad_core.analysis.prompt_models import FrozenAnalysisTasks
 from iad_core.prompt_files import PromptFiles
 from iad_core.exploration.prompt_text import (CORE_SYSTEM_PROMPT, MAIN_ROLE, OBSERVER_ROLE, LABELME_ADAPTATION,
     OKNG_ADAPTATION, INITIAL_TASK, OBSERVE_TASK, REVIEW_TASK, FINALIZE_TASK)
@@ -31,11 +32,11 @@ class ExplorationPrompts:
         return '\n\n'.join([CORE_SYSTEM_PROMPT, MAIN_ROLE if role == 'main' else OBSERVER_ROLE, adaptation])
 
     @staticmethod
-    def tasks(dataset_format: str) -> FrozenExplorationTasks:
+    def tasks(dataset_format: str) -> FrozenAnalysisTasks:
         layers = dict(core=CORE_SYSTEM_PROMPT, main=MAIN_ROLE, observer=OBSERVER_ROLE,
             adapter={'labelme': LABELME_ADAPTATION, 'folder_classification': OKNG_ADAPTATION}[dataset_format],
             initial=INITIAL_TASK, observe=OBSERVE_TASK, review=REVIEW_TASK, finalize=FINALIZE_TASK)
-        return FrozenExplorationTasks(initial=INITIAL_TASK, observe=OBSERVE_TASK, review=REVIEW_TASK, finalize=FINALIZE_TASK,
+        return FrozenAnalysisTasks(initial=INITIAL_TASK, observe=OBSERVE_TASK, review=REVIEW_TASK, finalize=FINALIZE_TASK,
             versions={name:hashlib.sha256(text.encode()).hexdigest() for name, text in layers.items()})
 
     def freeze(self, prompt: FrozenExplorationPrompt) -> FrozenExplorationPrompt:

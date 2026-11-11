@@ -1,13 +1,18 @@
 import json
 from uuid import uuid4
 
+import pytest
 from PIL import Image
+
+from iad_core.workbench.module_settings import ModuleSettings
+from iad_core.knowledge.instructions import default_directions
 
 from iad_core.analysis.evidence import AnalysisEvidence
 from iad_core.dataset.registry import DatasetImport, DatasetRegistry
 
 
-def test_batch_preserves_original_pixels_and_each_annotation_instance(agent_jobs, tmp_path):
+@pytest.mark.parametrize('module',['exploration','knowledge'])
+def test_batch_preserves_original_pixels_and_each_annotation_instance(agent_jobs, tmp_path, module):
     jobs, _, role = agent_jobs
     source = tmp_path / 'batch-originals'
     source.mkdir()
@@ -20,8 +25,11 @@ def test_batch_preserves_original_pixels_and_each_annotation_instance(agent_jobs
     config = DatasetRegistry(jobs.db).import_labelme(DatasetImport(format='labelme', name='原像素批次',
         image_dir=str(source), annotation_dir=str(source)))
     selected = [config.dataset.id + ':' + name + '.png' for name in ['a', 'b']]
-    job = jobs.start(dict(submission_id=str(uuid4()), analysis_kind='exploration', dataset_ids=[config.dataset.id],
-        defect_images=selected, prompt=dict(text='观察所有原图及局部。')), agent=role)
+    if module=='knowledge':
+        ModuleSettings(jobs.db).save(dict(module='knowledge',expected_revision=0,settings=dict(model=dict(provider_id='swift-30003',model_id='fixture'),batch_size=2)))
+    job = jobs.start(dict(submission_id=str(uuid4()), analysis_kind=module, dataset_ids=[config.dataset.id],
+        **(dict(defect_images=selected,prompt=dict(text='观察所有原图及局部。')) if module=='exploration' else
+            dict(mining_prompt=dict(objective='核对可见关系。',instruction='观察所有原图和局部。',directions=[default_directions()[0].model_dump(mode='json')])))),agent=role)
     materials = AnalysisEvidence(jobs).batch(job['run_id'])
     assert [target.sample_id for target in materials.context.round.targets] == selected
     assert [page.sample_id for page in materials.registrations] == selected
@@ -53,7 +61,8 @@ def test_batch_preserves_original_pixels_and_each_annotation_instance(agent_jobs
     assert crop.images[0].required is False
 
 
-def test_okng_batch_contains_only_true_image_labels_without_required_rois(agent_jobs, tmp_path):
+@pytest.mark.parametrize('module',['exploration','knowledge'])
+def test_okng_batch_contains_only_true_image_labels_without_required_rois(agent_jobs, tmp_path, module):
     from iad_core.dataset.folder_preview import preview_folder_dataset
     jobs, _, role = agent_jobs
     source = tmp_path / 'image-labels'
@@ -65,8 +74,11 @@ def test_okng_batch_contains_only_true_image_labels_without_required_rois(agent_
         root_dir=str(source), rules=[dict(path='OK', role='normal'), dict(path='NG', role='anomaly')],
         preview_fingerprint=preview.preview_fingerprint))
     ids = [config.dataset.id + ':' + name + '/same.png' for name in ['OK', 'NG']]
-    job = jobs.start(dict(submission_id=str(uuid4()), analysis_kind='exploration', dataset_ids=[config.dataset.id],
-        normal_images=ids[:1], defect_images=ids[1:], prompt=dict(text='观察可见关系。')), agent=role)
+    if module=='knowledge':
+        ModuleSettings(jobs.db).save(dict(module='knowledge',expected_revision=0,settings=dict(model=dict(provider_id='swift-30003',model_id='fixture'),batch_size=2)))
+    job = jobs.start(dict(submission_id=str(uuid4()), analysis_kind=module, dataset_ids=[config.dataset.id],
+        **(dict(normal_images=ids[:1],defect_images=ids[1:],prompt=dict(text='观察可见关系。')) if module=='exploration' else
+            dict(mining_prompt=dict(objective='核对可见关系。',instruction='观察完整图像。',directions=[default_directions()[0].model_dump(mode='json')])))),agent=role)
     batch = AnalysisEvidence(jobs).batch(job['run_id'])
     assert [len(page.images) for page in batch.registrations] == [1, 1]
     assert [page.images[0].model_context['image_label'] for page in batch.registrations] == ['OK', 'NG']

@@ -244,39 +244,24 @@ def test_eight_registrations_use_batch_delivery_for_exploration_and_observations
             commits.accept(run_id, {**submission, 'observations': observations})
         assert jobs.context(run_id).revision == 0
         assert AnalysisCoverageReader(jobs.db).observations(run_id) == []
-    if module == 'exploration':
-        if delivered_count == 6:
-            with pytest.raises(ValueError, match='实际模型请求'):
-                commits.accept(run_id, submission)
-            assert jobs.state(run_id).revision == 0
-            deliver(pages[6:])
-        receipt = commits.accept(run_id, submission)
-        assert receipt.completed_delta == 8 and receipt.round_complete
-        coverage = AnalysisCoverageReader(jobs.db).read(run_id)
-        assert coverage.completed == coverage.whole_images_observed == 8
-        assert len(AnalysisCoverageReader(jobs.db).observations(run_id)) == 6
-        assert jobs.context(run_id).round is None
-        assert commits.accept(run_id, submission) == receipt
-        return
-    receipt = commits.accept(run_id, submission)
-    assert receipt.completed_delta == 6 and not receipt.round_complete
+    if delivered_count == 6:
+        with pytest.raises(ValueError, match='实际模型请求'):
+            commits.accept(run_id, submission)
+        deliver(pages[6:])
+    if module == 'knowledge':
+        with pytest.raises(ValueError, match='全部登记'):
+            commits.accept(run_id, submission)
+    receipt = commits.accept(run_id, {**submission,'observations':observations if module=='knowledge' else observations[:6]})
+    assert receipt.completed_delta == 8 and receipt.round_complete
     coverage = AnalysisCoverageReader(jobs.db).read(run_id)
-    assert (coverage.total, coverage.completed, coverage.failed, coverage.unprocessed) == (8, 6, 0, 2)
-    checkpoint = jobs.context(run_id)
-    assert checkpoint.round.round_id == 1 and checkpoint.session_id == context.session_id
-    assert len(checkpoint.accepted_observations) == 6
-    assert all(record.observed_evidence_ids == [] for record in coverage.records if record.state == 'unprocessed')
-    deliver(pages[6:])
-    completed = commits.accept(run_id, {**submission, 'commit_key': 'remaining-two', 'base_revision': 1,
-        'observations': observations[6:]})
-    assert completed.completed_delta == 2 and completed.round_complete
+    assert coverage.completed == coverage.whole_images_observed == 8
+    assert len(AnalysisCoverageReader(jobs.db).observations(run_id)) == (8 if module=='knowledge' else 6)
     assert jobs.context(run_id).round is None
-    assert jobs.jobs.status(run_id)['completed'] == 8
-    assert commits.accept(run_id, submission) == receipt
+    assert commits.accept(run_id,{**submission,'observations':observations if module=='knowledge' else observations[:6]}) == receipt
 
 
 @pytest.mark.parametrize('module,view', [(module, view) for module in ['exploration', 'knowledge']
-    for view in ['annotation', 'mask', 'model', 'all'] if module == 'knowledge' or view != 'mask'])
+    for view in ['annotation', 'mask', 'model', 'all'] if view != 'mask'])
 @pytest.mark.parametrize('field',['support','counter','text'])
 def test_catalog_rejects_crop_citations_atomically_and_accepts_corrected_whole_image(agent_jobs,module,field,view):
     from iad_core.knowledge.instructions import default_directions
@@ -296,7 +281,8 @@ def test_catalog_rejects_crop_citations_atomically_and_accepts_corrected_whole_i
     bad_ids=[i.image.evidence_id for i in page.images if not i.image.is_whole_image and
         (view=='all' or (i.image.representation=='annotation_mask' if view=='mask' else i.image.representation=='raw' and i.image.source==view))]
     bad=bad_ids[0]
-    ids=[i.image.evidence_id for i in page.images]
+    ids=[i.image.evidence_id for p in (evidence.batch(run_id).registrations if module=='knowledge' else [page]) for i in p.images]
+    pages=evidence.batch(run_id).registrations if module=='knowledge' else [page]
     context=jobs.context(run_id)
     call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:00:00Z',request={'fixture':'whole and crop delivery'})
     ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=context.session_id,attempt=1)
@@ -310,8 +296,8 @@ def test_catalog_rejects_crop_citations_atomically_and_accepts_corrected_whole_i
     if field=='text':item['rationale' if module=='exploration' else 'criterion']='可见边缘'+''.join('['+eid+']' for eid in bad_ids)+'。'
     catalog_field='directions' if module=='exploration' else 'checks'
     submission=dict(commit_key='correctable',base_revision=0,round_id=1,summary='可复核结果。',limitations=[],unresolved_questions=[],
-        observations=[dict(sample_id=page.sample_id,dataset_id=dataset_id,description='完整原图及局部观察。',evidence_ids=ids,
-            directions=[dict(direction_ref='D1',status='applicable',reason='边缘可见。')] if module=='knowledge' else [])],**{catalog_field:[item]})
+        observations=[dict(sample_id=p.sample_id,dataset_id=dataset_id,description='完整原图及局部观察。',evidence_ids=[i.image.evidence_id for i in p.images],
+            directions=[dict(direction_ref='D1',status='applicable',reason='边缘可见。')] if module=='knowledge' else []) for p in pages],**{catalog_field:[item]})
     if view=='all':submission[catalog_field].append({**item,('direction_id' if module=='exploration' else 'check_id'):('D2' if module=='exploration' else 'C2')})
     commits=AnalysisCommits(jobs)
     with pytest.raises(ValueError,match='完整原图') as error:commits.accept(run_id,submission)
@@ -324,7 +310,7 @@ def test_catalog_rejects_crop_citations_atomically_and_accepts_corrected_whole_i
         edited['evidence_ids' if module=='exploration' else 'support_evidence_ids']=[whole]
         if field=='text':edited['rationale' if module=='exploration' else 'criterion']='可见边缘['+whole+']。'
     receipt=commits.accept(run_id,submission)
-    assert receipt.revision==1 and receipt.completed_delta==1
+    assert receipt.revision==1 and receipt.completed_delta==(4 if module=='knowledge' else 1)
     assert jobs.context(run_id).revision==1
 
 
@@ -339,8 +325,7 @@ def test_key_support_reselection_keeps_observations_and_counterexamples(agent_jo
         ModuleSettings(jobs.db).save(dict(module='knowledge',expected_revision=0,settings=dict(model=dict(provider_id='swift-30003',model_id='fixture'),batch_size=4)))
         request['mining_prompt']=dict(objective='核对原图。',instruction='选择关键整图。',directions=[default_directions()[0].model_dump(mode='json')])
     run_id=jobs.start(request,agent=role)['run_id'];evidence=AnalysisEvidence(jobs)
-    pages=([evidence.read(run_id,{'sample_id':target.sample_id}) for target in jobs.context(run_id).round.targets]
-        if module=='exploration' else [evidence.read(run_id,{'sample_id':dataset_id+':'+name+'.png'}) for name in ['normal','dent']])
+    pages=evidence.batch(run_id).registrations
     call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:00:00Z',request={'fixture':'key whole images'})
     ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=jobs.context(run_id).session_id,attempt=1)
     evidence.delivered(run_id,call.call_id,[image.image.evidence_id for page in pages for image in page.images])
@@ -382,7 +367,7 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
     from iad_core.workbench.module_settings import ModuleSettings
     jobs,dataset_id,role=agent_jobs
     if module=='knowledge':
-        ModuleSettings(jobs.db).save(dict(module=module,expected_revision=0,settings=dict(model=dict(provider_id='swift-30003',model_id='fixture'),batch_size=4)))
+        ModuleSettings(jobs.db).save(dict(module=module,expected_revision=0,settings=dict(model=dict(provider_id='swift-30003',model_id='fixture'),batch_size=2)))
     request=dict(submission_id=str(uuid4()),analysis_kind=module,dataset_ids=[dataset_id])
     if module=='exploration':request.update(normal_images=[dataset_id+':dent.png'],prompt={'text':'核对原图反例。'})
     else:request['mining_prompt']=dict(objective='核对原图反例。',instruction='保留反例来源。',directions=[default_directions()[0].model_dump(mode='json')])
@@ -391,15 +376,16 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
     whole=page.images[0].image.evidence_id;crop=next(item.image.evidence_id for item in page.images if not item.image.is_whole_image)
     call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:00:00Z',request={'fixture':'whole and crop'})
     ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=jobs.context(run_id).session_id,attempt=1)
-    evidence.delivered(run_id,call.call_id,ids)
+    pages=[page]+[p for p in evidence.batch(run_id).registrations if p.sample_id!=page.sample_id]
+    evidence.delivered(run_id,call.call_id,[i.image.evidence_id for p in pages for i in p.images])
     ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,finished_at='2026-11-09T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
     support='evidence_ids' if module=='exploration' else 'support_evidence_ids';field='directions' if module=='exploration' else 'checks'
     item=dict(title='边缘反例',dataset_ids=[dataset_id],counter_evidence_ids=[whole],limitations=[],**{support:[whole]})
     if module=='exploration':item.update(direction_id='D1',instruction='比较边缘。',applies_to='both',rationale='同来源存在反例。')
     else:item.update(check_id='C1',subject='主体',location='边缘',criterion='比较边缘。',allowed_variations=[],status='conflicted',direction_refs=['D1'])
     submission=dict(commit_key='observed',base_revision=0,round_id=1,summary='保留反例。',limitations=[],unresolved_questions=[],
-        observations=[dict(sample_id=page.sample_id,dataset_id=dataset_id,description='已看原图与全部局部。',evidence_ids=ids,
-            directions=[dict(direction_ref='D1',status='applicable',reason='边缘可见。')] if module=='knowledge' else [])],**{field:[item]})
+        observations=[dict(sample_id=p.sample_id,dataset_id=dataset_id,description='已看原图与全部局部。',evidence_ids=[i.image.evidence_id for i in p.images],
+            directions=[dict(direction_ref='D1',status='applicable',reason='边缘可见。')] if module=='knowledge' else []) for p in pages],**{field:[item]})
     commits=AnalysisCommits(jobs);commits.accept(run_id,submission)
     # Seed a persisted crop counterexample with complete original observations.
     catalog=jobs.context(run_id).catalog.model_dump(mode='json');catalog[field][0]['counter_evidence_ids']=[crop]
@@ -410,7 +396,7 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
         connection.execute('DELETE FROM analysis_claim_revisions WHERE job_id=?',(run_id,))
         connection.execute('UPDATE analysis_workflow_runs SET catalog_json=? WHERE job_id=?',(json.dumps(catalog),run_id))
     context=jobs.context(run_id)
-    if module=='exploration':
+    if context.round:
         batch = evidence.batch(run_id)
         call = NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:01:00Z',request={})
         ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=context.session_id,attempt=1)
@@ -418,6 +404,9 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
         ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,
             finished_at='2026-11-09T12:01:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
     update={**submission,'commit_key':'correct-counter','base_revision':context.revision,'round_id':context.round.round_id,'observations':[],field:[]}
+    if module=='knowledge':
+        update['observations']=[dict(sample_id=p.sample_id,dataset_id=dataset_id,description='原图主体可见。',evidence_ids=[i.image.evidence_id for i in p.images],
+            directions=[dict(direction_ref='D1',status='applicable',reason='主体可核对。')]) for p in batch.registrations]
     with pytest.raises(ValueError,match='完整原图') as error:commits.accept(run_id,update)
     assert crop in str(error.value) and whole in str(error.value)
     assert jobs.context(run_id).revision==context.revision
@@ -432,8 +421,8 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
     ModelCalls(jobs.db).start_native(run_id,next_call,sample_id=None,session_id=context.session_id,attempt=1)
     evidence.delivered(run_id,next_call.call_id,next_ids)
     ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=next_call.call_id,finished_at='2026-11-09T12:01:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
-    update['observations']=[dict(sample_id=target.sample_id,dataset_id=dataset_id,description='新登记的完整实际观察。',evidence_ids=next_ids,
-        directions=[dict(direction_ref='D1',status='applicable',reason='主体可见。')] if module=='knowledge' else [])]
+    update['observations']=[dict(sample_id=p.sample_id,dataset_id=dataset_id,description='新登记的完整实际观察。',evidence_ids=[i.image.evidence_id for i in p.images],
+        directions=[dict(direction_ref='D1',status='applicable',reason='主体可见。')] if module=='knowledge' else []) for p in (batch.registrations if module=='knowledge' else [next_page])]
     commits.accept(run_id,update)
     corrected=getattr(jobs.context(run_id).catalog,field)[0]
     assert corrected.counter_evidence_ids==[whole]
@@ -441,6 +430,6 @@ def test_existing_crop_counterexample_requires_explicit_whole_image_correction(a
     assert getattr(corrected,text_field)=='边缘可见['+whole+']。'
     assert corrected.title=='边缘反例'
     assert commits.accept(run_id,update).revision==context.revision+1
-    assert jobs.jobs.status(run_id)['completed']==(3 if module=='exploration' else 2)
+    assert jobs.jobs.status(run_id)['completed']==(3 if module=='exploration' else 4)
     from iad_core.analysis.coverage import AnalysisCoverageReader
     assert AnalysisCoverageReader(jobs.db).observations(run_id)[0].evidence_ids==ids

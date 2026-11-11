@@ -32,6 +32,9 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
     const [setupPrompt, setSetupPrompt] = useState("");
     const [systemPrompt, setSystemPrompt] = useState(promptDefaults.system.knowledge);
     const [setupPromptDirty, setSetupPromptDirty] = useState(false);
+    const [observerSystemPrompt, setObserverSystemPrompt] = useState(promptDefaults.knowledgeObserverSystem);
+    const [observerUserPrompt, setObserverUserPrompt] = useState('');
+    const [observerPromptDirty, setObserverPromptDirty] = useState(false);
     const [formError, setFormError] = useState("");
     const [editingDir, setEditingDir] = useState(null);
     const [editingName, setEditingName] = useState("");
@@ -109,14 +112,16 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
         ].join("\n");
     }, []);
     useEffect(() => {
-        if (setupPromptDirty)
-            return;
         const parentName = currentSetupParent?.name || dataset.name;
         const subsetsNames = currentSetupChildDatasets
             .filter((c) => setupSubsets.has(c.dataset_id))
             .map((c) => c.name);
-        setSetupPrompt(generatePromptText(parentName, subsetsNames, allSelectedDirItems));
-    }, [setupPromptDirty, currentSetupParent, currentSetupChildDatasets, setupSubsets, allSelectedDirItems, generatePromptText, dataset.name]);
+        const generated = generatePromptText(parentName, subsetsNames, allSelectedDirItems);
+        if (!setupPromptDirty)
+            setSetupPrompt(generated);
+        if (!observerPromptDirty)
+            setObserverUserPrompt(generated);
+    }, [setupPromptDirty, observerPromptDirty, currentSetupParent, currentSetupChildDatasets, setupSubsets, allSelectedDirItems, generatePromptText, dataset.name]);
     const validationProblem = useMemo(() => {
         if (!configuration.settings?.model)
             return configuration.loading ? '正在读取模型' : '请先配置知识挖掘分析模型';
@@ -138,32 +143,28 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
             return '请填写系统提示词';
         if (!setupPrompt.trim())
             return '请填写用户提示词';
+        if (!observerSystemPrompt.trim() || !observerUserPrompt.trim())
+            return '请填写子 Agent 提示词';
         return "";
-    }, [setupSubsets.size, allSelectedDirItems.length, setupPrompt, systemPrompt, directionsError, presetsError, directionsLoading, presetsLoading, presetDirections.length, configuration.settings, configuration.loading, configuration.saving, configuration.error, batchSize]);
+    }, [setupSubsets.size, allSelectedDirItems.length, setupPrompt, systemPrompt, observerSystemPrompt, observerUserPrompt, directionsError, presetsError, directionsLoading, presetsLoading, presetDirections.length, configuration.settings, configuration.loading, configuration.saving, configuration.error, batchSize]);
     const handleRestorePrompt = () => {
-        if (setupPromptDirty && setupPrompt.trim()) {
-            setConfirmState({
-                title: "恢复自动生成提示词",
-                message: "恢复将覆盖手工修改的提示词。",
-                danger: false,
-                onConfirm: () => {
-                    setSetupPromptDirty(false);
-                    const parentName = currentSetupParent?.name || dataset.name;
-                    const subsetsNames = currentSetupChildDatasets
-                        .filter((c) => setupSubsets.has(c.dataset_id))
-                        .map((c) => c.name);
-                    setSetupPrompt(generatePromptText(parentName, subsetsNames, allSelectedDirItems));
-                    setConfirmState(null);
-                }
-            });
-            return;
+        const restore = () => {
+            const parentName = currentSetupParent?.name || dataset.name;
+            const names = currentSetupChildDatasets.filter(c => setupSubsets.has(c.dataset_id)).map(c => c.name);
+            const generated = generatePromptText(parentName, names, allSelectedDirItems);
+            setSetupPromptDirty(false);
+            setObserverPromptDirty(false);
+            setSetupPrompt(generated);
+            setObserverUserPrompt(generated);
+            setSystemPrompt(promptDefaults.system.knowledge);
+            setObserverSystemPrompt(promptDefaults.knowledgeObserverSystem);
+            setConfirmState(null);
+        };
+        if (setupPromptDirty || observerPromptDirty) {
+            setConfirmState({ title: '恢复自动生成提示词', message: '恢复将覆盖手工修改的提示词。', danger: false, onConfirm: restore });
         }
-        setSetupPromptDirty(false);
-        const parentName = currentSetupParent?.name || dataset.name;
-        const subsetsNames = currentSetupChildDatasets
-            .filter((c) => setupSubsets.has(c.dataset_id))
-            .map((c) => c.name);
-        setSetupPrompt(generatePromptText(parentName, subsetsNames, allSelectedDirItems));
+        else
+            restore();
     };
     const closeCreate = () => {
         if (submitting)
@@ -194,7 +195,7 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
     };
     const [submitting, setSubmitting] = useState(false);
     useEffect(() => { if (!started.current)
-        submission.current = null; }, [setupDataset, setupPrompt, systemPrompt, batchSize, JSON.stringify(Array.from(setupSubsets).sort())]);
+        submission.current = null; }, [setupDataset, setupPrompt, systemPrompt, observerSystemPrompt, observerUserPrompt, batchSize, JSON.stringify(Array.from(setupSubsets).sort())]);
     const handleSubmitJob = async () => {
         if (validationProblem || submitting)
             return;
@@ -210,7 +211,7 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
                 await configuration.saveAsync({ batch_size: batchSize });
             submission.current ||= uuid();
             const job = await request('/analysis/start', { submission_id: submission.current, analysis_kind: 'knowledge',
-                dataset_ids: [...setupSubsets], system_prompt: systemPrompt, mining_prompt: miningPrompt });
+                dataset_ids: [...setupSubsets], system_prompt: systemPrompt, observer_prompt: { system_prompt: observerSystemPrompt, user_prompt: observerUserPrompt }, mining_prompt: miningPrompt });
             started.current = job;
             onStarted([job]);
         }
@@ -268,9 +269,9 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
                                                                                 setEditingText(info.text);
                                                                                 setDirEditError("");
                                                                             } }) })] }, e.id));
-                                                        })) : (_jsx("tr", { children: _jsx("td", { colSpan: 4, className: "kb-directions-empty", children: "\u6240\u9009\u5B50\u6570\u636E\u96C6\u6682\u65E0\u65B9\u5411\u63A2\u7D22\u7ED3\u679C\u3002" }) })) })] }) }) })] }), _jsxs("section", { className: "exp-panel kb-setup-prompt", "aria-labelledby": "kb-prompt-title", children: [_jsxs("div", { className: "kb-prompt-header", children: [_jsx("h2", { id: "kb-prompt-title", children: "\u63D0\u793A\u8BCD" }), _jsx(Button, { type: "button", id: "compose-prompt", onClick: handleRestorePrompt, children: "\u6062\u590D\u81EA\u52A8\u751F\u6210" })] }), _jsx(AgentPromptEditors, { id: "prompt-text", system: systemPrompt, user: setupPrompt, onSystemChange: setSystemPrompt, onUserChange: text => {
+                                                        })) : (_jsx("tr", { children: _jsx("td", { colSpan: 4, className: "kb-directions-empty", children: "\u6240\u9009\u5B50\u6570\u636E\u96C6\u6682\u65E0\u65B9\u5411\u63A2\u7D22\u7ED3\u679C\u3002" }) })) })] }) }) })] }), _jsxs("section", { className: "exp-panel kb-setup-prompt", "aria-labelledby": "kb-prompt-title", children: [_jsxs("div", { className: "kb-prompt-header", children: [_jsx("h2", { id: "kb-prompt-title", children: "\u63D0\u793A\u8BCD" }), _jsx(Button, { type: "button", id: "compose-prompt", onClick: handleRestorePrompt, children: "\u6062\u590D\u81EA\u52A8\u751F\u6210" })] }), _jsx(AgentPromptEditors, { id: "prompt-text", agentLabel: "\u4E3B Agent", system: systemPrompt, user: setupPrompt, onSystemChange: setSystemPrompt, onUserChange: text => {
                                             setSetupPrompt(text);
                                             setSetupPromptDirty(true);
-                                        }, disabled: submitting }), _jsx("div", { className: "kb-prompt-note", id: "prompt-note", "aria-live": "polite", children: setupPromptDirty ? "已手动修改，方向调整后保持当前内容。" : "" })] })] }), _jsxs("section", { className: "exp-panel kb-setup-confirm", "aria-labelledby": "kb-confirm-title", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { id: "kb-confirm-title", children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", id: "kb-run-summary", "aria-live": "polite", children: [_jsxs("span", { children: ["\u5B50\u6570\u636E\u96C6 ", setupSubsets.size, " \u4E2A"] }), _jsxs("span", { children: ["\u6316\u6398\u65B9\u5411 ", allSelectedDirItems.length, " \u9879"] }), _jsx("span", { children: "\u8303\u56F4 \u5168\u90E8\u767B\u8BB0\u56FE\u50CF" }), _jsxs("label", { children: ["\u6BCF\u6279\u56FE\u50CF\u6570 ", _jsx("input", { className: "f", "aria-label": "\u6BCF\u6279\u6316\u6398\u56FE\u50CF\u6570", type: "number", min: "1", max: "200", value: batchSize ?? '', disabled: submitting || !!started.current || configuration.loading, "aria-describedby": "kb-run-check", onChange: e => setBatchSize(Number(e.target.value)), onBlur: () => { if (batchSize !== null && Number.isInteger(batchSize) && batchSize >= 1 && batchSize <= 200 && batchSize !== configuredBatch)
+                                        }, disabled: submitting, children: _jsx(AgentPromptEditors, { id: "kb-observer-prompt", agentLabel: "\u5B50 Agent", system: observerSystemPrompt, user: observerUserPrompt, onSystemChange: setObserverSystemPrompt, onUserChange: text => { setObserverUserPrompt(text); setObserverPromptDirty(true); }, disabled: submitting }) }), _jsx("div", { className: "kb-prompt-note", id: "prompt-note", "aria-live": "polite", children: setupPromptDirty ? "已手动修改，方向调整后保持当前内容。" : "" })] })] }), _jsxs("section", { className: "exp-panel kb-setup-confirm", "aria-labelledby": "kb-confirm-title", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { id: "kb-confirm-title", children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", id: "kb-run-summary", "aria-live": "polite", children: [_jsxs("span", { children: ["\u5B50\u6570\u636E\u96C6 ", setupSubsets.size, " \u4E2A"] }), _jsxs("span", { children: ["\u6316\u6398\u65B9\u5411 ", allSelectedDirItems.length, " \u9879"] }), _jsx("span", { children: "\u8303\u56F4 \u5168\u90E8\u767B\u8BB0\u56FE\u50CF" }), _jsxs("label", { children: ["\u6BCF\u6279\u56FE\u50CF\u6570 ", _jsx("input", { className: "f", "aria-label": "\u6BCF\u6279\u6316\u6398\u56FE\u50CF\u6570", type: "number", min: "1", max: "200", value: batchSize ?? '', disabled: submitting || !!started.current || configuration.loading, "aria-describedby": "kb-run-check", onChange: e => setBatchSize(Number(e.target.value)), onBlur: () => { if (batchSize !== null && Number.isInteger(batchSize) && batchSize >= 1 && batchSize <= 200 && batchSize !== configuredBatch)
                                                     configuration.save({ batch_size: batchSize }); } })] }), _jsxs("span", { children: ["\u6A21\u578B ", configuration.settings?.model?.model_id || '未配置'] })] }), _jsxs("div", { className: "exp-summarybar", children: [_jsx("span", { id: "kb-run-check", role: "status", children: validationProblem || "已满足启动条件" }), _jsx("div", { className: "exp-actions", children: _jsx(Button, { type: "button", variant: "primary", id: "submit-job", disabled: !!validationProblem || submitting, onClick: handleSubmitJob, children: submitting ? "启动中…" : "开始挖掘" }) })] }), formError && (_jsx("div", { id: "form-alert", className: "kb-setup-error", role: "alert", children: formError }))] })] }), editingDir && _jsxs(Modal, { title: "\u7F16\u8F91\u6316\u6398\u65B9\u5411", className: "iad-drawer", id: "kb-dir-drawer", onClose: closeDirDrawer, children: [_jsxs("div", { className: "iad-dialog-body", children: [_jsxs("label", { className: "iad-field", htmlFor: "kb-dir-edit-name", children: ["\u6807\u9898", _jsx("input", { id: "kb-dir-edit-name", maxLength: 120, value: editingName, onChange: event => setEditingName(event.target.value) })] }), _jsxs("label", { className: "iad-field", htmlFor: "kb-dir-edit-text", children: ["\u63CF\u8FF0", _jsx("textarea", { id: "kb-dir-edit-text", rows: 9, value: editingText, onChange: event => setEditingText(event.target.value) })] }), dirEditError && _jsx("p", { id: "kb-dir-edit-error", role: "alert", children: dirEditError })] }), _jsxs("footer", { className: "iad-dialog-footer", children: [_jsx(Button, { id: "kb-dir-cancel", onClick: closeDirDrawer, children: "\u53D6\u6D88" }), _jsx(Button, { variant: "primary", id: "kb-dir-save", onClick: saveDirEdit, children: "\u4FDD\u5B58" })] })] }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) })] });
 }

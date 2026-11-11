@@ -3,8 +3,9 @@ from uuid import UUID
 
 from pydantic import Field, RootModel, model_validator
 
+from iad_core.analysis.prompt_models import AnalysisRolePrompts, FrozenAnalysisTasks
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence, VisualView
-from iad_core.exploration.models import DirectionContent, FrozenExplorationPrompt, FrozenExplorationTasks, ExplorationReportReview
+from iad_core.exploration.models import DirectionContent, FrozenExplorationPrompt, ExplorationReportReview
 from iad_core.evidence.registrations import RegistrationMediaPage
 from iad_core.knowledge.instructions import MiningDirection
 from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningDirectionSource, SubmittedMiningPrompt
@@ -20,11 +21,7 @@ from iad_core.analysis.argument_models import AnalysisArgumentEdit, AnalysisEntr
 from iad_core.analysis.finalization_state import AnalysisFinalizationProgress
 from iad_core.analysis.observation_models import AnalysisDirectionObservation, AnalysisSampleObservation, AnalysisObservationRecord
 from iad_core.exploration.observation_models import ExplorationBatchArchive
-
-
-class AnalysisRolePrompts(AnalysisModel):
-    system_prompt: NonBlankText | None
-    user_prompt: NonBlankText
+from iad_core.knowledge.observation_models import KnowledgeReportReview, KnowledgeBatchArchive
 
 
 class ExplorationAgentStart(SelectedDatasets):
@@ -48,6 +45,8 @@ class KnowledgeAgentStart(SelectedDatasets):
     analysis_kind: Literal['knowledge'] = 'knowledge'
     mining_prompt: SubmittedMiningPrompt
     system_prompt: NonBlankText | None = None
+
+    observer_prompt: AnalysisRolePrompts | None = None
 
     @model_validator(mode='after')
     def selected_directions(self):
@@ -117,11 +116,12 @@ class AnalysisWorkflowSnapshot(AnalysisAgentConfiguration):
     observer_prompt: AnalysisRolePrompts | None = None
     finalization_instruction: NonBlankText | None = None
     exploration_prompt: FrozenExplorationPrompt | None = None
-    exploration_tasks: FrozenExplorationTasks | None = None
+    exploration_tasks: FrozenAnalysisTasks | None = None
+    knowledge_tasks: FrozenAnalysisTasks | None = None
     mining_prompt: FrozenMiningPrompt | None = None
     selected_directions: list[FrozenAnalysisDirection] = Field(default_factory=list)
     support_policy: KnowledgeSupportPolicy
-    input_organization: Literal['registration-tools', 'exploration-batch-v2'] = 'registration-tools'
+    input_organization: Literal['registration-tools', 'exploration-batch-v2', 'batch-materials-v1'] = 'registration-tools'
     exploration_review_policy: Literal['comparative-v1'] | None = None
     execution_mode: Literal['serial', 'dsh-subagents'] = 'serial'
 
@@ -284,6 +284,9 @@ CATALOG_EDITS_DESCRIPTION = ('JSON数组，不是包含JSON的字符串。只提
     '正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。')
 
 
+KNOWLEDGE_EDITS_DESCRIPTION = '只提交新增或修改的完整知识条目；真实原图引用放在结构化证据和论据字段，正文不堆放ID。key_evidence从首批起维护最多4张典型原图，与完整论据分开。'
+
+
 class ExplorationCommit(AnalysisCommit):
     observations: list[AnalysisSampleObservation] = Field(default_factory=list,
         description='仅在需要时补充有明确图像引用的实际事实，不要求逐图填写；技术覆盖由整批媒体送达和正式提交核验。')
@@ -293,7 +296,8 @@ class ExplorationCommit(AnalysisCommit):
 
 
 class KnowledgeCommit(AnalysisCommit):
-    checks: list[ProposedAnalysisCheck] = Field(description=CATALOG_EDITS_DESCRIPTION)
+    checks: list[ProposedAnalysisCheck] = Field(description=KNOWLEDGE_EDITS_DESCRIPTION)
+    report_reviews: list[KnowledgeReportReview] = Field(default_factory=list, description='一次复核当前波全部报告，discovery_decisions逐项处理全部候选，目标使用check_id。')
 
 
 class AnalysisCommitReceipt(AnalysisModel):
@@ -361,7 +365,7 @@ class AnalysisAgentContext(AnalysisWorkflowState):
     catalog_counts: AnalysisCatalogCounts
 
 
-class ExplorationBatchMaterials(AnalysisModel):
+class AnalysisBatchMaterials(AnalysisModel):
     context: AnalysisAgentContext
     registrations: list[RegistrationMediaPage]
 
@@ -382,7 +386,7 @@ class AnalysisPublication(AnalysisModel):
     parent_version_id: str | None = None
     manual_edit: KnowledgeCheckRemoval | None = None
     inherited_reviews: dict[str, KnowledgeCheckReview] = Field(default_factory=dict)
-    delegations: list[ExplorationBatchArchive] = Field(default_factory=list)
+    delegations: list[ExplorationBatchArchive | KnowledgeBatchArchive] = Field(default_factory=list)
 
     def display_evidence_ids(self, entry: AnalysisDirection | AnalysisKnowledgeCheck,
                              evidence_role: Literal['support', 'counter'] | None = None) -> list[str]:

@@ -71,7 +71,7 @@ class AnalysisManifest(AnalysisModel):
         roles = {**dict.fromkeys(normal, 'normal'), **dict.fromkeys(defect, 'defect')}
         groups = {record.sample.sample_id:record.sampling_group or 'unclassified' for record in self.records}
         remaining = {sid:group for sid, group in groups.items() if sid not in roles}
-        if module == 'exploration':
+        if module in ('exploration','knowledge'):
             pools: dict[str, dict[str, deque[str]]] = {}
             for sid, group in remaining.items():
                 pools.setdefault(group, {}).setdefault(registered[sid].dataset_id, deque()).append(sid)
@@ -121,7 +121,7 @@ class AnalysisManifests:
                 items = annotations.list_by_sample(row['sample_id'], connection=connection)
                 dataset_format = configs[sample.dataset_id]['dataset']['format']
                 group = {'PASS':'normal', 'FAIL':'abnormal'}.get(sample.quality_status, 'unclassified')
-                if module == 'exploration':
+                if module in ('exploration','knowledge'):
                     role = AnalysisSourceRoles.resolve(dataset_format, sample.quality_status,
                         sample.annotation_availability.status, len(items))
                     group = {'normal':'normal', 'defect':'abnormal'}.get(role, 'unclassified')

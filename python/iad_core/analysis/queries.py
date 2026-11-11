@@ -30,8 +30,8 @@ class AnalysisQueries:
         snapshot = AnalysisWorkflowSnapshot.model_validate_json(row['snapshot_json'])
         prompts = AnalysisRolePrompts(system_prompt=snapshot.system_prompt, user_prompt=snapshot.instruction)
         observer = (snapshot.observer_prompt or prompts) if snapshot.execution_mode == 'dsh-subagents' else None
-        if snapshot.exploration_tasks is not None:
-            tasks = snapshot.exploration_tasks
+        tasks = snapshot.knowledge_tasks or snapshot.exploration_tasks
+        if tasks is not None:
             prompts = prompts.model_copy(update={'user_prompt':'\n\n'.join([
                 prompts.user_prompt, tasks.initial, tasks.review, tasks.finalize])})
             if observer is not None:
@@ -195,12 +195,26 @@ class AnalysisQueries:
         return PublishedDirectionCatalog(directions=directions)
 
     def check_summaries(self, view: AnalysisPublicationView) -> list[KnowledgeCheckSummary]:
-        projection = KnowledgeDisplayEvidence([KnowledgeEvidence(sample_id=item.sample_id,image=item.image) for item in view.evidence])
+        with self.db.connection() as connection:
+            snapshot = AnalysisWorkflowSnapshot.model_validate_json(connection.execute(
+                'SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?',(view.job_id,)).fetchone()[0])
+        references = {view.job_id:'本作业'}
+        references.update({annotation.annotation_id:f'原图 {record.sample.relative_path}的标注区域{index+1}'
+            for record in snapshot.manifest.records for index,annotation in enumerate(record.annotations)})
+        for direction in snapshot.selected_directions:
+            if direction.source.origin == 'explored':
+                references[direction.source.run_id] = f'方向“{direction.title}”的来源作业'
+        projection = KnowledgeDisplayEvidence([KnowledgeEvidence(sample_id=item.sample_id,image=item.image) for item in view.evidence],references)
         reviews = KnowledgeCheckReviews(self.db).read(view.version_id)
-        return [KnowledgeCheckSummary(**check.model_dump(include=set(KnowledgeCriterion.model_fields)),
-            check_id=check.check_id, support_count=len(projection.images(check.support_evidence_ids)),
-            counter_count=len(projection.images(check.counter_evidence_ids)), pending_recheck_source_count=0,
-            support_limitations=check.support_limitations, conflict_ids=[], review=reviews.get(check.check_id, {})) for check in view.catalog.checks]
+        summaries = []
+        for check in view.catalog.checks:
+            content = {name:projection.text(value) if isinstance(value,str) else [projection.text(item) for item in value]
+                for name,value in check.model_dump(include=set(KnowledgeCriterion.model_fields)-{'status'}).items()}
+            summaries.append(KnowledgeCheckSummary(**content,status=check.status,
+                check_id=check.check_id,support_count=len(projection.images(check.support_evidence_ids)),
+                counter_count=len(projection.images(check.counter_evidence_ids)),pending_recheck_source_count=0,
+                support_limitations=[projection.text(value) for value in check.support_limitations],conflict_ids=[],review=reviews.get(check.check_id,{})))
+        return summaries
 
     def knowledge(self, version_id: str) -> AnalysisPublicationView:
         view = self.view(version_id)

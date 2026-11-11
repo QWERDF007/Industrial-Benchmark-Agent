@@ -233,8 +233,19 @@ def test_version_export_keeps_its_complete_arguments_after_job_resume(observed_c
     assert publication.coverage.completed == 3 and publication.coverage.unprocessed == 1
     jobs.resume(run_id)
     context = jobs.context(run_id)
+    from iad_core.analysis.evidence import AnalysisEvidence
+    from iad_core.workbench.calls import ModelCalls,NativeModelCallStart,NativeModelCallEnd
+    from uuid import uuid4
+    pages=AnalysisEvidence(jobs).batch(run_id).registrations
+    call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-10T12:00:00Z',request={})
+    ModelCalls(jobs.db).start_native(run_id,call,sample_id=None,session_id=context.session_id,attempt=1)
+    AnalysisEvidence(jobs).delivered(run_id,call.call_id,[item.image.evidence_id for page in pages for item in page.images])
+    ModelCalls(jobs.db).finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,
+        finished_at='2026-11-10T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
+    observations=[dict(sample_id=page.sample_id,dataset_id=page.images[0].dataset_id,description='可见主体结构。',evidence_ids=[page.evidence_id],
+        directions=[dict(direction_ref='D1',status='applicable',reason='目标结构可核对。')]) for page in pages]
     AnalysisCommits(jobs).accept(run_id, {**submission, 'commit_key':'after-publication',
-        'base_revision':context.revision, 'round_id':context.round.round_id, 'observations':[], 'checks':[],
+        'base_revision':context.revision, 'round_id':context.round.round_id, 'observations':observations, 'checks':[],
         'arguments':[dict(entry_id='edge', evidence_id=whole_ids[0], role='counter', reason='新核对的反例仍待解释。')]})
     assert AnalysisQueries(jobs.db).arguments(run_id, dict(entry_id='edge', role='counter')).total == 1
     exported = AnalysisExports(jobs.db).create(version_id, str(tmp_path / 'export'),

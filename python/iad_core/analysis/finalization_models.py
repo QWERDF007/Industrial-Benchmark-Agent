@@ -6,7 +6,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.analysis.argument_models import AnalysisKeyEvidence
 from iad_core.analysis.finalization_state import AnalysisDirectionReview, AnalysisFinalizationProgress
 from iad_core.analysis.models import (AnalysisCatalogUpdate, AnalysisCoverageSummary, FrozenAnalysisDirection,
-    CATALOG_EDITS_DESCRIPTION, ProposedAnalysisDirection, ProposedAnalysisCheck)
+    CATALOG_EDITS_DESCRIPTION, KNOWLEDGE_EDITS_DESCRIPTION, ProposedAnalysisDirection, ProposedAnalysisCheck)
 
 
 class FinalizedAnalysisDirection(ProposedAnalysisDirection):
@@ -26,7 +26,7 @@ class ExplorationFinalize(AnalysisFinalize):
 
 
 class KnowledgeFinalize(AnalysisFinalize):
-    checks: list[FinalizedAnalysisCheck] = Field(description=CATALOG_EDITS_DESCRIPTION)
+    checks: list[FinalizedAnalysisCheck] = Field(description=KNOWLEDGE_EDITS_DESCRIPTION)
     direction_reviews: list[AnalysisDirectionReview] = Field(default_factory=list,
         description='逐selected_directions.ref说明实际产出或零产出的原因；不能填新生成的知识check_id，最终提交前必须全部核对。')
 

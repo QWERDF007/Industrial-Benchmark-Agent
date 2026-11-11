@@ -44,14 +44,6 @@ class FrozenExplorationPrompt(AnalysisModel):
     text: NonBlankText
 
 
-class FrozenExplorationTasks(AnalysisModel):
-    initial: NonBlankText
-    observe: NonBlankText
-    review: NonBlankText
-    finalize: NonBlankText
-    versions: dict[str, str]
-
-
 class ExplorationStart(AnalysisModel):
     dataset_id: str
     normal_images: list[str]

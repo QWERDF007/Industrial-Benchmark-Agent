@@ -35,6 +35,7 @@ class ExplorationSettingsValues(AnalysisSamplingSettingsValues):
 
 
 class KnowledgeSettingsValues(AnalysisSamplingSettingsValues):
+    concurrency: JobConcurrency = 2
     batch_size: int = Field(default=12, ge=1, le=200, strict=True)
 
 

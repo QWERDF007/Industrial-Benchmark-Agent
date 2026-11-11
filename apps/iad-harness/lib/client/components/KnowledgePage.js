@@ -3,7 +3,7 @@ import { SectionHeading } from './layout/SectionHeading.js';
 import { AnalysisExportButton } from './AnalysisExportButton.js';
 import { WorkbenchHeader } from './layout/WorkbenchHeader.js';
 import { v4 as uuid } from 'uuid';
-import { PromptDrawer } from './PromptDrawer.js';
+import { AnalysisPromptDrawer } from './AnalysisPromptDrawer.js';
 import { Select } from './Select.js';
 import { DatasetScopeSelector } from './DatasetScopeSelector.js';
 import { useQueries } from '@tanstack/react-query';
@@ -85,8 +85,6 @@ export function KnowledgePage({ dataset, refreshRevision }) {
             statusBadgeClass: { completed: 'green', running: 'blue', interrupted: 'gray', failed: 'red' }[status],
             count: versions.find(version => version.version_id === job.knowledge_version_id)?.check_count ?? null,
             at: formatJobTime(job.submitted_at), durationText: formatDuration(seconds),
-            prompt: job.mining_prompt?.instruction || '',
-            systemPrompt: job.system_prompt || null,
             knowledgeVersionId: job.knowledge_version_id || null };
     });
     // Current scope datasets
@@ -255,5 +253,5 @@ export function KnowledgePage({ dataset, refreshRevision }) {
                                     polling.refresh();
                                     updated();
                                     toast('挖掘作业已启动');
-                                } }, scopeKey)] }) }), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.prompt || '该历史作业未记录冻结提示词。', systemText: promptJob.systemPrompt, onClose: closePrompt }), detailItem && _jsx(KnowledgeEntryDialog, { ...detailItem, onClose: closeDetail, onSaved: () => { updated(); toast('人工核实已保存'); } }, `${detailItem.versionId}:${detailItem.checkId}`), jobDetails && polling.jobs.some(job => job.run_id === jobDetails || job.root_run_id === jobDetails) && _jsx(JobStatusDrawer, { job: polling.jobs.find(job => job.run_id === jobDetails || job.root_run_id === jobDetails), onClose: () => setJobDetails(null), stale: polling.syncState === 'stale' }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }), _jsx("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })] }) }));
+                                } }, scopeKey)] }) }), promptJob && _jsx(AnalysisPromptDrawer, { title: "\u77E5\u8BC6\u6316\u6398\u63D0\u793A\u8BCD", jobId: promptJob.id, onClose: closePrompt }), detailItem && _jsx(KnowledgeEntryDialog, { ...detailItem, onClose: closeDetail, onSaved: () => { updated(); toast('人工核实已保存'); } }, `${detailItem.versionId}:${detailItem.checkId}`), jobDetails && polling.jobs.some(job => job.run_id === jobDetails || job.root_run_id === jobDetails) && _jsx(JobStatusDrawer, { job: polling.jobs.find(job => job.run_id === jobDetails || job.root_run_id === jobDetails), onClose: () => setJobDetails(null), stale: polling.syncState === 'stale' }), _jsx(KnowledgeConfirmation, { state: confirmState, onClose: () => setConfirmState(null) }), _jsx("div", { className: `toast ${toastMsg ? "show" : ""}`, id: "toast", role: "status", children: toastMsg })] }) }));
 }

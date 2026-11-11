@@ -1,30 +1,34 @@
 from typing import Literal
 
+from pydantic import Field
+
 from iad_core.advisory.analysis import AnalysisModel
-from iad_core.analysis.models import AnalysisCatalog
+from iad_core.analysis.models import AnalysisCatalog, FrozenAnalysisDirection
 from iad_core.evidence.registrations import RegistrationMediaPage
 from iad_core.exploration.observation_models import ExplorationBatchReport
+from iad_core.knowledge.observation_models import KnowledgeBatchReport
 from iad_core.workbench.analysis_manifest import AnalysisRegistration, AnalysisRound
 
 
-class ExplorationBatchTask(AnalysisModel):
+class AnalysisBatchTask(AnalysisModel):
     round: AnalysisRound
     wave_id: int
     session_id: str
     catalog_revision: int
     catalog: AnalysisCatalog
-    report: ExplorationBatchReport | None = None
+    report: ExplorationBatchReport | KnowledgeBatchReport | None = None
     reviewed: bool = False
 
 
-class ExplorationWave(AnalysisModel):
+class AnalysisWave(AnalysisModel):
     wave_id: int | None = None
-    tasks: list[ExplorationBatchTask]
+    tasks: list[AnalysisBatchTask]
 
 
-class ExplorationWorkerMaterials(AnalysisModel):
+class AnalysisWorkerMaterials(AnalysisModel):
     role: Literal['observer'] = 'observer'
     job_id: str
-    task: ExplorationBatchTask
+    task: AnalysisBatchTask
     sources: list[AnalysisRegistration]
     registrations: list[RegistrationMediaPage]
+    selected_directions: list[FrozenAnalysisDirection] = Field(default_factory=list)

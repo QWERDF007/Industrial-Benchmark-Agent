@@ -6,7 +6,8 @@ from iad_core.analysis.catalog import AnalysisCatalogs
 from iad_core.analysis.models import (AnalysisCatalog, AnalysisCommitReceipt,
     ExplorationCommit, KnowledgeCommit)
 from iad_core.workbench.job_models import JobExecutionError
-from iad_core.exploration.batch_evidence import ExplorationBatchEvidence
+from iad_core.analysis.batch_evidence import AnalysisBatchEvidence
+from iad_core.knowledge.observation_models import KnowledgeBatchReport
 
 
 class AnalysisCommits:
@@ -41,15 +42,15 @@ class AnalysisCommits:
             current = next((round for round in snapshot.plan.rounds if any(target.sample_id not in processed for target in round.targets)), snapshot.plan.rounds[-1])
             if submission.round_id != current.round_id:
                 raise ValueError('提交不属于当前业务轮')
-            task = connection.execute('SELECT * FROM exploration_batch_tasks WHERE job_id=? AND round_id=?',
+            task = connection.execute('SELECT * FROM analysis_batch_tasks WHERE job_id=? AND round_id=?',
                 (run_id, current.round_id)).fetchone() if snapshot.execution_mode == 'dsh-subagents' else None
             rounds = [current]
             batch_tasks, reports = {}, {}
             if task:
-                from iad_core.exploration.delegation_models import ExplorationBatchReport
+                from iad_core.analysis.delegation_models import ExplorationBatchReport
                 if submission.observations:
                     raise ValueError('复核子代理报告时observations传[]，宿主导入本波已核验报告，不能改写子代理看图记录')
-                tasks = connection.execute('''SELECT * FROM exploration_batch_tasks
+                tasks = connection.execute('''SELECT * FROM analysis_batch_tasks
                     WHERE job_id=? AND wave_id=? AND review_json IS NULL ORDER BY round_id''', (run_id, task['wave_id'])).fetchall()
                 if any(row['report_json'] is None for row in tasks):
                     raise ValueError('本波子代理报告尚未全部完成，不能提前复核写目录')
@@ -59,7 +60,7 @@ class AnalysisCommits:
                 observations = []
                 batch_tasks = {row['round_id']:row for row in tasks}
                 for row in tasks:
-                    report = ExplorationBatchReport.model_validate_json(row['report_json'])
+                    report = (KnowledgeBatchReport if snapshot.module == 'knowledge' else ExplorationBatchReport).model_validate_json(row['report_json'])
                     reports[row['round_id']] = report
                     decisions = reviews[row['round_id']]
                     if len(decisions) != len(report.discoveries) or {item.candidate_id for item in decisions} != {
@@ -72,11 +73,18 @@ class AnalysisCommits:
             media = {value.sample_id: value for row in connection.execute('SELECT media_json FROM analysis_sample_media WHERE job_id=?', (run_id,))
                 for value in [PreparedRegistration.model_validate_json(row[0])]}
             batches = []
-            if snapshot.exploration_tasks is not None:
+            if snapshot.exploration_tasks is not None or snapshot.knowledge_tasks is not None:
                 for round in rounds:
                     session_id = batch_tasks[round.round_id]['session_id'] if task else state['session_id']
-                    batch = ExplorationBatchEvidence(connection, run_id, session_id, [target for target in round.targets if target.sample_id not in processed], media)
+                    batch = AnalysisBatchEvidence(connection, run_id, session_id, [target for target in round.targets if target.sample_id not in processed], media)
                     batches.append(batch)
+                    if snapshot.module == 'knowledge':
+                        expected = {(target.dataset_id,target.sample_id) for target in round.targets if target.sample_id not in processed}
+                        supplied = [(item.dataset_id,item.sample_id) for item in submission.observations
+                            if (item.dataset_id,item.sample_id) in expected]
+                        if len(supplied) != len(expected) or set(supplied) != expected:
+                            raise ValueError('整批提交必须包含全部登记的简短适用性记录')
+                        continue
                     facts = [(item.rationale, item.evidence_ids, item.limitations) for item in submission.directions]
                     facts.extend((item.reason, [item.evidence_id], []) for item in submission.arguments)
                     if task:
@@ -114,7 +122,7 @@ class AnalysisCommits:
                     failure_reports.add(sid)
                 elif not observation.evidence_ids:
                     raise ValueError('观察需要实发图像证据或已记录的取证错误')
-                if snapshot.module == 'knowledge' and not observation.report_preparation_error:
+                if snapshot.module == 'knowledge' and (media[sid].evidence_id is not None if snapshot.knowledge_tasks else not observation.report_preparation_error):
                     observed_refs = [item.direction_ref for item in observation.directions]
                     if set(observed_refs) != refs or len(observed_refs) != len(refs):
                         raise ValueError('每条登记需记录本场全部已选方向的适用性与观察')
@@ -125,7 +133,7 @@ class AnalysisCommits:
                 and media[sid].evidence_id in covered[sid]
                 and {image.image.evidence_id for image in media[sid].images if image.required}.issubset(delivered)]
             failures = [sid for sid in affected if sid in failure_reports]
-            if snapshot.exploration_tasks is not None:
+            if snapshot.exploration_tasks is not None or snapshot.knowledge_tasks is not None:
                 successes, failures = [], []
                 for batch in batches:
                     successes.extend(sid for sid in batch.completed if sid not in processed)
@@ -144,15 +152,16 @@ class AnalysisCommits:
             catalog = AnalysisCatalogs().apply(snapshot, AnalysisCatalog.model_validate_json(state['catalog_json']),
                 submission, media, observed, connection=connection, run_id=run_id, revision=revision)
             if task:
-                existing_ids = {item['direction_id'] for item in json.loads(state['catalog_json'])['directions']}
-                updated_ids = {item.direction_id for item in catalog.directions}
+                field,identity = ('checks','check_id') if snapshot.module == 'knowledge' else ('directions','direction_id')
+                existing_ids = {item[identity] for item in json.loads(state['catalog_json'])[field]}
+                updated_ids = {getattr(item,identity) for item in getattr(catalog,field)}
                 for round_id, decisions in reviews.items():
                     for decision in decisions:
-                        if decision.action != 'reject' and decision.direction_id not in updated_ids:
+                        if decision.action != 'reject' and getattr(decision,identity) not in updated_ids:
                             raise ValueError('新现象的处理目标必须是本次更新后的真实方向')
-                        if decision.action == 'new' and decision.direction_id in existing_ids:
+                        if decision.action == 'new' and getattr(decision,identity) in existing_ids:
                             raise ValueError('新增候选不能指向已有方向，归并需明确选择merge并说明兼容依据')
-                    connection.execute('UPDATE exploration_batch_tasks SET review_json=? WHERE job_id=? AND round_id=?',
+                    connection.execute('UPDATE analysis_batch_tasks SET review_json=? WHERE job_id=? AND round_id=?',
                         (json.dumps(dict(revision=revision, decisions=[item.model_dump() for item in decisions]),
                             ensure_ascii=False), run_id, round_id))
             connection.execute('UPDATE analysis_workflow_runs SET revision=?,catalog_json=? WHERE job_id=?',

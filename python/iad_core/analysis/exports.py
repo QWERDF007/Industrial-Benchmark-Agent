@@ -59,8 +59,10 @@ class AnalysisExports:
         if len(lines) < event_count + 1:
             raise LookupError('原生Session轨迹缺少已冻结发布版本的事件')
         encode = lambda value: json.dumps(value,ensure_ascii=False,indent=2)+'\n'
+        frozen = json.loads(row['snapshot_json'])
         manifest = dict(version_id=version_id,run_id=publication.job_id,session_id=row['session_id'],submitted_at=row['submitted_at'],
-            snapshot=snapshot.model_dump(mode='json',exclude={'agent'}),model=snapshot.agent.profile.model_dump(mode='json',exclude={'credential_ref'}))
+            snapshot={name:value for name,value in frozen.items() if name!='agent'},
+            model={name:value for name,value in frozen['agent']['profile'].items() if name!='credential_ref'})
         texts = {'manifest.json':encode(manifest),'coverage.json':encode(publication.coverage.model_dump(mode='json')),
             ('directions.json' if publication.module=='exploration' else 'knowledge.json'):encode(publication.model_dump(mode='json')),
             'session/events.jsonl':'\n'.join(lines[:event_count+1])+'\n'}

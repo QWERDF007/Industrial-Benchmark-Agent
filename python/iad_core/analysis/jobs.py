@@ -4,10 +4,10 @@ from iad_core.analysis.models import (AnalysisAgentConfiguration, AnalysisAgentC
     AnalysisCatalog, AnalysisSessionLocation, AnalysisWorkflowSnapshot, AnalysisWorkflowState, ExplorationAgentStart)
 from iad_core.analysis.directions import AnalysisDirections
 from iad_core.analysis.coverage import AnalysisCoverageReader
-from iad_core.analysis.prompt_text import knowledge_agent_prompt, FINALIZATION_WORKFLOW
 from iad_core.exploration.prompts import ExplorationPrompts
 from iad_core.knowledge.instructions import FrozenMiningPrompt
 from iad_core.knowledge.support import KnowledgeSupport
+from iad_core.knowledge.prompts import KnowledgePrompts
 from iad_core.workbench.analysis_job_views import AnalysisJobViews
 from iad_core.workbench.analysis_manifest import AnalysisManifests
 from iad_core.workbench.model_profile import FrozenModelRole
@@ -52,19 +52,21 @@ class AnalysisAgentJobs:
         mining = None if exploration else FrozenMiningPrompt.capture(selected.mining_prompt)
         directions = [] if exploration else AnalysisDirections(self.db).freeze(selected.mining_prompt)
         system_prompt = selected.system_prompt or (ExplorationPrompts.system(manifest.records[0].dataset_format)
-            if exploration else knowledge_agent_prompt())
+            if exploration else KnowledgePrompts.system())
         snapshot = AnalysisWorkflowSnapshot(**configured.model_dump(), schema_version=2, manifest=manifest, plan=plan,
             agent=role, instruction=prompt.text if prompt else mining.instruction,
-            finalization_instruction=None if exploration else FINALIZATION_WORKFLOW, exploration_prompt=prompt, mining_prompt=mining,
+            finalization_instruction=None, exploration_prompt=prompt, mining_prompt=mining,
             exploration_tasks=ExplorationPrompts.tasks(manifest.records[0].dataset_format) if exploration else None,
+            knowledge_tasks=None if exploration else KnowledgePrompts.tasks(),
             system_prompt=system_prompt,
             observer_prompt=(selected.observer_prompt or AnalysisRolePrompts(
                 system_prompt=ExplorationPrompts.system(manifest.records[0].dataset_format, 'observer'), user_prompt=prompt.text))
-                if exploration else None,
+                if exploration else (selected.observer_prompt or AnalysisRolePrompts(
+                    system_prompt=KnowledgePrompts.system('observer'),user_prompt=mining.instruction)),
             support_policy=KnowledgeSupport.configured(), selected_directions=directions,
-            input_organization='exploration-batch-v2' if exploration else 'registration-tools',
+            input_organization='exploration-batch-v2' if exploration else 'batch-materials-v1',
             exploration_review_policy='comparative-v1' if exploration else None,
-            execution_mode='dsh-subagents' if exploration else 'serial')
+            execution_mode='dsh-subagents')
         payload = dict(submission=submission, analysis_workflow_version=2, analysis_kind=selected.analysis_kind,
             dataset_id=manifest.records[0].sample.dataset_id, dataset_ids=manifest.dataset_ids,
             sample_ids=[record.sample.sample_id for record in manifest.records])
@@ -120,9 +122,10 @@ class AnalysisAgentJobs:
                 FROM analysis_workflow_runs r JOIN job_runs j ON j.job_id=r.job_id WHERE r.session_id=?''', (session_id,)).fetchone()
         if row is None:
             with self.db.connection() as connection:
-                row = connection.execute('''SELECT t.job_id,t.round_id,'exploration' module,
+                row = connection.execute('''SELECT t.job_id,t.round_id,json_extract(r.snapshot_json,'$.module') module,
                     json_extract(j.payload_json,'$.submitted_at') submitted_at
-                    FROM exploration_batch_tasks t JOIN job_runs j ON j.job_id=t.job_id WHERE t.session_id=?''',
+                    FROM analysis_batch_tasks t JOIN job_runs j ON j.job_id=t.job_id
+                    JOIN analysis_workflow_runs r ON r.job_id=t.job_id WHERE t.session_id=?''',
                     (session_id,)).fetchone()
             if row is None:
                 raise LookupError('作业内部Session不存在')

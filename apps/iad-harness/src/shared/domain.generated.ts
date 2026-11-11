@@ -1949,6 +1949,7 @@ export type PredecessorCheckIds1 = string[];
 export type Checks4 = AnalysisKnowledgeCheck[];
 export type Limitations22 = string[];
 export type UnresolvedQuestions = string[];
+export type Report = ExplorationBatchReport | KnowledgeBatchReport | null;
 export type DatasetId37 = string;
 export type SampleId36 = string;
 /**
@@ -1995,8 +1996,48 @@ export type DiscoverySummary = string;
 export type KeyEvidenceIds = string[];
 export type Limitations25 = string[];
 export type UnresolvedQuestions1 = string[];
+export type Observations2 = AnalysisSampleObservation[];
+export type CheckId12 = string;
+export type Role10 =
+  | "support"
+  | "counter"
+  | "allowed_variation"
+  | "context"
+  | "normal_control"
+  | "not_comparable"
+  | "uncertain"
+  | "not_present";
+export type EvidenceIds21 = string[];
+export type Reason19 = string;
+export type Assessments1 = KnowledgeAssessment[];
+export type Title12 = string;
+export type Subject4 = string;
+export type Location7 = string;
+export type Criterion4 = string;
+export type AllowedVariations4 = string[];
+export type Limitations26 = string[];
+/**
+ * supported：当前版本完整有效证据支持该条件性可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值
+ */
+export type Status25 = "supported" | "provisional" | "conflicted";
+export type SupportEvidenceIds4 = string[];
+export type CounterEvidenceIds5 = string[];
+export type CandidateId1 = string;
+/**
+ * @minItems 1
+ */
+export type DirectionRefs1 = [string, ...string[]];
+/**
+ * @minItems 1
+ */
+export type DatasetIds9 = [string, ...string[]];
+export type Discoveries1 = KnowledgeDiscovery1[];
+export type DiscoverySummary1 = string;
+export type KeyEvidenceIds1 = string[];
+export type Limitations27 = string[];
+export type UnresolvedQuestions2 = string[];
 export type Reviewed = boolean;
-export type Tasks = ExplorationBatchTask[];
+export type Tasks = AnalysisBatchTask[];
 export type DatasetId38 = string;
 export type SampleId37 = string;
 /**
@@ -2006,9 +2047,9 @@ export type Description21 = string;
 /**
  * 实际送达且已观察的完整原图evidence_id；原图关联其原始标注及全部局部视图，不单独引用裁图或掩膜。
  */
-export type EvidenceIds21 = string[];
+export type EvidenceIds22 = string[];
 export type Directions7 = AnalysisDirectionObservation[];
-export type Limitations26 = string[];
+export type Limitations28 = string[];
 /**
  * 仅在已有实际取证错误回执时设为true；能读取原图时仍保留可见事实。
  */
@@ -2016,14 +2057,42 @@ export type ReportPreparationError1 = boolean;
 /**
  * 可选的明确图像事实；不要求本批每张图生成文字，方向关系和候选应自带可见依据。
  */
-export type Observations2 = AnalysisSampleObservation1[];
-export type Assessments1 = ExplorationAssessment[];
-export type Discoveries1 = ExplorationDiscovery[];
-export type DiscoverySummary1 = string;
-export type KeyEvidenceIds1 = string[];
-export type Limitations27 = string[];
-export type UnresolvedQuestions2 = string[];
-export type Role10 = "observer";
+export type Observations3 = AnalysisSampleObservation1[];
+export type Assessments2 = ExplorationAssessment[];
+export type Discoveries2 = ExplorationDiscovery[];
+export type DiscoverySummary2 = string;
+export type KeyEvidenceIds2 = string[];
+export type Limitations29 = string[];
+export type UnresolvedQuestions3 = string[];
+export type Observations4 = AnalysisSampleObservation1[];
+export type Assessments3 = KnowledgeAssessment[];
+export type Title13 = string;
+export type Subject5 = string;
+export type Location8 = string;
+export type Criterion5 = string;
+export type AllowedVariations5 = string[];
+export type Limitations30 = string[];
+/**
+ * supported：当前版本完整有效证据支持该条件性可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值
+ */
+export type Status26 = "supported" | "provisional" | "conflicted";
+export type SupportEvidenceIds5 = string[];
+export type CounterEvidenceIds6 = string[];
+export type CandidateId2 = string;
+/**
+ * @minItems 1
+ */
+export type DirectionRefs2 = [string, ...string[]];
+/**
+ * @minItems 1
+ */
+export type DatasetIds10 = [string, ...string[]];
+export type Discoveries3 = KnowledgeDiscovery2[];
+export type DiscoverySummary3 = string;
+export type KeyEvidenceIds3 = string[];
+export type Limitations31 = string[];
+export type UnresolvedQuestions4 = string[];
+export type Role11 = "observer";
 export type JobId4 = string;
 export type Sources1 = AnalysisRegistration[];
 export type SampleId38 = string;
@@ -2037,6 +2106,7 @@ export type Required = boolean;
 export type Images = RegistrationMedia[];
 export type Error2 = string | null;
 export type Registrations = RegistrationMediaPage[];
+export type SelectedDirections = FrozenAnalysisDirection[];
 export type DatasetId40 = string;
 export type CurrentVersionId1 = string | null;
 export type Versions2 = KnowledgeVersion[];
@@ -2052,7 +2122,7 @@ export type SessionId5 = string;
 export type SessionCreated1 = boolean;
 export type Revision3 = number;
 export type Registrations1 = AnalysisRegistration[];
-export type SelectedDirections = FrozenAnalysisDirection[];
+export type SelectedDirections1 = FrozenAnalysisDirection[];
 export type CompletedSampleIds2 = string[];
 export type FailedSampleIds2 = string[];
 export type DatasetId41 = string;
@@ -2064,9 +2134,9 @@ export type Description22 = string;
 /**
  * 实际送达且已观察的完整原图evidence_id；原图关联其原始标注及全部局部视图，不单独引用裁图或掩膜。
  */
-export type EvidenceIds22 = string[];
+export type EvidenceIds23 = string[];
 export type Directions8 = AnalysisDirectionObservation[];
-export type Limitations28 = string[];
+export type Limitations32 = string[];
 /**
  * 仅在已有实际取证错误回执时设为true；能读取原图时仍保留可见事实。
  */
@@ -2082,7 +2152,7 @@ export type ObservedEvidenceIds = string[];
 export type DeliveredOffsets = number[];
 export type SourceError = string | null;
 export type EvidenceId11 = string | null;
-export type Role11 = "normal" | "overview" | "roi";
+export type Role12 = "normal" | "overview" | "roi";
 export type Source9 = "reference" | "global" | "annotation" | "model" | "coverage";
 export type OriginalSize1 = number[];
 export type CropBbox3 = number[];
@@ -2099,7 +2169,7 @@ export type MediaProgress = AnalysisMediaProgress[];
 export type Directions9 = number;
 export type Checks5 = number;
 export type Registrations2 = RegistrationMediaPage[];
-export type DatasetIds9 = string[];
+export type DatasetIds11 = string[];
 export type FrozenAt1 = string;
 /**
  * @minItems 1
@@ -2132,17 +2202,17 @@ export type Summary5 = string;
 /**
  * 整个作业仍有效的实际限制。
  */
-export type Limitations29 = string[];
+export type Limitations33 = string[];
 /**
  * 整个作业仍待核对的问题。
  */
-export type UnresolvedQuestions3 = string[];
+export type UnresolvedQuestions5 = string[];
 export type TargetId = string;
 /**
  * @minItems 1
  */
 export type SourceIds = [string, ...string[]];
-export type Reason19 = string;
+export type Reason20 = string;
 export type Merges = AnalysisCatalogMerge[];
 export type EntryId = string;
 /**
@@ -2152,11 +2222,11 @@ export type EvidenceId13 = string;
 /**
  * support支持主张，counter是在主张适用且目标可观察时成立的反例，context提供上下文，allowed_variation说明已观察的相容变化；不适用或不确定不构成反例。
  */
-export type Role12 = "support" | "counter" | "context" | "allowed_variation";
+export type Role13 = "support" | "counter" | "context" | "allowed_variation";
 /**
  * 该图的实际观察如何支持、反驳或限定这条主张；解释或移出范围时说明原因。
  */
-export type Reason20 = string;
+export type Reason21 = string;
 export type State6 = "active" | "resolved" | "out_of_scope";
 /**
  * 关联已保存观察；本次新观察可省略，由宿主按明确引用的原图绑定实际观察。
@@ -2190,21 +2260,21 @@ export type KeyEvidence3 =
   | [AnalysisKeyEvidence, AnalysisKeyEvidence]
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence];
-export type Title12 = string;
+export type Title14 = string;
 export type Instruction13 = string;
 export type AppliesTo3 = "normal" | "defect" | "both";
 export type Rationale3 = string;
 /**
  * @minItems 1
  */
-export type EvidenceIds23 = [string, ...string[]];
-export type Limitations30 = string[];
+export type EvidenceIds24 = [string, ...string[]];
+export type Limitations34 = string[];
 export type DirectionId9 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds10 = [string, ...string[]];
-export type CounterEvidenceIds5 = string[];
+export type DatasetIds12 = [string, ...string[]];
+export type CounterEvidenceIds7 = string[];
 /**
  * JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；arguments说明每项作用，key_evidence另选最多4张展示原图。正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。
  */
@@ -2224,11 +2294,11 @@ export type Summary6 = string;
 /**
  * 整个作业仍有效的实际限制。
  */
-export type Limitations31 = string[];
+export type Limitations35 = string[];
 /**
  * 整个作业仍待核对的问题。
  */
-export type UnresolvedQuestions4 = string[];
+export type UnresolvedQuestions6 = string[];
 export type Merges1 = AnalysisCatalogMerge[];
 /**
  * 明确关联条目主张与本场实际观察；新增、解释或移出适用范围都附理由。未提交的历史关系继续保留。
@@ -2255,37 +2325,37 @@ export type KeyEvidence4 =
   | [AnalysisKeyEvidence, AnalysisKeyEvidence]
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence];
-export type Title13 = string;
-export type Subject4 = string;
-export type Location7 = string;
-export type Criterion4 = string;
-export type AllowedVariations4 = string[];
-export type Limitations32 = string[];
+export type Title15 = string;
+export type Subject6 = string;
+export type Location9 = string;
+export type Criterion6 = string;
+export type AllowedVariations6 = string[];
+export type Limitations36 = string[];
 /**
  * supported：当前版本完整有效证据支持该条件性可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值
  */
-export type Status25 = "supported" | "provisional" | "conflicted";
-export type SupportEvidenceIds4 = string[];
-export type CounterEvidenceIds6 = string[];
-export type CheckId12 = string;
+export type Status27 = "supported" | "provisional" | "conflicted";
+export type SupportEvidenceIds6 = string[];
+export type CounterEvidenceIds8 = string[];
+export type CheckId13 = string;
 /**
  * 只引用当前selected_directions中的完整ref。
  *
  * @minItems 1
  */
-export type DirectionRefs1 = [string, ...string[]];
+export type DirectionRefs3 = [string, ...string[]];
 /**
  * 仅列当前条目实际有证据的子数据集。
  *
  * @minItems 1
  */
-export type DatasetIds11 = [string, ...string[]];
+export type DatasetIds13 = [string, ...string[]];
 /**
- * JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；arguments说明每项作用，key_evidence另选最多4张展示原图。正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。
+ * 只提交新增或修改的完整知识条目；真实原图引用放在结构化证据和论据字段，正文不堆放ID。key_evidence从首批起维护最多4张典型原图，与完整论据分开。
  */
 export type Checks6 = FinalizedAnalysisCheck[];
 export type DirectionRef1 = string;
-export type Reason21 = string;
+export type Reason22 = string;
 /**
  * 逐selected_directions.ref说明实际产出或零产出的原因；不能填新生成的知识check_id，最终提交前必须全部核对。
  */
@@ -2308,14 +2378,14 @@ export type PreparedVisuals = number;
 export type ObservedVisuals = number;
 export type WholeImagesObserved = number;
 export type EntryId2 = string;
-export type Title14 = string;
-export type DatasetIds12 = string[];
-export type DirectionRefs2 = string[];
+export type Title16 = string;
+export type DatasetIds14 = string[];
+export type DirectionRefs4 = string[];
 export type PredecessorIds = string[];
 export type ArgumentCount = number;
 export type Issues = string[];
 export type Entries1 = AnalysisFinalizationEntry[];
-export type SelectedDirections1 = FrozenAnalysisDirection[];
+export type SelectedDirections2 = FrozenAnalysisDirection[];
 export type DirectionRef2 = string;
 export type Applicable = number;
 export type NotApplicable = number;
@@ -2324,8 +2394,8 @@ export type Failed4 = number;
 export type EntryIds1 = string[];
 export type Directions11 = AnalysisDirectionCoverage[];
 export type Summary7 = string;
-export type Limitations33 = string[];
-export type UnresolvedQuestions5 = string[];
+export type Limitations37 = string[];
+export type UnresolvedQuestions7 = string[];
 export type BaseRevision3 = number | null;
 export type ReviewedEntryIds1 = string[];
 export type PendingEntryIds1 = string[];
@@ -2338,7 +2408,7 @@ export type EntryId3 = string;
 export type Revision7 = number | null;
 export type Offset2 = number;
 export type Limit1 = number;
-export type Role13 = ("support" | "counter" | "context" | "allowed_variation") | null;
+export type Role14 = ("support" | "counter" | "context" | "allowed_variation") | null;
 export type State7 = ("active" | "resolved" | "out_of_scope") | null;
 export type History = boolean;
 export type JobId7 = string;
@@ -2353,9 +2423,9 @@ export type Revision9 = number;
 export type ObservationId2 = string;
 export type EvidenceId15 = string;
 export type LocatorId = string | null;
-export type Role14 = "support" | "counter" | "context" | "allowed_variation";
+export type Role15 = "support" | "counter" | "context" | "allowed_variation";
 export type State8 = "active" | "resolved" | "out_of_scope";
-export type Reason22 = string | null;
+export type Reason23 = string | null;
 export type OriginEntryId = string;
 export type Items8 = AnalysisArgumentRecord[];
 export type EntryId5 = string;
@@ -2370,7 +2440,7 @@ export type Offset5 = number;
 export type NextOffset1 = number | null;
 export type ClaimRevision1 = number;
 export type Revision12 = number;
-export type Reason23 = string | null;
+export type Reason24 = string | null;
 export type Content = ProposedAnalysisDirection | ProposedAnalysisCheck;
 /**
  * 改变已有主张或适用条件的原因；只改标题或精选图不需要。
@@ -2386,21 +2456,21 @@ export type KeyEvidence5 =
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | null;
-export type Title15 = string;
+export type Title17 = string;
 export type Instruction14 = string;
 export type AppliesTo4 = "normal" | "defect" | "both";
 export type Rationale4 = string;
 /**
  * @minItems 1
  */
-export type EvidenceIds24 = [string, ...string[]];
-export type Limitations34 = string[];
+export type EvidenceIds25 = [string, ...string[]];
+export type Limitations38 = string[];
 export type DirectionId10 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds13 = [string, ...string[]];
-export type CounterEvidenceIds7 = string[];
+export type DatasetIds15 = [string, ...string[]];
+export type CounterEvidenceIds9 = string[];
 /**
  * 改变已有主张或适用条件的原因；只改标题或精选图不需要。
  */
@@ -2415,38 +2485,38 @@ export type KeyEvidence6 =
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | null;
-export type Title16 = string;
-export type Subject5 = string;
-export type Location8 = string;
-export type Criterion5 = string;
-export type AllowedVariations5 = string[];
-export type Limitations35 = string[];
+export type Title18 = string;
+export type Subject7 = string;
+export type Location10 = string;
+export type Criterion7 = string;
+export type AllowedVariations7 = string[];
+export type Limitations39 = string[];
 /**
  * supported：当前版本完整有效证据支持该条件性可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值
  */
-export type Status26 = "supported" | "provisional" | "conflicted";
-export type SupportEvidenceIds5 = string[];
-export type CounterEvidenceIds8 = string[];
-export type CheckId13 = string;
+export type Status28 = "supported" | "provisional" | "conflicted";
+export type SupportEvidenceIds7 = string[];
+export type CounterEvidenceIds10 = string[];
+export type CheckId14 = string;
 /**
  * 只引用当前selected_directions中的完整ref。
  *
  * @minItems 1
  */
-export type DirectionRefs3 = [string, ...string[]];
+export type DirectionRefs5 = [string, ...string[]];
 /**
  * 仅列当前条目实际有证据的子数据集。
  *
  * @minItems 1
  */
-export type DatasetIds14 = [string, ...string[]];
+export type DatasetIds16 = [string, ...string[]];
 export type Items9 = AnalysisClaimRevision[];
 export type AnalysisAgentStart = ExplorationAgentStart | KnowledgeAgentStart;
 export type SubmissionId7 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds15 = [string, ...string[]];
+export type DatasetIds17 = [string, ...string[]];
 export type AnalysisKind2 = "exploration";
 export type NormalImages3 = string[];
 export type DefectImages2 = string[];
@@ -2457,14 +2527,14 @@ export type SubmissionId8 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds16 = [string, ...string[]];
+export type DatasetIds18 = [string, ...string[]];
 export type AnalysisKind3 = "knowledge";
 export type SystemPrompt5 = string | null;
 export type SubmissionId9 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds17 = [string, ...string[]];
+export type DatasetIds19 = [string, ...string[]];
 export type AnalysisKind4 = "exploration";
 export type NormalImages4 = string[];
 export type DefectImages3 = string[];
@@ -2473,11 +2543,11 @@ export type SubmissionId10 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds18 = [string, ...string[]];
+export type DatasetIds20 = [string, ...string[]];
 export type AnalysisKind5 = "knowledge";
 export type Objective4 = string;
 export type DirectionId11 = string;
-export type Title17 = string;
+export type Title19 = string;
 export type Instruction15 = string;
 export type Enabled2 = boolean;
 export type Origin4 = "preset" | "dataset" | "explored";
@@ -2508,10 +2578,11 @@ export type Concurrency = number;
 export type ReasoningEffort4 = ("low" | "medium" | "high" | "xhigh") | null;
 export type BatchSize2 = number;
 export type WholeImageMaxSide1 = number | null;
+export type Concurrency1 = number;
 /**
  * @minItems 1
  */
-export type DatasetIds19 = [string, ...string[]];
+export type DatasetIds21 = [string, ...string[]];
 export type Section1 = "directions" | "checks";
 export type Ids = string[];
 export type Offset6 = number;
@@ -2539,8 +2610,8 @@ export type Initial = string;
 export type Observe = string;
 export type Review = string;
 export type Finalize = string;
-export type SelectedDirections2 = FrozenAnalysisDirection[];
-export type InputOrganization = "registration-tools" | "exploration-batch-v2";
+export type SelectedDirections3 = FrozenAnalysisDirection[];
+export type InputOrganization = "registration-tools" | "exploration-batch-v2" | "batch-materials-v1";
 export type ExplorationReviewPolicy = "comparative-v1" | null;
 export type ExecutionMode = "serial" | "dsh-subagents";
 export type JobId11 = string;
@@ -2566,11 +2637,11 @@ export type Summary8 = string;
 /**
  * 整个作业仍有效的实际限制。
  */
-export type Limitations36 = string[];
+export type Limitations40 = string[];
 /**
  * 整个作业仍待核对的问题。
  */
-export type UnresolvedQuestions6 = string[];
+export type UnresolvedQuestions8 = string[];
 export type Merges2 = AnalysisCatalogMerge[];
 /**
  * 明确关联条目主张与本场实际观察；新增、解释或移出适用范围都附理由。未提交的历史关系继续保留。
@@ -2587,7 +2658,7 @@ export type RoundId3 = number;
 /**
  * 仅在需要时补充有明确图像引用的实际事实，不要求逐图填写；技术覆盖由整批媒体送达和正式提交核验。
  */
-export type Observations3 = AnalysisSampleObservation1[];
+export type Observations5 = AnalysisSampleObservation1[];
 /**
  * 改变已有主张或适用条件的原因；只改标题或精选图不需要。
  */
@@ -2602,30 +2673,30 @@ export type KeyEvidence7 =
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | null;
-export type Title18 = string;
+export type Title20 = string;
 export type Instruction18 = string;
 export type AppliesTo5 = "normal" | "defect" | "both";
 export type Rationale5 = string;
 /**
  * @minItems 1
  */
-export type EvidenceIds25 = [string, ...string[]];
-export type Limitations37 = string[];
+export type EvidenceIds26 = [string, ...string[]];
+export type Limitations41 = string[];
 export type DirectionId14 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds20 = [string, ...string[]];
-export type CounterEvidenceIds9 = string[];
+export type DatasetIds22 = [string, ...string[]];
+export type CounterEvidenceIds11 = string[];
 /**
  * JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；arguments说明每项作用，key_evidence另选最多4张展示原图。正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。
  */
 export type Directions13 = ProposedAnalysisDirection1[];
 export type RoundId4 = number;
-export type CandidateId1 = string;
+export type CandidateId3 = string;
 export type Action2 = "new" | "merge" | "reject";
 export type DirectionId15 = string | null;
-export type Reason24 = string;
+export type Reason25 = string;
 export type DiscoveryDecisions = ExplorationDiscoveryDecision[];
 /**
  * 主Agent一次复核当前波全部报告，按各报告round.round_id填写。每份报告的discovery_decisions逐项处理全部候选：new新建、merge兼容归并、reject说明实际依据；无候选时填空数组。
@@ -2646,11 +2717,11 @@ export type Summary9 = string;
 /**
  * 整个作业仍有效的实际限制。
  */
-export type Limitations38 = string[];
+export type Limitations42 = string[];
 /**
  * 整个作业仍待核对的问题。
  */
-export type UnresolvedQuestions7 = string[];
+export type UnresolvedQuestions9 = string[];
 export type Merges3 = AnalysisCatalogMerge[];
 /**
  * 明确关联条目主张与本场实际观察；新增、解释或移出适用范围都附理由。未提交的历史关系继续保留。
@@ -2667,7 +2738,7 @@ export type RoundId5 = number;
 /**
  * 本次新增或补充的实际逐图观察，可分次提交；无需重复输出已保存的观察。
  */
-export type Observations4 = AnalysisSampleObservation1[];
+export type Observations6 = AnalysisSampleObservation1[];
 /**
  * 改变已有主张或适用条件的原因；只改标题或精选图不需要。
  */
@@ -2682,38 +2753,48 @@ export type KeyEvidence8 =
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | [AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence, AnalysisKeyEvidence]
   | null;
-export type Title19 = string;
-export type Subject6 = string;
-export type Location9 = string;
-export type Criterion6 = string;
-export type AllowedVariations6 = string[];
-export type Limitations39 = string[];
+export type Title21 = string;
+export type Subject8 = string;
+export type Location11 = string;
+export type Criterion8 = string;
+export type AllowedVariations8 = string[];
+export type Limitations43 = string[];
 /**
  * supported：当前版本完整有效证据支持该条件性可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值
  */
-export type Status27 = "supported" | "provisional" | "conflicted";
-export type SupportEvidenceIds6 = string[];
-export type CounterEvidenceIds10 = string[];
-export type CheckId14 = string;
+export type Status29 = "supported" | "provisional" | "conflicted";
+export type SupportEvidenceIds8 = string[];
+export type CounterEvidenceIds12 = string[];
+export type CheckId15 = string;
 /**
  * 只引用当前selected_directions中的完整ref。
  *
  * @minItems 1
  */
-export type DirectionRefs4 = [string, ...string[]];
+export type DirectionRefs6 = [string, ...string[]];
 /**
  * 仅列当前条目实际有证据的子数据集。
  *
  * @minItems 1
  */
-export type DatasetIds21 = [string, ...string[]];
+export type DatasetIds23 = [string, ...string[]];
 /**
- * JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；arguments说明每项作用，key_evidence另选最多4张展示原图。正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。
+ * 只提交新增或修改的完整知识条目；真实原图引用放在结构化证据和论据字段，正文不堆放ID。key_evidence从首批起维护最多4张典型原图，与完整论据分开。
  */
 export type Checks7 = ProposedAnalysisCheck1[];
+export type RoundId6 = number;
+export type CandidateId4 = string;
+export type Action3 = "new" | "merge" | "reject";
+export type CheckId16 = string | null;
+export type Reason26 = string;
+export type DiscoveryDecisions1 = KnowledgeDiscoveryDecision[];
+/**
+ * 一次复核当前波全部报告，discovery_decisions逐项处理全部候选，目标使用check_id。
+ */
+export type ReportReviews1 = KnowledgeReportReview[];
 export type CommitKey8 = string;
 export type Revision16 = number;
-export type RoundId6 = number;
+export type RoundId7 = number;
 export type ObservationIds = string[];
 export type CompletedDelta = number;
 export type FailedDelta = number;
@@ -2749,17 +2830,27 @@ export type VersionId25 = string | null;
 export type ModelCallIds = string[] | null;
 export type SessionId8 = string | null;
 export type ParentVersionId4 = string | null;
-export type RoundId7 = number;
+export type RoundId8 = number;
 export type WaveId2 = number;
 export type SessionId9 = string;
 export type CatalogRevision1 = number;
 export type ReviewRevision = number | null;
-export type CandidateId2 = string;
-export type Action3 = "new" | "merge" | "reject";
+export type CandidateId5 = string;
+export type Action4 = "new" | "merge" | "reject";
 export type DirectionId16 = string | null;
-export type Reason25 = string;
-export type DiscoveryDecisions1 = ExplorationDiscoveryDecision1[];
-export type Delegations = ExplorationBatchArchive[];
+export type Reason27 = string;
+export type DiscoveryDecisions2 = ExplorationDiscoveryDecision1[];
+export type RoundId9 = number;
+export type WaveId3 = number;
+export type SessionId10 = string;
+export type CatalogRevision2 = number;
+export type ReviewRevision1 = number | null;
+export type CandidateId6 = string;
+export type Action5 = "new" | "merge" | "reject";
+export type CheckId17 = string | null;
+export type Reason28 = string;
+export type DiscoveryDecisions3 = KnowledgeDiscoveryDecision1[];
+export type Delegations = (ExplorationBatchArchive | KnowledgeBatchArchive)[];
 export type VersionId26 = string;
 export type JobId14 = string;
 export type Module5 = "exploration" | "knowledge";
@@ -2767,9 +2858,9 @@ export type Revision18 = number;
 export type ExecutionStatus2 = string;
 export type CreatedAt7 = string;
 export type ModelCallIds1 = string[] | null;
-export type SessionId10 = string | null;
+export type SessionId11 = string | null;
 export type ParentVersionId5 = string | null;
-export type Delegations1 = ExplorationBatchArchive[];
+export type Delegations1 = (ExplorationBatchArchive | KnowledgeBatchArchive)[];
 export type EvidenceId16 = string;
 export type SampleId46 = string;
 export type DatasetId44 = string;
@@ -2778,7 +2869,7 @@ export type CandidateRole1 = ("normal" | "defect") | null;
 export type SamplingGroup1 = "normal" | "abnormal" | "unclassified";
 export type Observed1 = boolean;
 export type Evidence4 = AnalysisEvidenceView[];
-export type SelectedDirections3 = FrozenAnalysisDirection[];
+export type SelectedDirections4 = FrozenAnalysisDirection[];
 export type RemovedDirectionIds2 = string[];
 export type VersionId27 = string;
 export type Module6 = "exploration" | "knowledge";
@@ -2787,11 +2878,11 @@ export type EntryId7 = string | null;
 export type EvidenceRole1 = ("support" | "counter" | "context" | "allowed_variation") | null;
 export type SampleId47 = string | null;
 export type DirectionRef3 = string | null;
-export type RoundId8 = number | null;
+export type RoundId10 = number | null;
 export type Page13 = number;
 export type PageSize13 = number;
 export type VersionId28 = string;
-export type SelectedDirections4 = FrozenAnalysisDirection[];
+export type SelectedDirections5 = FrozenAnalysisDirection[];
 export type Total15 = number;
 export type Page14 = number;
 export type PageSize14 = number;
@@ -2803,13 +2894,13 @@ export type Page15 = number;
 export type PageSize15 = number;
 export type Items13 = AnalysisObservationRecord[];
 export type DirectionId17 = string;
-export type Title20 = string;
+export type Title22 = string;
 export type Instruction19 = string;
 export type Enabled3 = boolean;
 export type Origin7 = "preset" | "dataset" | "explored";
 export type Source11 = (PresetDirectionSource | ExploredDirectionSource) | null;
 export type Summary10 = string;
-export type Limitations40 = string[];
+export type Limitations44 = string[];
 export type Directions14 = PublishedDirectionChoice[];
 export type SampleId48 = string;
 export type DatasetId45 = string;
@@ -2827,7 +2918,7 @@ export type ResultId3 = string;
 export type DifferenceIds = [string, ...string[]];
 export type Reviewer5 = string;
 export type Comment3 = string;
-export type Action4 =
+export type Action6 =
   | ConfirmDifference
   | ExpectedPolicyDifference
   | RejectDifference
@@ -2897,24 +2988,24 @@ export type ReviewDecisionIds = string[];
 export type SubmittedAt8 = string;
 export type Decisions = ConsistencyDecision[];
 export type ReviewEvents = ReviewDecisionRecord[];
-export type CheckId15 = string;
+export type CheckId18 = string;
 export type ClientRequestId1 = string;
 export type DecisionId4 = string;
 export type EvidenceId19 = string;
 export type Reviewer6 = string;
 export type CorrectionState1 = "AWAITING_RESCAN" | "VERIFIED";
-export type Reason26 = string;
+export type Reason29 = string;
 export type CheckedAt1 = string;
 export type Corrections1 = CorrectionCheck[];
 export type ClientRequestId2 = string;
 export type ResultFingerprint = string;
 export type Reviewer7 = string;
 export type Comment4 = string;
-export type Action5 = ConfirmDifference | RejectDifference | NeedsContext;
+export type Action7 = ConfirmDifference | RejectDifference | NeedsContext;
 export type JobId16 = string;
 export type AnchorId = string;
 export type ResultFingerprint1 = string;
-export type CandidateId3 = string;
+export type CandidateId7 = string;
 export type AssessmentId = number;
 export type EvidenceId20 = string;
 export type ResultId5 = string;
@@ -2970,11 +3061,11 @@ export type MainAnnotationIds = string[];
 export type Description23 = string;
 export type SupportingAssessmentIds = number[];
 export type AssessmentId1 = number;
-export type CandidateId4 = string;
+export type CandidateId8 = string;
 export type CandidateAnnotationIds = string[];
 export type MediaIds = string[];
 export type CandidateLabel = ("OK" | "NG") | null;
-export type CandidateId5 = string;
+export type CandidateId9 = string;
 /**
  * @minItems 1
  * @maxItems 1
@@ -2982,7 +3073,7 @@ export type CandidateId5 = string;
 export type AnnotationIds2 = [string];
 export type SameMainObjectAs = CandidateObjectReference[];
 export type Evidence5 = MainIssueEvidence[];
-export type Limitations41 = string[];
+export type Limitations45 = string[];
 export type ReviewSuggestion = string;
 export type MainLabel = ("OK" | "NG") | null;
 export type Issues1 = MainAnnotationIssue[];
@@ -2990,7 +3081,7 @@ export type DatasetFormat3 = ("labelme" | "folder_classification") | null;
 export type SchemaVersion1 = 1;
 export type JobId20 = string;
 export type AnchorId3 = string;
-export type SessionId11 = string;
+export type SessionId12 = string;
 export type State10 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Phase6 = string;
 export type Attempt2 = number;
@@ -3001,7 +3092,7 @@ export type MaxSimilarCandidates = number | null;
 export type SelectedExact = number | null;
 export type SelectedSimilar = number | null;
 export type Verdict = ("EQUIVALENT" | "MATERIAL" | "UNCERTAIN") | null;
-export type Reason27 = string;
+export type Reason30 = string;
 export type ConflictCategory = "类别不一致" | "位置差异" | "多类别" | "少类别" | "拆分" | "合并" | "对应关系差异";
 export type Categories1 = ConflictCategory[];
 export type Conclusion4 = string | null;
@@ -3068,7 +3159,7 @@ export type ReferenceFromOther1 = ("left" | "right") | null;
 export type AnnotationId8 = string | null;
 export type Normalization = "RAW" | "UINT8_DISPLAY" | "UINT16_FULL_RANGE_DISPLAY";
 export type Available1 = boolean;
-export type Reason28 = string | null;
+export type Reason31 = string | null;
 export type Media = EvidenceMedia[];
 export type Categories2 = ConflictCategory[];
 export type Summary11 = string;
@@ -3174,7 +3265,7 @@ export type BatchId2 = string;
 export type RootBatchId = string;
 export type ParentBatchId = string | null;
 export type Kind31 = "index" | "consistency";
-export type Status28 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
+export type Status30 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type CancelRequested2 = boolean;
 export type Code1 =
   | "INVALID_SCOPE"
@@ -3205,10 +3296,10 @@ export type RootBatchId1 = string;
 export type ParentBatchId1 = string | null;
 export type Kind32 = "index" | "consistency";
 export type ScopeId3 = string;
-export type DatasetIds22 = string[];
+export type DatasetIds24 = string[];
 export type FrozenAt2 = string;
 export type SampleCount2 = number;
-export type Status29 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
+export type Status31 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type CancelRequested3 = boolean;
 export type Total19 = number;
 export type Completed6 = number;
@@ -3234,7 +3325,7 @@ export type JobType2 =
   | "DATA_CONSISTENCY"
   | "CONSISTENCY_ANALYSIS"
   | "CONSISTENCY_MODEL_BATCH";
-export type Status30 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
+export type Status32 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Phase7 = string | null;
 export type Completed7 = number;
 export type Failed9 = number;
@@ -3245,9 +3336,9 @@ export type Items17 = ConsistencyBatchSummary[];
 export type StartResultResponse = Started | NoWork;
 export type Kind33 = "started";
 export type BatchId6 = string;
-export type Status31 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
+export type Status33 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Kind34 = "no_work";
-export type Reason29 = string;
+export type Reason32 = string;
 export type Selection1 = BatchSelection | ScopeSelection;
 export type Kind35 = "batch";
 export type BatchId7 = string;
@@ -3402,7 +3493,7 @@ export type AnchorSide = "left" | "right";
 export type Items22 = GalleryMember[];
 export type Total25 = number;
 export type GroupId12 = string;
-export type Status32 =
+export type Status34 =
   ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED") | "NOT_ANALYZED";
 export type RunId17 = string | null;
 export type ModelName6 = string | null;
@@ -3416,7 +3507,7 @@ export type Verdict1 = "EQUIVALENT" | "MATERIAL" | "UNCERTAIN";
  * @maxItems 100
  */
 export type References3 = [GroupAnalysisReference, ...GroupAnalysisReference[]];
-export type CandidateId6 = string;
+export type CandidateId10 = string;
 export type ResultId9 = string;
 export type EvidenceId28 = string;
 export type DifferenceId3 = string | null;
@@ -3434,15 +3525,15 @@ export type References4 = [GroupAnalysisReference, ...GroupAnalysisReference[]];
 /**
  * @maxItems 100
  */
-export type Limitations42 = string[];
+export type Limitations46 = string[];
 /**
  * 覆盖全部候选且每个候选恰好一次；未获得固定主图直接证据时只能UNCERTAIN
  *
  * @minItems 1
  * @maxItems 10000
  */
-export type Assessments2 = [GroupPairAssessment, ...GroupPairAssessment[]];
-export type CandidateId7 = string;
+export type Assessments4 = [GroupPairAssessment, ...GroupPairAssessment[]];
+export type CandidateId11 = string;
 /**
  * 当前候选的标注一致性判定：MATERIAL为实质冲突，EQUIVALENT为一致，UNCERTAIN为关键证据缺失
  */
@@ -3462,7 +3553,7 @@ export type Findings4 = string[];
  *
  * @maxItems 100
  */
-export type Limitations43 = string[];
+export type Limitations47 = string[];
 export type Description24 = string;
 /**
  * 实际观察的两侧原图身份各一次。
@@ -3471,7 +3562,7 @@ export type Description24 = string;
  * @maxItems 2
  */
 export type MediaIds1 = [string, string];
-export type Limitations44 = string[];
+export type Limitations48 = string[];
 export type ReviewSuggestion1 = string;
 export type Type3 =
   "category_mismatch" | "extra_annotation" | "missing_annotation" | "position_difference" | "split" | "merge";
@@ -3501,7 +3592,7 @@ export type Description25 = string;
  * @maxItems 2
  */
 export type MediaIds2 = [string, string];
-export type Limitations45 = string[];
+export type Limitations49 = string[];
 export type ReviewSuggestion2 = string;
 export type Type4 = "image_label_mismatch";
 export type MainLabel1 = "OK" | "NG";
@@ -3591,7 +3682,7 @@ export type MinSimilarity6 = number;
 export type MaxExactCandidates1 = number;
 export type MaxSimilarCandidates1 = number;
 export type ReasoningEffort6 = ("low" | "medium" | "high" | "xhigh") | null;
-export type Concurrency1 = number;
+export type Concurrency2 = number;
 export type PolicyVersion = string;
 export type AbsoluteBoundaryPx = number | null;
 export type RelativeBoundaryFraction = number | null;
@@ -3600,7 +3691,7 @@ export type ConsiderRegistrationUncertainty = true;
 export type TinyDefectCoverageOverride = true;
 export type ReasoningEffort7 = ("low" | "medium" | "high" | "xhigh") | null;
 export type WholeImageMaxSide2 = number | null;
-export type Concurrency2 = number;
+export type Concurrency3 = number;
 export type Revision21 = number;
 export type Module8 = "exploration" | "knowledge" | "consistency" | "audit";
 export type Settings3 =
@@ -3616,16 +3707,17 @@ export type WholeImageMaxSide3 = number | null;
 export type ContextTokens7 = number | null;
 export type MaxOutputTokens7 = number | null;
 export type GenerationTimeoutSeconds5 = number | null;
-export type Concurrency3 = number;
+export type Concurrency4 = number;
 export type ReasoningEffort10 = ("low" | "medium" | "high" | "xhigh") | null;
 export type BatchSize8 = number;
 export type WholeImageMaxSide4 = number | null;
+export type Concurrency5 = number;
 export type Mode8 = "exact" | "combined";
 export type MinSimilarity7 = number;
 export type MaxExactCandidates2 = number;
 export type MaxSimilarCandidates2 = number;
 export type ReasoningEffort11 = ("low" | "medium" | "high" | "xhigh") | null;
-export type Concurrency4 = number;
+export type Concurrency6 = number;
 export type ContextTokens8 = number | null;
 export type MaxOutputTokens8 = number | null;
 export type GenerationTimeoutSeconds6 = number | null;
@@ -3643,7 +3735,7 @@ export type ConsiderRegistrationUncertainty1 = true;
 export type TinyDefectCoverageOverride1 = true;
 export type ReasoningEffort12 = ("low" | "medium" | "high" | "xhigh") | null;
 export type WholeImageMaxSide5 = number | null;
-export type Concurrency5 = number;
+export type Concurrency7 = number;
 export type ExpectedRevision5 = number;
 export type Mode9 = "exact" | "combined";
 export type MinSimilarity8 = number;
@@ -3656,7 +3748,7 @@ export type SubmissionId11 = string;
 /**
  * @minItems 1
  */
-export type DatasetIds23 = [string, ...string[]];
+export type DatasetIds25 = [string, ...string[]];
 export type AnalysisKind6 = "consistency";
 export type Instruction20 = string | null;
 export type SystemPrompt9 = string | null;
@@ -3664,7 +3756,7 @@ export type Subjects3 = (AllRegisteredScope | DatasetScope | SampleScope | Filte
 export type CorpusScope4 = (AllRegisteredScope | DatasetScope) | null;
 export type SchemaVersion2 = 1;
 export type SettingsRevision2 = number;
-export type Concurrency6 = number;
+export type Concurrency8 = number;
 export type Retrieval = ExactCandidatePolicy | CombinedCandidatePolicy;
 export type Mode10 = "exact";
 export type MinSimilarity9 = null;
@@ -3685,7 +3777,7 @@ export type TaskType1 = ("anomaly_detection" | "bbox_defect") | null;
 export type JobId21 = string;
 export type AnchorId4 = string;
 export type Ordinal = number;
-export type SessionId12 = string;
+export type SessionId13 = string;
 export type SessionCreated3 = boolean;
 export type Attempt3 = number;
 export type State11 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
@@ -3738,7 +3830,7 @@ export type CandidateGateIds1 = string[];
 export type Issues5 = MainAnnotationIssue[];
 export type SchemaVersion3 = 1 | "4.0" | "5.0" | "7.0";
 export type Verdict3 = "EQUIVALENT";
-export type Reason30 = "NO_CANDIDATES";
+export type Reason33 = "NO_CANDIDATES";
 export type Conclusion7 = "通过（无候选）";
 /**
  * @maxItems 0
@@ -3747,7 +3839,7 @@ export type Categories4 = [];
 /**
  * @maxItems 0
  */
-export type Assessments3 = [];
+export type Assessments5 = [];
 export type TaskType3 = ("anomaly_detection" | "bbox_defect") | null;
 export type CandidateRecordIds2 = number[];
 export type ExecutionStatus5 = ("completed" | "partial" | "failed") | null;
@@ -3758,7 +3850,7 @@ export type CandidateGateIds2 = string[];
 export type Issues6 = MainAnnotationIssue[];
 export type SchemaVersion4 = "4.0" | "5.0" | "7.0";
 export type Verdict4 = "EQUIVALENT";
-export type Reason31 = "NO_ELIGIBLE_CANDIDATES";
+export type Reason34 = "NO_ELIGIBLE_CANDIDATES";
 export type Conclusion8 = "通过（无有效候选）";
 /**
  * @maxItems 0
@@ -3767,7 +3859,7 @@ export type Categories5 = [];
 /**
  * @maxItems 0
  */
-export type Assessments4 = [];
+export type Assessments6 = [];
 export type TaskType4 = ("anomaly_detection" | "bbox_defect") | null;
 export type CandidateRecordIds3 = number[];
 export type ExecutionStatus6 = ("completed" | "partial" | "failed") | null;
@@ -3784,22 +3876,22 @@ export type Conclusions1 = [GroupAnalysisConclusion, ...GroupAnalysisConclusion[
 /**
  * @maxItems 100
  */
-export type Limitations46 = string[];
+export type Limitations50 = string[];
 /**
  * 覆盖全部候选且每个候选恰好一次；未获得固定主图直接证据时只能UNCERTAIN
  *
  * @minItems 1
  * @maxItems 10000
  */
-export type Assessments5 = [GroupPairAssessment, ...GroupPairAssessment[]];
+export type Assessments7 = [GroupPairAssessment, ...GroupPairAssessment[]];
 export type SchemaVersion5 = 1 | "4.0" | "5.0" | "7.0";
-export type Reason32 = "MODEL_REVIEWED";
+export type Reason35 = "MODEL_REVIEWED";
 export type Fingerprint2 = string;
 export type SettingsRevision3 = number;
 export type SchemaVersion6 = 1;
 export type JobId22 = string;
 export type AnchorId6 = string;
-export type SessionId13 = string;
+export type SessionId14 = string;
 export type Attempt4 = number;
 export type State13 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Result5 = (NoCandidateResult | NoEligibleResult | ModelReviewedResult) | null;
@@ -3837,7 +3929,7 @@ export type Bbox10 = [unknown, unknown, unknown, unknown];
  * 四侧扩边的像素数，实际窗口裁至原图画布
  */
 export type Padding = number;
-export type Reason33 = string;
+export type Reason36 = string;
 export type Windows = VisualWindow[];
 export type ObservationId3 = string;
 /**
@@ -3866,8 +3958,8 @@ export type Media2 = [VisualEvidence, ...VisualEvidence[]];
  *
  * @minItems 1
  */
-export type Observations5 = [CandidateVisualObservation, ...CandidateVisualObservation[]];
-export type CandidateId8 = string;
+export type Observations7 = [CandidateVisualObservation, ...CandidateVisualObservation[]];
+export type CandidateId12 = string;
 export type Description26 = string;
 /**
  * 主图与当前候选的两个原图evidence_id；原始标注和全部裁剪视图随原图分组，不单独引用裁图。
@@ -3875,13 +3967,13 @@ export type Description26 = string;
  * @minItems 1
  */
 export type MediaIds3 = [string, ...string[]];
-export type Limitations47 = string[];
-export type Reason34 = string;
+export type Limitations51 = string[];
+export type Reason37 = string;
 /**
  * 本次实际观察到内容矛盾的真实配对区域ID；仅原图证据时为空。
  */
 export type RegionPairIds1 = string[];
-export type CandidateId9 = string | null;
+export type CandidateId13 = string | null;
 /**
  * 当前冻结清单指纹。
  */
@@ -3892,7 +3984,7 @@ export type Fingerprint5 = string;
  * @minItems 1
  */
 export type ObservationIds2 = [string, ...string[]];
-export type CandidateId10 = string;
+export type CandidateId14 = string;
 /**
  * MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。
  */
@@ -3912,7 +4004,7 @@ export type Findings5 = string[];
  *
  * @maxItems 100
  */
-export type Limitations48 = string[];
+export type Limitations52 = string[];
 export type Description27 = string;
 /**
  * 实际观察的两侧原图身份各一次。
@@ -3921,7 +4013,7 @@ export type Description27 = string;
  * @maxItems 2
  */
 export type MediaIds4 = [string, string];
-export type Limitations49 = string[];
+export type Limitations53 = string[];
 export type ReviewSuggestion3 = string;
 export type Type5 =
   "category_mismatch" | "extra_annotation" | "missing_annotation" | "position_difference" | "split" | "merge";
@@ -3960,7 +4052,7 @@ export type DatasetFormat4 = ("labelme" | "folder_classification") | null;
 export type SchemaVersion7 = 1;
 export type JobId23 = string;
 export type AnchorId9 = string;
-export type SessionId14 = string;
+export type SessionId15 = string;
 export type State14 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Phase9 = string;
 export type Attempt5 = number;
@@ -3971,7 +4063,7 @@ export type MaxSimilarCandidates6 = number | null;
 export type SelectedExact1 = number | null;
 export type SelectedSimilar1 = number | null;
 export type Verdict6 = ("EQUIVALENT" | "MATERIAL" | "UNCERTAIN") | null;
-export type Reason35 = string;
+export type Reason38 = string;
 export type Categories6 = ConflictCategory[];
 export type Conclusion9 = string | null;
 export type OriginalCategories1 = ConflictCategory[];
@@ -3979,20 +4071,20 @@ export type ProgramConclusion1 = string;
 export type ModelConclusion2 = ConflictCategory | "无冲突" | null;
 export type ResultRef1 = string;
 export type RecordId = number;
-export type CandidateId11 = string;
+export type CandidateId15 = string;
 export type Phase10 = "gate" | "audit";
 export type Revision22 = number;
 export type GateRevision = number;
 export type RequestId9 = string;
 export type Active = boolean;
 export type GateId = string;
-export type CandidateId12 = string;
+export type CandidateId16 = string;
 export type Fingerprint7 = string;
 export type ExecutionStatus7 = "pending" | "completed" | "failed";
 export type Revision23 = number;
 export type Relation4 = ("pixel_identical" | "transformed_same_content" | "content_different" | "unverified") | null;
-export type Reason36 = string;
-export type Limitations50 = string[];
+export type Reason39 = string;
+export type Limitations54 = string[];
 export type Media3 = VisualEvidence[];
 export type ErrorCode3 = string | null;
 export type GateStatus = ("eligible" | "rejected" | "unverified") | null;
@@ -4021,7 +4113,7 @@ export type CandidateMediaId = string;
 export type VisualRelation = "same" | "different" | "unverified";
 export type MainDescription = string;
 export type CandidateDescription = string;
-export type Reason37 = string;
+export type Reason40 = string;
 export type RegionChecks = IdentityRegionCheck[];
 export type OverviewRelation = ("same" | "different" | "unverified") | null;
 /**
@@ -4035,7 +4127,7 @@ export type ObservationIds3 = string[];
 export type GateRevision1 = number;
 export type CandidateRecords = CandidatePhaseRecord[];
 export type Gates = CandidateIdentityRecord[];
-export type CandidateId13 = string;
+export type CandidateId17 = string;
 export type EvidenceId29 = string;
 export type ResultId10 = string;
 export type DetailRef = string;
@@ -4048,9 +4140,9 @@ export type TraceRef = string | null;
 export type DiagnosticsRef = string;
 export type Result6 = (NoCandidateResult | NoEligibleResult | ModelReviewedResult) | null;
 export type Requests = AnchorVisualRequest[];
-export type Observations6 = AnchorObservation[];
+export type Observations8 = AnchorObservation[];
 export type AssessmentId2 = number;
-export type Assessments6 = AnchorAssessmentRecord[];
+export type Assessments8 = AnchorAssessmentRecord[];
 export type Evidence6 = AnchorEvidenceReference[];
 export type Errors5 = JobFailure[];
 export type ErrorHistory2 = JobFailure[];
@@ -4059,7 +4151,7 @@ export type Total26 = number;
 export type Items23 = AnchorResultSummary[];
 export type SchemaVersion8 = 1;
 export type JobId25 = string;
-export type Status33 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
+export type Status35 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Total27 = number;
 export type Completed8 = number;
 export type NoCandidates = number;
@@ -4090,28 +4182,28 @@ export type SystemPrompt11 = string | null;
 export type ReportInstruction1 = string | null;
 export type ConsistencyJobId2 = string;
 export type Knowledge = AuditKnowledge | LegacyAuditKnowledge | null;
-export type DatasetIds24 = string[];
+export type DatasetIds26 = string[];
 export type Revision24 = number;
 export type ExecutionStatus8 = string;
 export type FinalizationComplete = boolean | null;
 export type Ref1 = string;
 export type Source13 = PresetDirectionSource | ExploredDirectionSource;
-export type Title21 = string;
+export type Title23 = string;
 export type Instruction23 = string;
 export type Directions15 = AuditKnowledgeDirection[];
 export type Check = AnalysisKnowledgeCheck | KnowledgeCheck;
 export type Entries2 = AuditSelectedCheck[];
 export type Evidence7 = KnowledgeEvidence[];
 export type Summary13 = string;
-export type Limitations51 = string[];
-export type UnresolvedQuestions8 = string[];
+export type Limitations55 = string[];
+export type UnresolvedQuestions10 = string[];
 export type Directions16 = FrozenAnalysisDirection[];
 export type Entries3 = AuditSelectedCheck[];
 export type Evidence8 = KnowledgeEvidence[];
 export type JobId27 = string;
 export type SampleId58 = string;
 export type Ordinal1 = number;
-export type SessionId15 = string;
+export type SessionId16 = string;
 export type SessionCreated5 = boolean;
 export type State15 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Result7 = AuditFinal | LegacyAuditFinal | null;
@@ -4123,32 +4215,32 @@ export type Basis3 = string[];
 /**
  * 本次实际观察的完整原图身份；原图及全部局部必须实际观察，但仅引用所属原图。
  */
-export type EvidenceIds26 = string[];
+export type EvidenceIds27 = string[];
 /**
  * 必须来自本场knowledge.entries[].check.check_id；不是标注ID、上游差异ID或自拟图像检查项。
  */
-export type CheckId16 = string;
-export type Status34 = "consistent" | "deviates" | "unobservable" | "not_applicable";
+export type CheckId19 = string;
+export type Status36 = "consistent" | "deviates" | "unobservable" | "not_applicable";
 export type Description28 = string;
 /**
  * 本次实际观察的完整原图身份；局部图仅用于观察，不单独引用。
  */
-export type EvidenceIds27 = string[];
+export type EvidenceIds28 = string[];
 /**
  * 仅逐项评估本场选中的knowledge.entries，恰好覆盖其check_id；knowledge为null时必须填[]。普通图像/标注观察写入analysis和basis，不生成自拟check_id。
  */
 export type CheckAssessments2 = AuditCheckAssessment[];
 export type SourceIssueId = string;
 export type Assessment = "supported" | "unsupported" | "insufficient";
-export type Reason38 = string;
-export type EvidenceIds28 = string[];
+export type Reason41 = string;
+export type EvidenceIds29 = string[];
 /**
  * 恰好处理本图上游result.issues中的每个issue_id一次；无上游问题时为空。supported须由findings关联，unsupported不能作为本图疑点来源。
  */
 export type ConsistencyReview = AuditConsistencyAssessment[];
 export type FindingId8 = string;
 export type Description29 = string;
-export type Location10 = string;
+export type Location12 = string;
 /**
  * 仅引用本场选中知识的check_id；无选中知识或独立发现时为空，不填写自拟图像检查项。
  */
@@ -4156,9 +4248,9 @@ export type CheckIds7 = string[];
 /**
  * @minItems 1
  */
-export type EvidenceIds29 = [string, ...string[]];
+export type EvidenceIds30 = [string, ...string[]];
 export type NormalExplanation7 = string;
-export type Limitations52 = string[];
+export type Limitations56 = string[];
 export type Type6 =
   | "image_label_mismatch"
   | "category_mismatch"
@@ -4183,12 +4275,12 @@ export type AnnotationIds4 = string[];
  *
  * @minItems 1
  */
-export type EvidenceIds30 = [string, ...string[]];
+export type EvidenceIds31 = [string, ...string[]];
 /**
  * 有理解价值但不足以形成质量疑点的简短观察，不计入疑点，也不改变业务结论；不因缺少类别语义或假设规范而填写。
  */
-export type Observations7 = AuditObservation[];
-export type Limitations53 = string[];
+export type Observations9 = AuditObservation[];
+export type Limitations57 = string[];
 /**
  * normal表示现有标注与可见图像相符，包括已正确标注的缺陷；suspect表示可见标注问题需复核；insufficient表示证据不足以判断标注是否正确。
  */
@@ -4201,14 +4293,14 @@ export type Basis4 = string[];
  *
  * @minItems 1
  */
-export type EvidenceIds31 = [string, ...string[]];
+export type EvidenceIds32 = [string, ...string[]];
 /**
  * 恰好覆盖全部已选check_id，各有观察原因；未选择知识时为空数组。
  */
 export type CheckAssessments3 = AuditCheckAssessment[];
 export type FindingId9 = string;
 export type Description31 = string;
-export type Location11 = string;
+export type Location13 = string;
 /**
  * 仅引用本场选中知识的check_id；无选中知识或独立发现时为空，不填写自拟图像检查项。
  */
@@ -4216,22 +4308,22 @@ export type CheckIds8 = string[];
 /**
  * @minItems 1
  */
-export type EvidenceIds32 = [string, ...string[]];
+export type EvidenceIds33 = [string, ...string[]];
 export type NormalExplanation8 = string;
-export type Limitations54 = string[];
+export type Limitations58 = string[];
 /**
  * 本图全部需要复核的标注问题，无疑点时为空数组，不按数量截断。
  */
 export type Findings7 = LegacyAuditFinding[];
-export type Limitations55 = string[];
+export type Limitations59 = string[];
 export type JobId28 = string;
 export type SampleId59 = string;
-export type SessionId16 = string;
+export type SessionId17 = string;
 export type DatasetFormat5 = ("labelme" | "folder_classification") | null;
 export type SchemaVersion10 = 1;
 export type JobId29 = string;
 export type AnchorId10 = string;
-export type SessionId17 = string;
+export type SessionId18 = string;
 export type State18 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Phase11 = string;
 export type Attempt6 = number;
@@ -4242,7 +4334,7 @@ export type MaxSimilarCandidates7 = number | null;
 export type SelectedExact2 = number | null;
 export type SelectedSimilar2 = number | null;
 export type Verdict7 = ("EQUIVALENT" | "MATERIAL" | "UNCERTAIN") | null;
-export type Reason39 = string;
+export type Reason42 = string;
 export type Categories7 = ConflictCategory[];
 export type Conclusion12 = string | null;
 export type OriginalCategories3 = ConflictCategory[];
@@ -4251,9 +4343,9 @@ export type ModelConclusion3 = ConflictCategory | "无冲突" | null;
 export type ResultRef2 = string;
 export type Result8 = (NoCandidateResult | NoEligibleResult | ModelReviewedResult) | null;
 export type Evidence9 = AnchorEvidenceReference[];
-export type Assessments7 = AnchorAssessmentRecord[];
+export type Assessments9 = AnchorAssessmentRecord[];
 export type Gates1 = CandidateIdentityRecord[];
-export type Observations8 = AnchorObservation[];
+export type Observations10 = AnchorObservation[];
 export type CapturedEvidence1 = AnchorEvidenceReference[];
 export type Knowledge1 = AuditKnowledge | LegacyAuditKnowledge | null;
 /**
@@ -4268,7 +4360,7 @@ export type Basis5 = string[];
 /**
  * 本次实际观察的完整原图身份；原图及全部局部必须实际观察，但仅引用所属原图。
  */
-export type EvidenceIds33 = string[];
+export type EvidenceIds34 = string[];
 /**
  * 仅逐项评估本场选中的knowledge.entries，恰好覆盖其check_id；knowledge为null时必须填[]。普通图像/标注观察写入analysis和basis，不生成自拟check_id。
  */
@@ -4279,7 +4371,7 @@ export type CheckAssessments4 = AuditCheckAssessment[];
 export type ConsistencyReview1 = AuditConsistencyAssessment[];
 export type FindingId10 = string;
 export type Description32 = string;
-export type Location12 = string;
+export type Location14 = string;
 /**
  * 仅引用本场选中知识的check_id；无选中知识或独立发现时为空，不填写自拟图像检查项。
  */
@@ -4287,9 +4379,9 @@ export type CheckIds9 = string[];
 /**
  * @minItems 1
  */
-export type EvidenceIds34 = [string, ...string[]];
+export type EvidenceIds35 = [string, ...string[]];
 export type NormalExplanation9 = string;
-export type Limitations56 = string[];
+export type Limitations60 = string[];
 export type Type7 =
   | "image_label_mismatch"
   | "category_mismatch"
@@ -4314,12 +4406,12 @@ export type AnnotationIds6 = string[];
  *
  * @minItems 1
  */
-export type EvidenceIds35 = [string, ...string[]];
+export type EvidenceIds36 = [string, ...string[]];
 /**
  * 有理解价值但不足以形成质量疑点的简短观察，不计入疑点，也不改变业务结论；不因缺少类别语义或假设规范而填写。
  */
-export type Observations9 = AuditObservation1[];
-export type Limitations57 = string[];
+export type Observations11 = AuditObservation1[];
+export type Limitations61 = string[];
 export type SystemPrompt12 = string;
 export type Instruction24 = string;
 export type ReportInstruction2 = string;
@@ -4351,7 +4443,7 @@ export type CandidateIds3 = [string, ...string[]];
 export type SchemaVersion11 = 1;
 export type JobId30 = string;
 export type AnchorId11 = string;
-export type SessionId18 = string;
+export type SessionId19 = string;
 export type Attempt7 = number;
 export type State20 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Phase12 = string;
@@ -4386,7 +4478,7 @@ export type TotalTokens = number | null;
  */
 export type Cost = number | null;
 export type Calls = ModelCallSummary[];
-export type CandidateId14 = string | null;
+export type CandidateId18 = string | null;
 export type Phase14 = "gate";
 export type RequestId11 = string;
 export type Fingerprint9 = string;
@@ -4405,16 +4497,16 @@ export type Question3 = string | null;
 export type Phase16 = "gate" | "audit";
 export type RequestId13 = string;
 export type Fingerprint11 = string;
-export type CandidateId15 = string;
+export type CandidateId19 = string;
 export type ExpectedRevision6 = number;
-export type Action6 = "commit" | "recheck";
+export type Action8 = "commit" | "recheck";
 export type ObservationIds4 = string[];
 export type Phase17 = "gate" | "audit";
 export type RequestId14 = string;
 export type Fingerprint12 = string;
-export type CandidateId16 = string;
+export type CandidateId20 = string;
 export type ExpectedRevision7 = number;
-export type Action7 = "commit" | "recheck";
+export type Action9 = "commit" | "recheck";
 export type ObservationIds5 = string[];
 export type RequestId15 = string;
 export type Fingerprint13 = string;
@@ -4499,13 +4591,14 @@ export interface WorkbenchDomain {
   AuditReportEvidenceQuery?: AuditReportEvidenceQuery;
   KnowledgeCheckReviewSubmission?: KnowledgeCheckReviewSubmission;
   SubmittedMiningPrompt?: SubmittedMiningPrompt;
-  ExplorationWave?: ExplorationWave;
+  AnalysisWave?: AnalysisWave;
   ExplorationBatchReport?: ExplorationBatchReport1;
-  ExplorationWorkerMaterials?: ExplorationWorkerMaterials;
+  KnowledgeBatchReport?: KnowledgeBatchReport1;
+  AnalysisWorkerMaterials?: AnalysisWorkerMaterials;
   KnowledgeVersionCatalog?: KnowledgeVersionCatalog;
   RegistrationImageQuery?: RegistrationImageQuery;
   ExplorationCropQuery?: ExplorationCropQuery;
-  ExplorationBatchMaterials?: ExplorationBatchMaterials;
+  AnalysisBatchMaterials?: AnalysisBatchMaterials;
   AnalysisManifest?: AnalysisManifest;
   AnalysisPlan?: AnalysisPlan;
   RegistrationMediaQuery?: RegistrationMediaQuery;
@@ -6720,17 +6813,17 @@ export interface SubmittedMiningPrompt {
   instruction: Instruction10;
   exploration: MiningExploration | null;
 }
-export interface ExplorationWave {
+export interface AnalysisWave {
   wave_id: WaveId;
   tasks: Tasks;
 }
-export interface ExplorationBatchTask {
+export interface AnalysisBatchTask {
   round: AnalysisRound;
   wave_id: WaveId1;
   session_id: SessionId4;
   catalog_revision: CatalogRevision;
   catalog: AnalysisCatalog;
-  report: ExplorationBatchReport | null;
+  report: Report;
   reviewed: Reviewed;
 }
 export interface AnalysisRound {
@@ -6833,30 +6926,83 @@ export interface ExplorationDiscovery {
   limitations: Limitations24;
   candidate_id: CandidateId;
 }
-export interface ExplorationBatchReport1 {
-  observations?: Observations2;
+export interface KnowledgeBatchReport {
+  observations: Observations2;
   assessments: Assessments1;
   discoveries: Discoveries1;
   discovery_summary: DiscoverySummary1;
   key_evidence_ids: KeyEvidenceIds1;
-  limitations?: Limitations27;
-  unresolved_questions?: UnresolvedQuestions2;
+  limitations: Limitations27;
+  unresolved_questions: UnresolvedQuestions2;
+}
+export interface KnowledgeAssessment {
+  check_id: CheckId12;
+  role: Role10;
+  evidence_ids: EvidenceIds21;
+  reason: Reason19;
+}
+export interface KnowledgeDiscovery1 {
+  title: Title12;
+  subject: Subject4;
+  location: Location7;
+  criterion: Criterion4;
+  allowed_variations: AllowedVariations4;
+  limitations: Limitations26;
+  status: Status25;
+  support_evidence_ids: SupportEvidenceIds4;
+  counter_evidence_ids: CounterEvidenceIds5;
+  candidate_id: CandidateId1;
+  direction_refs: DirectionRefs1;
+  dataset_ids: DatasetIds9;
+}
+export interface ExplorationBatchReport1 {
+  observations?: Observations3;
+  assessments: Assessments2;
+  discoveries: Discoveries2;
+  discovery_summary: DiscoverySummary2;
+  key_evidence_ids: KeyEvidenceIds2;
+  limitations?: Limitations29;
+  unresolved_questions?: UnresolvedQuestions3;
 }
 export interface AnalysisSampleObservation1 {
   dataset_id: DatasetId38;
   sample_id: SampleId37;
   description: Description21;
-  evidence_ids: EvidenceIds21;
+  evidence_ids: EvidenceIds22;
   directions?: Directions7;
-  limitations?: Limitations26;
+  limitations?: Limitations28;
   report_preparation_error?: ReportPreparationError1;
 }
-export interface ExplorationWorkerMaterials {
-  role: Role10;
+export interface KnowledgeBatchReport1 {
+  observations: Observations4;
+  assessments: Assessments3;
+  discoveries: Discoveries3;
+  discovery_summary: DiscoverySummary3;
+  key_evidence_ids: KeyEvidenceIds3;
+  limitations?: Limitations31;
+  unresolved_questions?: UnresolvedQuestions4;
+}
+export interface KnowledgeDiscovery2 {
+  title: Title13;
+  subject: Subject5;
+  location: Location8;
+  criterion: Criterion5;
+  allowed_variations: AllowedVariations5;
+  limitations: Limitations30;
+  status: Status26;
+  support_evidence_ids: SupportEvidenceIds5;
+  counter_evidence_ids: CounterEvidenceIds6;
+  candidate_id: CandidateId2;
+  direction_refs: DirectionRefs2;
+  dataset_ids: DatasetIds10;
+}
+export interface AnalysisWorkerMaterials {
+  role: Role11;
   job_id: JobId4;
-  task: ExplorationBatchTask;
+  task: AnalysisBatchTask;
   sources: Sources1;
   registrations: Registrations;
+  selected_directions: SelectedDirections;
 }
 export interface RegistrationMediaPage {
   sample_id: SampleId38;
@@ -6889,7 +7035,7 @@ export interface ExplorationCropQuery {
   bbox: Bbox8;
   sample_id: SampleId41;
 }
-export interface ExplorationBatchMaterials {
+export interface AnalysisBatchMaterials {
   context: AnalysisAgentContext;
   registrations: Registrations2;
 }
@@ -6901,7 +7047,7 @@ export interface AnalysisAgentContext {
   catalog: AnalysisCatalog;
   round: AnalysisRound | null;
   registrations: Registrations1;
-  selected_directions: SelectedDirections;
+  selected_directions: SelectedDirections1;
   completed_sample_ids: CompletedSampleIds2;
   failed_sample_ids: FailedSampleIds2;
   accepted_observations: AcceptedObservations;
@@ -6912,9 +7058,9 @@ export interface AnalysisObservationRecord {
   dataset_id: DatasetId41;
   sample_id: SampleId42;
   description: Description22;
-  evidence_ids: EvidenceIds22;
+  evidence_ids: EvidenceIds23;
   directions: Directions8;
-  limitations: Limitations28;
+  limitations: Limitations32;
   report_preparation_error: ReportPreparationError2;
   observation_id: ObservationId;
   round_id: RoundId1;
@@ -6932,7 +7078,7 @@ export interface AnalysisMediaProgress {
   supplemental_media: SupplementalMedia;
 }
 export interface VisualView {
-  role: Role11;
+  role: Role12;
   source: Source9;
   original_size: OriginalSize1;
   crop_bbox: CropBbox3;
@@ -6949,7 +7095,7 @@ export interface AnalysisCatalogCounts {
   checks: Checks5;
 }
 export interface AnalysisManifest {
-  dataset_ids: DatasetIds9;
+  dataset_ids: DatasetIds11;
   frozen_at: FrozenAt1;
   records: Records;
 }
@@ -6975,8 +7121,8 @@ export interface ExplorationFinalize {
   commit_key: CommitKey3;
   base_revision: BaseRevision;
   summary: Summary5;
-  limitations: Limitations29;
-  unresolved_questions: UnresolvedQuestions3;
+  limitations: Limitations33;
+  unresolved_questions: UnresolvedQuestions5;
   merges?: Merges;
   arguments?: Arguments;
   citation_corrections?: CitationCorrections;
@@ -6986,13 +7132,13 @@ export interface ExplorationFinalize {
 export interface AnalysisCatalogMerge {
   target_id: TargetId;
   source_ids: SourceIds;
-  reason: Reason19;
+  reason: Reason20;
 }
 export interface AnalysisArgumentEdit {
   entry_id: EntryId;
   evidence_id: EvidenceId13;
-  role: Role12;
-  reason: Reason20;
+  role: Role13;
+  reason: Reason21;
   state?: State6;
   observation_id?: ObservationId1;
 }
@@ -7004,22 +7150,22 @@ export interface AnalysisCitationCorrection {
 export interface FinalizedAnalysisDirection {
   change_reason?: ChangeReason2;
   key_evidence: KeyEvidence3;
-  title: Title12;
+  title: Title14;
   instruction: Instruction13;
   applies_to: AppliesTo3;
   rationale: Rationale3;
-  evidence_ids: EvidenceIds23;
-  limitations: Limitations30;
+  evidence_ids: EvidenceIds24;
+  limitations: Limitations34;
   direction_id: DirectionId9;
-  dataset_ids: DatasetIds10;
-  counter_evidence_ids?: CounterEvidenceIds5;
+  dataset_ids: DatasetIds12;
+  counter_evidence_ids?: CounterEvidenceIds7;
 }
 export interface KnowledgeFinalize {
   commit_key: CommitKey4;
   base_revision: BaseRevision1;
   summary: Summary6;
-  limitations: Limitations31;
-  unresolved_questions: UnresolvedQuestions4;
+  limitations: Limitations35;
+  unresolved_questions: UnresolvedQuestions6;
   merges?: Merges1;
   arguments?: Arguments1;
   citation_corrections?: CitationCorrections1;
@@ -7030,22 +7176,22 @@ export interface KnowledgeFinalize {
 export interface FinalizedAnalysisCheck {
   change_reason?: ChangeReason3;
   key_evidence: KeyEvidence4;
-  title: Title13;
-  subject: Subject4;
-  location: Location7;
-  criterion: Criterion4;
-  allowed_variations: AllowedVariations4;
-  limitations: Limitations32;
-  status: Status25;
-  support_evidence_ids: SupportEvidenceIds4;
-  counter_evidence_ids: CounterEvidenceIds6;
-  check_id: CheckId12;
-  direction_refs: DirectionRefs1;
-  dataset_ids: DatasetIds11;
+  title: Title15;
+  subject: Subject6;
+  location: Location9;
+  criterion: Criterion6;
+  allowed_variations: AllowedVariations6;
+  limitations: Limitations36;
+  status: Status27;
+  support_evidence_ids: SupportEvidenceIds6;
+  counter_evidence_ids: CounterEvidenceIds8;
+  check_id: CheckId13;
+  direction_refs: DirectionRefs3;
+  dataset_ids: DatasetIds13;
 }
 export interface AnalysisDirectionReview {
   direction_ref: DirectionRef1;
-  reason: Reason21;
+  reason: Reason22;
 }
 export interface AnalysisFinalizationContext {
   base_revision: BaseRevision2;
@@ -7060,11 +7206,11 @@ export interface AnalysisFinalizationContext {
   revision: Revision5;
   coverage: AnalysisCoverageSummary;
   entries: Entries1;
-  selected_directions: SelectedDirections1;
+  selected_directions: SelectedDirections2;
   directions: Directions11;
   summary: Summary7;
-  limitations: Limitations33;
-  unresolved_questions: UnresolvedQuestions5;
+  limitations: Limitations37;
+  unresolved_questions: UnresolvedQuestions7;
 }
 export interface AnalysisCoverageSummary {
   total: Total10;
@@ -7077,9 +7223,9 @@ export interface AnalysisCoverageSummary {
 }
 export interface AnalysisFinalizationEntry {
   entry_id: EntryId2;
-  title: Title14;
-  dataset_ids: DatasetIds12;
-  direction_refs: DirectionRefs2;
+  title: Title16;
+  dataset_ids: DatasetIds14;
+  direction_refs: DirectionRefs4;
   predecessor_ids: PredecessorIds;
   argument_count: ArgumentCount;
   issues: Issues;
@@ -7107,7 +7253,7 @@ export interface AnalysisArgumentQuery {
   revision?: Revision7;
   offset?: Offset2;
   limit?: Limit1;
-  role?: Role13;
+  role?: Role14;
   state?: State7;
   history?: History;
 }
@@ -7127,9 +7273,9 @@ export interface AnalysisArgumentRecord {
   observation_id: ObservationId2;
   evidence_id: EvidenceId15;
   locator_id: LocatorId;
-  role: Role14;
+  role: Role15;
   state: State8;
-  reason: Reason22;
+  reason: Reason23;
   origin_entry_id: OriginEntryId;
 }
 export interface AnalysisEntryQuery {
@@ -7150,41 +7296,41 @@ export interface AnalysisClaimHistory {
 export interface AnalysisClaimRevision {
   claim_revision: ClaimRevision1;
   revision: Revision12;
-  reason: Reason23;
+  reason: Reason24;
   content: Content;
 }
 export interface ProposedAnalysisDirection {
   change_reason: ChangeReason4;
   key_evidence: KeyEvidence5;
-  title: Title15;
+  title: Title17;
   instruction: Instruction14;
   applies_to: AppliesTo4;
   rationale: Rationale4;
-  evidence_ids: EvidenceIds24;
-  limitations: Limitations34;
+  evidence_ids: EvidenceIds25;
+  limitations: Limitations38;
   direction_id: DirectionId10;
-  dataset_ids: DatasetIds13;
-  counter_evidence_ids: CounterEvidenceIds7;
+  dataset_ids: DatasetIds15;
+  counter_evidence_ids: CounterEvidenceIds9;
 }
 export interface ProposedAnalysisCheck {
   change_reason: ChangeReason5;
   key_evidence: KeyEvidence6;
-  title: Title16;
-  subject: Subject5;
-  location: Location8;
-  criterion: Criterion5;
-  allowed_variations: AllowedVariations5;
-  limitations: Limitations35;
-  status: Status26;
-  support_evidence_ids: SupportEvidenceIds5;
-  counter_evidence_ids: CounterEvidenceIds8;
-  check_id: CheckId13;
-  direction_refs: DirectionRefs3;
-  dataset_ids: DatasetIds14;
+  title: Title18;
+  subject: Subject7;
+  location: Location10;
+  criterion: Criterion7;
+  allowed_variations: AllowedVariations7;
+  limitations: Limitations39;
+  status: Status28;
+  support_evidence_ids: SupportEvidenceIds7;
+  counter_evidence_ids: CounterEvidenceIds10;
+  check_id: CheckId14;
+  direction_refs: DirectionRefs5;
+  dataset_ids: DatasetIds16;
 }
 export interface ExplorationAgentStart {
   submission_id: SubmissionId7;
-  dataset_ids: DatasetIds15;
+  dataset_ids: DatasetIds17;
   analysis_kind: AnalysisKind2;
   normal_images: NormalImages3;
   defect_images: DefectImages2;
@@ -7198,14 +7344,15 @@ export interface AnalysisRolePrompts {
 }
 export interface KnowledgeAgentStart {
   submission_id: SubmissionId8;
-  dataset_ids: DatasetIds16;
+  dataset_ids: DatasetIds18;
   analysis_kind: AnalysisKind3;
   mining_prompt: SubmittedMiningPrompt;
   system_prompt: SystemPrompt5;
+  observer_prompt: AnalysisRolePrompts | null;
 }
 export interface ExplorationAgentStart1 {
   submission_id: SubmissionId9;
-  dataset_ids: DatasetIds17;
+  dataset_ids: DatasetIds19;
   analysis_kind?: AnalysisKind4;
   normal_images?: NormalImages4;
   defect_images?: DefectImages3;
@@ -7215,10 +7362,11 @@ export interface ExplorationAgentStart1 {
 }
 export interface KnowledgeAgentStart1 {
   submission_id: SubmissionId10;
-  dataset_ids: DatasetIds18;
+  dataset_ids: DatasetIds20;
   analysis_kind?: AnalysisKind5;
   mining_prompt: SubmittedMiningPrompt1;
   system_prompt?: SystemPrompt7;
+  observer_prompt?: AnalysisRolePrompts | null;
 }
 export interface SubmittedMiningPrompt1 {
   objective: Objective4;
@@ -7228,7 +7376,7 @@ export interface SubmittedMiningPrompt1 {
 }
 export interface MiningDirection1 {
   direction_id: DirectionId11;
-  title: Title17;
+  title: Title19;
   instruction: Instruction15;
   enabled?: Enabled2;
   origin?: Origin4;
@@ -7284,13 +7432,14 @@ export interface KnowledgeSettingsValues {
   sampling_ratio: SamplingRatio2;
   whole_image_max_side: WholeImageMaxSide1;
   agent_limits: GenerationLimits;
+  concurrency: Concurrency1;
 }
 export interface SamplingRatio2 {
   normal: Normal1;
   abnormal: Abnormal1;
 }
 export interface AnalysisScope {
-  dataset_ids: DatasetIds19;
+  dataset_ids: DatasetIds21;
 }
 export interface AnalysisCatalogQuery {
   section: Section1;
@@ -7320,9 +7469,10 @@ export interface AnalysisWorkflowSnapshot {
   observer_prompt: AnalysisRolePrompts | null;
   finalization_instruction: FinalizationInstruction;
   exploration_prompt: FrozenExplorationPrompt | null;
-  exploration_tasks: FrozenExplorationTasks | null;
+  exploration_tasks: FrozenAnalysisTasks | null;
+  knowledge_tasks: FrozenAnalysisTasks | null;
   mining_prompt: FrozenMiningPrompt | null;
-  selected_directions: SelectedDirections2;
+  selected_directions: SelectedDirections3;
   support_policy: KnowledgeSupportPolicy;
   input_organization: InputOrganization;
   exploration_review_policy: ExplorationReviewPolicy;
@@ -7334,7 +7484,7 @@ export interface FrozenModelRole {
   native_profile: NativeProfile;
   error: Error3;
 }
-export interface FrozenExplorationTasks {
+export interface FrozenAnalysisTasks {
   initial: Initial;
   observe: Observe;
   review: Review;
@@ -7361,72 +7511,83 @@ export interface ExplorationCommit {
   commit_key: CommitKey6;
   base_revision: BaseRevision4;
   summary: Summary8;
-  limitations: Limitations36;
-  unresolved_questions: UnresolvedQuestions6;
+  limitations: Limitations40;
+  unresolved_questions: UnresolvedQuestions8;
   merges?: Merges2;
   arguments?: Arguments2;
   citation_corrections?: CitationCorrections2;
   round_id: RoundId3;
-  observations?: Observations3;
+  observations?: Observations5;
   directions: Directions13;
   report_reviews?: ReportReviews;
 }
 export interface ProposedAnalysisDirection1 {
   change_reason?: ChangeReason6;
   key_evidence?: KeyEvidence7;
-  title: Title18;
+  title: Title20;
   instruction: Instruction18;
   applies_to: AppliesTo5;
   rationale: Rationale5;
-  evidence_ids: EvidenceIds25;
-  limitations: Limitations37;
+  evidence_ids: EvidenceIds26;
+  limitations: Limitations41;
   direction_id: DirectionId14;
-  dataset_ids: DatasetIds20;
-  counter_evidence_ids?: CounterEvidenceIds9;
+  dataset_ids: DatasetIds22;
+  counter_evidence_ids?: CounterEvidenceIds11;
 }
 export interface ExplorationReportReview {
   round_id: RoundId4;
   discovery_decisions: DiscoveryDecisions;
 }
 export interface ExplorationDiscoveryDecision {
-  candidate_id: CandidateId1;
+  candidate_id: CandidateId3;
   action: Action2;
   direction_id?: DirectionId15;
-  reason: Reason24;
+  reason: Reason25;
 }
 export interface KnowledgeCommit {
   commit_key: CommitKey7;
   base_revision: BaseRevision5;
   summary: Summary9;
-  limitations: Limitations38;
-  unresolved_questions: UnresolvedQuestions7;
+  limitations: Limitations42;
+  unresolved_questions: UnresolvedQuestions9;
   merges?: Merges3;
   arguments?: Arguments3;
   citation_corrections?: CitationCorrections3;
   round_id: RoundId5;
-  observations: Observations4;
+  observations: Observations6;
   checks: Checks7;
+  report_reviews?: ReportReviews1;
 }
 export interface ProposedAnalysisCheck1 {
   change_reason?: ChangeReason7;
   key_evidence?: KeyEvidence8;
-  title: Title19;
-  subject: Subject6;
-  location: Location9;
-  criterion: Criterion6;
-  allowed_variations: AllowedVariations6;
-  limitations: Limitations39;
-  status: Status27;
-  support_evidence_ids: SupportEvidenceIds6;
-  counter_evidence_ids: CounterEvidenceIds10;
-  check_id: CheckId14;
-  direction_refs: DirectionRefs4;
-  dataset_ids: DatasetIds21;
+  title: Title21;
+  subject: Subject8;
+  location: Location11;
+  criterion: Criterion8;
+  allowed_variations: AllowedVariations8;
+  limitations: Limitations43;
+  status: Status29;
+  support_evidence_ids: SupportEvidenceIds8;
+  counter_evidence_ids: CounterEvidenceIds12;
+  check_id: CheckId15;
+  direction_refs: DirectionRefs6;
+  dataset_ids: DatasetIds23;
+}
+export interface KnowledgeReportReview {
+  round_id: RoundId6;
+  discovery_decisions: DiscoveryDecisions1;
+}
+export interface KnowledgeDiscoveryDecision {
+  candidate_id: CandidateId4;
+  action: Action3;
+  check_id?: CheckId16;
+  reason: Reason26;
 }
 export interface AnalysisCommitReceipt {
   commit_key: CommitKey8;
   revision: Revision16;
-  round_id: RoundId6;
+  round_id: RoundId7;
   observation_ids: ObservationIds;
   completed_delta: CompletedDelta;
   failed_delta: FailedDelta;
@@ -7482,19 +7643,34 @@ export interface InheritedReviews {
   [k: string]: KnowledgeCheckReview;
 }
 export interface ExplorationBatchArchive {
-  round_id: RoundId7;
+  round_id: RoundId8;
   wave_id: WaveId2;
   session_id: SessionId9;
   catalog_revision: CatalogRevision1;
   report: ExplorationBatchReport | null;
   review_revision: ReviewRevision;
-  discovery_decisions: DiscoveryDecisions1;
+  discovery_decisions: DiscoveryDecisions2;
 }
 export interface ExplorationDiscoveryDecision1 {
-  candidate_id: CandidateId2;
-  action: Action3;
+  candidate_id: CandidateId5;
+  action: Action4;
   direction_id: DirectionId16;
-  reason: Reason25;
+  reason: Reason27;
+}
+export interface KnowledgeBatchArchive {
+  round_id: RoundId9;
+  wave_id: WaveId3;
+  session_id: SessionId10;
+  catalog_revision: CatalogRevision2;
+  report: KnowledgeBatchReport | null;
+  review_revision: ReviewRevision1;
+  discovery_decisions: DiscoveryDecisions3;
+}
+export interface KnowledgeDiscoveryDecision1 {
+  candidate_id: CandidateId6;
+  action: Action5;
+  check_id: CheckId17;
+  reason: Reason28;
 }
 export interface AnalysisPublicationView {
   version_id: VersionId26;
@@ -7508,13 +7684,13 @@ export interface AnalysisPublicationView {
   coverage: AnalysisCoverage;
   finalization: AnalysisFinalizationProgress | null;
   model_call_ids: ModelCallIds1;
-  session_id: SessionId10;
+  session_id: SessionId11;
   parent_version_id: ParentVersionId5;
   manual_edit: KnowledgeCheckRemoval | null;
   inherited_reviews: InheritedReviews1;
   delegations: Delegations1;
   evidence: Evidence4;
-  selected_directions: SelectedDirections3;
+  selected_directions: SelectedDirections4;
   removed_direction_ids: RemovedDirectionIds2;
 }
 export interface InheritedReviews1 {
@@ -7541,13 +7717,13 @@ export interface AnalysisObservationQuery {
   evidence_role?: EvidenceRole1;
   sample_id?: SampleId47;
   direction_ref?: DirectionRef3;
-  round_id?: RoundId8;
+  round_id?: RoundId10;
   page?: Page13;
   page_size?: PageSize13;
 }
 export interface AnalysisObservationPage {
   version_id: VersionId28;
-  selected_directions: SelectedDirections4;
+  selected_directions: SelectedDirections5;
   total: Total15;
   page: Page14;
   page_size: PageSize14;
@@ -7573,13 +7749,13 @@ export interface PublishedDirectionCatalog {
 }
 export interface PublishedDirectionChoice {
   direction_id: DirectionId17;
-  title: Title20;
+  title: Title22;
   instruction: Instruction19;
   enabled: Enabled3;
   origin: Origin7;
   source: Source11;
   summary: Summary10;
-  limitations: Limitations40;
+  limitations: Limitations44;
 }
 export interface AnalysisSourceCatalog {
   items: Items14;
@@ -7598,7 +7774,7 @@ export interface ConsistencyReviewSubmission {
   difference_ids: DifferenceIds;
   reviewer: Reviewer5;
   comment: Comment3;
-  action: Action4;
+  action: Action6;
 }
 export interface ConfirmDifference {
   kind: Kind22;
@@ -7682,10 +7858,10 @@ export interface ConsistencyDecision {
   submitted_at: SubmittedAt8;
 }
 export interface CorrectionCheck {
-  check_id: CheckId15;
+  check_id: CheckId18;
   request: CorrectionVerification;
   correction_state: CorrectionState1;
-  reason: Reason26;
+  reason: Reason29;
   checked_at: CheckedAt1;
 }
 export interface CorrectionVerification {
@@ -7699,7 +7875,7 @@ export interface GroupReviewSubmission {
   result_fingerprint: ResultFingerprint;
   reviewer: Reviewer7;
   comment: Comment4;
-  action: Action5;
+  action: Action7;
 }
 export interface GroupReviewContext {
   job_id: JobId16;
@@ -7710,7 +7886,7 @@ export interface GroupReviewContext {
   decisions: Decisions1;
 }
 export interface GroupReviewReference {
-  candidate_id: CandidateId3;
+  candidate_id: CandidateId7;
   assessment_id: AssessmentId;
   evidence_id: EvidenceId20;
   result_id: ResultId5;
@@ -7761,7 +7937,7 @@ export interface AnchorResultSummary {
   schema_version: SchemaVersion1;
   job_id: JobId20;
   anchor_id: AnchorId3;
-  session_id: SessionId11;
+  session_id: SessionId12;
   state: State10;
   phase: Phase6;
   attempt: Attempt2;
@@ -7772,7 +7948,7 @@ export interface AnchorResultSummary {
   selected_exact: SelectedExact;
   selected_similar: SelectedSimilar;
   verdict: Verdict;
-  reason: Reason27;
+  reason: Reason30;
   categories: Categories1;
   conclusion: Conclusion4;
   original_categories: OriginalCategories;
@@ -7810,20 +7986,20 @@ export interface MainAnnotationIssue {
   description: Description23;
   supporting_assessment_ids: SupportingAssessmentIds;
   evidence: Evidence5;
-  limitations: Limitations41;
+  limitations: Limitations45;
   review_suggestion: ReviewSuggestion;
   main_label: MainLabel;
 }
 export interface MainIssueEvidence {
   assessment_id: AssessmentId1;
-  candidate_id: CandidateId4;
+  candidate_id: CandidateId8;
   candidate_annotation_ids: CandidateAnnotationIds;
   media_ids: MediaIds;
   candidate_label: CandidateLabel;
   same_main_object_as: SameMainObjectAs;
 }
 export interface CandidateObjectReference {
-  candidate_id: CandidateId5;
+  candidate_id: CandidateId9;
   annotation_ids: AnnotationIds2;
 }
 export interface ConsistencyCompare {
@@ -7908,7 +8084,7 @@ export interface EvidenceMedia {
   annotation_id: AnnotationId8;
   normalization: Normalization;
   available: Available1;
-  reason: Reason28;
+  reason: Reason31;
 }
 export interface AnnotationObservations {
   [k: string]: AnnotationObservation;
@@ -8040,7 +8216,7 @@ export interface ConsistencyBatch {
   parent_batch_id: ParentBatchId;
   kind: Kind31;
   scopes: ConsistencyScopesSnapshot;
-  status: Status28;
+  status: Status30;
   cancel_requested: CancelRequested2;
   error: BatchFailure | null;
   total: Total18;
@@ -8074,7 +8250,7 @@ export interface ConsistencyBatchSummary {
   parent_batch_id: ParentBatchId1;
   kind: Kind32;
   scopes: ConsistencyScopesSummary;
-  status: Status29;
+  status: Status31;
   cancel_requested: CancelRequested3;
   error: BatchFailure | null;
   total: Total19;
@@ -8093,7 +8269,7 @@ export interface ConsistencyScopesSummary {
 }
 export interface ScopeSummary {
   scope_id: ScopeId3;
-  dataset_ids: DatasetIds22;
+  dataset_ids: DatasetIds24;
   frozen_at: FrozenAt2;
   sample_count: SampleCount2;
 }
@@ -8101,7 +8277,7 @@ export interface ConsistencyChildSummary {
   run_id: RunId16;
   dataset_id: DatasetId46;
   job_type: JobType2;
-  status: Status30;
+  status: Status32;
   phase: Phase7;
   completed: Completed7;
   failed: Failed9;
@@ -8111,11 +8287,11 @@ export interface ConsistencyChildSummary {
 export interface Started {
   kind: Kind33;
   batch_id: BatchId6;
-  status: Status31;
+  status: Status33;
 }
 export interface NoWork {
   kind: Kind34;
-  reason: Reason29;
+  reason: Reason32;
   coverage: ConsistencyCoverage;
 }
 export interface ConsistencyQuery {
@@ -8319,7 +8495,7 @@ export interface GalleryComparison {
 }
 export interface GroupAnalysisView {
   group_id: GroupId12;
-  status: Status32;
+  status: Status34;
   run_id: RunId17;
   model_name: ModelName6;
   result: GroupAnalysisDraft | null;
@@ -8330,8 +8506,8 @@ export interface GroupAnalysisView {
 export interface GroupAnalysisDraft {
   overall: GroupOverallConclusion;
   conclusions: Conclusions;
-  limitations: Limitations42;
-  assessments: Assessments2;
+  limitations: Limitations46;
+  assessments: Assessments4;
 }
 /**
  * 整组唯一简短结论；详细分析保留在conclusions
@@ -8342,7 +8518,7 @@ export interface GroupOverallConclusion {
   references: References3;
 }
 export interface GroupAnalysisReference {
-  candidate_id: CandidateId6;
+  candidate_id: CandidateId10;
   comparison: GroupAnalysisComparison | null;
 }
 export interface GroupAnalysisComparison {
@@ -8355,11 +8531,11 @@ export interface GroupAnalysisConclusion {
   references: References4;
 }
 export interface GroupPairAssessment {
-  candidate_id: CandidateId7;
+  candidate_id: CandidateId11;
   verdict: Verdict2;
   explanation: Explanation;
   findings: Findings4;
-  limitations: Limitations43;
+  limitations: Limitations47;
   issues: Issues4;
   conclusion: Conclusion6;
   categories: Categories3;
@@ -8367,7 +8543,7 @@ export interface GroupPairAssessment {
 export interface BboxAnnotationIssue {
   description: Description24;
   media_ids: MediaIds1;
-  limitations: Limitations44;
+  limitations: Limitations48;
   review_suggestion: ReviewSuggestion1;
   type: Type3;
   main_annotation_ids: MainAnnotationIds1;
@@ -8380,7 +8556,7 @@ export interface BboxAnnotationIssue {
 export interface ImageLabelIssue {
   description: Description25;
   media_ids: MediaIds2;
-  limitations: Limitations45;
+  limitations: Limitations49;
   review_suggestion: ReviewSuggestion2;
   type: Type4;
   main_label: MainLabel1;
@@ -8476,7 +8652,7 @@ export interface ConsistencySettingsValues {
   max_similar_candidates: MaxSimilarCandidates1;
   model: ModuleModelReference | null;
   reasoning_effort: ReasoningEffort6;
-  concurrency: Concurrency1;
+  concurrency: Concurrency2;
   agent_limits: GenerationLimits;
   vision_limits: ModelLimits;
   position_tolerance: PositionTolerancePolicy;
@@ -8493,7 +8669,7 @@ export interface AuditSettingsValues {
   model: ModuleModelReference | null;
   reasoning_effort: ReasoningEffort7;
   whole_image_max_side: WholeImageMaxSide2;
-  concurrency: Concurrency2;
+  concurrency: Concurrency3;
   agent_limits: GenerationLimits;
 }
 export interface ModuleSettingsEdit {
@@ -8512,7 +8688,7 @@ export interface ExplorationSettingsValues1 {
   sampling_ratio?: SamplingRatio3;
   whole_image_max_side?: WholeImageMaxSide3;
   agent_limits?: GenerationLimits1;
-  concurrency?: Concurrency3;
+  concurrency?: Concurrency4;
 }
 export interface SamplingRatio3 {
   normal: Normal1;
@@ -8534,6 +8710,7 @@ export interface KnowledgeSettingsValues1 {
   sampling_ratio?: SamplingRatio4;
   whole_image_max_side?: WholeImageMaxSide4;
   agent_limits?: GenerationLimits1;
+  concurrency?: Concurrency5;
 }
 export interface SamplingRatio4 {
   normal: Normal1;
@@ -8546,7 +8723,7 @@ export interface ConsistencySettingsValues1 {
   max_similar_candidates?: MaxSimilarCandidates2;
   model?: ModuleModelReference | null;
   reasoning_effort?: ReasoningEffort11;
-  concurrency?: Concurrency4;
+  concurrency?: Concurrency6;
   agent_limits?: GenerationLimits1;
   vision_limits?: ModelLimits1;
   position_tolerance?: PositionTolerancePolicy1;
@@ -8578,7 +8755,7 @@ export interface AuditSettingsValues1 {
   model?: ModuleModelReference | null;
   reasoning_effort?: ReasoningEffort12;
   whole_image_max_side?: WholeImageMaxSide5;
-  concurrency?: Concurrency5;
+  concurrency?: Concurrency7;
   agent_limits?: GenerationLimits1;
 }
 export interface ConsistencyAgentStart {
@@ -8587,7 +8764,7 @@ export interface ConsistencyAgentStart {
   max_exact_candidates?: MaxExactCandidates3;
   max_similar_candidates?: MaxSimilarCandidates3;
   submission_id: SubmissionId11;
-  dataset_ids: DatasetIds23;
+  dataset_ids: DatasetIds25;
   analysis_kind?: AnalysisKind6;
   instruction?: Instruction20;
   system_prompt?: SystemPrompt9;
@@ -8598,7 +8775,7 @@ export interface ConsistencyAgentStart {
 export interface ConsistencyCheckSnapshot {
   schema_version: SchemaVersion2;
   settings_revision: SettingsRevision2;
-  concurrency: Concurrency6;
+  concurrency: Concurrency8;
   retrieval: Retrieval;
   scopes: ConsistencyScopesSnapshot;
   model: ModuleModelReference | null;
@@ -8648,7 +8825,7 @@ export interface ConsistencyAnchorRun {
   job_id: JobId21;
   anchor_id: AnchorId4;
   ordinal: Ordinal;
-  session_id: SessionId12;
+  session_id: SessionId13;
   session_created: SessionCreated3;
   attempt: Attempt3;
   state: State11;
@@ -8707,10 +8884,10 @@ export interface NoCandidateResult {
   issues: Issues5;
   schema_version: SchemaVersion3;
   verdict: Verdict3;
-  reason: Reason30;
+  reason: Reason33;
   conclusion: Conclusion7;
   categories: Categories4;
-  assessments: Assessments3;
+  assessments: Assessments5;
 }
 export interface NoEligibleResult {
   task_type: TaskType3;
@@ -8723,10 +8900,10 @@ export interface NoEligibleResult {
   issues: Issues6;
   schema_version: SchemaVersion4;
   verdict: Verdict4;
-  reason: Reason31;
+  reason: Reason34;
   conclusion: Conclusion8;
   categories: Categories5;
-  assessments: Assessments4;
+  assessments: Assessments6;
 }
 export interface ModelReviewedResult {
   task_type: TaskType4;
@@ -8739,10 +8916,10 @@ export interface ModelReviewedResult {
   issues: Issues7;
   overall: GroupOverallConclusion1;
   conclusions: Conclusions1;
-  limitations: Limitations46;
-  assessments: Assessments5;
+  limitations: Limitations50;
+  assessments: Assessments7;
   schema_version: SchemaVersion5;
-  reason: Reason32;
+  reason: Reason35;
   fingerprint: Fingerprint2;
   observation_ids: ObservationIds1;
 }
@@ -8765,7 +8942,7 @@ export interface AnchorTraceEvent {
   schema_version: SchemaVersion6;
   job_id: JobId22;
   anchor_id: AnchorId6;
-  session_id: SessionId13;
+  session_id: SessionId14;
   attempt: Attempt4;
   state: State13;
   result: Result5;
@@ -8795,7 +8972,7 @@ export interface VisualWindow {
   sample_id: SampleId57;
   bbox: Bbox10;
   padding?: Padding;
-  reason: Reason33;
+  reason: Reason36;
 }
 export interface GateRevisions1 {
   [k: string]: number;
@@ -8823,24 +9000,24 @@ export interface Facts4 {
   [k: string]: unknown;
 }
 export interface AnchorVisualResult {
-  observations: Observations5;
+  observations: Observations7;
 }
 export interface CandidateVisualObservation {
-  candidate_id: CandidateId8;
+  candidate_id: CandidateId12;
   description: Description26;
   media_ids: MediaIds3;
-  limitations: Limitations47;
+  limitations: Limitations51;
   /**
    * 发现两侧实际内容不同或资格依据不足时报告争议；不能继续提交标注差异。
    */
   gate_dispute: GateDispute | null;
 }
 export interface GateDispute {
-  reason: Reason34;
+  reason: Reason37;
   region_pair_ids: RegionPairIds1;
 }
 export interface AnchorContextQuery {
-  candidate_id?: CandidateId9;
+  candidate_id?: CandidateId13;
 }
 export interface AnchorAssessmentInput {
   fingerprint: Fingerprint5;
@@ -8851,17 +9028,17 @@ export interface AnchorAssessmentInput {
  * 提交候选判定和全部独立问题，展示分类及结论由服务端派生
  */
 export interface AnchorAssessmentDecision {
-  candidate_id: CandidateId10;
+  candidate_id: CandidateId14;
   verdict: Verdict5;
   explanation: Explanation1;
   findings?: Findings5;
-  limitations?: Limitations48;
+  limitations?: Limitations52;
   issues?: Issues8;
 }
 export interface BboxAnnotationIssue1 {
   description: Description27;
   media_ids: MediaIds4;
-  limitations?: Limitations49;
+  limitations?: Limitations53;
   review_suggestion?: ReviewSuggestion3;
   type: Type5;
   main_annotation_ids?: MainAnnotationIds2;
@@ -8882,7 +9059,7 @@ export interface AnchorResultDetail {
   schema_version: SchemaVersion7;
   job_id: JobId23;
   anchor_id: AnchorId9;
-  session_id: SessionId14;
+  session_id: SessionId15;
   state: State14;
   phase: Phase9;
   attempt: Attempt5;
@@ -8893,7 +9070,7 @@ export interface AnchorResultDetail {
   selected_exact: SelectedExact1;
   selected_similar: SelectedSimilar1;
   verdict: Verdict6;
-  reason: Reason35;
+  reason: Reason38;
   categories: Categories6;
   conclusion: Conclusion9;
   original_categories: OriginalCategories1;
@@ -8914,15 +9091,15 @@ export interface AnchorResultDetail {
   visual_plan: AnchorVisualPlan | null;
   result: Result6;
   requests: Requests;
-  observations: Observations6;
-  assessments: Assessments6;
+  observations: Observations8;
+  assessments: Assessments8;
   evidence: Evidence6;
   errors: Errors5;
   error_history: ErrorHistory2;
 }
 export interface CandidatePhaseRecord {
   record_id: RecordId;
-  candidate_id: CandidateId11;
+  candidate_id: CandidateId15;
   phase: Phase10;
   revision: Revision22;
   gate_revision: GateRevision;
@@ -8933,13 +9110,13 @@ export interface CandidatePhaseRecord {
 }
 export interface CandidateIdentityRecord {
   gate_id: GateId;
-  candidate_id: CandidateId12;
+  candidate_id: CandidateId16;
   fingerprint: Fingerprint7;
   execution_status: ExecutionStatus7;
   revision: Revision23;
   relation: Relation4;
-  reason: Reason36;
-  limitations: Limitations50;
+  reason: Reason39;
+  limitations: Limitations54;
   media: Media3;
   geometry: Registration | null;
   error_code: ErrorCode3;
@@ -8972,7 +9149,7 @@ export interface IdentityRegionCheck {
   visual_relation: VisualRelation;
   main_description: MainDescription;
   candidate_description: CandidateDescription;
-  reason: Reason37;
+  reason: Reason40;
 }
 export interface AnchorAssessmentSubmission {
   fingerprint: Fingerprint8;
@@ -8982,7 +9159,7 @@ export interface AnchorAssessmentSubmission {
   gate_revision: GateRevision1;
 }
 export interface AnchorEvidenceReference {
-  candidate_id: CandidateId13;
+  candidate_id: CandidateId17;
   evidence_id: EvidenceId29;
   result_id: ResultId10;
   detail_ref: DetailRef;
@@ -8999,7 +9176,7 @@ export interface AnchorResultPage {
 export interface ConsistencyCheckReport {
   schema_version: SchemaVersion8;
   job_id: JobId25;
-  status: Status33;
+  status: Status35;
   total: Total27;
   completed: Completed8;
   no_candidates: NoCandidates;
@@ -9078,7 +9255,7 @@ export interface AuditKnowledge {
   evidence: Evidence7;
 }
 export interface AuditKnowledgeScope {
-  dataset_ids: DatasetIds24;
+  dataset_ids: DatasetIds26;
   revision: Revision24;
   execution_status: ExecutionStatus8;
   execution_error: ModelCallError | null;
@@ -9088,7 +9265,7 @@ export interface AuditKnowledgeScope {
 export interface AuditKnowledgeDirection {
   ref: Ref1;
   source: Source13;
-  title: Title21;
+  title: Title23;
   instruction: Instruction23;
 }
 export interface AuditSelectedCheck {
@@ -9098,8 +9275,8 @@ export interface AuditSelectedCheck {
 export interface LegacyAuditKnowledge {
   selection: AuditKnowledgeSelection;
   summary: Summary13;
-  limitations: Limitations51;
-  unresolved_questions: UnresolvedQuestions8;
+  limitations: Limitations55;
+  unresolved_questions: UnresolvedQuestions10;
   directions: Directions16;
   entries: Entries3;
   evidence: Evidence8;
@@ -9108,7 +9285,7 @@ export interface AuditSampleRun {
   job_id: JobId27;
   sample_id: SampleId58;
   ordinal: Ordinal1;
-  session_id: SessionId15;
+  session_id: SessionId16;
   session_created: SessionCreated5;
   state: State15;
   consistency: AnchorResultDetail;
@@ -9120,33 +9297,33 @@ export interface AuditFinal {
   analysis: Analysis1;
   conclusion: Conclusion10;
   basis: Basis3;
-  evidence_ids: EvidenceIds26;
+  evidence_ids: EvidenceIds27;
   check_assessments: CheckAssessments2;
   consistency_review: ConsistencyReview;
   findings: Findings6;
-  observations: Observations7;
-  limitations: Limitations53;
+  observations: Observations9;
+  limitations: Limitations57;
 }
 export interface AuditCheckAssessment {
-  check_id: CheckId16;
-  status: Status34;
+  check_id: CheckId19;
+  status: Status36;
   description: Description28;
-  evidence_ids: EvidenceIds27;
+  evidence_ids: EvidenceIds28;
 }
 export interface AuditConsistencyAssessment {
   source_issue_id: SourceIssueId;
   assessment: Assessment;
-  reason: Reason38;
-  evidence_ids: EvidenceIds28;
+  reason: Reason41;
+  evidence_ids: EvidenceIds29;
 }
 export interface AuditFinding1 {
   finding_id: FindingId8;
   description: Description29;
-  location: Location10;
+  location: Location12;
   check_ids: CheckIds7;
-  evidence_ids: EvidenceIds29;
+  evidence_ids: EvidenceIds30;
   normal_explanation: NormalExplanation7;
-  limitations: Limitations52;
+  limitations: Limitations56;
   type: Type6;
   annotation_ids: AnnotationIds3;
   consistency_issue_refs: ConsistencyIssueRefs;
@@ -9154,31 +9331,31 @@ export interface AuditFinding1 {
 export interface AuditObservation {
   description: Description30;
   annotation_ids: AnnotationIds4;
-  evidence_ids: EvidenceIds30;
+  evidence_ids: EvidenceIds31;
 }
 export interface LegacyAuditFinal {
   state: State17;
   analysis: Analysis2;
   conclusion: Conclusion11;
   basis: Basis4;
-  evidence_ids: EvidenceIds31;
+  evidence_ids: EvidenceIds32;
   check_assessments: CheckAssessments3;
   findings: Findings7;
-  limitations: Limitations55;
+  limitations: Limitations59;
 }
 export interface LegacyAuditFinding {
   finding_id: FindingId9;
   description: Description31;
-  location: Location11;
+  location: Location13;
   check_ids: CheckIds8;
-  evidence_ids: EvidenceIds32;
+  evidence_ids: EvidenceIds33;
   normal_explanation: NormalExplanation8;
-  limitations: Limitations54;
+  limitations: Limitations58;
 }
 export interface AuditAgentContext {
   job_id: JobId28;
   sample_id: SampleId59;
-  session_id: SessionId16;
+  session_id: SessionId17;
   target: AnalysisRegistration;
   consistency: AuditConsistencyContext;
   knowledge: Knowledge1;
@@ -9190,7 +9367,7 @@ export interface AuditConsistencyContext {
   schema_version: SchemaVersion10;
   job_id: JobId29;
   anchor_id: AnchorId10;
-  session_id: SessionId17;
+  session_id: SessionId18;
   state: State18;
   phase: Phase11;
   attempt: Attempt6;
@@ -9201,7 +9378,7 @@ export interface AuditConsistencyContext {
   selected_exact: SelectedExact2;
   selected_similar: SelectedSimilar2;
   verdict: Verdict7;
-  reason: Reason39;
+  reason: Reason42;
   categories: Categories7;
   conclusion: Conclusion12;
   original_categories: OriginalCategories3;
@@ -9211,9 +9388,9 @@ export interface AuditConsistencyContext {
   result_ref: ResultRef2;
   result: Result8;
   evidence: Evidence9;
-  assessments: Assessments7;
+  assessments: Assessments9;
   gates: Gates1;
-  observations: Observations8;
+  observations: Observations10;
   captured_evidence: CapturedEvidence1;
 }
 export interface AuditCommit {
@@ -9226,21 +9403,21 @@ export interface AuditFinal1 {
   analysis: Analysis3;
   conclusion: Conclusion13;
   basis: Basis5;
-  evidence_ids: EvidenceIds33;
+  evidence_ids: EvidenceIds34;
   check_assessments: CheckAssessments4;
   consistency_review: ConsistencyReview1;
   findings: Findings8;
-  observations?: Observations9;
-  limitations: Limitations57;
+  observations?: Observations11;
+  limitations: Limitations61;
 }
 export interface AuditFinding2 {
   finding_id: FindingId10;
   description: Description32;
-  location: Location12;
+  location: Location14;
   check_ids?: CheckIds9;
-  evidence_ids: EvidenceIds34;
+  evidence_ids: EvidenceIds35;
   normal_explanation: NormalExplanation9;
-  limitations: Limitations56;
+  limitations: Limitations60;
   type: Type7;
   annotation_ids?: AnnotationIds5;
   consistency_issue_refs?: ConsistencyIssueRefs1;
@@ -9248,7 +9425,7 @@ export interface AuditFinding2 {
 export interface AuditObservation1 {
   description: Description33;
   annotation_ids?: AnnotationIds6;
-  evidence_ids: EvidenceIds35;
+  evidence_ids: EvidenceIds36;
 }
 export interface AuditJobPrompts {
   system_prompt: SystemPrompt12;
@@ -9292,7 +9469,7 @@ export interface AnchorDiagnostics {
   schema_version: SchemaVersion11;
   job_id: JobId30;
   anchor_id: AnchorId11;
-  session_id: SessionId18;
+  session_id: SessionId19;
   attempt: Attempt7;
   state: State20;
   phase: Phase12;
@@ -9329,7 +9506,7 @@ export interface ModelRoleDiagnostics {
   cost: Cost;
 }
 export interface WorkflowContextQuery {
-  candidate_id?: CandidateId14;
+  candidate_id?: CandidateId18;
 }
 export interface AnomalyWorkflowObserve {
   phase: Phase14;
@@ -9356,18 +9533,18 @@ export interface AnomalyWorkflowAssess {
   phase: Phase16;
   request_id: RequestId13;
   fingerprint: Fingerprint11;
-  candidate_id: CandidateId15;
+  candidate_id: CandidateId19;
   expected_revision: ExpectedRevision6;
-  action?: Action6;
+  action?: Action8;
   observation_ids?: ObservationIds4;
 }
 export interface BboxWorkflowAssess {
   phase: Phase17;
   request_id: RequestId14;
   fingerprint: Fingerprint12;
-  candidate_id: CandidateId16;
+  candidate_id: CandidateId20;
   expected_revision: ExpectedRevision7;
-  action?: Action7;
+  action?: Action9;
   observation_ids?: ObservationIds5;
   /**
    * 仅phase=audit提交当前候选的标注审核。phase=gate必须省略或传null，只用observation_ids引用已保存的身份观察，由程序保存资格结论，不提交标注问题。
@@ -9375,11 +9552,11 @@ export interface BboxWorkflowAssess {
   assessment?: AnchorAssessmentDecision1 | null;
 }
 export interface AnchorAssessmentDecision1 {
-  candidate_id: CandidateId10;
+  candidate_id: CandidateId14;
   verdict: Verdict5;
   explanation: Explanation1;
   findings?: Findings5;
-  limitations?: Limitations48;
+  limitations?: Limitations52;
   issues?: Issues8;
 }
 export interface WorkflowSubmit {

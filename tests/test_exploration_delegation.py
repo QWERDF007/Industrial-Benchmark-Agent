@@ -28,12 +28,12 @@ def delegated_job(agent_jobs):
 
 
 def test_native_delegation_reserves_disjoint_batches_at_one_catalog_revision(delegated_job):
-    from iad_core.exploration.delegation import ExplorationDelegation
+    from iad_core.analysis.delegation import AnalysisDelegation
     jobs, dataset_id, run_id = delegated_job
     snapshot = jobs.snapshot(run_id)
     assert snapshot.execution_mode == 'dsh-subagents'
     assert snapshot.settings.concurrency == 2
-    delegation = ExplorationDelegation(jobs)
+    delegation = AnalysisDelegation(jobs)
     wave = delegation.wave(run_id)
     assert [task.round.round_id for task in wave.tasks] == [2, 3]
     assert {task.catalog_revision for task in wave.tasks} == {1}
@@ -53,9 +53,9 @@ def test_native_delegation_reserves_disjoint_batches_at_one_catalog_revision(del
 
 
 def test_worker_reports_require_their_own_visual_delivery_and_do_not_write_catalog(delegated_job):
-    from iad_core.exploration.delegation import ExplorationDelegation
+    from iad_core.analysis.delegation import AnalysisDelegation
     jobs, dataset_id, run_id = delegated_job
-    delegation = ExplorationDelegation(jobs)
+    delegation = AnalysisDelegation(jobs)
     task = delegation.wave(run_id).tasks[0]
     materials = delegation.materials(run_id, task.session_id)
     wholes = [page.evidence_id for page in materials.registrations]
@@ -86,9 +86,9 @@ def test_worker_reports_require_their_own_visual_delivery_and_do_not_write_catal
 
 @pytest.fixture
 def reported_wave(delegated_job):
-    from iad_core.exploration.delegation import ExplorationDelegation
+    from iad_core.analysis.delegation import AnalysisDelegation
     jobs, dataset_id, run_id = delegated_job
-    delegation = ExplorationDelegation(jobs)
+    delegation = AnalysisDelegation(jobs)
     tasks = delegation.wave(run_id).tasks
     for task in tasks:
         pages = delegation.materials(run_id, task.session_id).registrations

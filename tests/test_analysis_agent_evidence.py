@@ -44,25 +44,20 @@ def test_thirty_original_rois_are_all_prepared_without_creating_coverage(scoped_
     original = (directory / 'sample.json').read_bytes()
     evidence = AnalysisEvidence(jobs)
     page = evidence.read(run_id, {'sample_id': sid})
-    assert {item.image.representation for item in page.images} == ({'raw'} if module == 'exploration' else {'raw', 'annotation_mask'})
+    assert {item.image.representation for item in page.images} == {'raw'}
     rois = [item for item in page.images if item.image.role == 'roi' and item.image.representation == 'raw']
     assert len(rois) == 30
     assert len({item.model_context['annotations'][0]['annotation_id'] for item in rois}) == 30
     assert rois[0].model_context['annotations'][0]['bbox'] == [10, 40, 15, 45]
     assert Image.open(rois[0].path).size == (7, 7)
-    if module == 'knowledge':
-        last = evidence.read(run_id, {'sample_id': sid, 'offset': page.total - 1, 'limit': 1})
-        assert len(last.images) == 1
-        assert last.images[0] == page.images[-1]
-    else:
-        with pytest.raises(ValueError):
-            evidence.read(run_id, {'sample_id': sid, 'offset': 1})
+    with pytest.raises(ValueError):
+        evidence.read(run_id, {'sample_id': sid, 'offset': 1})
     assert jobs.jobs.status(run_id)['completed'] == 0
     assert (directory / 'sample.json').read_bytes() == original
 
 
 @pytest.mark.parametrize('module', ['exploration', 'knowledge'])
-def test_exploration_keeps_original_resolution_while_mining_uses_its_frozen_setting(scoped_media, module):
+def test_analysis_batches_keep_original_resolution_without_automatic_resizing(scoped_media, module):
     jobs, create = scoped_media
     settings = ModuleSettings(jobs.db)
     settings.save({'module': 'exploration', 'expected_revision': 1, 'settings': {'whole_image_max_side': 1024}})
@@ -72,7 +67,7 @@ def test_exploration_keeps_original_resolution_while_mining_uses_its_frozen_sett
     whole = AnalysisEvidence(jobs).read(run_id, {'sample_id': sid}).images[0]
     assert whole.image.original_size == [2048, 1024]
     assert whole.image.crop_bbox == [0, 0, 2048, 1024]
-    assert whole.image.sent_size == ([2048, 1024] if module == 'exploration' else [1024, 512])
+    assert whole.image.sent_size == [2048, 1024]
     assert Image.open(whole.path).size == tuple(whole.image.sent_size)
     assert hashlib.sha256((directory / 'sample.png').read_bytes()).hexdigest() == before
 
@@ -158,25 +153,17 @@ def test_crop_rejects_invalid_or_outside_windows_without_preparing_padding(scope
     assert len(evidence.prepare(run_id,sid).images) == 1
 
 
-def test_mining_large_crop_tiles_the_complete_source_window_and_supports_media_paging(scoped_media):
-    from PIL import ImageDraw
-
+def test_mining_large_crop_returns_one_complete_source_window(scoped_media):
     jobs,create=scoped_media
     run_id,sid,_=create((1600,1300), module='knowledge')
     evidence=AnalysisEvidence(jobs)
-    first=evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,1600,1300],'limit':2})
-    second=evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,1600,1300],'offset':2,'limit':2})
-    assert first.total == second.total == 4
-    assert second.offset == 2
-    assert len(first.images) == len(second.images) == 2
-    mask=Image.new('1',(1600,1300))
-    draw=ImageDraw.Draw(mask)
-    for item in [*first.images,*second.images]:
-        assert max(item.image.sent_size) <= 1024
-        x0,y0,x1,y1=item.image.crop_bbox
-        draw.rectangle([x0,y0,x1-1,y1-1],fill=1)
-    assert mask.getextrema() == (1,1)
-    assert len(evidence.prepare(run_id,sid).images) == 5
+    page=evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,1600,1300]})
+    assert page.total == 1 and len(page.images)==1
+    assert page.images[0].image.sent_size == [1600,1300]
+    assert page.images[0].image.crop_bbox == [0,0,1600,1300]
+    with pytest.raises(ValueError):
+        evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,1600,1300],'limit':2})
+    assert len(evidence.prepare(run_id,sid).images)==2
 
 
 def test_crop_does_not_read_other_registrations_or_changed_source_pixels(scoped_media):
@@ -192,18 +179,22 @@ def test_crop_does_not_read_other_registrations_or_changed_source_pixels(scoped_
     assert len(evidence.prepare(run_id,sid).images) == 1
 
 
+@pytest.mark.parametrize('module',['exploration','knowledge'])
 @pytest.mark.parametrize('unreadable', ['annotation', 'image'])
-def test_batch_commit_preserves_source_errors_without_fabricating_facts(scoped_media, unreadable):
+def test_batch_commit_preserves_source_errors_without_fabricating_facts(scoped_media, unreadable, module):
     from iad_core.analysis.commits import AnalysisCommits
     from iad_core.analysis.coverage import AnalysisCoverageReader
     from iad_core.analysis.queries import AnalysisQueries
     from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
 
     jobs, create = scoped_media
-    run_id, sid, directory = create((64, 48), '{broken-json' if unreadable == 'annotation' else None)
+    run_id, sid, directory = create((64, 48), '{broken-json' if unreadable == 'annotation' else None,module=module)
     if unreadable == 'image':
         (directory / 'sample.png').write_bytes(b'broken image')
     page = AnalysisEvidence(jobs).batch(run_id).registrations[0]
+    if unreadable=='annotation':
+        crop=AnalysisEvidence(jobs).crop(run_id,dict(sample_id=sid,bbox=[0,0,20,20]))
+        assert len(crop.images)==1 and not crop.images[0].required
     if page.images:
         call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:00:00Z', request={})
         calls = ModelCalls(jobs.db)
@@ -212,10 +203,14 @@ def test_batch_commit_preserves_source_errors_without_fabricating_facts(scoped_m
         calls.finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
             finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
     receipt = AnalysisCommits(jobs).accept(run_id, dict(commit_key='batch', base_revision=0, round_id=1,
-        directions=[], summary='没有可靠方向。', limitations=['材料受限。'], unresolved_questions=[]))
+        **(dict(directions=[]) if module=='exploration' else dict(checks=[],observations=[dict(
+            sample_id=sid,dataset_id=page.images[0].dataset_id if page.images else jobs.snapshot(run_id).manifest.dataset_ids[0],
+            description='原图可见但标注不可读。' if page.images else '原图文件不可读，未形成视觉事实。',evidence_ids=[page.evidence_id] if page.images else [],
+            directions=[dict(direction_ref='D1',status='uncertain',reason='标注材料不可读。')] if page.images else [],report_preparation_error=True)])),
+        summary='没有可靠方向。',limitations=['材料受限。'],unresolved_questions=[]))
     assert (receipt.completed_delta, receipt.failed_delta) == ((1, 0) if unreadable == 'annotation' else (0, 1))
     record = AnalysisCoverageReader(jobs.db).read(run_id).records[0]
     assert record.source_error == page.error
     assert record.state == ('completed' if unreadable == 'annotation' else 'failed')
     assert bool(record.observed_evidence_ids) == (unreadable == 'annotation')
-    assert AnalysisQueries(jobs.db).observation_history(run_id, {}).items == []
+    assert AnalysisQueries(jobs.db).observation_history(run_id, {}).total == (1 if module=='knowledge' else 0)

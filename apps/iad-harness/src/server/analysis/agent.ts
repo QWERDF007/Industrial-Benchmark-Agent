@@ -4,7 +4,7 @@ import {randomUUID} from 'node:crypto';
 import {LlmError, MessageId} from '@deepseek-ai/dsh-llm';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
 import {defineTool, type InferValue} from '@deepseek-ai/dsh-tools';
-import type {AnalysisAgentContext, AnalysisFinalizationContext, ExplorationBatchMaterials, RegistrationMediaPage, AnalysisSessionLocation, AnalysisWorkflowSnapshot, TokenBudget} from '../../shared/domain.generated.js';
+import type {AnalysisAgentContext, AnalysisFinalizationContext, AnalysisBatchMaterials, RegistrationMediaPage, AnalysisSessionLocation, AnalysisWorkflowSnapshot, TokenBudget} from '../../shared/domain.generated.js';
 import {analysisMediaParameters,analysisCatalogParameters,analysisCropParameters,analysisObservationParameters,
   analysisArgumentParameters,analysisClaimParameters,explorationImageParameters,explorationCropParameters} from '../../shared/analysis-agent.parameters.generated.js';
 import {evidenceReferenceParameters} from '../../shared/media-reference.parameters.generated.js';
@@ -18,7 +18,7 @@ import type {ContentBlock} from '@deepseek-ai/dsh-llm';
 import {workbenchJsonOutput} from '../tool-output.js';
 import {registerExplorationTools} from './exploration.js';
 import {registerKnowledgeTools} from './knowledge.js';
-import {ExplorationObservers} from './observers.js';
+import {AnalysisObservers} from './observers.js';
 
 export function analysisSessionPath(root: string, location: AnalysisSessionLocation): string {
   const directory=path.join(root, location.module + '-sessions', new Date(location.submitted_at).toISOString().replaceAll(':', '-'),location.job_id);
@@ -39,7 +39,7 @@ export class AnalysisWorkflowAgent {
       if (finalization.complete) return;
     }
     const {profile, native_profile} = snapshot.agent;
-    const batchInput = snapshot.input_organization === 'exploration-batch-v2';
+    const batchInput = snapshot.input_organization !== 'registration-tools';
     const delegated = snapshot.execution_mode === 'dsh-subagents';
     if (!profile?.model_id || !native_profile) throw new Error('作业缺少冻结的原生分析模型');
     const location = await this.bridge.execute<AnalysisSessionLocation>('analysis_agent_session_location', {session_id: initial.session_id});
@@ -54,11 +54,11 @@ export class AnalysisWorkflowAgent {
     const maxRejectedCommits = 3;
     const commitCalls = new Set<string>();
     let attachments!: NativeMediaAttachments;
-    let observers!: ExplorationObservers;
+    let observers!: AnalysisObservers;
     const setup=async (scope:Context)=>{
         attachments = new NativeMediaAttachments(scope,path.dirname(analysisSessionPath(this.dataRoot,location)));
         if(delegated)await scope.inject(['subagents'],injected=>{
-          observers=new ExplorationObservers(this.bridge,runId,attachments,injected.subagents,snapshot);
+          observers=new AnalysisObservers(this.bridge,runId,attachments,injected.subagents,snapshot);
         });
         if (profile.credential_ref) scope.provide('credentials', this.providers.credentials);
         let providerProfile = {...native_profile, requestImagePixelBudget:Number.MAX_SAFE_INTEGER,
@@ -164,7 +164,7 @@ export class AnalysisWorkflowAgent {
             }
           }):null;
           const materials = batchInput && context.round && !review
-            ? await this.bridge.execute<ExplorationBatchMaterials>('analysis_agent_batch_materials', identity, signal) : null;
+            ? await this.bridge.execute<AnalysisBatchMaterials>('analysis_agent_batch_materials', identity, signal) : null;
           const task=context.round?(review?.context ?? materials?.context ?? context):await this.bridge.execute<AnalysisFinalizationContext>('analysis_agent_finalization_context',identity);
           if ('complete' in task && task.complete) break;
           const content: ContentBlock[] = [{type:'text',text:JSON.stringify(task)+'\n\n'}];
@@ -175,8 +175,8 @@ export class AnalysisWorkflowAgent {
           if (!batchInput && !context.round && snapshot.finalization_instruction)
             content.push({type:'text',text:'\n'+snapshot.finalization_instruction});
           if (snapshot.system_prompt) content.push({type:'text',text:(batchInput?'':'\n')+snapshot.instruction});
-          if(snapshot.exploration_tasks)content.push({type:'text',text:!context.round?snapshot.exploration_tasks.finalize
-            :review?snapshot.exploration_tasks.review:snapshot.exploration_tasks.initial});
+          const stages=snapshot.knowledge_tasks??snapshot.exploration_tasks;
+          if(stages)content.push({type:'text',text:!context.round?stages.finalize:review?stages.review:stages.initial});
           agent.followup({id:MessageId(randomUUID()),role:'user',source:{kind:'user'},content});
           await agent.whenIdle();
           if (failure) throw failure;

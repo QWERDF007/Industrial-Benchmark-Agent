@@ -25,7 +25,9 @@ def initialize_analysis_schema(connection: Connection):
         job_id TEXT NOT NULL REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
         sample_id TEXT NOT NULL REFERENCES samples(sample_id) ON DELETE CASCADE,
         media_json TEXT NOT NULL, PRIMARY KEY(job_id,sample_id))''')
-    connection.execute('''CREATE TABLE IF NOT EXISTS exploration_batch_tasks (
+    if connection.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='exploration_batch_tasks'").fetchone():
+        connection.execute('ALTER TABLE exploration_batch_tasks RENAME TO analysis_batch_tasks')
+    connection.execute('''CREATE TABLE IF NOT EXISTS analysis_batch_tasks (
         job_id TEXT NOT NULL REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
         round_id INTEGER NOT NULL CHECK(round_id>1), wave_id INTEGER NOT NULL CHECK(wave_id>0),
         session_id TEXT NOT NULL UNIQUE, catalog_revision INTEGER NOT NULL,

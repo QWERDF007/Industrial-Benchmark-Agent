@@ -6,7 +6,7 @@ from iad_core.workbench.analysis_manifest import AnalysisTarget
 from iad_core.analysis.observation_models import AnalysisSampleObservation
 
 
-class ExplorationBatchEvidence:
+class AnalysisBatchEvidence:
     """Validate a whole batch against successful requests made by its own Session."""
 
     def __init__(self, connection: Connection, run_id: str, session_id: str,

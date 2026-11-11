@@ -11,7 +11,7 @@ import { NativeMediaAttachments, nativeMediaOutput } from '../sessions/media.js'
 import { workbenchJsonOutput } from '../tool-output.js';
 import { registerExplorationTools } from './exploration.js';
 import { registerKnowledgeTools } from './knowledge.js';
-import { ExplorationObservers } from './observers.js';
+import { AnalysisObservers } from './observers.js';
 export function analysisSessionPath(root, location) {
     const directory = path.join(root, location.module + '-sessions', new Date(location.submitted_at).toISOString().replaceAll(':', '-'), location.job_id);
     return location.round_id ? path.join(directory, 'observers', String(location.round_id), 'session', 'events.jsonl')
@@ -38,7 +38,7 @@ export class AnalysisWorkflowAgent {
                 return;
         }
         const { profile, native_profile } = snapshot.agent;
-        const batchInput = snapshot.input_organization === 'exploration-batch-v2';
+        const batchInput = snapshot.input_organization !== 'registration-tools';
         const delegated = snapshot.execution_mode === 'dsh-subagents';
         if (!profile?.model_id || !native_profile)
             throw new Error('作业缺少冻结的原生分析模型');
@@ -59,7 +59,7 @@ export class AnalysisWorkflowAgent {
             attachments = new NativeMediaAttachments(scope, path.dirname(analysisSessionPath(this.dataRoot, location)));
             if (delegated)
                 await scope.inject(['subagents'], injected => {
-                    observers = new ExplorationObservers(this.bridge, runId, attachments, injected.subagents, snapshot);
+                    observers = new AnalysisObservers(this.bridge, runId, attachments, injected.subagents, snapshot);
                 });
             if (profile.credential_ref)
                 scope.provide('credentials', this.providers.credentials);
@@ -184,9 +184,9 @@ export class AnalysisWorkflowAgent {
                         content.push({ type: 'text', text: '\n' + snapshot.finalization_instruction });
                     if (snapshot.system_prompt)
                         content.push({ type: 'text', text: (batchInput ? '' : '\n') + snapshot.instruction });
-                    if (snapshot.exploration_tasks)
-                        content.push({ type: 'text', text: !context.round ? snapshot.exploration_tasks.finalize
-                                : review ? snapshot.exploration_tasks.review : snapshot.exploration_tasks.initial });
+                    const stages = snapshot.knowledge_tasks ?? snapshot.exploration_tasks;
+                    if (stages)
+                        content.push({ type: 'text', text: !context.round ? stages.finalize : review ? stages.review : stages.initial });
                     agent.followup({ id: MessageId(randomUUID()), role: 'user', source: { kind: 'user' }, content });
                     await agent.whenIdle();
                     if (failure)

@@ -290,6 +290,30 @@ export const knowledgeAgentStartParameters = {
             }
         ],
         "title": "System Prompt"
+    },
+    "observer_prompt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "system_prompt": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "title": "System Prompt",
+                "required": true
+            },
+            "user_prompt": {
+                "type": "string",
+                "title": "User Prompt",
+                "required": true
+            }
+        },
+        "title": "AnalysisRolePrompts"
     }
 };
 export const analysisScopeParameters = {
@@ -1159,7 +1183,7 @@ export const knowledgeFinalizeParameters = {
             },
             "title": "FinalizedAnalysisCheck"
         },
-        "description": "JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；arguments说明每项作用，key_evidence另选最多4张展示原图。正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。",
+        "description": "只提交新增或修改的完整知识条目；真实原图引用放在结构化证据和论据字段，正文不堆放ID。key_evidence从首批起维护最多4张典型原图，与完整论据分开。",
         "title": "Checks",
         "required": true
     },
@@ -1618,6 +1642,258 @@ export const explorationCommitParameters = {
         "title": "Report Reviews"
     }
 };
+export const knowledgeBatchReportParameters = {
+    "observations": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "dataset_id": {
+                    "type": "string",
+                    "title": "Dataset Id",
+                    "required": true
+                },
+                "sample_id": {
+                    "type": "string",
+                    "title": "Sample Id",
+                    "required": true
+                },
+                "description": {
+                    "type": "string",
+                    "description": "仅描述这张图实际观察的事实；局部定位使用原图坐标。",
+                    "title": "Description",
+                    "required": true
+                },
+                "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "实际送达且已观察的完整原图evidence_id；原图关联其原始标注及全部局部视图，不单独引用裁图或掩膜。",
+                    "title": "Evidence Ids",
+                    "required": true
+                },
+                "directions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "direction_ref": {
+                                "type": "string",
+                                "title": "Direction Ref",
+                                "required": true
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "applicable",
+                                    "not_applicable",
+                                    "uncertain"
+                                ],
+                                "description": "逐图按所选方向要求判断：applicable表示所需结构和核对范围可见，足以回答该方向问题，未见所查现象也适用；not_applicable表示目标结构不存在或不属于该方向；uncertain表示遮挡、失焦或画面缺失使要求范围不能充分核对。只看清一部分不能把整个范围记为applicable，也不能将未看清当成允许变化或完整支持；可见部分事实可保留为context，不能静默缩小方向要求。",
+                                "title": "Status",
+                                "required": true
+                            },
+                            "reason": {
+                                "type": "string",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "AnalysisDirectionObservation"
+                    },
+                    "title": "Directions"
+                },
+                "limitations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Limitations"
+                },
+                "report_preparation_error": {
+                    "type": "boolean",
+                    "description": "仅在已有实际取证错误回执时设为true；能读取原图时仍保留可见事实。",
+                    "title": "Report Preparation Error",
+                    "default": false
+                }
+            },
+            "title": "AnalysisSampleObservation"
+        },
+        "title": "Observations",
+        "required": true
+    },
+    "assessments": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "check_id": {
+                    "type": "string",
+                    "title": "Check Id",
+                    "required": true
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "support",
+                        "counter",
+                        "allowed_variation",
+                        "context",
+                        "normal_control",
+                        "not_comparable",
+                        "uncertain",
+                        "not_present"
+                    ],
+                    "title": "Role",
+                    "required": true
+                },
+                "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Evidence Ids",
+                    "required": true
+                },
+                "reason": {
+                    "type": "string",
+                    "title": "Reason",
+                    "required": true
+                }
+            },
+            "title": "KnowledgeAssessment"
+        },
+        "title": "Assessments",
+        "required": true
+    },
+    "discoveries": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "title": "Title",
+                    "required": true
+                },
+                "subject": {
+                    "type": "string",
+                    "title": "Subject",
+                    "required": true
+                },
+                "location": {
+                    "type": "string",
+                    "title": "Location",
+                    "required": true
+                },
+                "criterion": {
+                    "type": "string",
+                    "title": "Criterion",
+                    "required": true
+                },
+                "allowed_variations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Allowed Variations",
+                    "required": true
+                },
+                "limitations": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Limitations",
+                    "required": true
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "supported",
+                        "provisional",
+                        "conflicted"
+                    ],
+                    "description": "supported：当前版本完整有效证据支持该条件性可观察判据；provisional：单例或待验证假设；conflicted：证据存在未消解矛盾。不可观察的尺寸/材质写入limitations，不否定已有的可见外观证据；supported不是工业真值",
+                    "title": "Status",
+                    "required": true
+                },
+                "support_evidence_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Support Evidence Ids",
+                    "required": true
+                },
+                "counter_evidence_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Counter Evidence Ids",
+                    "required": true
+                },
+                "candidate_id": {
+                    "type": "string",
+                    "title": "Candidate Id",
+                    "required": true
+                },
+                "direction_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Direction Refs",
+                    "required": true
+                },
+                "dataset_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Dataset Ids",
+                    "required": true
+                }
+            },
+            "title": "KnowledgeDiscovery"
+        },
+        "title": "Discoveries",
+        "required": true
+    },
+    "discovery_summary": {
+        "type": "string",
+        "title": "Discovery Summary",
+        "required": true
+    },
+    "key_evidence_ids": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        },
+        "title": "Key Evidence Ids",
+        "required": true
+    },
+    "limitations": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        },
+        "title": "Limitations"
+    },
+    "unresolved_questions": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        },
+        "title": "Unresolved Questions"
+    }
+};
 export const knowledgeCommitParameters = {
     "commit_key": {
         "type": "string",
@@ -2011,8 +2287,68 @@ export const knowledgeCommitParameters = {
             },
             "title": "ProposedAnalysisCheck"
         },
-        "description": "JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；arguments说明每项作用，key_evidence另选最多4张展示原图。正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。",
+        "description": "只提交新增或修改的完整知识条目；真实原图引用放在结构化证据和论据字段，正文不堆放ID。key_evidence从首批起维护最多4张典型原图，与完整论据分开。",
         "title": "Checks",
         "required": true
+    },
+    "report_reviews": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "round_id": {
+                    "type": "integer",
+                    "title": "Round Id",
+                    "required": true
+                },
+                "discovery_decisions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "candidate_id": {
+                                "type": "string",
+                                "title": "Candidate Id",
+                                "required": true
+                            },
+                            "action": {
+                                "type": "string",
+                                "enum": [
+                                    "new",
+                                    "merge",
+                                    "reject"
+                                ],
+                                "title": "Action",
+                                "required": true
+                            },
+                            "check_id": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Check Id"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "KnowledgeDiscoveryDecision"
+                    },
+                    "title": "Discovery Decisions",
+                    "required": true
+                }
+            },
+            "title": "KnowledgeReportReview"
+        },
+        "description": "一次复核当前波全部报告，discovery_decisions逐项处理全部候选，目标使用check_id。",
+        "title": "Report Reviews"
     }
 };
