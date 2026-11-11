@@ -38,6 +38,7 @@ class AnalysisFinalizations:
                 self.jobs.jobs.update(run_id, connection=connection, phase='FINALIZING_SCOPE')
             catalog = AnalysisCatalog.model_validate_json(state['catalog_json'])
             progress = AnalysisFinalizationState.progress(connection, run_id, catalog.entry_ids)
+            review = AnalysisCatalogReview()
             entries = []
             for item in [*catalog.directions, *catalog.checks]:
                 identity = item.direction_id if snapshot.module == 'exploration' else item.check_id
@@ -45,7 +46,7 @@ class AnalysisFinalizations:
                 entries.append(AnalysisFinalizationEntry(entry_id=identity,title=item.title,dataset_ids=item.dataset_ids,
                     direction_refs=[] if snapshot.module == 'exploration' else item.direction_refs,
                     predecessor_ids=item.predecessor_direction_ids if snapshot.module == 'exploration' else item.predecessor_check_ids,
-                    argument_count=len(arguments),issues=AnalysisCatalogReview().entry(item, arguments)))
+                    argument_count=len(arguments), issues=review.entry(item, arguments)))
         observations = AnalysisCoverageReader(self.db).observations(run_id)
         directions = []
         for selected in snapshot.selected_directions:
@@ -95,11 +96,12 @@ class AnalysisFinalizations:
             affected = {item.entry_id for item in [*submission.arguments, *submission.citation_corrections]}
             affected.update(merge.target_id for merge in submission.merges)
             reviewed.difference_update(affected)
+            review = AnalysisCatalogReview()
             for item in edited:
                 eid = item.direction_id if snapshot.module == 'exploration' else item.check_id
                 if eid not in entries:
                     continue
-                issues = AnalysisCatalogReview().entry(entries[eid], AnalysisArguments.read(connection, run_id, eid, revision))
+                issues = review.entry(entries[eid], AnalysisArguments.read(connection, run_id, eid, revision))
                 if issues:
                     raise ValueError('条目尚未定稿：' + json.dumps(dict(entry_id=eid,issues=issues), ensure_ascii=False))
                 reviewed.add(eid)

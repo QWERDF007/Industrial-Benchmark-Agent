@@ -4,7 +4,7 @@ import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {ReferencedText} from '../lib/client/direction-evidence.js';
 import {Pagination} from '../lib/client/components/Pagination.js';
-import {explorationDirections} from '../lib/client/exploration-view.js';
+import {explorationDirections,ExplorationNarrative} from '../lib/client/exploration-view.js';
 import {DatasetKnowledge} from '../lib/client/components/DatasetKnowledge.js';
 import {RuleAssessments} from '../lib/client/components/RuleAssessments.js';
 import {ConsistencyView} from '../lib/client/consistency-view.js';
@@ -65,8 +65,8 @@ test('native direction citations group key whole images by sample identity indep
   assert.deepEqual(direction.evidences.map(item=>[item.evidenceId,item.kind]),[['img_original','normal'],['img_defect','defect'],['img_unknown','unknown']]);
   assert.equal(direction.references.get('img_crop').id,'N1');
   assert.equal(direction.references.get('img_mask').label,'良品 N1');
-  assert.equal(direction.references.get('normal.png').id,'N1');
-  assert.equal(direction.references.get('defect.png').id,'A1');
+  assert.equal(direction.references.has('normal.png'),false);
+  assert.equal(direction.references.has('defect.png'),false);
   assert.ok(direction.evidences.every(item=>item.url.endsWith(item.evidenceId)));
   assert.equal(JSON.stringify(snapshot),before,'展示只取条目引用，不追加全部已观察图，也不删改局部和反例');
 });
@@ -131,4 +131,17 @@ test('detail previews use the same labeled annotation geometry as full images', 
   assert.match(html,/viewBox="0 0 400 600"/);
   assert.match(html,/<rect[^>]*x="10"[^>]*y="20"[^>]*width="30"[^>]*height="60"/);
   assert.match(html,/>划痕<\/text>/);
+});
+
+
+test('exploration prose resolves real references without changing frozen IDs', () => {
+  const snapshot={job_id:'analysis_job_1',version_id:'analysis_version_1',session_id:'exploration_session_1',
+    evidence:[{evidence_id:'img_original',sample_id:'ds_1:part.png',dataset_id:'ds_1',filename:'part.png',image:{annotation_ids:['ann_1']}}],
+    catalog:{directions:[{direction_id:'direction_1',title:'边缘连续性',dataset_ids:['ds_1']}]}};
+  const before=JSON.stringify(snapshot);
+  const prose=new ExplorationNarrative(snapshot,{ds_1:'Test'});
+  assert.equal(prose.text('analysis_job_1 对 ds_1:part.png 的 img_original 和 ann_1 观察，ds_1 的 direction_1。'),
+    '本次探索 对 part.png 的 part.png 和 原始标注 观察，Test 的 边缘连续性。');
+  assert.equal(prose.text('img_original',new Map([['img_original',{id:'A1',label:'异常 A1'}]])),'img_original');
+  assert.equal(JSON.stringify(snapshot),before);
 });

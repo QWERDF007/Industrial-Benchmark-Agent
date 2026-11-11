@@ -20,6 +20,11 @@ def analysis_node(args, db_path):
     return JobSnapshots(Database(db_path)).snapshot(args['run_id']).model_dump()
 
 
+def analysis_prompts(args, db_path):
+    from iad_core.analysis.queries import AnalysisQueries
+    return AnalysisQueries(Database(db_path)).prompts(args['run_id']).model_dump(mode='json')
+
+
 def analysis_results(args, db_path):
     from iad_core.analysis.models import AnalysisResults
     from iad_core.analysis.queries import AnalysisQueries

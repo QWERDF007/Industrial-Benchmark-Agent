@@ -11,10 +11,10 @@ from iad_core.storage.database import Database
 from iad_core.storage.models import Annotation, Sample
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.workbench.analysis_sampling import DEFAULT_SAMPLING_RATIO, MixedSampling, SamplingCounts, SamplingGroup, SamplingRatio
+from iad_core.workbench.analysis_sources import AnalysisSourceRoles, CandidateRole
 
 
 AnalysisModule = Literal['exploration', 'knowledge']
-CandidateRole = Literal['normal', 'defect']
 AnalysisBatchSize = Annotated[int, Field(strict=True, ge=1)]
 
 
@@ -84,7 +84,7 @@ class AnalysisManifests:
     def __init__(self, db: Database):
         self.db = db
 
-    def freeze(self, dataset_ids: list[str]) -> AnalysisManifest:
+    def freeze(self, dataset_ids: list[str], *, module: AnalysisModule = 'knowledge') -> AnalysisManifest:
         if not dataset_ids or len(set(dataset_ids)) != len(dataset_ids):
             raise ValueError('请选择不重复的子数据集')
         with self.db.connection() as connection:
@@ -93,6 +93,8 @@ class AnalysisManifests:
                 WHERE dataset_id IN (SELECT value FROM json_each(?))''', (json.dumps(dataset_ids),))}
             if set(configs) != set(dataset_ids):
                 raise LookupError('所选子数据集不存在')
+            if module == 'exploration' and len({config['dataset']['format'] for config in configs.values()}) != 1:
+                raise ValueError('方向探索只接受同一标注类型的子数据集组合')
             rows = connection.execute('''SELECT s.sample_id,s.source_fingerprint FROM json_each(?) selection
                 JOIN samples s ON s.dataset_id=selection.value
                 ORDER BY CAST(selection.key AS INTEGER),s.relative_path,s.sample_id''', (json.dumps(dataset_ids),)).fetchall()
@@ -101,8 +103,16 @@ class AnalysisManifests:
             samples = {sample.sample_id: sample for sample in SampleRepository(self.db).get_many(
                 [row['sample_id'] for row in rows], connection=connection)}
             annotations = AnnotationRepository(self.db)
-            return AnalysisManifest(dataset_ids=dataset_ids, frozen_at=datetime.now(timezone.utc),
-                records=[AnalysisRegistration(sample=samples[row['sample_id']], source_fingerprint=row['source_fingerprint'],
-                    sampling_group={'PASS':'normal', 'FAIL':'abnormal'}.get(samples[row['sample_id']].quality_status, 'unclassified'),
-                    dataset_format=configs[samples[row['sample_id']].dataset_id]['dataset']['format'],
-                    annotations=annotations.list_by_sample(row['sample_id'], connection=connection)) for row in rows])
+            records = []
+            for row in rows:
+                sample = samples[row['sample_id']]
+                items = annotations.list_by_sample(row['sample_id'], connection=connection)
+                dataset_format = configs[sample.dataset_id]['dataset']['format']
+                group = {'PASS':'normal', 'FAIL':'abnormal'}.get(sample.quality_status, 'unclassified')
+                if module == 'exploration':
+                    role = AnalysisSourceRoles.resolve(dataset_format, sample.quality_status,
+                        sample.annotation_availability.status, len(items))
+                    group = {'normal':'normal', 'defect':'abnormal'}.get(role, 'unclassified')
+                records.append(AnalysisRegistration(sample=sample, source_fingerprint=row['source_fingerprint'],
+                    sampling_group=group, dataset_format=dataset_format, annotations=items))
+            return AnalysisManifest(dataset_ids=dataset_ids, frozen_at=datetime.now(timezone.utc), records=records)

@@ -135,7 +135,8 @@ class AnalysisArguments:
                 pixels = set()
                 for key in keys:
                     if not any(item.evidence_id == key['evidence_id'] and item.role == key['role'] for item in active):
-                        raise ValueError('关键图必须来自该条目的完整有效支持或反例')
+                        roles = ', '.join(sorted({item.role for item in active if item.evidence_id == key['evidence_id']})) or '无'
+                        raise ValueError(f"精选原图的角色 {key['role']} 与本条目完整有效论据不一致；该图有效角色：{roles}")
                     pixel_hash = owners[key['evidence_id']][0].pixel_sha256
                     if pixel_hash and pixel_hash in pixels:
                         raise ValueError('同一条目的同像素登记只选一张完整原图代表，完整论据仍保留全部登记')

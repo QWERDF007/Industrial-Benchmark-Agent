@@ -12,7 +12,7 @@ import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/i
 import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {createAnalysisAgentHost} from './fixtures/analysis-agent-host.js';
 
-for(const scenario of [{},{exploration:true},{recovery:true},{catalogPaging:true}])test(`${scenario.exploration?'exploration':'knowledge'}: thirty ROI observations persist within one round and one official DSH Session${scenario.recovery?' after the owner process is killed after a partial commit':scenario.catalogPaging?' with explicit catalog lookup':''}`,{timeout:60000},async t=>{
+for(const scenario of [{},{exploration:true},{exploration:true,recovery:true},{recovery:true},{catalogPaging:true}])test(`${scenario.exploration?'exploration':'knowledge'}: thirty ROI observations persist within one round and one official DSH Session${scenario.recovery?' after the owner process is killed after a partial commit':scenario.catalogPaging?' with explicit catalog lookup':''}`,{timeout:60000},async t=>{
   const {recovery=false,catalogPaging=false,exploration=false}=scenario;
   const module=exploration?'exploration':'knowledge',catalogField=exploration?'directions':'checks',supportField=exploration?'evidence_ids':'support_evidence_ids';
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-analysis-pages-'));
@@ -51,7 +51,8 @@ for(const scenario of [{},{exploration:true},{recovery:true},{catalogPaging:true
         if(catalogPaging){assert.equal(context.catalog_counts.checks,40);assert.equal(context.catalog.checks.length,40);}
       }
       const outputs=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
-      const pages=outputs.filter(value=>value?.images);
+      const initialPages=Array.isArray(body.messages[contextIndex].content)?body.messages[contextIndex].content.filter(part=>part.type==='text').map(part=>parse(part.text)).filter(item=>Array.isArray(item?.images)):[];
+      const pages=[...initialPages,...outputs.filter(value=>value?.images)];
       const actual=body.messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(part=>part.type==='image_url');
       assert.ok(actual.length>=pages.flatMap(page=>page.images).length,'当前页图片实际传入模型');
       let call;
@@ -62,7 +63,7 @@ for(const scenario of [{},{exploration:true},{recovery:true},{catalogPaging:true
         call={name:'analysis_images',arguments:{sample_id:context.round.targets[0].sample_id,offset:progress.delivered_offsets.length,limit:5}};
       }
       else {
-        const page=pages[0];assert.ok(!page.error);assert.equal(page.total,61);
+        const page=pages[0];assert.ok(!page.error);assert.equal(page.total,exploration?31:61);
         assert.deepEqual(actual.slice(-page.images.length).map(part=>createHash('sha256').update(Buffer.from(part.image_url.url.split(',')[1],'base64')).digest('hex')),
           page.images.map(item=>item.image.sha256));
         const ids=[page.evidence_id];
@@ -116,7 +117,9 @@ print(json.dumps(dict(dataset_id=dataset.dataset.id,mining_prompt=dict(objective
     let output='';child.stdout.on('data',data=>{output+=data;});child.stderr.on('data',data=>{output+=data;});
     committed=await new Promise((resolve,reject)=>{child.once('message',resolve);child.once('error',reject);
       child.once('exit',(code,signal)=>reject(new Error(`Recovery child exited ${code}/${signal}: ${output}`)));});
-    assert.equal(committed.receipt.revision,1);assert.equal(committed.observed,1);assert.equal(committed.delivered_views,5);assert.equal(committed.native_commit_calls,1);
+    assert.equal(committed.receipt.revision,1);assert.equal(committed.native_commit_calls,1);
+    if(exploration)assert.equal(committed.receipt.completed_delta,1,'完整首包通过送达核验后才可完成登记');
+    else{assert.equal(committed.observed,1);assert.equal(committed.delivered_views,5);}
     const exited=once(child,'exit');child.kill('SIGKILL');assert.deepEqual(await exited,[null,'SIGKILL']);
   }
   runtime=await createAnalysisAgentHost(root,endpoint,{onError:error=>errors.push(String(error))});
@@ -141,15 +144,16 @@ print(json.dumps(dict(dataset_id=dataset.dataset.id,mining_prompt=dict(objective
   const status=await(await fetch(base+'/analysis/status/'+job.run_id)).json();
   assert.equal(status.status,'COMPLETED',JSON.stringify({errors,execution_error:status.execution_error}));assert.equal(status.completed,1);
   const publication=await bridge.execute('analysis_agent_publication',{version_id:status.analysis_version_id});
-  assert.equal(publication.coverage.observed_visuals,61);assert.equal(publication.coverage.prepared_visuals,61);
-  const generations=(catalogPaging?proposals.length*3-1:26)+finalizationCalls;
+  assert.equal(publication.coverage.observed_visuals,exploration?31:61);assert.equal(publication.coverage.prepared_visuals,exploration?31:61);
+  const generations=(exploration?1:catalogPaging?proposals.length*3-1:26)+finalizationCalls;
   assert.equal(publication.finalization.complete,true);
   assert.equal(publication.catalog[catalogField][0].counter_evidence_ids.length,1);assert.deepEqual(errors,[]);assert.equal(wire.length,generations);
 
   const context=await bridge.execute('analysis_agent_context',{run_id:job.run_id});const session=await host.read(context.session_id);
   if(recovery){assert.equal(context.session_id,committed.session_id);assert.equal(job.run_id,committed.run_id);}
   assert.ok(!session.events.some(event=>event.type==='user/message'&&event.data.source.kind==='analysis-checkpoint'));
-  assert.ok(summaries.length>=2,'同一业务Session至少两次实际调用官方摘要模型');
+  if(!exploration)assert.ok(summaries.length>=2,'同一业务Session至少两次实际调用官方摘要模型');
+  else assert.equal(admissions.length,0,'探索直接送完整批次，不预检');
   assert.equal(session.events.filter(event=>event.type==='compaction/summary').length,summaries.length);
   const discovery=publication.catalog[catalogField].find(entry=>(entry.direction_id||entry.check_id)==='last-roi-discovery');
   assert.ok(discovery);
@@ -165,12 +169,12 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     assert {'manifest.json','coverage.json',sys.argv[3],'evidence.jsonl','rounds.jsonl','finalization.jsonl','session/events.jsonl'} <= names
     manifest=json.loads(archive.read('manifest.json'));coverage=json.loads(archive.read('coverage.json'))
     assert 'agent' not in manifest['snapshot'] and 'api_key' not in str(manifest).lower()
-    assert coverage['completed']==1 and coverage['observed_visuals']==61
+    assert coverage['completed']==1 and coverage['observed_visuals']==int(sys.argv[4])
     evidence=[json.loads(line) for line in archive.read('evidence.jsonl').splitlines()]
-    assert len(evidence)==61 and all(item['model_calls'] for item in evidence)
+    assert len(evidence)==int(sys.argv[4]) and all(item['model_calls'] for item in evidence)
     assert all(hashlib.sha256(archive.read(item['media_path'])).hexdigest()==item['image']['sha256'] for item in evidence)
     rounds=[json.loads(line) for line in archive.read('rounds.jsonl').splitlines()]
-    assert len(rounds)==13 and all(item['round_id']==1 for item in rounds)
+    assert len(rounds)==int(sys.argv[5]) and all(item['round_id']==1 for item in rounds)
     assert [item['revision'] for item in rounds]==list(range(1,len(rounds)+1))
     finalizations=[json.loads(line) for line in archive.read('finalization.jsonl').decode().splitlines()]
     assert finalizations[-1]['receipt']['complete']
@@ -178,7 +182,7 @@ with zipfile.ZipFile(sys.argv[1]) as archive:
     assert [item['revision'] for item in rounds+finalizations]==list(range(1,int(sys.argv[2])+1))
     assert all(item['session_id']==manifest['session_id'] for item in rounds)
     print(json.dumps({'version_id':manifest['version_id'],'session_sha256':hashlib.sha256(archive.read('session/events.jsonl')).hexdigest()}))
-`,archivePath,String(publication.revision),exploration?'directions.json':'knowledge.json'],{encoding:'utf8'}));
+`,archivePath,String(publication.revision),exploration?'directions.json':'knowledge.json',exploration?'31':'61',exploration?'1':'13'],{encoding:'utf8'}));
   assert.equal(verified.version_id,status.analysis_version_id);
   assert.equal(verified.session_sha256,createHash('sha256').update(await host.exportJsonl(context.session_id)).digest('hex'));
   if(process.env.IAD_ANALYSIS_COMPACTION_EVIDENCE_DIR){

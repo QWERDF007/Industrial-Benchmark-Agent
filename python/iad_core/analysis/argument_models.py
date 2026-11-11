@@ -67,4 +67,4 @@ class AnalysisKeyEvidence(AnalysisModel):
 class AnalysisEntrySelection(AnalysisModel):
     change_reason: NonBlankText | None = Field(default=None, description='改变已有主张或适用条件的原因；只改标题或精选图不需要。')
     key_evidence: list[AnalysisKeyEvidence] | None = Field(default=None, max_length=4,
-        description='当前条目有序精选原图，支持与反例合计最多4张。省略保留既有选择；不影响完整论据和强度。')
+        description='当前条目有序精选原图，合计最多4张。role须与该图的一项有效论据完全相同，可为support、counter、context或allowed_variation。省略保留既有选择；不影响完整论据和强度。')

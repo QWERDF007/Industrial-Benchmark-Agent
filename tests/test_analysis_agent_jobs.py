@@ -16,7 +16,7 @@ def test_create_freezes_one_manifest_plan_model_and_session_without_child_jobs(a
     assert created['total_samples'] == 4
     assert created['batch_runs'] == []
     assert snapshot.agent.profile.endpoint == 'http://127.0.0.1:30003/v1/chat/completions'
-    assert [len(round.targets) for round in snapshot.plan.rounds] == [1, 1, 1, 1]
+    assert [len(round.targets) for round in snapshot.plan.rounds] == [1, 2, 1]
     assert snapshot.plan.rounds[0].targets[0].sample_id == dataset_id + ':normal.png'
     state = jobs.state(created['run_id'])
     assert state.revision == 0
@@ -88,4 +88,21 @@ def test_new_mining_requires_the_selected_preset_revision_before_allocating_a_jo
     with pytest.raises(ValueError, match='版本'):
         jobs.start(dict(submission_id=str(uuid4()), analysis_kind='knowledge', dataset_ids=[dataset_id],
             mining_prompt=dict(objective='逐登记观察。', instruction='保留用户正文。', directions=[direction])), agent=role)
+    assert jobs.jobs.list(dataset_id, ('ANALYSIS_WORKFLOW',)) == []
+
+
+def test_exploration_rejects_mixed_annotation_formats_from_dataset_metadata(agent_jobs, tmp_path):
+    from PIL import Image
+    from iad_core.dataset.folder_preview import preview_folder_dataset
+    from iad_core.dataset.registry import DatasetRegistry, DatasetImport
+    jobs, dataset_id, role = agent_jobs
+    directory = tmp_path / 'okng'
+    (directory / 'OK').mkdir(parents=True)
+    Image.new('RGB', (40, 30), 'gray').save(directory / 'OK' / 'sample.png')
+    preview = preview_folder_dataset(str(directory))
+    other = DatasetRegistry(jobs.db).import_dataset(DatasetImport(format='folder_classification', name='图级标签',
+        root_dir=str(directory), rules=[dict(path='OK', role='normal')], preview_fingerprint=preview.preview_fingerprint))
+    with pytest.raises(ValueError, match='同一标注类型'):
+        jobs.start(dict(submission_id=str(uuid4()), analysis_kind='exploration', dataset_ids=[dataset_id, other.dataset.id],
+            normal_images=[dataset_id + ':normal.png'], prompt=dict(text='观察全范围。')), agent=role)
     assert jobs.jobs.list(dataset_id, ('ANALYSIS_WORKFLOW',)) == []

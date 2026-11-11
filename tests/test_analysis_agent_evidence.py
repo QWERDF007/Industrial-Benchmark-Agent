@@ -14,7 +14,9 @@ from iad_core.workbench.module_settings import ModuleSettings
 def scoped_media(agent_jobs, tmp_path):
     jobs, _, role = agent_jobs
 
-    def create(size, annotation=None, pixels=None):
+    def create(size, annotation=None, pixels=None, module='exploration'):
+        if module == 'knowledge':
+            ModuleSettings(jobs.db).save({'module': 'knowledge', 'expected_revision': 0, 'settings': {'model': {'provider_id': 'swift-30003', 'model_id': 'fixture'}, 'whole_image_max_side': 1024}})
         directory = tmp_path / 'evidence-source'
         directory.mkdir()
         (pixels if pixels is not None else Image.new('RGB', size, 'gray')).save(directory / 'sample.png')
@@ -23,46 +25,55 @@ def scoped_media(agent_jobs, tmp_path):
         config = DatasetRegistry(jobs.db).import_labelme(DatasetImport(format='labelme', name='真实取证',
             image_dir=str(directory), annotation_dir=str(directory)))
         sid = config.dataset.id + ':sample.png'
-        job = jobs.start({'submission_id': str(uuid4()), 'analysis_kind': 'exploration', 'dataset_ids': [config.dataset.id],
-            'normal_images': [sid], 'prompt': {'text': '观察原图和全部标注局部。'}}, agent=role)
+        from iad_core.knowledge.instructions import default_directions
+        request = {'submission_id': str(uuid4()), 'analysis_kind': module, 'dataset_ids': [config.dataset.id],
+            **({'normal_images': [sid], 'prompt': {'text': '观察原图和全部标注局部。'}} if module == 'exploration' else
+                {'mining_prompt': {'objective': '观察图像。', 'instruction': '观察原图和全部局部。', 'directions': [default_directions()[0].model_dump()]}})}
+        job = jobs.start(request, agent=role)
         return job['run_id'], sid, directory
 
     return jobs, create
 
 
-def test_thirty_original_rois_are_all_prepared_and_pageable_without_creating_coverage(scoped_media):
+@pytest.mark.parametrize('module', ['exploration', 'knowledge'])
+def test_thirty_original_rois_are_all_prepared_without_creating_coverage(scoped_media, module):
     jobs, create = scoped_media
     annotation = {'imageWidth': 320, 'imageHeight': 240, 'shapes': [dict(label='scratch', shape_type='rectangle',
         points=[[10 + 9 * index, 40], [15 + 9 * index, 45]]) for index in range(30)]}
-    run_id, sid, directory = create((320, 240), annotation)
+    run_id, sid, directory = create((320, 240), annotation, module=module)
     original = (directory / 'sample.json').read_bytes()
     evidence = AnalysisEvidence(jobs)
     page = evidence.read(run_id, {'sample_id': sid})
-    assert {item.image.representation for item in page.images} == {'raw', 'annotation_mask'}
+    assert {item.image.representation for item in page.images} == ({'raw'} if module == 'exploration' else {'raw', 'annotation_mask'})
     rois = [item for item in page.images if item.image.role == 'roi' and item.image.representation == 'raw']
     assert len(rois) == 30
     assert len({item.model_context['annotations'][0]['annotation_id'] for item in rois}) == 30
     assert rois[0].model_context['annotations'][0]['bbox'] == [10, 40, 15, 45]
     assert Image.open(rois[0].path).size == (7, 7)
-    last = evidence.read(run_id, {'sample_id': sid, 'offset': page.total - 1, 'limit': 1})
-    assert len(last.images) == 1
-    assert last.images[0] == page.images[-1]
+    if module == 'knowledge':
+        last = evidence.read(run_id, {'sample_id': sid, 'offset': page.total - 1, 'limit': 1})
+        assert len(last.images) == 1
+        assert last.images[0] == page.images[-1]
+    else:
+        with pytest.raises(ValueError):
+            evidence.read(run_id, {'sample_id': sid, 'offset': 1})
     assert jobs.jobs.status(run_id)['completed'] == 0
     assert (directory / 'sample.json').read_bytes() == original
 
 
-def test_configured_whole_image_resolution_is_frozen_and_preserves_the_full_frame(scoped_media):
+@pytest.mark.parametrize('module', ['exploration', 'knowledge'])
+def test_exploration_keeps_original_resolution_while_mining_uses_its_frozen_setting(scoped_media, module):
     jobs, create = scoped_media
     settings = ModuleSettings(jobs.db)
     settings.save({'module': 'exploration', 'expected_revision': 1, 'settings': {'whole_image_max_side': 1024}})
-    run_id, sid, directory = create((2048, 1024))
+    run_id, sid, directory = create((2048, 1024), module=module)
     before = hashlib.sha256((directory / 'sample.png').read_bytes()).hexdigest()
     settings.save({'module': 'exploration', 'expected_revision': 2, 'settings': {'whole_image_max_side': 1280}})
     whole = AnalysisEvidence(jobs).read(run_id, {'sample_id': sid}).images[0]
     assert whole.image.original_size == [2048, 1024]
     assert whole.image.crop_bbox == [0, 0, 2048, 1024]
-    assert whole.image.sent_size == [1024, 512]
-    assert Image.open(whole.path).size == (1024, 512)
+    assert whole.image.sent_size == ([2048, 1024] if module == 'exploration' else [1024, 512])
+    assert Image.open(whole.path).size == tuple(whole.image.sent_size)
     assert hashlib.sha256((directory / 'sample.png').read_bytes()).hexdigest() == before
 
 
@@ -143,11 +154,11 @@ def test_crop_rejects_invalid_or_outside_windows_without_preparing_padding(scope
     assert len(evidence.prepare(run_id,sid).images) == 1
 
 
-def test_large_crop_tiles_the_complete_source_window_and_supports_media_paging(scoped_media):
+def test_mining_large_crop_tiles_the_complete_source_window_and_supports_media_paging(scoped_media):
     from PIL import ImageDraw
 
     jobs,create=scoped_media
-    run_id,sid,_=create((1600,1300))
+    run_id,sid,_=create((1600,1300), module='knowledge')
     evidence=AnalysisEvidence(jobs)
     first=evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,1600,1300],'limit':2})
     second=evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,1600,1300],'offset':2,'limit':2})

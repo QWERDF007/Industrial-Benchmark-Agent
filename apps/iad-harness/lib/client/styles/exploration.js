@@ -147,6 +147,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .exp-job-table tbody tr[data-action]{cursor:pointer}
 .exp-job-table tbody tr[data-action]:hover{background:#f5f8ff}
 .exp-job-table tbody tr[data-action]:focus-visible{outline:2px solid #85aaff;outline-offset:-2px}
+.exp-job-table .exp-row-title{display:block;overflow-wrap:anywhere}
 .exp-job-table th:nth-child(1){width:24%}.exp-job-table th:nth-child(2){width:13%}.exp-job-table th:nth-child(3){width:25%}.exp-job-table th:nth-child(4){width:18%}.exp-job-table th:nth-child(5){width:10%}
 .exp-job-dataset{min-width:0;line-height:1.55}
 .exp-job-dataset-name,.exp-job-dataset-parent{display:block;color:#172338;font-size:13px;font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -173,7 +174,6 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .exp-job-footer{display:flex;justify-content:flex-end;padding:10px 22px;color:#7a8a9d;font-size:12px;border-top:1px solid #edf0f5}
 .exp-selected-result{padding:0}
 .exp-result-content{--exp-result-inset:22px;padding:18px var(--exp-result-inset) 24px}
-.exp-selected-sub{font-size:12px;color:#6b7b93;line-height:1.4}
 .exp-result-summary{font-size:13px;color:#475a73;line-height:1.75;margin:0 0 22px;max-width:none}
 .exp-result-section-head{display:flex;align-items:center;justify-content:space-between;margin:0 0 13px}
 .exp-result-section-head h3{font-size:14px;margin:0;font-weight:650}

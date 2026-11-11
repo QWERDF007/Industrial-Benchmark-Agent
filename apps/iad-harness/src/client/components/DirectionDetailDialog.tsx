@@ -112,7 +112,7 @@ export function DirectionDetailDialog({
                       src={image.url} label={image.label}
                       onMouseEnter={()=>setHighlightRef(image.ref)} onMouseLeave={()=>setHighlightRef(null)}
                       onFocus={()=>setHighlightRef(image.ref)} onBlur={()=>setHighlightRef(null)}
-                      onClick={()=>onOpenFullscreen(image.ref)}/>):<p className="exp-direction-empty">暂无可用{group.label}证据</p>}
+                      onClick={()=>onOpenFullscreen(image.ref)}/>):<p className="exp-direction-empty">未精选{group.label}原图</p>}
                   </div>
                 </section>)}
               </div>

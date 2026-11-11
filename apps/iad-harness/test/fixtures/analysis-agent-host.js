@@ -8,7 +8,7 @@ import {JobSessionHost} from '../../lib/server/sessions/host.js';
 import {analysisSessionPath} from '../../lib/server/analysis/agent.js';
 import {AnalysisWorkflowScheduler} from '../../lib/server/analysis/scheduler.js';
 
-export async function createAnalysisAgentHost(root,endpoint,{onCommit,onError=()=>{}}={}) {
+export async function createAnalysisAgentHost(root,endpoint,{onCommit,onError=()=>{},contextWindow=65536}={}) {
   const bridge=new PythonBridge({cwd:findWorkspaceRoot(),dbPath:path.join(root,'pages.db')});
   await bridge.execute('workbench_initialize');
   if(onCommit){
@@ -23,7 +23,7 @@ export async function createAnalysisAgentHost(root,endpoint,{onCommit,onError=()
     analysisSessionPath(root,await bridge.execute('analysis_agent_session_location',{session_id})));
   const ctx=new Context();new LlmRuntime(ctx);
   const providers={fixture:{api:'openai-completions',baseURL:endpoint,apiKeyEnv:'PAGES_TEST_KEY',
-    models:[{id:'native-image',input:['text','image'],contextWindow:65536,maxTokens:4096}]}};
+    models:[{id:'native-image',input:['text','image'],contextWindow,maxTokens:4096}]}};
   ctx.provide('settings',{configure:()=>()=>{},describe:()=>[{ns:'llm-pi-ai',revision:1,value:{providers}}]});
   ctx.provide('credentials',{resolve:async()=>({value:'pages-test-key'})});
   const plugin=await ctx.plugin(piAi,{providers});

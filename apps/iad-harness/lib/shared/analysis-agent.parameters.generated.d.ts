@@ -46,6 +46,14 @@ export declare const explorationAgentStartParameters: {
                 }];
                 readonly title: "Preset Name";
             };
+            readonly preset_revision: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "Preset Revision";
+            };
             readonly text: {
                 readonly type: "string";
                 readonly title: "Text";
@@ -62,6 +70,27 @@ export declare const explorationAgentStartParameters: {
             readonly type: "null";
         }];
         readonly title: "System Prompt";
+    };
+    readonly observer_prompt: {
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly system_prompt: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "System Prompt";
+                readonly required: true;
+            };
+            readonly user_prompt: {
+                readonly type: "string";
+                readonly title: "User Prompt";
+                readonly required: true;
+            };
+        };
+        readonly title: "AnalysisRolePrompts";
     };
 };
 export declare const knowledgeAgentStartParameters: {
@@ -411,7 +440,37 @@ export declare const analysisMediaParameters: {
         readonly title: "Limit";
     };
 };
+export declare const explorationImageParameters: {
+    readonly sample_id: {
+        readonly type: "string";
+        readonly title: "Sample Id";
+        readonly required: true;
+    };
+};
+export declare const explorationCropParameters: {
+    readonly bbox: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "integer";
+        };
+        readonly title: "Bbox";
+        readonly required: true;
+    };
+    readonly sample_id: {
+        readonly type: "string";
+        readonly title: "Sample Id";
+        readonly required: true;
+    };
+};
 export declare const analysisCropParameters: {
+    readonly bbox: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "integer";
+        };
+        readonly title: "Bbox";
+        readonly required: true;
+    };
     readonly sample_id: {
         readonly type: "string";
         readonly title: "Sample Id";
@@ -429,14 +488,6 @@ export declare const analysisCropParameters: {
             readonly type: "null";
         }];
         readonly title: "Limit";
-    };
-    readonly bbox: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "integer";
-        };
-        readonly title: "Bbox";
-        readonly required: true;
     };
 };
 export declare const explorationFinalizeParameters: {
@@ -1278,7 +1329,7 @@ export declare const explorationCommitParameters: {
                     }, {
                         readonly type: "null";
                     }];
-                    readonly description: "当前条目有序精选原图，支持与反例合计最多4张。省略保留既有选择；不影响完整论据和强度。";
+                    readonly description: "当前条目有序精选原图，合计最多4张。role须与该图的一项有效论据完全相同，可为support、counter、context或allowed_variation。省略保留既有选择；不影响完整论据和强度。";
                     readonly title: "Key Evidence";
                 };
                 readonly title: {
@@ -1344,6 +1395,59 @@ export declare const explorationCommitParameters: {
         readonly description: "JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；arguments说明每项作用，key_evidence另选最多4张展示原图。正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。";
         readonly title: "Directions";
         readonly required: true;
+    };
+    readonly report_reviews: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly round_id: {
+                    readonly type: "integer";
+                    readonly title: "Round Id";
+                    readonly required: true;
+                };
+                readonly discovery_decisions: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly candidate_id: {
+                                readonly type: "string";
+                                readonly title: "Candidate Id";
+                                readonly required: true;
+                            };
+                            readonly action: {
+                                readonly type: "string";
+                                readonly enum: readonly ["new", "merge", "reject"];
+                                readonly title: "Action";
+                                readonly required: true;
+                            };
+                            readonly direction_id: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "string";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Direction Id";
+                            };
+                            readonly reason: {
+                                readonly type: "string";
+                                readonly title: "Reason";
+                                readonly required: true;
+                            };
+                        };
+                        readonly title: "ExplorationDiscoveryDecision";
+                    };
+                    readonly title: "Discovery Decisions";
+                    readonly required: true;
+                };
+            };
+            readonly title: "ExplorationReportReview";
+        };
+        readonly description: "主Agent一次复核当前波全部报告，按各报告round.round_id填写。每份报告的discovery_decisions逐项处理全部候选：new新建、merge兼容归并、reject说明实际依据；无候选时填空数组。";
+        readonly title: "Report Reviews";
     };
 };
 export declare const knowledgeCommitParameters: {
@@ -1620,7 +1724,7 @@ export declare const knowledgeCommitParameters: {
                     }, {
                         readonly type: "null";
                     }];
-                    readonly description: "当前条目有序精选原图，支持与反例合计最多4张。省略保留既有选择；不影响完整论据和强度。";
+                    readonly description: "当前条目有序精选原图，合计最多4张。role须与该图的一项有效论据完全相同，可为support、counter、context或allowed_variation。省略保留既有选择；不影响完整论据和强度。";
                     readonly title: "Key Evidence";
                 };
                 readonly title: {

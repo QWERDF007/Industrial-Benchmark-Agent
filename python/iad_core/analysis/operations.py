@@ -36,11 +36,15 @@ def analysis_agent_session_created(args, db_path):
 
 
 def analysis_agent_media(args, db_path):
-    return AnalysisEvidence(AnalysisAgentJobs(workbench(db_path))).read(args['run_id'], args['query']).model_dump(mode='json')
+    return AnalysisEvidence(AnalysisAgentJobs(workbench(db_path))).read(args['run_id'], args['query'], session_id=args.get('session_id')).model_dump(mode='json')
+
+
+def analysis_agent_batch_materials(args, db_path):
+    return AnalysisEvidence(AnalysisAgentJobs(workbench(db_path))).batch(args['run_id']).model_dump(mode='json')
 
 
 def analysis_agent_crop(args, db_path):
-    return AnalysisEvidence(AnalysisAgentJobs(workbench(db_path))).crop(args['run_id'],args['query']).model_dump(mode='json')
+    return AnalysisEvidence(AnalysisAgentJobs(workbench(db_path))).crop(args['run_id'],args['query'], session_id=args.get('session_id')).model_dump(mode='json')
 
 
 def analysis_agent_reference(args, db_path):
@@ -56,7 +60,11 @@ def analysis_agent_model_call_start(args, db_path):
     jobs = AnalysisAgentJobs(runtime)
     state = jobs.state(args['run_id'])
     request = NativeModelCallStart.model_validate(args['request'])
-    ModelCalls(runtime.db).start_native(args['run_id'], request, sample_id=None, session_id=state.session_id, attempt=1)
+    session_id = request.request.get('sessionId') or state.session_id
+    if session_id != state.session_id:
+        from iad_core.exploration.delegation import ExplorationDelegation
+        ExplorationDelegation(jobs).task(args['run_id'], session_id)
+    ModelCalls(runtime.db).start_native(args['run_id'], request, sample_id=None, session_id=session_id, attempt=1)
     AnalysisEvidence(jobs).delivered(args['run_id'], request.call_id, args['evidence_ids'])
     return {}
 
@@ -128,7 +136,7 @@ def analysis_sources(args, db_path):
 
 def analysis_agent_artifacts(args, db_path):
     from iad_core.analysis.exports import AnalysisExports
-    return AnalysisExports(Database(db_path)).create(args['version_id'],args['directory'],args['session_jsonl']).model_dump(mode='json')
+    return AnalysisExports(Database(db_path)).create(args['version_id'],args['directory'],args['session_jsonl'],args.get('child_sessions')).model_dump(mode='json')
 
 
 def analysis_agent_catalog(args, db_path):
@@ -159,8 +167,24 @@ def analysis_agent_finalize(args, db_path):
     return AnalysisFinalizations(AnalysisAgentJobs(workbench(db_path))).accept(args['run_id'],args['submission']).model_dump(mode='json')
 
 
+def exploration_agent_wave(args, db_path):
+    from iad_core.exploration.delegation import ExplorationDelegation
+    return ExplorationDelegation(AnalysisAgentJobs(workbench(db_path))).wave(args['run_id']).model_dump(mode='json')
+
+
+def exploration_agent_worker_materials(args, db_path):
+    from iad_core.exploration.delegation import ExplorationDelegation
+    return ExplorationDelegation(AnalysisAgentJobs(workbench(db_path))).materials(args['run_id'], args['session_id']).model_dump(mode='json')
+
+
+def exploration_agent_worker_report(args, db_path):
+    from iad_core.exploration.delegation import ExplorationDelegation
+    return ExplorationDelegation(AnalysisAgentJobs(workbench(db_path))).report(args['run_id'], args['session_id'], args['report']).model_dump(mode='json')
+
+
 ANALYSIS_AGENT_OPERATIONS = (analysis_agent_configuration, analysis_agent_start, analysis_agent_snapshot,
-    analysis_agent_context, analysis_agent_session_location, analysis_agent_session_created, analysis_agent_media, analysis_agent_crop, analysis_agent_reference,
+    exploration_agent_wave, exploration_agent_worker_materials, exploration_agent_worker_report,
+    analysis_agent_context, analysis_agent_session_location, analysis_agent_session_created, analysis_agent_media, analysis_agent_batch_materials, analysis_agent_crop, analysis_agent_reference,
     analysis_agent_commit, analysis_agent_model_call_start, analysis_agent_model_call_end, analysis_agent_capacity,
     analysis_agent_finish, analysis_agent_publication, analysis_agent_cancel, analysis_agent_resume, analysis_agent_interrupt,
     analysis_publication, analysis_direction_choices, analysis_sources, analysis_agent_artifacts, analysis_agent_catalog, analysis_agent_history,

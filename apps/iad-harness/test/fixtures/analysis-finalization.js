@@ -26,7 +26,7 @@ export function finalizeFixtureCatalog(context,outputs,module) {
     const counter=active.find(item=>item.role==='counter');
     const representative=counter||active.find(item=>item.role==='support');
     assert.ok(representative);
-    entry.key_evidence=[{evidence_id:representative.evidence_id,role:representative.role,
+    if(!entry.key_evidence?.length)entry.key_evidence=[{evidence_id:representative.evidence_id,role:representative.role,
       reason:counter?'保留影响本条目解释的同源反例。':'该原图清楚呈现此条目声明的可见关系。'}];
     arguments_.push(...active.map(item=>({entry_id:id,evidence_id:item.evidence_id,observation_id:item.observation_id,
       role:item.role,state:item.state,

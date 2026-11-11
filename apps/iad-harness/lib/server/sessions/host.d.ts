@@ -1,3 +1,4 @@
+import { Context } from '@deepseek-ai/cordis';
 import { type Agent, type AgentOptions, type AgentSetup } from '@deepseek-ai/dsh-agent';
 import { type SessionEvent, type SessionHeader } from '@deepseek-ai/dsh-session';
 import { type SessionLocator } from './persistence.js';
@@ -28,12 +29,15 @@ export declare class JobSessionHost {
     withAgent<T>(id: string, options: {
         agentOptions?: AgentOptions;
         setup?: AgentSetup;
+        sharedSetup?: (scope: Context) => Promise<void>;
         signal?: AbortSignal;
+        subagents?: number;
     }, operation: (agent: Agent) => T | Promise<T>): Promise<T>;
     read(id: string): Promise<{
         header: SessionHeader;
         events: readonly SessionEvent[];
     }>;
+    exists(id: string): Promise<boolean>;
     notice(id: string, notice: JobSessionNotice): Promise<void>;
     exportJsonl(id: string): Promise<string>;
     dispose(): Promise<void>;

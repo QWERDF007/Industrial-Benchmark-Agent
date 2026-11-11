@@ -3,7 +3,7 @@ import json
 from iad_core.analysis.models import (AnalysisEvidenceView, AnalysisPublicationView,
     AnalysisSource, AnalysisSourceCatalog, AnalysisWorkflowSnapshot, PublishedDirectionCatalog, PublishedDirectionChoice,
     KnowledgeCheckEvidencePage, AnalysisCatalog, AnalysisCatalogQuery, AnalysisCatalogPage, AnalysisSampleEvidence, AnalysisObservationQuery, AnalysisObservationPage, AnalysisObservationHistoryPage,
-    AnalysisClaimHistory, AnalysisClaimRevision)
+    AnalysisClaimHistory, AnalysisClaimRevision, AnalysisJobPrompts, AnalysisRolePrompts)
 from iad_core.analysis.coverage import AnalysisCoverageReader
 from iad_core.analysis.arguments import AnalysisArguments
 from iad_core.analysis.argument_models import AnalysisArgumentPage, AnalysisArgumentQuery, AnalysisEntryQuery
@@ -12,6 +12,7 @@ from iad_core.evidence.images import EvidenceImages
 from iad_core.knowledge.check_reviews import KnowledgeCheckReviews
 from iad_core.knowledge.display_evidence import KnowledgeDisplayEvidence
 from iad_core.knowledge.instructions import ExploredDirectionSource
+from iad_core.workbench.analysis_sources import AnalysisSourceRoles
 from iad_core.knowledge.models import (KnowledgeCheckPage, KnowledgeCheckSummary,
     KnowledgeCriterion, KnowledgeEvidence, KnowledgeEvidencePage, KnowledgeVersion)
 
@@ -20,6 +21,16 @@ class AnalysisQueries:
     def __init__(self, db):
         self.db = db
         self.publications = AnalysisPublications(db)
+
+    def prompts(self, run_id: str) -> AnalysisJobPrompts:
+        with self.db.connection() as connection:
+            row = connection.execute('SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
+        if row is None:
+            raise LookupError('原生分析作业不存在')
+        snapshot = AnalysisWorkflowSnapshot.model_validate_json(row['snapshot_json'])
+        prompts = AnalysisRolePrompts(system_prompt=snapshot.system_prompt, user_prompt=snapshot.instruction)
+        return AnalysisJobPrompts(main=prompts,
+            observer=(snapshot.observer_prompt or prompts) if snapshot.execution_mode == 'dsh-subagents' else None)
 
     def arguments(self, run_id: str, query: dict | AnalysisArgumentQuery) -> AnalysisArgumentPage:
         with self.db.connection() as connection:
@@ -55,7 +66,11 @@ class AnalysisQueries:
         return AnalysisPublicationView(**publication.model_dump(), selected_directions=snapshot.selected_directions, removed_direction_ids=removed,
             evidence=[AnalysisEvidenceView(evidence_id=image.evidence_id, sample_id=record.sample_id,
                 dataset_id=record.dataset_id, filename=records[record.sample_id].sample.relative_path,
-                candidate_role=roles[record.sample_id], sampling_group=records[record.sample_id].sampling_group or 'unclassified',
+                candidate_role=roles[record.sample_id] or (AnalysisSourceRoles.resolve(
+                    records[record.sample_id].dataset_format, records[record.sample_id].sample.quality_status,
+                    records[record.sample_id].sample.annotation_availability.status, len(records[record.sample_id].annotations))
+                    if publication.module == 'exploration' else None),
+                sampling_group=records[record.sample_id].sampling_group or 'unclassified',
                 image=image, observed=image.evidence_id in observed or index in record.delivered_offsets)
                 for record in publication.coverage.records for index,image in enumerate(record.media)
                 if image.evidence_id in observed or record.sample_id in observed_samples
@@ -125,11 +140,7 @@ class AnalysisQueries:
                 GROUP BY s.sample_id ORDER BY s.dataset_id,s.relative_path,s.sample_id''', (json.dumps(dataset_ids),)).fetchall()
         items = []
         for row in rows:
-            if row['format'] == 'folder_classification':
-                role = {'PASS':'normal', 'FAIL':'defect'}.get(row['quality_status'])
-            else:
-                role = ('normal' if row['annotation_status'] == 'VALID_EMPTY' and not row['annotation_count']
-                    else 'defect' if row['annotation_status'] == 'VALID_NONEMPTY' and row['annotation_count'] else None)
+            role = AnalysisSourceRoles.resolve(row['format'], row['quality_status'], row['annotation_status'], row['annotation_count'])
             items.append(AnalysisSource(sample_id=row['sample_id'], dataset_id=row['dataset_id'],
                 relative_path=row['relative_path'], candidate_role=role,
                 annotation_categories=sorted(category for category in json.loads(row['categories']) if category.strip())))

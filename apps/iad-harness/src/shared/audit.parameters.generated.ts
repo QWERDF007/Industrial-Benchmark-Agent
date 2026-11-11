@@ -554,6 +554,14 @@ export const auditReportEvidenceParameters = {
   }
 } as const;
 export const auditCropParameters = {
+  "bbox": {
+    "type": "array",
+    "items": {
+      "type": "integer"
+    },
+    "title": "Bbox",
+    "required": true
+  },
   "sample_id": {
     "type": "string",
     "title": "Sample Id",
@@ -574,14 +582,6 @@ export const auditCropParameters = {
       }
     ],
     "title": "Limit"
-  },
-  "bbox": {
-    "type": "array",
-    "items": {
-      "type": "integer"
-    },
-    "title": "Bbox",
-    "required": true
   }
 } as const;
 export const auditStartParameters = {

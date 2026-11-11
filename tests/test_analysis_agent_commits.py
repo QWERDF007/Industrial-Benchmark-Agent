@@ -89,19 +89,20 @@ def test_commit_keys_are_scoped_to_the_round_and_saved_receipts_survive_schema_u
     for round_id in (1, 2):
         context = jobs.context(run_id)
         assert context.round.round_id == round_id
-        page = evidence.read(run_id, {'sample_id':context.round.targets[0].sample_id})
-        ids = [item.image.evidence_id for item in page.images]
+        pages = [evidence.read(run_id, {'sample_id':target.sample_id}) for target in context.round.targets]
+        ids = [item.image.evidence_id for page in pages for item in page.images]
         call = NativeModelCallStart(call_id='call_' + uuid4().hex, started_at='2026-11-09T12:00:00Z', request={'fixture':'round media'})
         ModelCalls(jobs.db).start_native(run_id, call, sample_id=None, session_id=context.session_id, attempt=1)
         evidence.delivered(run_id, call.call_id, ids)
         ModelCalls(jobs.db).finish_native(run_id, None, NativeModelCallEnd(call_id=call.call_id,
             finished_at='2026-11-09T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
         submission = dict(commit_key='accepted', base_revision=context.revision, round_id=round_id,
-            observations=[dict(dataset_id=dataset_id, sample_id=page.sample_id, description='本轮实际图像观察。', evidence_ids=ids)],
+            observations=[dict(dataset_id=dataset_id, sample_id=page.sample_id, description='本轮实际图像观察。',
+                evidence_ids=[item.image.evidence_id for item in page.images]) for page in pages],
             directions=[], summary='保留本场已观察结果。', limitations=[], unresolved_questions=[])
         submissions.append(submission)
         receipts.append(commits.accept(run_id, submission))
-        assert receipts[-1].completed_delta == 1
+        assert receipts[-1].completed_delta == len(pages)
         assert receipts[-1].round_complete is True
         assert commits.accept(run_id, submission) == receipts[-1]
         if round_id == 1 and migrate_existing:
@@ -114,7 +115,7 @@ def test_commit_keys_are_scoped_to_the_round_and_saved_receipts_survive_schema_u
                     assert [tuple(row) for row in connection.execute('SELECT * FROM ' + table)] == rows
                 assert connection.execute('PRAGMA foreign_key_check').fetchall() == []
     assert set(receipts[0].observation_ids).isdisjoint(receipts[1].observation_ids)
-    assert jobs.jobs.status(run_id)['completed'] == 2
+    assert jobs.jobs.status(run_id)['completed'] == 3
     assert jobs.context(run_id).round.round_id == 3
     assert commits.accept(run_id, submissions[0]) == receipts[0]
     with pytest.raises(ValueError, match='提交键'):
@@ -266,9 +267,9 @@ def test_eight_prepared_registrations_need_both_delivery_and_observation_before_
     assert commits.accept(run_id, submission) == receipt
 
 
-@pytest.mark.parametrize('module',['exploration','knowledge'])
+@pytest.mark.parametrize('module,view', [(module, view) for module in ['exploration', 'knowledge']
+    for view in ['annotation', 'mask', 'model', 'all'] if module == 'knowledge' or view != 'mask'])
 @pytest.mark.parametrize('field',['support','counter','text'])
-@pytest.mark.parametrize('view',['annotation','mask','model','all'])
 def test_catalog_rejects_crop_citations_atomically_and_accepts_corrected_whole_image(agent_jobs,module,field,view):
     from iad_core.knowledge.instructions import default_directions
     from iad_core.workbench.module_settings import ModuleSettings

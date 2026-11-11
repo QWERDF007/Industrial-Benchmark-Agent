@@ -32,6 +32,11 @@ export function directionEvidence(snapshot: AnalysisPublicationView, direction: 
   for(const item of entries){
     if(item.evidence)references.set(item.id,{id:item.ref,label:item.label});
   }
+  for(const item of all){
+    const original=displayed.get(item.id);
+    const reference=original&&references.get(original.id);
+    if(reference)references.set(item.id,reference);
+  }
   return {entries,references,counters};
 }
 

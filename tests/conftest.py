@@ -135,7 +135,7 @@ def agent_jobs(dataset):
     jobs = AnalysisAgentJobs(runtime)
     from iad_core.workbench.module_settings import ModuleSettings
     ModuleSettings(db).save({'module': 'exploration', 'expected_revision': 0, 'settings': {
-        'model': {'provider_id': 'swift-30003', 'model_id': 'fixture'}, 'batch_size': 1}})
+        'model': {'provider_id': 'swift-30003', 'model_id': 'fixture'}, 'batch_size': 2}})
     role = {'profile': {'endpoint': 'http://127.0.0.1:30003/v1/chat/completions',
         'provider_id': 'swift-30003', 'model_id': 'fixture', 'context_tokens': 262144, 'max_output_tokens': 4096},
         'native_profile': {'api': 'openai-completions', 'baseURL': 'http://127.0.0.1:30003/v1'},

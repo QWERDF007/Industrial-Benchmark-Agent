@@ -97,7 +97,8 @@ class EvidenceImages:
     def capture(self, sample: Sample, role: str, source: str, bbox: Optional[List[int]] = None,
                 source_sha256: Optional[str] = None, annotations: Optional[List[Annotation]] = None,
                 annotation_mode: Literal["annotation_mask", "annotation_overlay"] = "annotation_overlay",
-                max_side: Optional[int] = None, *, full_resolution: bool = False) -> PreparedImage:
+                max_side: Optional[int] = None, *, full_resolution: bool = False,
+                annotation_origins: Optional[List[Annotation]] = None) -> PreparedImage:
         box = bbox or [0, 0, sample.width, sample.height]
         original_bytes = Path(sample.image_path).read_bytes()
         source_sha = hashlib.sha256(original_bytes).hexdigest()
@@ -125,9 +126,10 @@ class EvidenceImages:
         payload = buffer.getvalue()
         path,sha = ImageFiles(self.root).store(payload)
         representation = annotation_mode if annotations is not None else "raw"
-        annotation_ids = [annotation.annotation_id for annotation in annotations or []]
-        annotation_sha = hashlib.sha256(json.dumps([annotation.model_dump(mode="json") for annotation in annotations],
-                                                    sort_keys=True).encode()).hexdigest() if annotations is not None else None
+        linked_annotations = annotations if annotations is not None else annotation_origins
+        annotation_ids = [annotation.annotation_id for annotation in linked_annotations or []]
+        annotation_sha = hashlib.sha256(json.dumps([annotation.model_dump(mode="json") for annotation in linked_annotations],
+                                                    sort_keys=True).encode()).hexdigest() if linked_annotations is not None else None
         identity = json.dumps([sample.sample_id, role, source, box, sha, source_sha, representation, annotation_ids, annotation_sha])
         evidence = VisualEvidence(evidence_id="img_" + hashlib.sha256(identity.encode()).hexdigest(), role=role, source=source,
                                   original_size=[sample.width, sample.height], crop_bbox=box, sent_size=sent_size,

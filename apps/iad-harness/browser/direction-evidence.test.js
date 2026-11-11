@@ -87,6 +87,8 @@ test('direction citations display compact labels and link pointer and keyboard s
     await driver.wait(async()=>(await driver.findElements(By.css('.exp-direction-evidence-card'))).length===0,3000,
       '新部分版本尚未精选时保留空栏，不把全量支持当精选');
     assert.equal((await driver.findElements(By.css('.exp-evidence-ref'))).length,0);
+    assert.doesNotMatch(await(await el('.exp-direction-evidence')).getText(),/暂无可用/,
+      '未精选原图不能表示完整论据中没有可用证据');
     await driver.executeScript('window.showEvidenceVersion("legacy")');
     await driver.wait(async()=>(await driver.findElements(By.css('.exp-direction-evidence-card'))).length===5,3000,
       '旧版本没有精选字段时只使用其明确的历史引用');

@@ -11,6 +11,9 @@ import {sessionFormatCatalog} from '@deepseek-ai/dsh-session-format-catalog';
 import TokenMeter from '@deepseek-ai/dsh-token-meter';
 import BasicCompaction from '@deepseek-ai/dsh-compaction-basic';
 import * as ImageOffload from '@deepseek-ai/dsh-compaction-image-offload';
+import SubagentRuntime from '@deepseek-ai/dsh-subagent';
+import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process';
+import SessionQuery from '@deepseek-ai/dsh-session-query-sqlite';
 
 interface JobSessionNoticeData {summary: string; value: unknown; record_id?: string}
 export type JobSessionNotice = JobSessionNoticeData & {type: 'iad/job' | 'iad/consistency'};
@@ -62,7 +65,7 @@ export class JobSessionHost {
     }
   }
 
-  async withAgent<T>(id: string, options: {agentOptions?: AgentOptions; setup?: AgentSetup; signal?: AbortSignal},
+  async withAgent<T>(id: string, options: {agentOptions?: AgentOptions; setup?: AgentSetup; sharedSetup?:(scope:Context)=>Promise<void>; signal?: AbortSignal; subagents?: number},
     operation: (agent: Agent) => T | Promise<T>): Promise<T> {
     options.signal?.throwIfAborted();
     const sessionId = SessionId(id);
@@ -77,17 +80,30 @@ export class JobSessionHost {
     try {
       const {AgentLoop} = await import('@deepseek-ai/dsh-agent-loop');
       await runtime.ctx.plugin(AgentLoop, {agents: []});
-      const handle = await runtime.ctx.agents.resume({resumeSessionId: sessionId, ...options,
+      let owner=runtime.ctx;
+      if (options.subagents !== undefined) {
+        await runtime.ctx.plugin(SessionQuery, {path:':memory:',openAt:'never'});
+        await runtime.ctx.plugin(SubagentRuntime, {maxActiveSubagents:options.subagents, maxDepth:1});
+        await runtime.ctx.plugin(SubagentSpawn, {providerName:'spawn'});
+        await runtime.ctx.inject(['subagents'], injected=>{owner=injected;});
+      }
+      if(options.sharedSetup){
+        await owner.inject(['llm','systemPrompt','tools'],async injected=>{await options.sharedSetup!(injected);});
+        const maxTokens=options.agentOptions?.maxTokens??4096;
+        await owner.plugin(BasicCompaction,{headroomTokens:maxTokens,maxTokens});
+      }
+      const handle = await owner.agents.resume({resumeSessionId: sessionId, ...options,
         setup: async (scope, agent) => {
           const commit = await options.setup?.(scope, agent);
           const maxTokens = agent.options.maxTokens ?? 4096;
-          await scope.plugin(BasicCompaction, {headroomTokens: maxTokens, maxTokens});
+          if(!options.sharedSetup)await scope.plugin(BasicCompaction, {headroomTokens: maxTokens, maxTokens});
           return commit;
         }});
       try {
         return await operation(handle.agent);
       } finally {
         try {
+          if (options.subagents !== undefined) await owner.subagents.drainContinuableDescendants([handle.agent]);
           await runtime.sessions.flush(handle.agent.session);
         } finally {
           await handle.dispose();
@@ -107,6 +123,10 @@ export class JobSessionHost {
     } finally {
       await handle.close();
     }
+  }
+
+  async exists(id:string):Promise<boolean> {
+    return !!await this.ctx.sessionPersistence.stat(SessionId(id));
   }
 
   async notice(id: string, notice: JobSessionNotice): Promise<void> {

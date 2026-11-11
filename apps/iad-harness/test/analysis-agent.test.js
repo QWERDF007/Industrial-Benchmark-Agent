@@ -32,21 +32,20 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'k
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-analysis-agent-'));
   const workspace = findWorkspaceRoot(), database = path.join(root, 'analysis.db');
   const wire = [], errors = [];
-  let firstRoundMedia, reopenedHistory, finalizationCalls=0;
+  let firstRoundMedia, reopenedHistory, finalizationCalls=0, tokenizeRequests=0;
   let blockCapacity = capacityStop;
   const provider = http.createServer(async (req, res) => {
     try {
       assert.equal(req.headers.authorization, 'Bearer analysis-test-key');
-      let text = '';for await (const chunk of req) text += chunk;
-      const body = chatRequest(JSON.parse(text));
+      const chunks=[];for await (const chunk of req)chunks.push(chunk);
+      const body = chatRequest(JSON.parse(Buffer.concat(chunks).toString('utf8')));
       if(protocol==='openai-responses')assert.equal(body.responses.reasoning.effort,'high');
-      if (req.url === '/tokenize') {res.end(JSON.stringify({count: blockCapacity && wire.length >= 6 ? 70000 : 1000, max_model_len: 65536}));return;}
+      if (req.url === '/tokenize') {tokenizeRequests++;assert.equal(module,'knowledge','探索不得预检容量');res.end(JSON.stringify({count: blockCapacity && wire.length >= 6 ? 70000 : 1000, max_model_len: 65536}));return;}
       const instruction = body.messages.filter(message => message.role === 'system'||message.role==='developer').map(message => message.content).join('\n');
       assert.equal(instruction,data.system_prompt[module]+'\n系统自定义：按工具提交。');
       assert.doesNotMatch(instruction,/\b(?:analysis_\w+|exploration_commit|knowledge_commit)\b/);
       const tools=body.tools.map(tool=>tool.function.name);
       assert.ok(tools.includes('analysis_images'));
-      assert.ok(tools.includes(module === 'exploration' ? 'exploration_commit' : 'knowledge_commit'));
       assert.ok(!instruction.includes('{{response_schema}}'), 'visible defaults use the native tool protocol');
       assert.ok(instruction.includes('系统自定义：按工具提交。'));
       assert.ok(!instruction.includes('用户自定义：比较边缘。'));
@@ -60,6 +59,30 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'k
       const contextIndex = body.messages.findLastIndex(message => message.role === 'user' && parse(message.content)?.job_id);
       assert.notEqual(contextIndex, -1);
       const context = parse(body.messages[contextIndex].content);
+      assert.ok(tools.includes(context.role==='observer'?'exploration_observe':module === 'exploration' ? 'exploration_commit' : 'knowledge_commit'));
+      if(context.role==='observer'){
+        const pages=body.messages[contextIndex].content.filter(part=>part.type==='text').map(part=>parse(part.text)).filter(item=>Array.isArray(item?.images));
+        const outputs=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
+        assert.deepEqual(context.task.round.sampling_counts,{normal:expectedCounts[context.task.round.round_id-1][0],abnormal:expectedCounts[context.task.round.round_id-1][1],unclassified:0});
+        if(!outputs.length){respondFixtureTools(res,[{name:'analysis_crop',arguments:{sample_id:context.task.round.targets[0].sample_id,bbox:[1,2,7,9]}}],{protocol});return;}
+        assert.ok(outputs.every(item=>item&&!item.error));
+        const discoveries=context.task.round.round_id===4&&!emptyCatalog?[{candidate_id:'edge',title:'边缘检查',instruction:'沿原图边缘回看轮廓连续性。',
+          applies_to:'both',rationale:'原图边缘提供可直接复核的依据。',evidence_ids:[pages[0].evidence_id],limitations:['当前只有一例。']}]:[];
+        respondFixtureTools(res,[{name:'exploration_observe',arguments:{observations:pages.map(page=>({sample_id:page.sample_id,dataset_id:page.images[0].dataset_id,
+          description:'已实际观察本登记原图与完整局部。',evidence_ids:[page.evidence_id]})),assessments:[],discoveries,
+          discovery_summary:'核对完整可见边缘和局部变化。',key_evidence_ids:pages.map(page=>page.evidence_id)}}],{protocol});return;
+      }
+      if(context.role==='reviewer'){
+        const outputs=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
+        assert.ok(outputs.every(item=>item&&!item.error),JSON.stringify(body.messages.slice(contextIndex+1)));
+        const reports=context.reports;
+        respondFixtureTools(res,[{name:'exploration_commit',arguments:{commit_key:'review',round_id:context.round.round_id,base_revision:context.revision,
+          observations:[],
+          directions:reports.flatMap(task=>task.report.discoveries.map(({candidate_id,...item})=>({...item,direction_id:candidate_id,dataset_ids:data.dataset_ids}))),
+          report_reviews:reports.map(task=>({round_id:task.round.round_id,discovery_decisions:task.report.discoveries.map(item=>({
+            candidate_id:item.candidate_id,action:'new',direction_id:item.candidate_id,reason:'独立现象可直接复核。'}))})),
+          summary:'保留全部观察和独立新发现。',limitations:[],unresolved_questions:[]}}],{protocol});return;
+      }
       const states=body.messages.filter(message=>message.role==='user').map(message=>parse(message.content))
         .filter(value=>(value)?.job_id===context.job_id);
       assert.deepEqual(states.at(-1),context,'使用最近注入的当前轮次状态');
@@ -67,6 +90,13 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'k
         finalizationCalls++;
         const outputs=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
         respondFixtureTools(res,finalizeFixtureCatalog(context,outputs,module),{protocol});return;
+      }
+      if(module==='exploration'){
+        assert.ok(body.messages[contextIndex].content.some(part=>part.type==='image_url'),'首次请求包含整批原图');
+        for(const name of ['analysis_images','analysis_crop']){
+          const parameters=body.tools.find(tool=>tool.function.name===name).function.parameters.properties;
+          assert.ok(!('offset' in parameters)&&!('limit' in parameters));
+        }
       }
       const [normal,abnormal]=expectedCounts[context.round.round_id-1];
       assert.deepEqual(context.round.sampling_counts,{normal,abnormal,unclassified:0});
@@ -84,17 +114,18 @@ for (const scenario of [{module:'exploration'}, {module:'knowledge'}, {module:'k
       const toolMessages=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool');
       const outputs = toolMessages.map(message => parse(message.content));
       assert.ok(outputs.every(item => item && !item.error), JSON.stringify(body.messages.filter(message => message.role === 'tool').map(message => message.content.slice(0, 240))));
-      const pages = outputs.filter(item=>Array.isArray(item.images));
+      const initialPages=Array.isArray(body.messages[contextIndex].content)?body.messages[contextIndex].content.filter(part=>part.type==='text').map(part=>parse(part.text)).filter(item=>Array.isArray(item?.images)):[];
+      const pages = [...initialPages,...outputs.filter(item=>Array.isArray(item.images))];
       const history = outputs.find(item=>Array.isArray(item.items));
       const actual = body.messages.flatMap(message => Array.isArray(message.content) ? message.content : []).filter(part => part.type === 'image_url');
-      const allPages=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content)).filter(value=>Array.isArray(value?.images));
+      const allPages=body.messages.flatMap(message=>typeof message.content==='string'?[parse(message.content)]:(message.content||[]).filter(part=>part.type==='text').map(part=>parse(part.text))).filter(value=>Array.isArray(value?.images));
       for (const page of allPages) {
         assert.ok(page.evidence_id, 'the original image owns the media bundle reference');
         assert.ok(page.images.every(item => !Object.hasOwn(item.image,'evidence_id')&&!Object.hasOwn(item.model_context,'evidence_id')));
       }
       assert.equal(actual.length,allPages.flatMap(page=>page.images).length,'未触发官方压缩时保留历史图片');
       let calls;
-      if (!outputs.length) calls = [...context.round.targets.map(target => ({name: 'analysis_images', arguments: {sample_id: target.sample_id}})),
+      if (!outputs.length) calls = [...(module==='exploration'?[]:context.round.targets.map(target => ({name: 'analysis_images', arguments: {sample_id: target.sample_id}}))),
         {name:'analysis_crop',arguments:{sample_id:context.round.targets[0].sample_id,bbox:[1,2,7,9]}},
         ...(capacityStop && context.round.round_id===5 ? [{name:'analysis_observations',arguments:{round_id:1,page_size:1}}] : [])];
       else if(history && pages.every(page=>context.round.targets.some(target=>target.sample_id===page.sample_id))) {
@@ -154,12 +185,15 @@ from iad_core.dataset.registry import DatasetRegistry,DatasetImport
 from iad_core.storage.database import Database
 from iad_core.workbench.module_settings import ModuleSettings
 from iad_core.knowledge.instructions import default_directions
-from iad_core.analysis.prompt_text import EXPLORATION_WORKFLOW,knowledge_agent_prompt
+from iad_core.analysis.prompt_text import knowledge_agent_prompt
 from iad_core.exploration.prompts import ExplorationPrompts
 root=Path(sys.argv[1]);db=Database(sys.argv[2]);datasets=[]
 for label,count in [('A',11),('B',8)]:
     directory=root/label;directory.mkdir()
-    for index in range(count):Image.new('RGB',(32,24),'gray').save(directory/(str(index).zfill(2)+'.png'))
+    for index in range(count):
+        Image.new('RGB',(32,24),'gray').save(directory/(str(index).zfill(2)+'.png'))
+        if index >= (8 if label=='A' else 4):
+            (directory/(str(index).zfill(2)+'.json')).write_text(json.dumps(dict(imageWidth=32,imageHeight=24,shapes=[dict(label='scratch',shape_type='rectangle',points=[[4,5],[18,16]])])))
     config=DatasetRegistry(db).import_labelme(DatasetImport(format='labelme',name=label,image_dir=str(directory),annotation_dir=str(directory)))
     datasets.append(config.dataset.id)
     config.quality.source='filename_regex';config.quality.pattern='^([0-9]+)'
@@ -170,7 +204,7 @@ for module in ['exploration','knowledge']:
 print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i).zfill(2)+'.png' for i in range(8)],
     'defect_images':[datasets[0]+':'+str(i).zfill(2)+'.png' for i in (8,9)],
     'exploration_prompt':ExplorationPrompts().default().model_dump(),
-    'system_prompt':{'exploration':EXPLORATION_WORKFLOW,'knowledge':knowledge_agent_prompt()},
+    'system_prompt':{'exploration':ExplorationPrompts.system('labelme'),'knowledge':knowledge_agent_prompt()},
     'mining_prompt':{'objective':'按所选方向观察完整范围。','directions':[default_directions()[0].model_dump()],
         'instruction':'用户自定义：比较边缘。'}}))
 `, root, database], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
@@ -182,7 +216,7 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
   new SystemPrompt(ctx, {});
   new ToolRuntime(ctx);
   const providers = {fixture: {api: protocol, baseURL: endpoint, apiKeyEnv: 'ANALYSIS_TEST_KEY',
-    models: [{id: 'native-image', input: protocol==='openai-responses'?['text']:['text','image'], contextWindow: 65536, ...(optionalOutput?{}:{maxTokens:4096}),
+    models: [{id: 'native-image', input: protocol==='openai-responses'&&module==='knowledge'?['text']:['text','image'], contextWindow: 65536, ...(optionalOutput?{}:{maxTokens:4096}),
       ...(protocol==='openai-responses'?{reasoningEfforts:{high:'high'}}:{})}]}};
   ctx.provide('settings', {configure: () => () => {}, describe: () => [{ns: 'llm-pi-ai', revision: 1, value: {providers}}]});
   ctx.provide('credentials', {resolve: async () => ({value: 'analysis-test-key'})});
@@ -227,6 +261,7 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     assert.equal(toolPresentation(started.value).links.find(link => link.label === '查看作业').location.pageId,
       module === 'exploration' ? 'industrial-exploration' : 'industrial-knowledge');
     const frozen=await bridge.execute('analysis_agent_snapshot',{run_id:job.run_id});
+    if(module==='exploration'){assert.equal(frozen.input_organization,'exploration-batch-v2');assert.equal(frozen.finalization_instruction,null);}
     if(optionalOutput)assert.equal(frozen.agent.profile.max_output_tokens,null);
     assert.deepEqual(frozen.plan.sampling_ratio,{normal:1,abnormal:1});
     assert.deepEqual(frozen.plan.rounds.map(round=>[round.sampling_counts.normal,round.sampling_counts.abnormal]),expectedCounts);
@@ -285,8 +320,9 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
       assert.deepEqual(Buffer.from(await restored.arrayBuffer()),partialArchive,
         'a partial export rebuilt after resume keeps its exact original trace, model calls and publication');
     }
-    assert.equal(status.status,'COMPLETED',JSON.stringify({execution:status.execution_error,provider:errors,samples:status.errors}));
+    assert.equal(status.status,'COMPLETED',JSON.stringify({execution:status.execution_error,provider:errors,samples:status.errors,completed:status.completed,finalizationCalls}));
     assert.equal(status.completed, 19);
+    if(module==='exploration')assert.equal(tokenizeRequests,0);
     assert.equal(status.failed, 0);
     assert.deepEqual(status.batch_runs, []);
     assert.ok(status.analysis_version_id);
@@ -295,8 +331,8 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     assert.equal(publication.coverage.failed, 0);
     assert.equal(publication.coverage.unprocessed, 0);
     assert.equal(publication.coverage.whole_images_observed, 19);
-    assert.equal(publication.coverage.prepared_visuals,19+expectedCounts.length);
-    assert.equal(publication.coverage.observed_visuals,19+expectedCounts.length);
+    assert.equal(publication.coverage.prepared_visuals,19+expectedCounts.length+7*(module==='exploration'?1:2));
+    assert.equal(publication.coverage.observed_visuals,19+expectedCounts.length+7*(module==='exploration'?1:2));
     assert.equal(publication.catalog[module === 'exploration' ? 'directions' : 'checks'].length, emptyCatalog ? 0 : capacityStop ? 4 : 1);
     const resultsResponse = await fetch(base + '/analysis/results/' + job.run_id);
     assert.equal(resultsResponse.status, 200, await resultsResponse.clone().text());
@@ -347,14 +383,16 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     const context = await bridge.execute('analysis_agent_context', {run_id: job.run_id});
     assert.equal(context.round, null);
     const rounds = module === 'exploration' ? 4 : 5;
-    assert.ok(context.revision > rounds);assert.equal(publication.finalization.complete,true);
+    const mainRounds = module === 'exploration' ? 1+Math.ceil((rounds-1)/frozen.settings.concurrency) : rounds;
+    assert.ok(context.revision > mainRounds);assert.equal(publication.finalization.complete,true);
     if (module === 'exploration') assert.deepEqual(context.catalog.directions.map(direction=>direction.direction_id),emptyCatalog?[]:['edge']);
     else {
       const check = context.catalog.checks.find(item => item.check_id === 'K1');
       assert.equal(check.independent_source_count, 1);
       assert.equal(check.status, 'provisional');
     }
-    assert.equal(wire.length, rounds * 2 + (capacityStop ? 1 : 0) + finalizationCalls);
+    const workerReviews=module==='exploration'?mainRounds-1:0;
+    assert.equal(wire.length, rounds * 2 + workerReviews + (capacityStop ? 1 : 0) + finalizationCalls);
     if(capacityStop)assert.equal(reopenedHistory.length,2);
     assert.deepEqual(errors, []);
     const location = await bridge.execute('analysis_agent_session_location', {session_id: context.session_id});
@@ -365,11 +403,11 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
     assert.equal(await sessionResponse.text(), await host.exportJsonl(context.session_id));
     const session = await host.read(context.session_id);
     const finalizationTurns=session.events.filter(event=>event.type==='tool/call'&&event.data.name===module+'_finalize').length;
-    assert.equal(new Set(session.events.filter(event => event.type === 'user/message' && event.data.source.kind==='user').map(event=>event.data.id)).size, rounds + (capacityStop ? 1 : 0) + finalizationTurns);
+    assert.equal(new Set(session.events.filter(event => event.type === 'user/message' && event.data.source.kind==='user').map(event=>event.data.id)).size, mainRounds + (capacityStop ? 1 : 0) + finalizationTurns);
     assert.ok(!session.events.some(event=>event.type==='user/message'&&event.data.source.kind==='analysis-checkpoint'));
-    assert.equal(status.model_calls.filter(call => call.source === 'native_llm'&&!call.error).length, rounds * 2 + (capacityStop ? 1 : 0) + finalizationCalls);
+    assert.equal(status.model_calls.filter(call => call.source === 'native_llm'&&!call.error).length, rounds * 2 + workerReviews + (capacityStop ? 1 : 0) + finalizationCalls);
     assert.equal(status.model_calls.some(call=>call.source==='native_llm'&&!!call.error),!!capacityStop);
-    assert.equal(status.model_calls.filter(call => call.source === 'native_llm').every(call => call.session_id === context.session_id), true);
+    assert.equal(new Set(status.model_calls.filter(call=>call.source==='native_llm').map(call=>call.session_id)).size,module==='exploration'?rounds:1);
     if (browser) await browser.verifyAnalysisPage(base.replace('/api/iad', ''), module, {partialVersionId,emptyCatalog});
     if (module === 'exploration') {
       const choicesUrl = base + '/analysis/directions?' + new URLSearchParams({dataset_ids: JSON.stringify(data.dataset_ids)});

@@ -1,11 +1,12 @@
 import path from 'node:path';
+import type {Context} from '@deepseek-ai/cordis';
 import {randomUUID} from 'node:crypto';
 import {LlmError, MessageId} from '@deepseek-ai/dsh-llm';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
 import {defineTool, type InferValue} from '@deepseek-ai/dsh-tools';
-import type {AnalysisAgentContext, AnalysisFinalizationContext, RegistrationMediaPage, AnalysisSessionLocation, AnalysisWorkflowSnapshot, TokenBudget} from '../../shared/domain.generated.js';
+import type {AnalysisAgentContext, AnalysisFinalizationContext, ExplorationBatchMaterials, RegistrationMediaPage, AnalysisSessionLocation, AnalysisWorkflowSnapshot, TokenBudget} from '../../shared/domain.generated.js';
 import {analysisMediaParameters,analysisCatalogParameters,analysisCropParameters,analysisObservationParameters,
-  analysisArgumentParameters,analysisClaimParameters} from '../../shared/analysis-agent.parameters.generated.js';
+  analysisArgumentParameters,analysisClaimParameters,explorationImageParameters,explorationCropParameters} from '../../shared/analysis-agent.parameters.generated.js';
 import {evidenceReferenceParameters} from '../../shared/media-reference.parameters.generated.js';
 import type {NativeProviders} from '../models/providers.js';
 import type {PythonBridge} from '../python-bridge/index.js';
@@ -17,10 +18,12 @@ import type {ContentBlock} from '@deepseek-ai/dsh-llm';
 import {workbenchJsonOutput} from '../tool-output.js';
 import {registerExplorationTools} from './exploration.js';
 import {registerKnowledgeTools} from './knowledge.js';
+import {ExplorationObservers} from './observers.js';
 
 export function analysisSessionPath(root: string, location: AnalysisSessionLocation): string {
-  return path.join(root, location.module + '-sessions', new Date(location.submitted_at).toISOString().replaceAll(':', '-'),
-    location.job_id, 'session', 'events.jsonl');
+  const directory=path.join(root, location.module + '-sessions', new Date(location.submitted_at).toISOString().replaceAll(':', '-'),location.job_id);
+  return location.round_id ? path.join(directory,'observers',String(location.round_id),'session','events.jsonl')
+    : path.join(directory,'session','events.jsonl');
 }
 
 export class AnalysisWorkflowAgent {
@@ -36,6 +39,8 @@ export class AnalysisWorkflowAgent {
       if (finalization.complete) return;
     }
     const {profile, native_profile} = snapshot.agent;
+    const batchInput = snapshot.input_organization === 'exploration-batch-v2';
+    const delegated = snapshot.execution_mode === 'dsh-subagents';
     if (!profile?.model_id || !native_profile) throw new Error('作业缺少冻结的原生分析模型');
     const location = await this.bridge.execute<AnalysisSessionLocation>('analysis_agent_session_location', {session_id: initial.session_id});
     if (!initial.session_created) {
@@ -48,17 +53,24 @@ export class AnalysisWorkflowAgent {
     let rejectedCommits = 0;
     const maxRejectedCommits = 3;
     const commitCalls = new Set<string>();
-    await this.host.withAgent(initial.session_id, {signal,
-      agentOptions: {provider, model: profile.model_id, maxTokens: profile.max_output_tokens ?? undefined},
-      setup: async scope => {
-        const attachments = new NativeMediaAttachments(scope,path.dirname(analysisSessionPath(this.dataRoot,location)));
+    let attachments!: NativeMediaAttachments;
+    let observers!: ExplorationObservers;
+    const setup=async (scope:Context)=>{
+        attachments = new NativeMediaAttachments(scope,path.dirname(analysisSessionPath(this.dataRoot,location)));
+        if(delegated)await scope.inject(['subagents'],injected=>{
+          observers=new ExplorationObservers(this.bridge,runId,attachments,injected.subagents,snapshot);
+        });
         if (profile.credential_ref) scope.provide('credentials', this.providers.credentials);
-        const execution = await this.providers.credentialsFor(profile);
-        const budget = await NativeModelBudget.open({...native_profile, requestImagePixelBudget:Number.MAX_SAFE_INTEGER,
-          requestImageMaxBytes:Number.MAX_SAFE_INTEGER} as piAi.PiAiProviderProfile,
-          (body,cancellation)=>this.bridge.execute<TokenBudget>('analysis_agent_capacity',{...identity,body,_model_execution:execution},cancellation));
-        scope.effect(() => () => budget.close());
-        await scope.plugin(piAi, {providers: {[provider]: budget.profile}});
+        let providerProfile = {...native_profile, requestImagePixelBudget:Number.MAX_SAFE_INTEGER,
+          requestImageMaxBytes:Number.MAX_SAFE_INTEGER} as piAi.PiAiProviderProfile;
+        if (!batchInput) {
+          const execution = await this.providers.credentialsFor(profile);
+          const budget = await NativeModelBudget.open(providerProfile,
+            (body,cancellation)=>this.bridge.execute<TokenBudget>('analysis_agent_capacity',{...identity,body,_model_execution:execution},cancellation));
+          scope.effect(() => () => budget.close());
+          providerProfile = budget.profile;
+        }
+        await scope.plugin(piAi, {providers: {[provider]: providerProfile}});
         new NativeModelCalls().attach(scope, {
           start: async request => {
             const messages = request.request.messages as {content: ContentBlock[]}[];
@@ -68,13 +80,14 @@ export class AnalysisWorkflowAgent {
           },
           end: async result => {await this.bridge.execute('analysis_agent_model_call_end', {...identity, result});},
         });
-        scope.on('agent/error', event => {failure = event.error;});
-        scope.on('agent/pre-step', async (_event, next) => {
-          if (rejectedCommits >= maxRejectedCommits)
+        scope.on('agent/error', event => {if(event.agent.id===initial.session_id)failure = event.error;});
+        scope.on('agent/pre-step', async (event, next) => {
+          if (event.agent.id===initial.session_id && rejectedCommits >= maxRejectedCommits)
             throw new LlmError(`连续${maxRejectedCommits}次观察、目录或定稿提交失败，已停止推理；已保存成果保留，请检查提交错误后再继续`, 'COMMIT_RETRY_EXHAUSTED');
           return next();
         });
-        scope.on('session/event', (_session, event) => {
+        scope.on('session/event', (session, event) => {
+          if(session.id!==initial.session_id)return;
           if (event.type === 'tool/call' && [snapshot.module + '_commit',snapshot.module + '_finalize'].includes(event.data.name))
             commitCalls.add(event.data.callId);
           if (event.type === 'tool/result' && commitCalls.delete(event.data.message.toolCallId))
@@ -85,10 +98,16 @@ export class AnalysisWorkflowAgent {
         scope.on('agent/request', async (_event, next) => ({...await next(),
           ...(profile.request_parameters.temperature !== undefined ? {temperature: profile.request_parameters.temperature as number} : {}),
           ...(profile.request_parameters.stop !== undefined ? {stop: profile.request_parameters.stop as string[]} : {})}));
-        scope.systemPrompt.section({name: 'analysis-instruction', order: 100, text: snapshot.system_prompt ?? snapshot.instruction});
+        scope.systemPrompt.section({name: 'analysis-instruction', order: 100, interpolate:false,
+          text:({agent})=>(delegated&&agent&&agent.id!==initial.session_id?snapshot.observer_prompt?.system_prompt:null)
+            ?? snapshot.system_prompt ?? snapshot.instruction});
         scope.tools.register(defineTool({name: 'analysis_context', description: '读取本场目标、原始标注状态、目录revision、媒体覆盖、支持反例、待答问题和已选方向；状态变化或提交冲突后重新读取。当前目标全部完成或明确错误后进入后续登记；目标耗尽返回定稿阶段、锁定base_revision及pending_entry_ids。' + (snapshot.module === 'exploration' ? '探索首批严格是页面手选集合。' : '挖掘从首批开始按冻结计划自动取图，无手选首批。'),
           parameters: {}, output: workbenchJsonOutput, execute: async (_args, execution) => {
+            if(delegated&&execution.agent?.id!==initial.session_id)
+              return await observers.context(execution.agent!.id,execution.signal) as unknown as InferValue<{type:'json'}>;
             const context=await this.bridge.execute<AnalysisAgentContext & InferValue<{type:'json'}>>('analysis_agent_context',identity,execution.signal);
+            if(delegated&&context.round&&context.round.round_id>1)
+              return await observers.review(context,execution.signal) as unknown as InferValue<{type:'json'}>;
             return !context.round && snapshot.schema_version===2
               ?this.bridge.execute('analysis_agent_finalization_context',identity,execution.signal):context;
           }}));
@@ -108,17 +127,26 @@ export class AnalysisWorkflowAgent {
           parameters:evidenceReferenceParameters,output:nativeMediaOutput,
           execute:async(query,execution)=>attachments.prepare(await this.bridge.execute<RegistrationMediaPage>(
             'analysis_agent_reference',{...identity,query},execution.signal),execution.signal)}));
-        scope.tools.register(defineTool({name: 'analysis_images', description: '读取当前轮一条登记的原图、原始标注与全部必需ROI。total给出总附件数；可用offset和limit分页，但所有必需附件均观察才完成该登记。已提交过的媒体可按同一sample_id重读。取证错误如实返回，允许保留整图受限观察并报告错误。',
-          parameters: analysisMediaParameters, output: nativeMediaOutput,
+        scope.tools.register(defineTool({name: 'analysis_images', description: batchInput
+          ? '补看当前批次一条登记的完整原图、原始标注与全部必需局部。首次请求已包含本批全部材料；本工具一次返回该登记全部附件，取证受限或失败如实返回。'
+          : '读取当前轮一条登记的原图、原始标注与全部必需ROI。total给出总附件数；可用offset和limit分页，但所有必需附件均观察才完成该登记。已提交过的媒体可按同一sample_id重读。取证错误如实返回，允许保留整图受限观察并报告错误。',
+          parameters: batchInput ? explorationImageParameters : analysisMediaParameters, output: nativeMediaOutput,
           execute: async (query, execution) => attachments.prepare(await this.bridge.execute<RegistrationMediaPage>(
-            'analysis_agent_media', {...identity,query}, execution.signal), execution.signal)}));
-        scope.tools.register(defineTool({name:'analysis_crop',description:'补看当前轮冻结目标的原始像素裁窗，bbox为原图半开区间[x0,y0,x1,y1]。部分越界取有效交集，大裁窗按原像素分块，可用offset/limit分页；附件为本登记的补充证据。',
-          parameters:analysisCropParameters,output:nativeMediaOutput,
+            'analysis_agent_media', {...identity,query,...(delegated&&execution.agent?.id!==initial.session_id?{session_id:execution.agent!.id}:{})}, execution.signal), execution.signal)}));
+        scope.tools.register(defineTool({name:'analysis_crop',description:batchInput
+          ? '补看当前批次冻结原图的原始像素裁窗，bbox为原图半开区间[x0,y0,x1,y1]。部分越界取有效交集，一次返回一个完整裁窗；归属原登记，不是人工标注或独立样本，不计入必需材料。'
+          : '补看当前轮冻结目标的原始像素裁窗，bbox为原图半开区间[x0,y0,x1,y1]。部分越界取有效交集，大裁窗按原像素分块，可用offset/limit分页；附件为本登记的补充证据。',
+          parameters:batchInput ? explorationCropParameters : analysisCropParameters,output:nativeMediaOutput,
           execute:async(query,execution)=>attachments.prepare(await this.bridge.execute<RegistrationMediaPage>(
-            'analysis_agent_crop',{...identity,query},execution.signal),execution.signal)}));
+            'analysis_agent_crop',{...identity,query,...(delegated&&execution.agent?.id!==initial.session_id?{session_id:execution.agent!.id}:{})},execution.signal),execution.signal)}));
         if (snapshot.module === 'exploration') registerExplorationTools(scope, this.bridge, runId);
         else registerKnowledgeTools(scope, this.bridge, runId);
-      },
+        if(delegated)observers.register(scope);
+    };
+    await this.host.withAgent(initial.session_id, {signal,
+      subagents:delegated && 'concurrency' in snapshot.settings ? snapshot.settings.concurrency : undefined,
+      agentOptions: {provider, model: profile.model_id, maxTokens: profile.max_output_tokens ?? undefined},
+      ...(delegated?{sharedSetup:setup}:{setup}),
     }, async agent => {
       const abort = () => agent.cancel({kind: 'parent'});
       signal.addEventListener('abort', abort, {once: true});
@@ -127,12 +155,27 @@ export class AnalysisWorkflowAgent {
           signal.throwIfAborted();
           const context = await this.bridge.execute<AnalysisAgentContext>('analysis_agent_context', identity);
           if (!context.round && snapshot.schema_version===1) break;
-          const task=context.round?context:await this.bridge.execute<AnalysisFinalizationContext>('analysis_agent_finalization_context',identity);
+          const review = delegated&&context.round&&context.round.round_id>1 ? await agent.runMaintenance(async()=>{
+            try {return await observers.wave(agent,context,signal);}
+            finally {
+              // The host supplies one complete review packet instead of waking on individual settlement notices.
+              for(const message of [...agent.inbox.nextTurn,...agent.inbox.nextStep])
+                if(message.source.kind==='subagent-settled')agent.inbox.remove(message.id);
+            }
+          }):null;
+          const materials = batchInput && context.round && !review
+            ? await this.bridge.execute<ExplorationBatchMaterials>('analysis_agent_batch_materials', identity, signal) : null;
+          const task=context.round?(review?.context ?? materials?.context ?? context):await this.bridge.execute<AnalysisFinalizationContext>('analysis_agent_finalization_context',identity);
           if ('complete' in task && task.complete) break;
-          agent.followup({id:MessageId(randomUUID()),role:'user',source:{kind:'user'},
-            content:[{type:'text',text:JSON.stringify(task)},
-              ...(!context.round&&snapshot.finalization_instruction?[{type:'text' as const,text:'\n'+snapshot.finalization_instruction}]:[]),
-              ...(snapshot.system_prompt?[{type:'text' as const,text:'\n'+snapshot.instruction}]:[])]});
+          const content: ContentBlock[] = [{type:'text',text:JSON.stringify(task)+'\n\n'}];
+          if(review)content.push(...review.media);
+          for (const page of materials?.registrations ?? [])
+            content.push(...nativeMediaOutput.render({}, await attachments.prepare(page, signal))
+              .map(block=>block.type==='text'?{...block,text:block.text+'\n\n'}:block));
+          if (!batchInput && !context.round && snapshot.finalization_instruction)
+            content.push({type:'text',text:'\n'+snapshot.finalization_instruction});
+          if (snapshot.system_prompt) content.push({type:'text',text:(batchInput?'':'\n')+snapshot.instruction});
+          agent.followup({id:MessageId(randomUUID()),role:'user',source:{kind:'user'},content});
           await agent.whenIdle();
           if (failure) throw failure;
           const committed = await this.bridge.execute<AnalysisAgentContext>('analysis_agent_context', identity);

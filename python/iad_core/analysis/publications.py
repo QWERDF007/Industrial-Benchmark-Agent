@@ -72,6 +72,14 @@ class AnalysisPublications:
                 created_at=datetime.now(timezone.utc).isoformat(), catalog=catalog, finalization=finalization,
                 coverage=coverage, parent_version_id=parent.version_id if parent else None, inherited_reviews=inherited_reviews,
                 model_call_ids=[item[0] for item in connection.execute('SELECT call_id FROM model_calls WHERE run_id=? ORDER BY rowid',(run_id,))])
+            if snapshot.execution_mode == 'dsh-subagents':
+                from iad_core.exploration.observation_models import ExplorationBatchArchive
+                publication.delegations = [ExplorationBatchArchive(round_id=task['round_id'], wave_id=task['wave_id'],
+                    session_id=task['session_id'], catalog_revision=task['catalog_revision'],
+                    report=json.loads(task['report_json']) if task['report_json'] else None,
+                    review_revision=json.loads(task['review_json'])['revision'] if task['review_json'] else None,
+                    discovery_decisions=json.loads(task['review_json'])['decisions'] if task['review_json'] else [])
+                    for task in connection.execute('SELECT * FROM exploration_batch_tasks WHERE job_id=? ORDER BY round_id', (run_id,))]
             connection.execute('INSERT INTO analysis_publications(version_id,job_id,revision,execution_status,publication_json) VALUES(?,?,?,?,?)',
                 (version_id, run_id, row['revision'], execution_status, publication.model_dump_json()))
             payload['analysis_version_id'] = version_id

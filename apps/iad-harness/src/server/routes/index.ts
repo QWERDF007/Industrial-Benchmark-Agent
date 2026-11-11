@@ -93,6 +93,8 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if (pathname === '/api/iad/analysis/jobs' && method === 'GET') return await call('analysis_list', query);
       if (pathname === '/api/iad/analysis/directions' && method === 'GET') return await call('analysis_direction_choices', {dataset_ids:JSON.parse(url.searchParams.get('dataset_ids') || '[]')});
       if (pathname === '/api/iad/analysis/sources' && method === 'GET') return await call('analysis_sources', {dataset_ids:JSON.parse(url.searchParams.get('dataset_ids') || '[]')});
+      const analysisPrompts=pathname.match(/^\/api\/iad\/analysis\/prompts\/([^/]+)$/);
+      if(analysisPrompts&&method==='GET')return await call('analysis_prompts',{run_id:decodeURIComponent(analysisPrompts[1])});
       const publication = pathname.match(/^\/api\/iad\/analysis\/publications\/([^/]+)$/);
       if (publication && method === 'GET') return await call('analysis_publication', {version_id: decodeURIComponent(publication[1])});
       const analysisObservations=pathname.match(/^\/api\/iad\/analysis\/publications\/([^/]+)\/observations$/);

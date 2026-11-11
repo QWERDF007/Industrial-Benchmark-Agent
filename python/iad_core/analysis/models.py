@@ -4,11 +4,13 @@ from uuid import UUID
 from pydantic import Field, RootModel, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence, VisualView
-from iad_core.exploration.models import DirectionContent, FrozenExplorationPrompt
+from iad_core.exploration.models import DirectionContent, FrozenExplorationPrompt, ExplorationReportReview
+from iad_core.evidence.registrations import RegistrationMediaPage
 from iad_core.knowledge.instructions import MiningDirection
 from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningDirectionSource, SubmittedMiningPrompt
 from iad_core.knowledge.models import KnowledgeSupportAssessment, KnowledgeSupportPolicy, LearnedCheck, KnowledgeCheckRemoval, KnowledgeCheckReview, KnowledgeCheckSummary, KnowledgeEvidence
-from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisModule, AnalysisPlan, AnalysisRegistration, AnalysisRound, CandidateRole
+from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisModule, AnalysisPlan, AnalysisRegistration, AnalysisRound
+from iad_core.workbench.analysis_sources import CandidateRole
 from iad_core.workbench.analysis_requests import SelectedDatasets
 from iad_core.workbench.analysis_sampling import SamplingGroup
 from iad_core.workbench.model_profile import FrozenModelRole
@@ -16,7 +18,13 @@ from iad_core.workbench.module_settings import ExplorationSettingsValues, Knowle
 from iad_core.workbench.calls import ModelCallError
 from iad_core.analysis.argument_models import AnalysisArgumentEdit, AnalysisEntrySelection, ArgumentRole
 from iad_core.analysis.finalization_state import AnalysisFinalizationProgress
-from iad_core.analysis.prompt_text import DIRECTION_OBSERVATION_WORKFLOW
+from iad_core.analysis.observation_models import AnalysisDirectionObservation, AnalysisSampleObservation, AnalysisObservationRecord
+from iad_core.exploration.observation_models import ExplorationBatchArchive
+
+
+class AnalysisRolePrompts(AnalysisModel):
+    system_prompt: NonBlankText | None
+    user_prompt: NonBlankText
 
 
 class ExplorationAgentStart(SelectedDatasets):
@@ -26,6 +34,7 @@ class ExplorationAgentStart(SelectedDatasets):
     defect_images: list[str] = Field(default_factory=list)
     prompt: FrozenExplorationPrompt
     system_prompt: NonBlankText | None = None
+    observer_prompt: AnalysisRolePrompts | None = None
 
     @model_validator(mode='after')
     def selected_images(self):
@@ -60,6 +69,15 @@ class AnalysisAgentConfiguration(AnalysisModel):
     module: AnalysisModule
     settings_revision: int
     settings: ExplorationSettingsValues | KnowledgeSettingsValues
+
+    @model_validator(mode='before')
+    @classmethod
+    def module_settings(cls, value):
+        if isinstance(value, dict):
+            value = dict(value)
+            schema = KnowledgeSettingsValues if value.get('module') == 'knowledge' else ExplorationSettingsValues
+            value['settings'] = schema.model_validate(value['settings'])
+        return value
 
 
 class FrozenAnalysisDirection(AnalysisModel):
@@ -96,11 +114,15 @@ class AnalysisWorkflowSnapshot(AnalysisAgentConfiguration):
     agent: FrozenModelRole
     instruction: NonBlankText
     system_prompt: NonBlankText | None = None
+    observer_prompt: AnalysisRolePrompts | None = None
     finalization_instruction: NonBlankText | None = None
     exploration_prompt: FrozenExplorationPrompt | None = None
     mining_prompt: FrozenMiningPrompt | None = None
     selected_directions: list[FrozenAnalysisDirection] = Field(default_factory=list)
     support_policy: KnowledgeSupportPolicy
+    input_organization: Literal['registration-tools', 'exploration-batch-v2'] = 'registration-tools'
+    exploration_review_policy: Literal['comparative-v1'] | None = None
+    execution_mode: Literal['serial', 'dsh-subagents'] = 'serial'
 
 
 class ProposedAnalysisDirection(DirectionContent, AnalysisEntrySelection):
@@ -186,28 +208,7 @@ class AnalysisSessionLocation(AnalysisModel):
     job_id: str
     submitted_at: str
     module: AnalysisModule
-
-
-class AnalysisDirectionObservation(AnalysisModel):
-    direction_ref: NonBlankText
-    status: Literal['applicable', 'not_applicable', 'uncertain'] = Field(description=DIRECTION_OBSERVATION_WORKFLOW)
-    reason: NonBlankText
-
-
-class AnalysisSampleObservation(AnalysisModel):
-    dataset_id: NonBlankText
-    sample_id: NonBlankText
-    description: NonBlankText = Field(description='仅描述这张图实际观察的事实；局部定位使用原图坐标。')
-    evidence_ids: list[str] = Field(description='实际送达且已观察的完整原图evidence_id；原图关联其原始标注及全部局部视图，不单独引用裁图或掩膜。')
-    directions: list[AnalysisDirectionObservation] = Field(default_factory=list)
-    limitations: list[str] = Field(default_factory=list)
-    report_preparation_error: bool = Field(default=False, description='仅在已有实际取证错误回执时设为true；能读取原图时仍保留可见事实。')
-
-
-class AnalysisObservationRecord(AnalysisSampleObservation):
-    observation_id: str
-    round_id: int
-    revision: int
+    round_id: int | None = None
 
 
 class AnalysisObservationQuery(AnalysisModel):
@@ -284,6 +285,8 @@ CATALOG_EDITS_DESCRIPTION = ('JSON数组，不是包含JSON的字符串。只提
 
 class ExplorationCommit(AnalysisCommit):
     directions: list[ProposedAnalysisDirection] = Field(description=CATALOG_EDITS_DESCRIPTION)
+    report_reviews: list[ExplorationReportReview] = Field(default_factory=list,
+        description='主Agent一次复核当前波全部报告，按各报告round.round_id填写。每份报告的discovery_decisions逐项处理全部候选：new新建、merge兼容归并、reject说明实际依据；无候选时填空数组。')
 
 
 class KnowledgeCommit(AnalysisCommit):
@@ -355,6 +358,11 @@ class AnalysisAgentContext(AnalysisWorkflowState):
     catalog_counts: AnalysisCatalogCounts
 
 
+class ExplorationBatchMaterials(AnalysisModel):
+    context: AnalysisAgentContext
+    registrations: list[RegistrationMediaPage]
+
+
 class AnalysisPublication(AnalysisModel):
     version_id: str
     job_id: str
@@ -371,6 +379,7 @@ class AnalysisPublication(AnalysisModel):
     parent_version_id: str | None = None
     manual_edit: KnowledgeCheckRemoval | None = None
     inherited_reviews: dict[str, KnowledgeCheckReview] = Field(default_factory=dict)
+    delegations: list[ExplorationBatchArchive] = Field(default_factory=list)
 
     def display_evidence_ids(self, entry: AnalysisDirection | AnalysisKnowledgeCheck,
                              evidence_role: Literal['support', 'counter'] | None = None) -> list[str]:
@@ -422,6 +431,11 @@ class AnalysisSourceCatalog(AnalysisModel):
 
 class AnalysisResults(AnalysisModel):
     publication: AnalysisPublicationView | None = None
+
+
+class AnalysisJobPrompts(AnalysisModel):
+    main: AnalysisRolePrompts
+    observer: AnalysisRolePrompts | None = None
 
 
 class PublishedDirectionChoice(MiningDirection):

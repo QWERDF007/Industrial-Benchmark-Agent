@@ -38,8 +38,11 @@ class PreparedRegistration(AnalysisModel):
             total=len(selected), offset=offset, images=selected[offset:end], error=self.error)
 
 
-class RegistrationMediaQuery(AnalysisModel):
+class RegistrationImageQuery(AnalysisModel):
     sample_id: NonBlankText
+
+
+class RegistrationMediaQuery(RegistrationImageQuery):
     offset: int = Field(default=0, ge=0, strict=True)
     limit: int | None = Field(default=None, ge=1, strict=True)
 
@@ -48,7 +51,7 @@ class EvidenceReferenceQuery(AnalysisModel):
     evidence_id: NonBlankText
 
 
-class RegistrationCropQuery(RegistrationMediaQuery):
+class RegistrationCropWindow(AnalysisModel):
     bbox: list[StrictInt] = Field(min_length=4, max_length=4)
 
     @model_validator(mode='after')
@@ -56,6 +59,14 @@ class RegistrationCropQuery(RegistrationMediaQuery):
         if self.bbox[0] >= self.bbox[2] or self.bbox[1] >= self.bbox[3]:
             raise ValueError('裁窗须为非空的半开区间[x0,y0,x1,y1]')
         return self
+
+
+class RegistrationCropQuery(RegistrationMediaQuery, RegistrationCropWindow):
+    pass
+
+
+class ExplorationCropQuery(RegistrationImageQuery, RegistrationCropWindow):
+    pass
 
 
 class RegistrationMediaPage(AnalysisModel):
@@ -95,7 +106,8 @@ class RegistrationImages:
                 path=image.path,model_context=image.model_context(),required=False))
         return PreparedRegistration(sample_id=sample.sample_id,images=images)
 
-    def prepare(self, record: AnalysisRegistration, max_side: int | None, *, raw_annotations: bool = False) -> PreparedRegistration:
+    def prepare(self, record: AnalysisRegistration, max_side: int | None, *, raw_annotations: bool = False,
+                preserve_annotation_instances: bool = False) -> PreparedRegistration:
         sample = record.sample
         result = PreparedRegistration(sample_id=sample.sample_id, images=[])
         prepared = []
@@ -110,7 +122,7 @@ class RegistrationImages:
             if record.dataset_format == 'labelme':
                 if raw_annotations:
                     from iad_core.consistency.annotation_views import annotation_views
-                    regions = annotation_views(sample, record.annotations)
+                    regions = annotation_views(sample, record.annotations, deduplicate=not preserve_annotation_instances)
                     required = {item.annotation_id for item in record.annotations if not item.is_ignored}
                     if required != {origin.annotation_id for region in regions for origin in region.origins}:
                         raise ValueError('原始标注无法生成全部必要的10%局部，不能跳过审核')
@@ -119,10 +131,11 @@ class RegistrationImages:
                         if any(origin.annotation_id is not None for origin in region.origins)]
                 for region in regions:
                     if raw_annotations:
-                        image = self.images.capture(sample, 'roi', 'annotation', region.crop_bbox, digest, full_resolution=True)
                         ids = {origin.annotation_id for origin in region.origins}
-                        prepared.append(image.with_source(sample, record.dataset_format,
-                            [annotation for annotation in record.annotations if annotation.annotation_id in ids]))
+                        linked = [annotation for annotation in record.annotations if annotation.annotation_id in ids]
+                        image = self.images.capture(sample, 'roi', 'annotation', region.crop_bbox, digest, full_resolution=True,
+                            annotation_origins=linked if preserve_annotation_instances else None)
+                        prepared.append(image.with_source(sample, record.dataset_format, linked))
                         continue
                     for image in self.images.capture_regions(sample, [region], record.annotations, digest):
                         ids = {origin.annotation_id for origin in image.origins}

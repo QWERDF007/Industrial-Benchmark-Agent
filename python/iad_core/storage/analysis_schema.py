@@ -25,6 +25,12 @@ def initialize_analysis_schema(connection: Connection):
         job_id TEXT NOT NULL REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
         sample_id TEXT NOT NULL REFERENCES samples(sample_id) ON DELETE CASCADE,
         media_json TEXT NOT NULL, PRIMARY KEY(job_id,sample_id))''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS exploration_batch_tasks (
+        job_id TEXT NOT NULL REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
+        round_id INTEGER NOT NULL CHECK(round_id>1), wave_id INTEGER NOT NULL CHECK(wave_id>0),
+        session_id TEXT NOT NULL UNIQUE, catalog_revision INTEGER NOT NULL,
+        catalog_json TEXT NOT NULL, report_json TEXT, review_json TEXT,
+        PRIMARY KEY(job_id,round_id))''')
     connection.execute('''CREATE TABLE IF NOT EXISTS analysis_media_deliveries (
         job_id TEXT NOT NULL REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
         call_id TEXT NOT NULL REFERENCES model_calls(call_id) ON DELETE CASCADE,
@@ -83,6 +89,8 @@ def initialize_analysis_schema(connection: Connection):
     connection.execute('''CREATE TABLE IF NOT EXISTS analysis_publication_exports (
         version_id TEXT PRIMARY KEY REFERENCES analysis_publications(version_id) ON DELETE CASCADE,
         session_event_count INTEGER NOT NULL CHECK(session_event_count>=0))''')
+    if 'session_event_counts_json' not in {row[1] for row in connection.execute('PRAGMA table_info(analysis_publication_exports)')}:
+        connection.execute('ALTER TABLE analysis_publication_exports ADD COLUMN session_event_counts_json TEXT')
     connection.execute('''CREATE TABLE IF NOT EXISTS analysis_direction_removals (
         version_id TEXT NOT NULL REFERENCES analysis_publications(version_id) ON DELETE CASCADE,
         direction_id TEXT NOT NULL, PRIMARY KEY(version_id,direction_id))''')

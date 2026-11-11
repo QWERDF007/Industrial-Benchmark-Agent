@@ -1,3 +1,5 @@
+import hashlib
+
 import pytest
 
 from iad_core.entry import direction_exploration_presets, direction_exploration_preset_save
@@ -26,7 +28,7 @@ def test_preset_files_reload_full_editable_text_without_restarting(tmp_path, mon
     file.write_text('通用方向\n只观察实际结构。\n', encoding='utf-8')
     db_path = str(tmp_path / 'workbench.db')
     first = direction_exploration_presets({}, db_path)['presets']
-    assert first == [dict(id='general', name='通用方向', text='只观察实际结构。\n', builtin=True)]
+    assert first == [dict(id='general', name='通用方向', text='只观察实际结构。\n', builtin=True, revision=hashlib.sha256('通用方向\n只观察实际结构。\n'.encode()).hexdigest())]
 
     file.write_text('修改后的方向\n比较整图与真实人标。\n', encoding='utf-8')
     (directory / 'surface.txt').write_text('表面方向\n保留不确定性。', encoding='utf-8')
@@ -47,7 +49,7 @@ def test_saved_presets_are_editable_files_in_the_same_directory(tmp_path, monkey
     assert len(files) == 1
     assert files[0].read_text(encoding='utf-8') == '局部对照\n对照原图与人标。'
     files[0].write_text('局部对照\n改为联合比较。', encoding='utf-8')
-    assert direction_exploration_presets({}, db_path)['presets'] == [dict(saved, text='改为联合比较。')]
+    assert direction_exploration_presets({}, db_path)['presets'] == [dict(saved, text='改为联合比较。', revision=hashlib.sha256('局部对照\n改为联合比较。'.encode()).hexdigest())]
     with pytest.raises(ValueError, match='同名'):
         direction_exploration_preset_save({'name': ' 局部对照 ', 'text': '不可覆盖'}, db_path)
 
@@ -89,3 +91,23 @@ def test_knowledge_direction_files_reload_in_both_catalog_and_execution_prompt(a
     assert jobs.snapshot(second['run_id']).selected_directions[0].source_instruction == '联合比较外轮廓与局部转角。'
     assert before.selected_directions[0].source_instruction == '观察可见轮廓。'
     assert jobs.snapshot(first['run_id']) == before
+
+
+def test_v2_catalog_contains_thirteen_complete_user_prompts_and_typed_system_defaults(monkeypatch):
+    from iad_core.exploration.prompts import ExplorationPrompts
+    monkeypatch.delenv('IAD_EXPLORATION_PRESETS_DIR', raising=False)
+    prompts = ExplorationPrompts()
+    presets = prompts.list()
+    assert [item.id for item in presets] == [f'P{index:02}' for index in range(13)]
+    assert presets[0].name == 'P00 通用对比探索'
+    assert '请对当前选中子数据集的完整图集开展视觉方向探索' in presets[0].text
+    assert all(len(item.revision) == 64 for item in presets)
+    labelme = prompts.system('labelme')
+    okng = prompts.system('folder_classification')
+    assert 'Labelme 人工区域标注' in labelme
+    assert '不执行标注正确/错误裁决' in labelme
+    assert '不要求类别释义' in labelme
+    assert '只提供图像级 OK/NG 身份' in okng
+    assert '正常对照' in okng and '实质反例' in okng
+    assert '最后一批' in okng and '允许空结果' in okng
+    assert 'analysis_images' not in labelme + okng

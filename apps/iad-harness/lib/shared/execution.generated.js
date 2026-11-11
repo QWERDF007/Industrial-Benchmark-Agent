@@ -8,6 +8,7 @@ export const queryOperations = [
     "analysis_list",
     "analysis_node",
     "analysis_observations",
+    "analysis_prompts",
     "analysis_publication",
     "analysis_results",
     "analysis_sample_evidence",

@@ -4,13 +4,13 @@ import {Modal} from './Modal.js';
 import {IconButton} from './IconButton.js';
 import {copyText} from '../clipboard.js';
 
-export function PromptDrawer({title, text, systemText, additionalSections=[], onClose}: {
+export function PromptDrawer({title, text, systemText, additionalSections=[], systemLabel='系统提示词', userLabel='用户提示词', onClose}: {
   title: string; text: string; systemText?:string|null;
-  additionalSections?:ReadonlyArray<{title:string;text:string}>;onClose(): void;
+  additionalSections?:ReadonlyArray<{title:string;text:string}>;systemLabel?:string;userLabel?:string;onClose(): void;
 }) {
   const [notice,setNotice] = useState('');
-  const sections=[...(systemText?[{title:'系统提示词',text:systemText}]:[]),
-    {title:systemText?'用户提示词':'',text},...additionalSections];
+  const sections=[...(systemText?[{title:systemLabel,text:systemText}]:[]),
+    {title:systemText?userLabel:'',text},...additionalSections];
   return <Modal title={title} className="iad-drawer iad-prompt-drawer" header={false} onClose={onClose}>
     <header className="iad-dialog-header"><h2>{title}</h2>
       <Button onClick={async()=>{

@@ -497,6 +497,14 @@ export declare const auditReportEvidenceParameters: {
     };
 };
 export declare const auditCropParameters: {
+    readonly bbox: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "integer";
+        };
+        readonly title: "Bbox";
+        readonly required: true;
+    };
     readonly sample_id: {
         readonly type: "string";
         readonly title: "Sample Id";
@@ -514,14 +522,6 @@ export declare const auditCropParameters: {
             readonly type: "null";
         }];
         readonly title: "Limit";
-    };
-    readonly bbox: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "integer";
-        };
-        readonly title: "Bbox";
-        readonly required: true;
     };
 };
 export declare const auditStartParameters: {

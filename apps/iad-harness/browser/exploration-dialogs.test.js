@@ -76,17 +76,12 @@ test('exploration uses shared modal selection, preset form and deletion with rea
   assert.equal(heading.height,70);assert.ok(heading.centers.length);assert.ok(heading.centers.every(center=>Math.abs(center)<1),'探索筛选控件与标题垂直对齐');
   assert.ok((await(await el('.exp-selected-result')).getText()).includes('当前作业没有已发布结果'));
   assert.equal((await driver.findElements(By.css('.exp-error-message'))).length,0,'错误详情统一在状态抽屉');
-  await row.findElement(By.css('button[data-exp=copy-job]'));
+  assert.equal((await row.findElements(By.css('button[data-exp=copy-job]'))).length,0);
   const status=await row.findElement(By.css('.iad-job-status-button'));await click(status);
   let drawer=await el('dialog[aria-label="作业状态"][open]');
   assert.ok((await drawer.getText()).includes('503'));
   assert.ok((await drawer.getText()).includes(failed.errors[0].source_run_id),'抽屉保留实际失败步骤');
   await close();assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',status),true);
-  await click(await el('button[data-exp="copy-job"]'));
-  await driver.wait(async()=>(await driver.findElements(By.css('.exp-preview .iad-thumbnail-card'))).length===1,5000);
-  assert.equal(await(await el('#exp-prompt')).getAttribute('value'),failed.exploration_prompt.text,'使用原作业冻结提示词');
-  assert.ok((await driver.findElement(By.css('[role="tablist"][aria-label="对比样例"]')).getText()).includes('异常样例 (1)'));
-  await click(await button('返回作业与结果'));reads.length=0;
   const remove=await(await el('tr[data-action="select-job"]')).findElement(By.css('button[data-icon="delete"]'));
   await click(remove);let dialog=await el('[aria-label="删除探索作业"]');await native(dialog,530);
   assert.ok((await dialog.getRect()).height<350,'删除确认框按正文撑高，不拉满屏幕');
@@ -95,7 +90,7 @@ test('exploration uses shared modal selection, preset form and deletion with rea
   await close();assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',remove),true);
   assert.equal((await read('analysis/jobs?'+new URLSearchParams({dataset_id:dataset.dataset_id,analysis_kind:'exploration'}))).jobs.length,1);
   await click(await button('新建探索'));assert.equal(reads.filter(route=>route==='/api/iad/knowledge/sources').length,0,'打开设置不预先枚举图像');
-  assert.equal((await driver.findElements(By.css('.exp-preview .iad-thumbnail-card'))).length,0,'新建探索不沿用复制或上次选中的图像');
+  assert.equal((await driver.findElements(By.css('.exp-preview .iad-thumbnail-card'))).length,0,'新建探索不沿用上次选中的图像');
   const add=await el('button[aria-label="继续添加良品图像"]');await click(add);
   dialog=await el('[aria-label="选择良品图像"]');await native(dialog,960);
   assert.equal(await driver.executeScript('return document.activeElement.id'),'exp-source-search');

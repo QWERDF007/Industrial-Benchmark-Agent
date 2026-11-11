@@ -23,14 +23,18 @@ class ModuleSettingsValues(AnalysisModel):
     reasoning_effort: ReasoningEffort | None = None
 
 
-class ExplorationSettingsValues(ModuleSettingsValues):
+class AnalysisSamplingSettingsValues(ModuleSettingsValues):
     batch_size: int = Field(default=4, ge=1, strict=True)
     sampling_ratio: SamplingRatio = DEFAULT_SAMPLING_RATIO
     whole_image_max_side: int | None = Field(default=None, ge=1, strict=True)
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 
-class KnowledgeSettingsValues(ExplorationSettingsValues):
+class ExplorationSettingsValues(AnalysisSamplingSettingsValues):
+    concurrency: JobConcurrency = 2
+
+
+class KnowledgeSettingsValues(AnalysisSamplingSettingsValues):
     batch_size: int = Field(default=12, ge=1, le=200, strict=True)
 
 

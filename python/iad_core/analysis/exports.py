@@ -17,7 +17,8 @@ class AnalysisExports:
     def __init__(self, db):
         self.db = db
 
-    def create(self, version_id: str, directory: str, session_jsonl: str) -> ArtifactRef:
+    def create(self, version_id: str, directory: str, session_jsonl: str,
+               child_sessions: dict[str, str] | None = None) -> ArtifactRef:
         publication = AnalysisPublications(self.db).get(version_id)
         root = Path(directory) / 'versions'
         target = root / version_id
@@ -37,6 +38,13 @@ class AnalysisExports:
             connection.execute('INSERT INTO analysis_publication_exports(version_id,session_event_count) VALUES(?,?) ON CONFLICT DO NOTHING',
                 (version_id,inherited[0] if inherited else len(lines)-1))
             event_count = connection.execute('SELECT session_event_count FROM analysis_publication_exports WHERE version_id=?',(version_id,)).fetchone()[0]
+            recorded = connection.execute('SELECT session_event_counts_json FROM analysis_publication_exports WHERE version_id=?', (version_id,)).fetchone()[0]
+            if recorded is None:
+                child_counts = {sid:len(text.splitlines()) - 1 for sid, text in (child_sessions or {}).items()}
+                connection.execute('UPDATE analysis_publication_exports SET session_event_counts_json=? WHERE version_id=?',
+                    (json.dumps(child_counts), version_id))
+            else:
+                child_counts = json.loads(recorded)
             commits = connection.execute('''SELECT round_id,revision,submission_json,receipt_json FROM analysis_workflow_commits
                 WHERE job_id=? AND revision<=? ORDER BY revision''',(publication.job_id,publication.revision)).fetchall()
             finalizations = connection.execute('''SELECT revision,submission_json,receipt_json FROM analysis_finalization_commits
@@ -56,6 +64,17 @@ class AnalysisExports:
         texts = {'manifest.json':encode(manifest),'coverage.json':encode(publication.coverage.model_dump(mode='json')),
             ('directions.json' if publication.module=='exploration' else 'knowledge.json'):encode(publication.model_dump(mode='json')),
             'session/events.jsonl':'\n'.join(lines[:event_count+1])+'\n'}
+        if publication.delegations:
+            manifest['observer_sessions'] = [dict(session_id=task.session_id, round_id=task.round_id,
+                trace_available=task.session_id in child_counts) for task in publication.delegations]
+            texts['manifest.json'] = encode(manifest)
+            texts['observer-reports.jsonl'] = ''.join(json.dumps(task.model_dump(mode='json'),ensure_ascii=False)+'\n'
+                for task in publication.delegations)
+            for sid, count in child_counts.items():
+                child_lines = (child_sessions or {}).get(sid, '').splitlines()
+                if len(child_lines) < count + 1:
+                    raise LookupError('子代理Session轨迹缺少冻结版本的事件')
+                texts['observers/'+sid+'/events.jsonl'] = '\n'.join(child_lines[:count+1])+'\n'
         rounds = [dict(run_id=publication.job_id,session_id=row['session_id'],round_id=item['round_id'],revision=item['revision'],
             submission=json.loads(item['submission_json']),receipt=json.loads(item['receipt_json'])) for item in commits]
         texts['rounds.jsonl'] = ''.join(json.dumps(item,ensure_ascii=False)+'\n' for item in rounds)

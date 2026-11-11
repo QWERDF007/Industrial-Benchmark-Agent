@@ -53,6 +53,17 @@ export const explorationAgentStartParameters = {
                 ],
                 "title": "Preset Name"
             },
+            "preset_revision": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "title": "Preset Revision"
+            },
             "text": {
                 "type": "string",
                 "title": "Text",
@@ -72,6 +83,30 @@ export const explorationAgentStartParameters = {
             }
         ],
         "title": "System Prompt"
+    },
+    "observer_prompt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "system_prompt": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "title": "System Prompt",
+                "required": true
+            },
+            "user_prompt": {
+                "type": "string",
+                "title": "User Prompt",
+                "required": true
+            }
+        },
+        "title": "AnalysisRolePrompts"
     }
 };
 export const knowledgeAgentStartParameters = {
@@ -485,7 +520,37 @@ export const analysisMediaParameters = {
         "title": "Limit"
     }
 };
+export const explorationImageParameters = {
+    "sample_id": {
+        "type": "string",
+        "title": "Sample Id",
+        "required": true
+    }
+};
+export const explorationCropParameters = {
+    "bbox": {
+        "type": "array",
+        "items": {
+            "type": "integer"
+        },
+        "title": "Bbox",
+        "required": true
+    },
+    "sample_id": {
+        "type": "string",
+        "title": "Sample Id",
+        "required": true
+    }
+};
 export const analysisCropParameters = {
+    "bbox": {
+        "type": "array",
+        "items": {
+            "type": "integer"
+        },
+        "title": "Bbox",
+        "required": true
+    },
     "sample_id": {
         "type": "string",
         "title": "Sample Id",
@@ -506,14 +571,6 @@ export const analysisCropParameters = {
             }
         ],
         "title": "Limit"
-    },
-    "bbox": {
-        "type": "array",
-        "items": {
-            "type": "integer"
-        },
-        "title": "Bbox",
-        "required": true
     }
 };
 export const explorationFinalizeParameters = {
@@ -1430,7 +1487,7 @@ export const explorationCommitParameters = {
                             "type": "null"
                         }
                     ],
-                    "description": "当前条目有序精选原图，支持与反例合计最多4张。省略保留既有选择；不影响完整论据和强度。",
+                    "description": "当前条目有序精选原图，合计最多4张。role须与该图的一项有效论据完全相同，可为support、counter、context或allowed_variation。省略保留既有选择；不影响完整论据和强度。",
                     "title": "Key Evidence"
                 },
                 "title": {
@@ -1500,6 +1557,66 @@ export const explorationCommitParameters = {
         "description": "JSON数组，不是包含JSON的字符串。只提交新增或修改的完整条目，未变条目由服务端保留，无目录变化时传[]。支持和反例是完整论据，遗漏不撤销；arguments说明每项作用，key_evidence另选最多4张展示原图。正文图像引用写成[工具返回的完整原图evidence_id]，不缩写，不引用裁图。",
         "title": "Directions",
         "required": true
+    },
+    "report_reviews": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "round_id": {
+                    "type": "integer",
+                    "title": "Round Id",
+                    "required": true
+                },
+                "discovery_decisions": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "candidate_id": {
+                                "type": "string",
+                                "title": "Candidate Id",
+                                "required": true
+                            },
+                            "action": {
+                                "type": "string",
+                                "enum": [
+                                    "new",
+                                    "merge",
+                                    "reject"
+                                ],
+                                "title": "Action",
+                                "required": true
+                            },
+                            "direction_id": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Direction Id"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "ExplorationDiscoveryDecision"
+                    },
+                    "title": "Discovery Decisions",
+                    "required": true
+                }
+            },
+            "title": "ExplorationReportReview"
+        },
+        "description": "主Agent一次复核当前波全部报告，按各报告round.round_id填写。每份报告的discovery_decisions逐项处理全部候选：new新建、merge兼容归并、reject说明实际依据；无候选时填空数组。",
+        "title": "Report Reviews"
     }
 };
 export const knowledgeCommitParameters = {
@@ -1803,7 +1920,7 @@ export const knowledgeCommitParameters = {
                             "type": "null"
                         }
                     ],
-                    "description": "当前条目有序精选原图，支持与反例合计最多4张。省略保留既有选择；不影响完整论据和强度。",
+                    "description": "当前条目有序精选原图，合计最多4张。role须与该图的一项有效论据完全相同，可为support、counter、context或allowed_variation。省略保留既有选择；不影响完整论据和强度。",
                     "title": "Key Evidence"
                 },
                 "title": {

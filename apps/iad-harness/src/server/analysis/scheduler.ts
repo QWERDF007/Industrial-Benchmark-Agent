@@ -68,8 +68,13 @@ export class AnalysisWorkflowScheduler implements ModelRouting {
     if(!publication.session_id)throw new Error('历史发布版本没有记录原生Session身份');
     const location=await this.bridge.execute<AnalysisSessionLocation>('analysis_agent_session_location',{session_id:publication.session_id});
     const directory=path.dirname(path.dirname(analysisSessionPath(this.dataRoot,location)));
+    const childSessions:Record<string,string>={};
+    for(const child of publication.delegations){
+      if(await this.hosts[location.module].exists(child.session_id))
+        childSessions[child.session_id]=await this.hosts[location.module].exportJsonl(child.session_id);
+    }
     return this.bridge.execute('analysis_agent_artifacts',{version_id:versionId,directory,
-      session_jsonl:await this.hosts[location.module].exportJsonl(publication.session_id)});
+      session_jsonl:await this.hosts[location.module].exportJsonl(publication.session_id),child_sessions:childSessions});
   }
 
   async cancel(runId: string): Promise<JobView> {

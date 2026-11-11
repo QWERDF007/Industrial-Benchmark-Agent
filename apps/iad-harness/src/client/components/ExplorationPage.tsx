@@ -5,7 +5,7 @@ import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {v4 as uuid} from 'uuid';
 import {ExplorationPresetDialog} from './ExplorationPresetDialog.js';
 import {ExplorationSourceDialog} from './ExplorationSourceDialog.js';
-import {PromptDrawer} from './PromptDrawer.js';
+import {AnalysisPromptDrawer} from './AnalysisPromptDrawer.js';
 import {AgentPromptEditors} from './AgentPromptEditors.js';
 import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
@@ -29,12 +29,13 @@ import { DirectionDetailDialog, type DirectionItem } from "./DirectionDetailDial
 import { FullscreenViewer, type FullscreenViewerItem } from "./FullscreenViewer.js";
 import { Pagination, IBA_JOBS_PAGE_SIZE } from "./Pagination.js";
 import { ClearFilterButton } from "./CommonFilterControls.js";
+import {ReferencedText} from '../direction-evidence.js';
 
 import type {AnalysisPublicationView, DirectionRemoval, ExplorationPromptPreset, ExplorationAgentStart} from "../../shared/domain.generated.js";
 import {useModuleSettings} from '../useModuleSettings.js';
 import {useResource} from "../useResource.js";
 import {useWorkspace} from '../workspace.js';
-import {explorationCandidates,explorationDirections,type ExplorationCandidate} from "../exploration-view.js";
+import {ExplorationNarrative,explorationCandidates,explorationDirections,type ExplorationCandidate} from "../exploration-view.js";
 
 function expElapsed(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -84,13 +85,15 @@ export function ExplorationPage({
   const [presets, setPresets] = useState<ExplorationPromptPreset[]>([]);
   const [selectedPresetId, setSelectedPresetId] = useState("");
   const [prompt, setPrompt] = useState("");
-  const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.exploration);
+  const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.explorationSystem[dataset.format]);
+  const [observerSystemPrompt,setObserverSystemPrompt]=useState<string>(promptDefaults.explorationSystem[dataset.format]);
+  const [observerUserPrompt,setObserverUserPrompt]=useState('');
+  const systemFormat=useRef(dataset.format);
   const [originalPrompt, setOriginalPrompt] = useState("");
 
   // Modals
   const [modal, setModal] = useState<"" | "source" | "save" | "direction" | "prompt">("");
-  const [promptText, setPromptText] = useState<string | null>(null);
-  const [promptSystemText,setPromptSystemText]=useState<string|null>(null);
+  const [promptJobId,setPromptJobId]=useState<string|null>(null);
   const [viewingDirection, setViewingDirection] = useState<DirectionItem | null>(null);
 
   // Direction detail interaction
@@ -132,6 +135,7 @@ export function ExplorationPage({
           const first = res.presets[0];
           setSelectedPresetId(first.id);
           setPrompt(first.text);
+          setObserverUserPrompt(first.text);
           setOriginalPrompt(first.text);
         }
       })
@@ -155,6 +159,15 @@ export function ExplorationPage({
   // Derived state
   const parentGroups = useMemo(()=>buildHierarchyGroups(datasets,groups),[datasets,groups]);
   const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
+  const scopeFormats=new Set(datasets.filter(item=>selectedChildIds.includes(item.dataset_id)).map(item=>item.format));
+  const scopeFormat=scopeFormats.size===1?[...scopeFormats][0]:null;
+  useEffect(()=>{
+    if(scopeFormat&&scopeFormat!==systemFormat.current){
+      systemFormat.current=scopeFormat;
+      setSystemPrompt(promptDefaults.explorationSystem[scopeFormat]);
+      setObserverSystemPrompt(promptDefaults.explorationSystem[scopeFormat]);
+    }
+  },[scopeFormat]);
 
   const filteredJobs: JobSnapshot[] = useMemo(() => {
     const q = jobSearch.trim().toLowerCase();
@@ -191,9 +204,11 @@ export function ExplorationPage({
   const versionId=route.job===selectedJob?.run_id&&route.version?route.version:selectedJob?.analysis_version_id;
   const results=useResource<AnalysisPublicationView>(versionId?`/analysis/publications/${encodeURIComponent(versionId)}`:null,refreshTick);
   const publication=results.data;
-  const selectedJobDirections=useMemo(()=>explorationDirections(publication,route.selected),[publication,route.selected]);
-  const selectedJobLimitations=publication?.catalog.limitations||[];
-  const selectedJobSummary=publication?.catalog.summary||'';
+  const datasetNames=useMemo(()=>Object.fromEntries(datasets.map(item=>[item.dataset_id,item.name])),[datasets]);
+  const narrative=useMemo(()=>publication?new ExplorationNarrative(publication,datasetNames):null,[publication,datasetNames]);
+  const selectedJobDirections=useMemo(()=>explorationDirections(publication,route.selected,datasetNames),[publication,route.selected,datasetNames]);
+  const selectedJobLimitations=publication?.catalog.limitations.map(text=>narrative!.text(text))||[];
+  const selectedJobSummary=publication?narrative!.text(publication.catalog.summary):'';
   useEffect(()=>{
     if(!route.selected||!publication)return;
     const direction=selectedJobDirections.find(item=>item.id===route.selected);
@@ -211,32 +226,18 @@ export function ExplorationPage({
 
   const runningJob = jobs.find((j) => j.status === "RUNNING" || j.status === "PENDING");
   const runReason=runningJob ? '已有探索作业正在运行' : !selectedChildIds.length ? '请选择子数据集'
+    : scopeFormats.size!==1 ? '请选择同一标注类型的子数据集'
     : !normalSelected.length && !defectSelected.length ? '至少选择一张样例图像'
     : normalSelected.some(id=>defectSelected.includes(id)) ? '同一图像不能同时作为良品和异常样例'
     : ![...normalSelected,...defectSelected].every(id=>sampleById.has(id)) ? '图像不可用，请重新选择'
     : !configuration.settings?.model ? configuration.loading ? '正在读取模型' : '请先配置方向探索分析模型'
-    : !systemPrompt.trim() ? '请填写系统提示词' : !prompt.trim() ? '请填写用户提示词' : '';
+    : !systemPrompt.trim() ? '请填写主 Agent 系统提示词' : !prompt.trim() ? '请填写主 Agent 用户提示词'
+    : !observerSystemPrompt.trim() ? '请填写子 Agent 系统提示词' : !observerUserPrompt.trim() ? '请填写子 Agent 用户提示词' : '';
   const canRun = !submitting && !runReason;
 
   const resetScope = () => {
     setSamplePool([]);setNormalSelected([]);setDefectSelected([]);setSamplesLoaded(false);setSamplesLoading(false);
     selectJob('');
-  };
-  const openSetup = async (copy?:JobSnapshot) => {
-    setSubmitting(true);setError('');
-    try {
-      const frozen=copy ? await request<JobSnapshot & {request:{submission:ExplorationAgentStart}}>(`/analysis/node/${encodeURIComponent(copy.root_run_id)}`) : null;
-      const original=frozen?.request.submission;
-      const ids=original?.dataset_ids || selectedChildIds;
-      const normals=original?.normal_images || [],defects=original?.defect_images || [];
-      const pool=normals.length || defects.length ? await explorationCandidates(ids) : [];
-      setSelectedChildIds(ids);setSamplePool(pool);setSamplesLoaded(pool.length>0);
-      setNormalSelected(normals);setDefectSelected(defects);
-      const frozenPrompt=original?.prompt || copy?.exploration_prompt;
-      setSystemPrompt(copy?.system_prompt ?? promptDefaults.system.exploration);
-      if(frozenPrompt){setPrompt(frozenPrompt.text);setOriginalPrompt(frozenPrompt.text);setSelectedPresetId(frozenPrompt.preset_id || '');}
-      setView('setup');
-    } catch(error){setError(message(error));} finally {setSubmitting(false);}
   };
 
   // Handle parent group change
@@ -263,6 +264,7 @@ export function ExplorationPage({
     if (p) {
       setSelectedPresetId(presetId);
       setPrompt(p.text);
+      setObserverUserPrompt(p.text);
       setOriginalPrompt(p.text);
     }
   };
@@ -271,11 +273,14 @@ export function ExplorationPage({
     if(!canRun)return;
     setSubmitting(true);setError('');
     try {
-      const key=JSON.stringify([selectedChildIds,normalSelected,defectSelected,systemPrompt,prompt,selectedPresetId]);
+      const submissionBody: Omit<ExplorationAgentStart,'submission_id'> = {analysis_kind:'exploration',
+        dataset_ids:[selectedChildIds[0],...selectedChildIds.slice(1)],normal_images:normalSelected,defect_images:defectSelected,system_prompt:systemPrompt,
+        observer_prompt:{system_prompt:observerSystemPrompt,user_prompt:observerUserPrompt},
+        prompt:{preset_id:selectedPresetId,preset_name:presets.find(preset=>preset.id===selectedPresetId)?.name||'自定义',
+          preset_revision:presets.find(preset=>preset.id===selectedPresetId)?.revision??null,text:prompt}};
+      const key=JSON.stringify(submissionBody);
       if(submission.current?.key!==key)submission.current={key,id:uuid()};
-      const res=await request<JobSnapshot>('/analysis/start',{submission_id:submission.current.id,analysis_kind:'exploration',
-        dataset_ids:selectedChildIds,normal_images:normalSelected,defect_images:defectSelected,system_prompt:systemPrompt,
-        prompt:{preset_id:selectedPresetId,preset_name:presets.find(preset=>preset.id===selectedPresetId)?.name||'自定义',text:prompt}});
+      const res=await request<JobSnapshot>('/analysis/start',{...submissionBody,submission_id:submission.current.id});
       selectJob(res.run_id);setJobPage(1);refreshJobs();setView('jobs');submission.current=null;
     } catch(error){setError(message(error));} finally {setSubmitting(false);}
   };
@@ -317,7 +322,13 @@ export function ExplorationPage({
               variant="primary"
               disabled={!!runningJob || submitting}
               title={runningJob ? "已有探索任务运行或排队" : "新建探索"}
-              onClick={() => void openSetup()}
+              onClick={() => {
+                resetScope();
+                const format=scopeFormat||dataset.format;
+                systemFormat.current=format;setSystemPrompt(promptDefaults.explorationSystem[format]);
+                setObserverSystemPrompt(promptDefaults.explorationSystem[format]);
+                setView('setup');
+              }}
             >
               新建探索
             </Button>
@@ -415,8 +426,14 @@ export function ExplorationPage({
               <Button
                 type="button"
 
-                disabled={prompt === originalPrompt}
-                onClick={() => setPrompt(originalPrompt)}
+                disabled={prompt === originalPrompt && observerUserPrompt === originalPrompt
+                  && systemPrompt === promptDefaults.explorationSystem[scopeFormat||dataset.format]
+                  && observerSystemPrompt === promptDefaults.explorationSystem[scopeFormat||dataset.format]}
+                onClick={() => {
+                  const defaults=promptDefaults.explorationSystem[scopeFormat||dataset.format];
+                  setPrompt(originalPrompt);setObserverUserPrompt(originalPrompt);
+                  setSystemPrompt(defaults);setObserverSystemPrompt(defaults);
+                }}
               >
                 重置为预设
               </Button>
@@ -431,8 +448,10 @@ export function ExplorationPage({
                 另存为预设
               </Button>
             </div>
-            <AgentPromptEditors id="exp-prompt" system={systemPrompt} user={prompt}
+            <AgentPromptEditors id="exp-prompt" agentLabel="主 Agent" system={systemPrompt} user={prompt}
               onSystemChange={setSystemPrompt} onUserChange={setPrompt} disabled={submitting}/>
+            <AgentPromptEditors id="exp-observer-prompt" agentLabel="子 Agent" system={observerSystemPrompt} user={observerUserPrompt}
+              onSystemChange={setObserverSystemPrompt} onUserChange={setObserverUserPrompt} disabled={submitting}/>
           </section>
 
           {/* Step 3: Confirm and Start */}
@@ -551,11 +570,8 @@ export function ExplorationPage({
                           <td className="exp-prompt-action-col">
                             <div className="exp-job-icon-actions" onClick={(e) => e.stopPropagation()}>
                               <JobStatusAction job={j} onClick={()=>setStatusJobId(j.root_run_id)} />
-                              {['FAILED','CANCELLED','INTERRUPTED'].includes(j.status)&&<IconButton icon="copy" label="使用该配置新建" data-exp="copy-job"
-                                disabled={!!runningJob||submitting} onClick={()=>void openSetup(j)} />}
                               <IconButton icon="prompt" label="查看提示词" title="查看提示词" data-exp="show-prompt" data-id={j.run_id} onClick={() => {
-                                  setPromptText(j.exploration_prompt?.text||'');
-                                  setPromptSystemText(j.system_prompt||null);
+                                  setPromptJobId(j.run_id);
                                   setModal("prompt");
                                 }} />
                               <DeleteAction title="删除探索作业" name={j.run_id} confirmLabel="删除作业" confirmation={<>确定删除作业 {j.run_id} 吗？</>} description="删除后不再显示该作业及其探索结果。" disabled={j.status === 'RUNNING' || j.status === 'PENDING'}
@@ -602,7 +618,7 @@ export function ExplorationPage({
               <p className="iad-result-empty" role="status">当前作业没有已发布结果</p></section>
           ) : (
             <section className="exp-panel exp-selected-result" aria-label="所选作业的探索结果">
-              <SectionHeading title="探索结果"><span className="exp-selected-sub">{selectedJob.run_id}</span>
+              <SectionHeading title="探索结果">
                 {publication&&<AnalysisExportButton versionId={publication.version_id}/>}</SectionHeading>
               <div className="exp-result-content">
               {selectedJobSummary && <p className="exp-result-summary">{selectedJobSummary}</p>}
@@ -635,8 +651,9 @@ export function ExplorationPage({
                             }}
                           >
                             <td className="exp-direction-name">{d.title}</td>
-                            <td className="exp-direction-description" title={d.brief}>
-                              {d.brief}
+                            <td className="exp-direction-description" title={narrative?.text(d.brief)}>
+                              <ReferencedText text={d.brief} references={d.references}
+                                onReference={()=>{setViewingDirection(d);setModal('direction');}} onPreview={()=>{}}/>
                             </td>
                             <td>{d.applies}</td>
                             <td className="iad-number">{evidenceCount} 张</td>
@@ -683,8 +700,7 @@ export function ExplorationPage({
       )}
 
             {/* Prompt Drawer */}
-      {modal === "prompt" && promptText !== null && <PromptDrawer title="探索提示词"
-        text={promptText || '本次作业未记录提示词正文。'} systemText={promptSystemText} onClose={()=>setModal('')} />}
+      {modal === "prompt" && promptJobId && <AnalysisPromptDrawer jobId={promptJobId} onClose={()=>setModal('')} />}
 
       {modal === 'save' && <ExplorationPresetDialog text={prompt} onClose={()=>setModal('')} onSaved={saved=>{
         setPresets(values=>[...values,saved]);setSelectedPresetId(saved.id);setOriginalPrompt(saved.text);setModal('');

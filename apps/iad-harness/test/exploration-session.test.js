@@ -44,19 +44,20 @@ test('DSH conversation explores the full scope and mines a fixed direction acros
       if(module){
         const contextIndex=body.messages.findLastIndex(message=>message.role==='user'&&parse(message.content)?.job_id);
         const context=parse(body.messages[contextIndex].content);
-        const pages=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
+        const initialPages=Array.isArray(body.messages[contextIndex].content)?body.messages[contextIndex].content.filter(part=>part.type==='text').map(part=>parse(part.text)).filter(item=>Array.isArray(item?.images)):[];
+        const pages=[...initialPages,...body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content))];
         if(context.phase==='finalize'){respond(res,finalizeFixtureCatalog(context,pages,module));return;}
         if(!pages.length){respond(res,context.round.targets.map(target=>({name:'analysis_images',arguments:{sample_id:target.sample_id}})));return;}
         const images=pages.flatMap(page=>page.images),actual=body.messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(part=>part.type==='image_url');
-        const retained=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content)).filter(value=>Array.isArray(value?.images)).flatMap(page=>page.images);
+        const retained=body.messages.flatMap(message=>typeof message.content==='string'?[parse(message.content)]:(message.content||[]).filter(part=>part.type==='text').map(part=>parse(part.text))).filter(value=>Array.isArray(value?.images)).flatMap(page=>page.images);
         assert.equal(actual.length,retained.length);
         assert.deepEqual(actual.map(part=>createHash('sha256').update(Buffer.from(part.image_url.url.split(',')[1],'base64')).digest('hex')).sort(),retained.map(image=>image.image.sha256).sort());
         const observations=pages.map(page=>({sample_id:page.sample_id,dataset_id:page.images[0].dataset_id,
-          description:'本场观察原图与全部标注局部。',evidence_ids:page.images.map(image=>image.image.evidence_id),
+          description:'本场观察原图与全部标注局部。',evidence_ids:[page.evidence_id],
           directions:context.selected_directions.map(direction=>({direction_ref:direction.ref,
             status:page.images[0].dataset_id===dataset.dataset_id?'applicable':'not_applicable',
             reason:page.images[0].dataset_id===dataset.dataset_id?'本图孔位可见。':'本图为无孔平面，不适用选定孔位方向。'}))}));
-        const ids=images.filter(image=>image.dataset_id===dataset.dataset_id&&image.image.role==='overview'&&image.image.representation==='raw').map(image=>image.image.evidence_id);
+        const ids=pages.filter(page=>page.images[0]?.dataset_id===dataset.dataset_id).map(page=>page.evidence_id);
         const entries=module==='exploration'?{directions:[{direction_id:'hole',title:'孔位检查',instruction:'比较孔位轮廓与局部边缘。',
           applies_to:'both',rationale:'本场原图可复看孔位。',evidence_ids:ids,dataset_ids:[dataset.dataset_id],limitations:[]}]}:
           {checks:[{check_id:'hole-edge',title:'孔位边缘',subject:'部件',location:'孔位',criterion:'沿原图核对孔位轮廓连续性。',allowed_variations:[],

@@ -40,7 +40,31 @@ class AnalysisCommits:
             current = next((round for round in snapshot.plan.rounds if any(target.sample_id not in processed for target in round.targets)), snapshot.plan.rounds[-1])
             if submission.round_id != current.round_id:
                 raise ValueError('提交不属于当前业务轮')
-            targets = {(target.dataset_id, target.sample_id) for target in current.targets}
+            task = connection.execute('SELECT * FROM exploration_batch_tasks WHERE job_id=? AND round_id=?',
+                (run_id, current.round_id)).fetchone() if snapshot.execution_mode == 'dsh-subagents' else None
+            rounds = [current]
+            if task:
+                from iad_core.exploration.delegation_models import ExplorationBatchReport
+                if submission.observations:
+                    raise ValueError('复核子代理报告时observations传[]，宿主导入本波已核验报告，不能改写子代理看图记录')
+                tasks = connection.execute('''SELECT * FROM exploration_batch_tasks
+                    WHERE job_id=? AND wave_id=? AND review_json IS NULL ORDER BY round_id''', (run_id, task['wave_id'])).fetchall()
+                if any(row['report_json'] is None for row in tasks):
+                    raise ValueError('本波子代理报告尚未全部完成，不能提前复核写目录')
+                reviews = {item.round_id:item.discovery_decisions for item in submission.report_reviews}
+                if len(reviews) != len(submission.report_reviews) or set(reviews) != {row['round_id'] for row in tasks}:
+                    raise ValueError('必须一次复核本波全部待复核报告，不能遗漏或重复')
+                observations = []
+                for row in tasks:
+                    report = ExplorationBatchReport.model_validate_json(row['report_json'])
+                    decisions = reviews[row['round_id']]
+                    if len(decisions) != len(report.discoveries) or {item.candidate_id for item in decisions} != {
+                            item.candidate_id for item in report.discoveries}:
+                        raise ValueError('必须逐一复核子代理全部新现象候选，不能遗漏')
+                    observations.extend(report.observations)
+                rounds = [snapshot.plan.rounds[row['round_id'] - 1] for row in tasks]
+                submission = submission.model_copy(update={'observations':observations})
+            targets = {(target.dataset_id, target.sample_id):round.round_id for round in rounds for target in round.targets}
             media = {value.sample_id: value for row in connection.execute('SELECT media_json FROM analysis_sample_media WHERE job_id=?', (run_id,))
                 for value in [PreparedRegistration.model_validate_json(row[0])]}
             delivered = {row[0] for row in connection.execute('''SELECT d.evidence_id FROM analysis_media_deliveries d
@@ -89,14 +113,26 @@ class AnalysisCommits:
                 for index in range(len(submission.observations))]
             receipt = AnalysisCommitReceipt(commit_key=submission.commit_key, revision=revision, round_id=current.round_id,
                 observation_ids=ids, completed_delta=len(successes), failed_delta=len(failures),
-                round_complete=all(target.sample_id in processed.union(successes, failures) for target in current.targets))
+                round_complete=all(sid in processed.union(successes, failures) for _, sid in targets))
             connection.execute('''INSERT INTO analysis_workflow_commits(job_id,commit_key,round_id,revision,submission_json,receipt_json)
                 VALUES(?,?,?,?,?,?)''', (run_id, submission.commit_key, current.round_id, revision, canonical, receipt.model_dump_json()))
             connection.executemany('''INSERT INTO analysis_sample_observations(job_id,observation_id,sample_id,round_id,revision,observation_json)
-                VALUES(?,?,?,?,?,?)''', [(run_id, oid, item.sample_id, current.round_id, revision, item.model_dump_json())
+                VALUES(?,?,?,?,?,?)''', [(run_id, oid, item.sample_id, targets[(item.dataset_id, item.sample_id)], revision, item.model_dump_json())
                 for oid, item in zip(ids, submission.observations)])
             catalog = AnalysisCatalogs().apply(snapshot, AnalysisCatalog.model_validate_json(state['catalog_json']),
                 submission, media, observed, connection=connection, run_id=run_id, revision=revision)
+            if task:
+                existing_ids = {item['direction_id'] for item in json.loads(state['catalog_json'])['directions']}
+                updated_ids = {item.direction_id for item in catalog.directions}
+                for round_id, decisions in reviews.items():
+                    for decision in decisions:
+                        if decision.action != 'reject' and decision.direction_id not in updated_ids:
+                            raise ValueError('新现象的处理目标必须是本次更新后的真实方向')
+                        if decision.action == 'new' and decision.direction_id in existing_ids:
+                            raise ValueError('新增候选不能指向已有方向，归并需明确选择merge并说明兼容依据')
+                    connection.execute('UPDATE exploration_batch_tasks SET review_json=? WHERE job_id=? AND round_id=?',
+                        (json.dumps(dict(revision=revision, decisions=[item.model_dump() for item in decisions]),
+                            ensure_ascii=False), run_id, round_id))
             connection.execute('UPDATE analysis_workflow_runs SET revision=?,catalog_json=? WHERE job_id=?',
                 (revision, catalog.model_dump_json(), run_id))
             if successes:
@@ -105,5 +141,5 @@ class AnalysisCommits:
                 self.jobs.jobs.record(run_id, sid, JobExecutionError(media[sid].error, source_run_id=run_id,
                     source_phase='PREPARING_MEDIA', code='SOURCE_UNAVAILABLE'), connection=connection)
             if receipt.round_complete:
-                self.jobs.jobs.update(run_id, connection=connection, completed_batches=current.round_id)
+                self.jobs.jobs.update(run_id, connection=connection, completed_batches=rounds[-1].round_id)
             return receipt

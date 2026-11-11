@@ -1,5 +1,5 @@
 import React from 'react';
-export declare function PromptDrawer({ title, text, systemText, additionalSections, onClose }: {
+export declare function PromptDrawer({ title, text, systemText, additionalSections, systemLabel, userLabel, onClose }: {
     title: string;
     text: string;
     systemText?: string | null;
@@ -7,6 +7,8 @@ export declare function PromptDrawer({ title, text, systemText, additionalSectio
         title: string;
         text: string;
     }>;
+    systemLabel?: string;
+    userLabel?: string;
     onClose(): void;
 }): React.JSX.Element;
 //# sourceMappingURL=PromptDrawer.d.ts.map

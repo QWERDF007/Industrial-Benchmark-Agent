@@ -13,14 +13,34 @@ class ExplorationPresetEdit(AnalysisModel):
     text: NonBlankText
 
 
+class ExplorationDiscoveryDecision(AnalysisModel):
+    candidate_id: NonBlankText
+    action: Literal['new', 'merge', 'reject']
+    direction_id: NonBlankText | None = None
+    reason: NonBlankText
+
+    @model_validator(mode='after')
+    def target(self):
+        if (self.action != 'reject') != (self.direction_id is not None):
+            raise ValueError('新增或合并需填写目标方向，拒绝候选不填写目标方向')
+        return self
+
+
+class ExplorationReportReview(AnalysisModel):
+    round_id: int = Field(ge=2, strict=True)
+    discovery_decisions: list[ExplorationDiscoveryDecision]
+
+
 class ExplorationPromptPreset(ExplorationPresetEdit):
     id: str
     builtin: bool
+    revision: str
 
 
 class FrozenExplorationPrompt(AnalysisModel):
     preset_id: Optional[str] = None
     preset_name: Optional[str] = None
+    preset_revision: Optional[str] = None
     text: NonBlankText
 
 

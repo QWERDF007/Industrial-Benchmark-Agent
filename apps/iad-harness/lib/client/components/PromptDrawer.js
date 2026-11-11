@@ -4,10 +4,10 @@ import { Button } from './Button.js';
 import { Modal } from './Modal.js';
 import { IconButton } from './IconButton.js';
 import { copyText } from '../clipboard.js';
-export function PromptDrawer({ title, text, systemText, additionalSections = [], onClose }) {
+export function PromptDrawer({ title, text, systemText, additionalSections = [], systemLabel = '系统提示词', userLabel = '用户提示词', onClose }) {
     const [notice, setNotice] = useState('');
-    const sections = [...(systemText ? [{ title: '系统提示词', text: systemText }] : []),
-        { title: systemText ? '用户提示词' : '', text }, ...additionalSections];
+    const sections = [...(systemText ? [{ title: systemLabel, text: systemText }] : []),
+        { title: systemText ? userLabel : '', text }, ...additionalSections];
     return _jsxs(Modal, { title: title, className: "iad-drawer iad-prompt-drawer", header: false, onClose: onClose, children: [_jsxs("header", { className: "iad-dialog-header", children: [_jsx("h2", { children: title }), _jsx(Button, { onClick: async () => {
                             try {
                                 await copyText(sections.map(section => (section.title ? section.title + '\n' : '') + section.text).join('\n\n'));

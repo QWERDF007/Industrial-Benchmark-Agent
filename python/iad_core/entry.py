@@ -24,7 +24,7 @@ from iad_core.workbench.projection import suggestion_meta as extract_suggestion_
 from iad_core.workbench.query import SampleQuery, WorkbenchQuery
 from iad_core.workbench.review import HumanReview, ReviewSubmission, ReviewHistoryQuery
 from iad_core.workbench.runtime import workbench, close_workbenches
-from iad_core.workbench.analysis_operations import analysis_start, analysis_list, analysis_status, analysis_node, analysis_results, analysis_cancel, analysis_retry, analysis_delete
+from iad_core.workbench.analysis_operations import analysis_start, analysis_list, analysis_status, analysis_node, analysis_prompts, analysis_results, analysis_cancel, analysis_retry, analysis_delete
 from iad_core.consistency.agent_operations import (consistency_agent_start, consistency_agent_snapshot,
     consistency_agent_anchors, consistency_agent_anchor, consistency_agent_session_created, consistency_agent_retrieve,
     consistency_agent_submit_empty, consistency_agent_failure, consistency_agent_finish,
@@ -465,7 +465,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_session_location,
     consistency_agent_media,
     consistency_review_context, consistency_review_submit, consistency_correction_verify,
-    analysis_start, analysis_list, analysis_status, analysis_node, analysis_results, analysis_cancel, analysis_retry, analysis_delete,
+    analysis_start, analysis_list, analysis_status, analysis_node, analysis_prompts, analysis_results, analysis_cancel, analysis_retry, analysis_delete,
     image_retrieve, temporary_image_accept, temporary_image_release, temporary_image_release_owner,
     consistency_compare,consistency_evidence,consistency_evidence_media,consistency_evidence_export,
     image_index_prepare,consistency_start,consistency_status,consistency_list,consistency_cancel,consistency_delete,consistency_retry,consistency_query,consistency_report,consistency_report_saved,consistency_group_analysis,consistency_gallery,consistency_gallery_members,consistency_groups,consistency_group_members,consistency_context,
@@ -502,7 +502,7 @@ QUERY_OPERATIONS = frozenset({
     'module_settings_get',
     'knowledge_evidence',
     'knowledge_get', 'knowledge_details', 'knowledge_versions', 'knowledge_presets', 'direction_exploration_evidence', 'direction_exploration_presets',
-    'analysis_list', 'analysis_status', 'analysis_node', 'analysis_results',
+    'analysis_list', 'analysis_status', 'analysis_node', 'analysis_prompts', 'analysis_results',
     'consistency_model_status',
     'audit_sources', 'audit_status', 'audit_list', 'audit_job_samples', 'audit_job_sample', 'audit_job_report', 'audit_job_export',
     'dataset_list', 'dataset_get', 'dataset_group_list', 'sample_list', 'sample_get',

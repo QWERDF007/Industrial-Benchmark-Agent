@@ -25,7 +25,9 @@ for(const module of ['exploration','knowledge'])for(const unreadable of [false,t
       const parse=content=>{try{return JSON.parse((typeof content==='string'?content:content.find(part=>part.type==='text').text).split('\n')[0]);}catch{return null;}};
       const contextIndex=body.messages.findLastIndex(message=>message.role==='user'&&parse(message.content)?.job_id);
       const context=parse(body.messages[contextIndex].content);
-      const pages=body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
+      const content=body.messages[contextIndex].content;
+      const initialPages=(Array.isArray(content)?content.filter(part=>part.type==='text').map(part=>part.text):[content]).flatMap(text=>text.split('\n')).map(parse).filter(item=>Array.isArray(item?.images));
+      const pages=[...initialPages,...body.messages.slice(contextIndex+1).filter(message=>message.role==='tool').map(message=>parse(message.content))];
       let calls;
       if(context.phase==='finalize'){
         finalizationCalls++;
@@ -107,7 +109,7 @@ print(json.dumps(dict(dataset_id=config.dataset.id,sample_ids=[config.dataset.id
     assert.equal(history.total,8);
     assert.ok(history.items.every(item=>item.report_preparation_error&&item.evidence_ids.length===0));
     assert.equal(finalizationCalls,0);
-    assert.equal(wire.length,snapshot.plan.rounds.length*2,'零视觉材料不调用定稿模型');
+    assert.equal(wire.length,snapshot.plan.rounds.length*(module==='exploration'?1:2),'零视觉材料不调用定稿模型');
     assert.deepEqual(errors,[]);
     return;
   }
@@ -122,16 +124,16 @@ print(json.dumps(dict(dataset_id=config.dataset.id,sample_ids=[config.dataset.id
   assert.equal(history.total,8);assert.equal(new Set(history.items.map(item=>item.sample_id)).size,8);
   const publication=await runtime.bridge.execute('analysis_agent_publication',{version_id:status.analysis_version_id});
   assert.deepEqual([publication.coverage.total,publication.coverage.completed,publication.coverage.failed,publication.coverage.unprocessed],[8,6,2,0]);
-  assert.equal(publication.coverage.whole_images_observed,7);assert.equal(publication.coverage.observed_visuals,9);
+  assert.equal(publication.coverage.whole_images_observed,7);assert.equal(publication.coverage.observed_visuals,module==='exploration'?7:9);
   const coverage=Object.fromEntries(publication.coverage.records.map(record=>[record.sample_id.split(':').at(-1),record]));
   assert.equal(coverage['bad-image.png'].state,'failed');assert.equal(coverage['bad-image.png'].observed_evidence_ids.length,0);
   assert.equal(coverage['broken-label.png'].state,'failed');assert.equal(coverage['broken-label.png'].observed_evidence_ids.length,1);
-  assert.equal(coverage['ignore.png'].required_media.length,3);assert.equal(coverage['excluded.png'].state,'completed');
+  assert.equal(coverage['ignore.png'].required_media.length,module==='exploration'?1:3);assert.equal(coverage['excluded.png'].state,'completed');
   if(module==='knowledge'){
     assert.equal(publication.catalog.checks[0].independent_source_count,1);assert.equal(publication.catalog.checks[0].status,'provisional');
     assert.ok(history.items.every(item=>item.directions.length===1));
   }
-  assert.deepEqual(errors,[]);assert.equal(wire.length,snapshot.plan.rounds.length*2+finalizationCalls);assert.equal(publication.finalization.complete,true);
+  assert.deepEqual(errors,[]);assert.equal(wire.length,snapshot.plan.rounds.length*(module==='exploration'?1:2)+finalizationCalls);assert.equal(publication.finalization.complete,true);
   const api=createIadHttpHandler(runtime.bridge);server=http.createServer(api);await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const base=`http://127.0.0.1:${server.address().port}/api/iad`;
   const callsBefore=status.model_calls.map(call=>call.call_id);
