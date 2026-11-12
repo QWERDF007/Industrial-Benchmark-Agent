@@ -1,6 +1,6 @@
 import json
 
-from iad_core.analysis.models import (AnalysisEvidenceView, AnalysisPublicationView,
+from iad_core.analysis.models import (AnalysisEvidenceView, AnalysisPublicationView, AnalysisResultView, AnalysisCurrentResultView, AnalysisCheckEvidence, AnalysisCoverage,
     AnalysisSource, AnalysisSourceCatalog, AnalysisWorkflowSnapshot, PublishedDirectionCatalog, PublishedDirectionChoice,
     KnowledgeCheckEvidencePage, AnalysisCatalog, AnalysisCatalogQuery, AnalysisCatalogPage, AnalysisSampleEvidence, AnalysisObservationQuery, AnalysisObservationPage, AnalysisObservationHistoryPage,
     AnalysisClaimHistory, AnalysisClaimRevision, AnalysisJobPrompts, AnalysisRolePrompts)
@@ -30,6 +30,10 @@ class AnalysisQueries:
         snapshot = AnalysisWorkflowSnapshot.model_validate_json(row['snapshot_json'])
         prompts = AnalysisRolePrompts(system_prompt=snapshot.system_prompt, user_prompt=snapshot.instruction)
         observer = (snapshot.observer_prompt or prompts) if snapshot.execution_mode == 'dsh-subagents' else None
+        if snapshot.context_instruction:
+            prompts = prompts.model_copy(update={'system_prompt':(prompts.system_prompt or '') + '\n\n' + snapshot.context_instruction})
+            if observer is not None:
+                observer = observer.model_copy(update={'system_prompt':(observer.system_prompt or '') + '\n\n' + snapshot.context_instruction})
         tasks = snapshot.knowledge_tasks or snapshot.exploration_tasks
         if tasks is not None:
             prompts = prompts.model_copy(update={'user_prompt':'\n\n'.join([
@@ -65,22 +69,63 @@ class AnalysisQueries:
             snapshot = AnalysisWorkflowSnapshot.model_validate_json(connection.execute(
                 'SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?', (publication.job_id,)).fetchone()[0])
             removed = [row[0] for row in connection.execute('SELECT direction_id FROM analysis_direction_removals WHERE version_id=?', (version_id,))]
+        view = AnalysisPublicationView(**publication.model_dump(), selected_directions=snapshot.selected_directions,
+            removed_direction_ids=removed, evidence=self._evidence(snapshot, publication.coverage))
+        return view
+
+    def current(self, run_id: str) -> AnalysisCurrentResultView:
+        with self.db.connection() as connection:
+            connection.execute('BEGIN')
+            row = connection.execute('SELECT snapshot_json,revision,catalog_json,session_id FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
+            if row is None:
+                raise LookupError('原生分析作业不存在')
+            snapshot = AnalysisWorkflowSnapshot.model_validate_json(row['snapshot_json'])
+            coverage = AnalysisCoverageReader(self.db).read(run_id, connection)
+            catalog = AnalysisCatalog.model_validate_json(row['catalog_json'])
+            view = AnalysisCurrentResultView(job_id=run_id, module=snapshot.module, revision=row['revision'],
+                session_id=row['session_id'], catalog=catalog, coverage=coverage,
+                selected_directions=snapshot.selected_directions, evidence=self._evidence(snapshot, coverage))
+        view.checks = self.check_summaries(view) if view.module == 'knowledge' else []
+        projection = KnowledgeDisplayEvidence([KnowledgeEvidence(sample_id=item.sample_id,image=item.image) for item in view.evidence])
+        view.check_evidence = {check.check_id:AnalysisCheckEvidence(support=projection.images(check.support_evidence_ids),
+            counter=projection.images(check.counter_evidence_ids)) for check in view.catalog.checks}
+        return view
+
+    @staticmethod
+    def _evidence(snapshot: AnalysisWorkflowSnapshot, coverage: AnalysisCoverage) -> list[AnalysisEvidenceView]:
         records = {record.sample.sample_id: record for record in snapshot.manifest.records}
         roles = {target.sample_id: target.candidate_role for round in snapshot.plan.rounds for target in round.targets}
-        observed = {eid for record in publication.coverage.records for eid in record.observed_evidence_ids}
-        observed_samples = {record.sample_id for record in publication.coverage.records if record.observed_evidence_ids}
-        return AnalysisPublicationView(**publication.model_dump(), selected_directions=snapshot.selected_directions, removed_direction_ids=removed,
-            evidence=[AnalysisEvidenceView(evidence_id=image.evidence_id, sample_id=record.sample_id,
+        observed = {eid for record in coverage.records for eid in record.observed_evidence_ids}
+        observed_samples = {record.sample_id for record in coverage.records if record.observed_evidence_ids}
+        return [AnalysisEvidenceView(evidence_id=image.evidence_id, sample_id=record.sample_id,
                 dataset_id=record.dataset_id, filename=records[record.sample_id].sample.relative_path,
                 candidate_role=roles[record.sample_id] or (AnalysisSourceRoles.resolve(
                     records[record.sample_id].dataset_format, records[record.sample_id].sample.quality_status,
                     records[record.sample_id].sample.annotation_availability.status, len(records[record.sample_id].annotations))
-                    if publication.module == 'exploration' else None),
+                    if snapshot.module == 'exploration' else None),
                 sampling_group=records[record.sample_id].sampling_group or 'unclassified',
                 image=image, observed=image.evidence_id in observed or index in record.delivered_offsets)
-                for record in publication.coverage.records for index,image in enumerate(record.media)
+                for record in coverage.records for index,image in enumerate(record.media)
                 if image.evidence_id in observed or record.sample_id in observed_samples
-                    and (index in record.delivered_offsets or image.role == 'overview')])
+                    and (index in record.delivered_offsets or image.role == 'overview')]
+
+    def current_evidence(self, run_id: str, evidence_id: str) -> dict:
+        view = self.current(run_id)
+        image = next((item.image for item in view.evidence if item.evidence_id == evidence_id), None)
+        if image is None:
+            raise LookupError('该作业不存在指定观察证据')
+        return {'path': EvidenceImages(self.db.db_path).path(image), 'media_type': image.media_type}
+
+    def current_sample(self, run_id: str, sample_id: str) -> AnalysisSampleEvidence:
+        view = self.current(run_id)
+        with self.db.connection() as connection:
+            row = connection.execute('SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
+        snapshot = AnalysisWorkflowSnapshot.model_validate_json(row[0])
+        record = next((record for record in snapshot.manifest.records if record.sample.sample_id == sample_id), None)
+        if record is None:
+            raise LookupError('该图像不属于所选作业')
+        return AnalysisSampleEvidence(module=view.module, registration=record,
+            items=[item for item in view.evidence if item.sample_id == sample_id])
 
     def catalog(self, run_id: str, query: dict | AnalysisCatalogQuery) -> AnalysisCatalogPage:
         query = AnalysisCatalogQuery.model_validate(query)
@@ -194,7 +239,7 @@ class AnalysisQueries:
                 for direction in view.catalog.directions if direction.direction_id not in view.removed_direction_ids)
         return PublishedDirectionCatalog(directions=directions)
 
-    def check_summaries(self, view: AnalysisPublicationView) -> list[KnowledgeCheckSummary]:
+    def check_summaries(self, view: AnalysisResultView) -> list[KnowledgeCheckSummary]:
         with self.db.connection() as connection:
             snapshot = AnalysisWorkflowSnapshot.model_validate_json(connection.execute(
                 'SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?',(view.job_id,)).fetchone()[0])
@@ -205,7 +250,7 @@ class AnalysisQueries:
             if direction.source.origin == 'explored':
                 references[direction.source.run_id] = f'方向“{direction.title}”的来源作业'
         projection = KnowledgeDisplayEvidence([KnowledgeEvidence(sample_id=item.sample_id,image=item.image) for item in view.evidence],references)
-        reviews = KnowledgeCheckReviews(self.db).read(view.version_id)
+        reviews = KnowledgeCheckReviews(self.db).read(view.version_id) if isinstance(view, AnalysisPublicationView) else {}
         summaries = []
         for check in view.catalog.checks:
             content = {name:projection.text(value) if isinstance(value,str) else [projection.text(item) for item in value]
@@ -240,7 +285,10 @@ class AnalysisQueries:
             check = next((check for check in view.catalog.checks if check.check_id == query.check_id), None)
             if check is None:
                 raise LookupError('发布版本没有所选知识条目')
-            selected = projection.images(view.display_evidence_ids(check, query.evidence_role))
+            evidence_ids = (check.support_evidence_ids if query.evidence_role == 'support' else
+                check.counter_evidence_ids if query.evidence_role == 'counter' else
+                [*check.support_evidence_ids, *check.counter_evidence_ids])
+            selected = projection.images(evidence_ids)
             return KnowledgeCheckEvidencePage(**common, check=summaries[check.check_id],
                 directions=[direction for direction in view.selected_directions if direction.ref in check.direction_refs], support_evidence_ids=check.support_evidence_ids,
                 counter_evidence_ids=check.counter_evidence_ids, total=len(selected), items=selected[start:start + query.page_size])

@@ -1,4 +1,6 @@
-import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { analysisReadSource } from '../analysis-results.js';
+import { jobIsActive } from '../../shared/job-display.js';
 import { SectionHeading } from './layout/SectionHeading.js';
 import { AnalysisExportButton } from './AnalysisExportButton.js';
 import { AnalysisEvidenceViewer } from './AnalysisEvidenceViewer.js';
@@ -9,8 +11,9 @@ import { ExplorationSourceDialog } from './ExplorationSourceDialog.js';
 import { AnalysisPromptDrawer } from './AnalysisPromptDrawer.js';
 import { AgentPromptEditors } from './AgentPromptEditors.js';
 import { promptDefaults } from '../../shared/prompt-defaults.generated.js';
-import { JobStatusDrawer, JobStatusButton, JobStatusAction } from './JobStatusDrawer.js';
-import { JobListPanel } from './JobListPanel.js';
+import { JobStatusDrawer } from './JobStatusDrawer.js';
+import { JobList } from './JobList.js';
+import { useJobList } from '../useJobList.js';
 import { Select } from './Select.js';
 import { TabBar } from './layout/TabBar.js';
 import { Button } from './Button.js';
@@ -19,7 +22,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mediaUrl, message, request } from "../api.js";
 import { useJobs } from "../useJobs.js";
 import { useDatasetCatalog } from '../useDatasetCatalog.js';
-import { formatJobTime, jobStatuses } from "../../shared/job-display.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import { PlusIcon } from "../AuditIcon.js";
 import { IconButton } from "./IconButton.js";
@@ -27,18 +29,10 @@ import { DeleteAction } from './DeleteAction.js';
 import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
 import { DirectionDetailDialog } from "./DirectionDetailDialog.js";
 import { FullscreenViewer } from "./FullscreenViewer.js";
-import { Pagination, IBA_JOBS_PAGE_SIZE } from "./Pagination.js";
-import { ClearFilterButton } from "./CommonFilterControls.js";
-import { ReferencedText } from '../direction-evidence.js';
 import { useModuleSettings } from '../useModuleSettings.js';
 import { useResource } from "../useResource.js";
 import { useWorkspace } from '../workspace.js';
 import { ExplorationNarrative, explorationCandidates, explorationDirections } from "../exploration-view.js";
-function expElapsed(sec) {
-    const m = Math.floor(sec / 60);
-    const s = sec % 60;
-    return (m > 0 ? `${m}分` : "") + `${s}秒`;
-}
 export function ExplorationPage({ dataset, refreshRevision, }) {
     const { workspace } = useWorkspace();
     const route = workspace.view('industrial-exploration');
@@ -53,10 +47,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
     const [selectedChildIds, setSelectedChildIds] = useState(() => initialChildren.length > 0 ? initialChildren.map((c) => c.dataset_id) : [dataset.dataset_id]);
     // View state: 'jobs' (unified layout) or 'setup' (3-step creation)
     const [view, setView] = useState("jobs");
-    const [jobFilter, setJobFilter] = useState("全部");
-    const [jobSearch, setJobSearch] = useState("");
     const [statusJobId, setStatusJobId] = useState(null);
-    const [jobPage, setJobPage] = useState(1);
     const [refreshTick, setRefreshTick] = useState(0);
     const [error, setError] = useState("");
     const [submitting, setSubmitting] = useState(false);
@@ -145,39 +136,13 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
             setObserverSystemPrompt(promptDefaults.explorationObserverSystem[scopeFormat]);
         }
     }, [scopeFormat]);
-    const filteredJobs = useMemo(() => {
-        const q = jobSearch.trim().toLowerCase();
-        return jobs.filter((j) => {
-            const matchStatus = jobFilter === "全部" || j.status === jobFilter;
-            const matchSearch = !q || [j.run_id, j.root_run_id].some(id => id.toLowerCase().includes(q));
-            return matchStatus && matchSearch;
-        });
-    }, [jobs, jobFilter, jobSearch]);
-    const jobPages = Math.max(1, Math.ceil(filteredJobs.length / IBA_JOBS_PAGE_SIZE));
-    const currentJobPage = Math.max(1, Math.min(jobPages, jobPage));
-    const shownJobs = useMemo(() => {
-        return filteredJobs.slice((currentJobPage - 1) * IBA_JOBS_PAGE_SIZE, currentJobPage * IBA_JOBS_PAGE_SIZE);
-    }, [filteredJobs, currentJobPage]);
-    const selectedJob = useMemo(() => {
-        if (!shownJobs.length)
-            return null;
-        if (selectedJobId) {
-            const match = filteredJobs.find((j) => j.root_run_id === selectedJobId || j.run_id === selectedJobId);
-            if (match)
-                return match;
-        }
-        return shownJobs[0] || null;
-    }, [shownJobs, filteredJobs, selectedJobId]);
-    useEffect(() => {
-        if (!selectedJobId)
-            return;
-        const index = filteredJobs.findIndex(job => job.run_id === selectedJobId || job.root_run_id === selectedJobId);
-        if (index >= 0)
-            setJobPage(Math.floor(index / IBA_JOBS_PAGE_SIZE) + 1);
-    }, [selectedJobId, filteredJobs]);
-    const versionId = route.job === selectedJob?.run_id && route.version ? route.version : selectedJob?.analysis_version_id;
-    const results = useResource(versionId ? `/analysis/publications/${encodeURIComponent(versionId)}` : null, refreshTick);
-    const publication = results.data;
+    const jobList = useJobList(jobs, jobQuery.identity, selectedJobId, job => selectJob(job.root_run_id));
+    const selectedJob = jobList.selected;
+    const results = useResource(selectedJob ? `/analysis/results/${encodeURIComponent(selectedJob.run_id)}` : null, `${refreshTick}:${selectedJob?.status}:${selectedJob?.analysis_version_id}`, jobIsActive(selectedJob));
+    const historical = useResource(route.job === selectedJob?.run_id && route.version
+        ? `/analysis/publications/${encodeURIComponent(route.version)}` : null, refreshTick);
+    const publication = historical.data || (jobIsActive(selectedJob) ? results.data?.current : results.data?.publication || results.data?.current);
+    const publicationSource = publication ? analysisReadSource(publication) : null;
     const datasetNames = useMemo(() => Object.fromEntries(datasets.map(item => [item.dataset_id, item.name])), [datasets]);
     const narrative = useMemo(() => publication ? new ExplorationNarrative(publication, datasetNames) : null, [publication, datasetNames]);
     const selectedJobDirections = useMemo(() => explorationDirections(publication, route.selected, datasetNames), [publication, route.selected, datasetNames]);
@@ -191,15 +156,7 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
             setViewingDirection(direction);
             setModal('direction');
         }
-    }, [route.selected, publication?.version_id]);
-    const handleJobPageChange = (newPage) => {
-        const targetPage = Math.max(1, Math.min(jobPages, newPage));
-        setJobPage(targetPage);
-        const firstOnPage = filteredJobs[(targetPage - 1) * IBA_JOBS_PAGE_SIZE];
-        if (firstOnPage) {
-            selectJob(firstOnPage.root_run_id);
-        }
-    };
+    }, [route.selected, publication && ('version_id' in publication ? publication.version_id : publication.revision)]);
     const runningJob = jobs.find((j) => j.status === "RUNNING" || j.status === "PENDING");
     const runReason = runningJob ? '已有探索作业正在运行' : !selectedChildIds.length ? '请选择子数据集'
         : scopeFormats.size !== 1 ? '请选择同一标注类型的子数据集'
@@ -224,13 +181,11 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
         setSelectedParentId(newParentId);
         const children = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
         setSelectedChildIds(children.map((c) => c.dataset_id));
-        setJobPage(1);
     };
     // Toggle child dataset selection
     const handleChildToggle = (cid) => {
         resetScope();
         setSelectedChildIds((prev) => prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]);
-        setJobPage(1);
     };
     // Preset selection
     const handlePresetChange = (presetId) => {
@@ -258,7 +213,6 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
                 submission.current = { key, id: uuid() };
             const res = await request('/analysis/start', { ...submissionBody, submission_id: submission.current.id });
             selectJob(res.run_id);
-            setJobPage(1);
             refreshJobs();
             setView('jobs');
             submission.current = null;
@@ -274,8 +228,8 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
     // Open FullscreenViewer on evidence click
     const handleOpenEvidenceFullscreen = (clickedRef) => {
         const selected = currentEvidence.find(item => item.ref === clickedRef);
-        if (selected && viewingDirection?.versionId.startsWith('analysis_version_')) {
-            setAnalysisImage({ versionId: viewingDirection.versionId, source: { id: selected.evidenceId, sampleId: selected.sampleId, title: selected.filename, imageUrl: selected.fullUrl } });
+        if (selected && viewingDirection) {
+            setAnalysisImage({ result: viewingDirection.source, source: { id: selected.evidenceId, sampleId: selected.sampleId, title: selected.filename, imageUrl: selected.fullUrl } });
             return;
         }
         const allItems = currentEvidence.map((item) => ({
@@ -327,44 +281,25 @@ export function ExplorationPage({ dataset, refreshRevision, }) {
                                             setObserverSystemPrompt(promptDefaults.explorationObserverSystem[scopeFormat || dataset.format]);
                                         }, children: "\u91CD\u7F6E\u4E3A\u9884\u8BBE" }), _jsx(Button, { type: "button", disabled: !prompt.trim(), onClick: () => {
                                             setModal("save");
-                                        }, children: "\u53E6\u5B58\u4E3A\u9884\u8BBE" })] }), _jsx(AgentPromptEditors, { id: "exp-prompt", agentLabel: "\u4E3B Agent", system: systemPrompt, user: prompt, onSystemChange: setSystemPrompt, onUserChange: setPrompt, disabled: submitting }), _jsx(AgentPromptEditors, { id: "exp-observer-prompt", agentLabel: "\u5B50 Agent", system: observerSystemPrompt, user: observerUserPrompt, onSystemChange: setObserverSystemPrompt, onUserChange: setObserverUserPrompt, disabled: submitting })] }), _jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", children: [_jsxs("span", { children: ["\u6240\u9009\u5B50\u6570\u636E\u96C6 ", selectedChildIds.length, " \u4E2A"] }), _jsxs("span", { children: ["\u4F18\u5148\u6837\u4F8B\uFF1A\u826F\u54C1 ", normalSelected.length, "\uFF0C\u5F02\u5E38 ", defectSelected.length] }), _jsxs("span", { children: ["\u6A21\u578B ", configuration.settings?.model?.model_id || '未配置'] }), _jsx("span", { children: "\u6267\u884C\uFF1A\u6240\u9009\u5B50\u96C6\u5168\u91CF\u5206\u6279\u8FED\u4EE3" })] }), _jsxs("div", { className: "exp-summarybar", children: [_jsx("span", { children: runReason || '可启动' }), _jsx(Button, { type: "button", variant: "primary", disabled: !canRun, onClick: handleStartExploration, children: "\u542F\u52A8\u8054\u5408\u63A2\u7D22" })] })] })] })) : (_jsxs("div", { className: "exp-unified-layout", children: [_jsx(JobListPanel, { title: "\u63A2\u7D22\u4F5C\u4E1A", className: "exp-job-list", actions: jobs.length > 0 &&
-                            _jsxs("div", { className: "exp-job-list-actions", children: [_jsx("label", { className: "exp-input exp-filter-control", "aria-label": "\u641C\u7D22\u4F5C\u4E1A", children: _jsx("input", { id: "exp-jobsearch", type: "search", placeholder: "\u641C\u7D22\u4F5C\u4E1A ID", value: jobSearch, "aria-label": "\u641C\u7D22\u4F5C\u4E1A ID", autoComplete: "off", onChange: (e) => {
-                                                setJobSearch(e.target.value);
-                                                setJobPage(1);
-                                            } }) }), _jsx("label", { className: "exp-input exp-filter-control", "aria-label": "\u7B5B\u9009\u4F5C\u4E1A\u72B6\u6001", children: _jsxs(Select, { id: "exp-jobfilter", "aria-label": "\u4EFB\u52A1\u72B6\u6001", value: jobFilter, onChange: (e) => {
-                                                setJobFilter(e.target.value);
-                                                setJobPage(1);
-                                            }, children: [_jsx("option", { value: "\u5168\u90E8", children: "\u5168\u90E8\u72B6\u6001" }), Object.entries(jobStatuses).map(([value, label]) => _jsx("option", { value: value, children: label }, value))] }) }), _jsx(ClearFilterButton, { "data-exp": "clear-job-filters", ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", disabled: !jobSearch && jobFilter === "全部", onClick: () => {
-                                            setJobSearch("");
-                                            setJobFilter("全部");
-                                            setJobPage(1);
-                                        } })] }), children: filteredJobs.length ? (_jsxs(_Fragment, { children: [_jsx("div", { className: "exp-job-table-wrap iad-job-table-scroll", role: "region", "aria-label": "\u63A2\u7D22\u4F5C\u4E1A\u5217\u8868", tabIndex: 0, children: _jsxs("table", { className: "exp-job-table iad-job-table-grid", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u4F5C\u4E1A ID" }), _jsx("th", { children: "\u72B6\u6001" }), _jsx("th", { children: "\u6570\u636E\u96C6" }), _jsx("th", { children: "\u63D0\u4EA4\u65F6\u95F4" }), _jsx("th", { children: "\u8017\u65F6" }), _jsx("th", { className: "exp-prompt-action-col", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: shownJobs.map(j => {
-                                                    const datasetNames = j.dataset_ids.map(id => datasets.find(dataset => dataset.dataset_id === id)?.name || id).join('、');
-                                                    const elapsed = j.started_at ? Math.max(0, Math.round(((j.finished_at ? Date.parse(j.finished_at) : Date.now()) - Date.parse(j.started_at)) / 1000)) : 0;
-                                                    return (_jsxs("tr", { "data-action": "select-job", "data-id": j.run_id, "data-selected": selectedJob?.run_id === j.run_id, "aria-selected": selectedJob?.run_id === j.run_id, tabIndex: 0, "aria-label": `选择作业 ${j.run_id}`, onClick: () => selectJob(j.root_run_id), onKeyDown: event => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-                                                            event.preventDefault();
-                                                            selectJob(j.root_run_id);
-                                                        } }, children: [_jsx("td", { children: _jsx("strong", { className: "exp-row-title", children: j.run_id }) }), _jsx("td", { children: _jsx(JobStatusButton, { job: j, onClick: () => setStatusJobId(j.root_run_id) }) }), _jsx("td", { children: _jsx("div", { className: "exp-job-dataset", title: datasetNames, children: _jsx("span", { className: "exp-job-dataset-name", children: datasetNames }) }) }), _jsx("td", { className: "exp-job-time", children: formatJobTime(j.submitted_at) }), _jsx("td", { className: "exp-job-duration", children: j.status === "PENDING" ? "—" : expElapsed(elapsed) }), _jsx("td", { className: "exp-prompt-action-col", children: _jsxs("div", { className: "exp-job-icon-actions", onClick: (e) => e.stopPropagation(), children: [_jsx(JobStatusAction, { job: j, onClick: () => setStatusJobId(j.root_run_id) }), _jsx(IconButton, { icon: "prompt", label: "\u67E5\u770B\u63D0\u793A\u8BCD", title: "\u67E5\u770B\u63D0\u793A\u8BCD", "data-exp": "show-prompt", "data-id": j.run_id, onClick: () => {
-                                                                                setPromptJobId(j.run_id);
-                                                                                setModal("prompt");
-                                                                            } }), _jsx(DeleteAction, { title: "\u5220\u9664\u63A2\u7D22\u4F5C\u4E1A", name: j.run_id, confirmLabel: "\u5220\u9664\u4F5C\u4E1A", confirmation: _jsxs(_Fragment, { children: ["\u786E\u5B9A\u5220\u9664\u4F5C\u4E1A ", j.run_id, " \u5417\uFF1F"] }), description: "\u5220\u9664\u540E\u4E0D\u518D\u663E\u793A\u8BE5\u4F5C\u4E1A\u53CA\u5176\u63A2\u7D22\u7ED3\u679C\u3002", disabled: j.status === 'RUNNING' || j.status === 'PENDING', restoreFocus: () => document.getElementById(jobs.length > 1 ? 'exp-jobsearch' : 'exp-new'), onDelete: async () => {
-                                                                                await request(`/analysis/delete/${encodeURIComponent(j.run_id)}`, {});
-                                                                                refreshJobs();
-                                                                            } })] }) })] }, j.run_id));
-                                                }) })] }) }), _jsx(Pagination, { total: filteredJobs.length, page: currentJobPage, onPage: handleJobPageChange, label: "\u63A2\u7D22\u4F5C\u4E1A", size: IBA_JOBS_PAGE_SIZE, hideSinglePage: true })] })) : (_jsx("div", { className: "exp-job-empty", role: "status", children: jobQuery.loading ? "正在读取探索作业…" : jobs.length ? "没有符合筛选条件的探索作业。" : "当前没有探索作业" })) }), !selectedJob ? (_jsxs("section", { className: "exp-panel exp-selected-result exp-empty-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("div", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u63A2\u7D22\u7ED3\u679C" })] })) : !publication && ['PENDING', 'RUNNING'].includes(selectedJob.status) ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" })] })) : !publication && ['FAILED', 'CANCELLED', 'INTERRUPTED'].includes(selectedJob.status) ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" })] })) : (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u63A2\u7D22\u7ED3\u679C", children: publication && _jsx(AnalysisExportButton, { versionId: publication.version_id }) }), _jsxs("div", { className: "exp-result-content", children: [selectedJobSummary && _jsx("p", { className: "exp-result-summary", children: selectedJobSummary }), selectedJobDirections.length > 0 ? (_jsx("div", { className: "exp-job-table-wrap", children: _jsxs("table", { className: "exp-job-table exp-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { children: "\u9002\u7528\u77E5\u8BC6" }), _jsx("th", { className: "iad-number", children: "\u8BC1\u636E" }), _jsx("th", { children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: selectedJobDirections.map((d) => {
+                                        }, children: "\u53E6\u5B58\u4E3A\u9884\u8BBE" })] }), _jsx(AgentPromptEditors, { id: "exp-prompt", agentLabel: "\u4E3B Agent", system: systemPrompt, user: prompt, onSystemChange: setSystemPrompt, onUserChange: setPrompt, disabled: submitting }), _jsx(AgentPromptEditors, { id: "exp-observer-prompt", agentLabel: "\u5B50 Agent", system: observerSystemPrompt, user: observerUserPrompt, onSystemChange: setObserverSystemPrompt, onUserChange: setObserverUserPrompt, disabled: submitting })] }), _jsxs("section", { className: "exp-panel", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", children: [_jsxs("span", { children: ["\u6240\u9009\u5B50\u6570\u636E\u96C6 ", selectedChildIds.length, " \u4E2A"] }), _jsxs("span", { children: ["\u4F18\u5148\u6837\u4F8B\uFF1A\u826F\u54C1 ", normalSelected.length, "\uFF0C\u5F02\u5E38 ", defectSelected.length] }), _jsxs("span", { children: ["\u6A21\u578B ", configuration.settings?.model?.model_id || '未配置'] }), _jsx("span", { children: "\u6267\u884C\uFF1A\u6240\u9009\u5B50\u96C6\u5168\u91CF\u5206\u6279\u8FED\u4EE3" })] }), _jsxs("div", { className: "exp-summarybar", children: [_jsx("span", { children: runReason || '可启动' }), _jsx(Button, { type: "button", variant: "primary", disabled: !canRun, onClick: handleStartExploration, children: "\u542F\u52A8\u8054\u5408\u63A2\u7D22" })] })] })] })) : (_jsxs("div", { className: "exp-unified-layout", children: [_jsx(JobList, { title: "\u63A2\u7D22\u4F5C\u4E1A", className: "exp-job-list", list: jobList, datasets: datasets, loading: jobQuery.loading, actions: {
+                            status: job => setStatusJobId(job.root_run_id), prompt: job => setPromptJobId(job.run_id), delete: async (job) => {
+                                await request(`/analysis/delete/${encodeURIComponent(job.run_id)}`, {});
+                                refreshJobs();
+                            },
+                        } }), !selectedJob ? (_jsxs("section", { className: "exp-panel exp-selected-result exp-empty-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("div", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u63A2\u7D22\u7ED3\u679C" })] })) : !publication && ['PENDING', 'RUNNING'].includes(selectedJob.status) ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" })] })) : !publication && ['FAILED', 'CANCELLED', 'INTERRUPTED'].includes(selectedJob.status) ? (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u63A2\u7D22\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u63A2\u7D22\u7ED3\u679C" }), _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u4F5C\u4E1A\u6CA1\u6709\u5DF2\u53D1\u5E03\u7ED3\u679C" })] })) : (_jsxs("section", { className: "exp-panel exp-selected-result", "aria-label": "\u6240\u9009\u4F5C\u4E1A\u7684\u63A2\u7D22\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u63A2\u7D22\u7ED3\u679C", children: publicationSource?.kind === 'published' && _jsx(AnalysisExportButton, { versionId: publicationSource.versionId }) }), _jsxs("div", { className: "exp-result-content", children: [selectedJobSummary && _jsx("p", { className: "exp-result-summary", children: selectedJobSummary }), selectedJobDirections.length > 0 ? (_jsx("div", { className: "exp-job-table-wrap", children: _jsxs("table", { className: "exp-job-table exp-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { children: "\u9002\u7528\u77E5\u8BC6" }), _jsx("th", { className: "iad-number", children: "\u8BC1\u636E" }), _jsx("th", { children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { children: selectedJobDirections.map((d) => {
                                                         const evidenceCount = d.evidences?.length || 0;
                                                         return (_jsxs("tr", { tabIndex: 0, "data-action": "direction", "data-id": d.id, "aria-label": `查看方向 ${d.title}`, onClick: () => {
                                                                 setViewingDirection(d);
                                                                 setModal("direction");
-                                                            }, children: [_jsx("td", { className: "exp-direction-name", children: d.title }), _jsx("td", { className: "exp-direction-description", title: narrative?.text(d.brief), children: _jsx(ReferencedText, { text: d.brief, references: d.references, onReference: () => { setViewingDirection(d); setModal('direction'); }, onPreview: () => { } }) }), _jsx("td", { children: d.applies }), _jsxs("td", { className: "iad-number", children: [evidenceCount, " \u5F20"] }), _jsxs("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [_jsx(IconButton, { icon: "details", label: "\u67E5\u770B\u65B9\u5411", title: "\u67E5\u770B\u65B9\u5411", className: "exp-direction-view-icon exp-view-detail-button", onClick: () => {
+                                                            }, children: [_jsx("td", { className: "exp-direction-name", children: d.title }), _jsx("td", { className: "exp-direction-description", title: narrative?.text(d.brief), children: d.brief }), _jsx("td", { children: d.applies }), _jsxs("td", { className: "iad-number", children: [evidenceCount, " \u5F20"] }), _jsxs("td", { className: "exp-direction-action", onClick: (e) => e.stopPropagation(), children: [_jsx(IconButton, { icon: "details", label: "\u67E5\u770B\u65B9\u5411", title: "\u67E5\u770B\u65B9\u5411", className: "exp-direction-view-icon exp-view-detail-button", onClick: () => {
                                                                                 setViewingDirection(d);
                                                                                 setModal("direction");
-                                                                            } }), _jsx(DeleteAction, { title: "\u5220\u9664\u65B9\u5411", name: d.title, description: "\u4FDD\u7559\u539F\u59CB\u6A21\u578B\u7ED3\u679C\u548C\u5386\u53F2\u5F15\u7528\u3002", onDelete: async () => {
-                                                                                const removal = { dataset_id: d.datasetId, version_id: d.versionId, direction_id: d.id };
+                                                                            } }), d.source.kind === 'published' && _jsx(DeleteAction, { title: "\u5220\u9664\u65B9\u5411", name: d.title, description: "\u4FDD\u7559\u539F\u59CB\u6A21\u578B\u7ED3\u679C\u548C\u5386\u53F2\u5F15\u7528\u3002", onDelete: async () => {
+                                                                                const removal = { dataset_id: d.datasetId, version_id: d.source.kind === 'published' ? d.source.versionId : '', direction_id: d.id };
                                                                                 await request('/exploration/directions/remove', removal);
                                                                                 setRefreshTick(value => value + 1);
                                                                             } })] })] }, d.id));
-                                                    }) })] }) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u6CA1\u6709\u5F62\u6210\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u3002" })), _jsxs("div", { className: "exp-limitations", children: [_jsx("div", { className: "exp-result-section-head", children: _jsx("h3", { children: "\u6574\u4F53\u9650\u5236" }) }), selectedJobLimitations.length ? (_jsx("ol", { children: selectedJobLimitations.map((text, i) => (_jsx("li", { children: text }, i))) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" }))] })] })] }))] })), modal === "prompt" && promptJobId && _jsx(AnalysisPromptDrawer, { jobId: promptJobId, onClose: () => setModal('') }), modal === 'save' && _jsx(ExplorationPresetDialog, { text: prompt, onClose: () => setModal(''), onSaved: saved => {
+                                                    }) })] }) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u6CA1\u6709\u5F62\u6210\u53EF\u7528\u7684\u5019\u9009\u65B9\u5411\u3002" })), _jsxs("div", { className: "exp-limitations", children: [_jsx("div", { className: "exp-result-section-head", children: _jsx("h3", { children: "\u6574\u4F53\u9650\u5236" }) }), selectedJobLimitations.length ? (_jsx("ol", { children: selectedJobLimitations.map((text, i) => (_jsx("li", { children: text }, i))) })) : (_jsx("p", { className: "exp-lead", children: "\u672C\u6B21\u672A\u8BB0\u5F55\u6574\u4F53\u9650\u5236\u3002" }))] })] })] }))] })), promptJobId && _jsx(AnalysisPromptDrawer, { jobId: promptJobId, onClose: () => setPromptJobId(null) }), modal === 'save' && _jsx(ExplorationPresetDialog, { text: prompt, onClose: () => setModal(''), onSaved: saved => {
                     setPresets(values => [...values, saved]);
                     setSelectedPresetId(saved.id);
                     setOriginalPrompt(saved.text);

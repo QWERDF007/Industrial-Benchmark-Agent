@@ -1,19 +1,61 @@
 export function auditMessages(body) {
-  const texts=body.messages.flatMap(message=>typeof message.content==='string'?[{role:message.role,text:message.content}]:
-    Array.isArray(message.content)?message.content.filter(part=>part.type==='text').map(part=>({role:message.role,text:part.text})):[]);
-  const values=texts.flatMap(({role,text})=>{try{return [{role,value:JSON.parse(text.split(String.fromCharCode(10))[0])}];}catch{return [];}});
-  return {context:values.find(item=>item.role==='user'&&(item.value.target||item.value.phase==='report'))?.value,
-    outputs:values.filter(item=>item.role==='tool').map(item=>item.value),pages:values.map(item=>item.value).filter(value=>Array.isArray(value?.images))};
+  const values=body.messages.flatMap((message,index)=>{
+    const parts=typeof message.content==='string'?[{type:'text',text:message.content}]:message.content||[];
+    return parts.flatMap(part=>{
+      if(part.type!=='text')return [];
+      return part.text.split('\n').flatMap(line=>{
+        try{return [{role:message.role,index,value:JSON.parse(line)}];}catch{return [];}
+      });
+    });
+  });
+  const latest=values.filter(item=>item.role==='user'&&(item.value.target||item.value.phase)).at(-1);
+  return {context:latest?.value,outputs:values.filter(item=>item.role==='tool'&&item.index>latest.index).map(item=>item.value),
+    pages:values.map(item=>item.value).filter(value=>Array.isArray(value?.images))};
 }
 
-export function auditReportTool(context,outputs) {
-  const records=outputs.find(value=>value?.items);
-  if(!records)return {name:'audit_records',arguments:{page:1,page_size:100}};
-  const issues=records.items.flatMap(item=>item.final?.execution_status==='completed'?item.final.findings.map(finding=>({sample_id:item.sample_id,finding_id:finding.finding_id})):[]);
-  if(issues.length&&!outputs.some(value=>value?.groups?.length))return {name:'audit_group_issues',arguments:{commit_key:'groups-'+context.generation,groups:[{
-    group_id:'G1',title:'已保存的标注疑点',description:'逐图观察形成的标注质量疑点。',issue_refs:issues,
-    representatives:[{...issues[0],role:'representative',reason:'清楚呈现已保存疑点。'}],normal_explanations:['仍需排除成像变化。'],limitations:[]}]}};
-  return {name:'audit_report_commit',arguments:{commit_key:'report-'+context.generation,scope_analysis:'限定为本作业冻结范围与已完成图像。',
-    issue_analysis:issues.length?'已完成图像保留标注疑点。':'已完成范围没有保存的充分疑点。',consistency_analysis:'逐项核对上游差异，候选不作为真值。',
-    knowledge_analysis:context.knowledge?'知识按适用性核对。':'没有选用知识。',conclusion:'结论仅适用于已完成观察的范围。',limitations:['未完成范围不能视为正常。']}};
+export function auditReportTool(context,outputs,{includeCounter=false}={}) {
+  if(context.phase==='review'){
+    const refs=context.items.flatMap(item=>item.final?.execution_status==='completed'?item.final.findings.map((_,index)=>({
+      sample_id:item.sample_id,result_revision:item.result_revision,kind:'finding',index})):[]);
+    const prior=context.discoveries.find(item=>item.group_id==='G1');
+    const detail=outputs.find(output=>output?.discovery?.group_id==='G1');
+    if(context.context_policy==='evidence-on-demand-v1'&&prior&&!detail)return {
+      name:'audit_discovery',arguments:{group_id:'G1',page:1,page_size:100}};
+    const representatives=refs.length?[{sample_id:refs[0].sample_id,role:'representative',reason:'清楚呈现已保存的覆盖疑点。'}]:[];
+    const normal=includeCounter&&context.items.find(item=>item.final?.state==='normal');
+    if(normal&&representatives.length)representatives.push({sample_id:normal.sample_id,role:'counter',reason:'相似形态下原始覆盖关系不同。'});
+    for(const representative of representatives){
+      const item=context.items.find(item=>item.sample_id===representative.sample_id);
+      if(!outputs.some(output=>output?.sample_id===item.sample_id&&output?.images?.length))return {
+        name:'audit_report_evidence',arguments:{sample_id:item.sample_id,evidence_id:item.final.evidence_ids[0]}};
+    }
+    const discoveries=refs.length?[{group_id:'G1',kind:'quality_issue',dimension:'annotation_quality',status:'supported',title:'覆盖范围需复核',
+      description:'已保存的图级覆盖疑点需人工复核。',visual_signature:'主体边缘的可见现象',annotation_relation:'可见现象与原始覆盖存在待复核差别。',
+      scope:'本次已完成的冻结观察范围',support_refs:refs,counter_refs:normal?[{sample_id:normal.sample_id,result_revision:normal.result_revision,kind:'image'}]:[],
+      representatives,next_batch_focus:'',key_difference:normal?'相似形态下的实际覆盖关系不同。':'',unresolved_question:'需排除成像变化。'}]:prior?[prior]:[];
+    const submission={commit_key:'batch-'+context.batch.number+'-'+context.revision,
+      batch_number:context.batch.number,base_revision:context.revision,discoveries,review_requests:[]};
+    if(context.context_policy==='evidence-on-demand-v1'){
+      const fresh=refs.length?discoveries[0]:null;
+      const old=detail?.discovery;
+      const key=ref=>JSON.stringify([ref.sample_id,ref.result_revision,ref.kind,ref.index??null]);
+      const existing=new Set((detail?.items||[]).map(item=>item.role+':'+key(item.reference)));
+      const evidence_changes=[];
+      if(fresh)for(const role of ['support','counter'])for(const reference of fresh[role+'_refs'])
+        if(!existing.has(role+':'+key(reference)))evidence_changes.push({group_id:'G1',action:'add',role,reference,reason:'根据本批实际图级记录核对证据关系。'});
+      const body=fresh?Object.fromEntries(Object.entries(fresh).filter(([name])=>!['support_refs','counter_refs','representatives'].includes(name))):null;
+      if(old&&body&&['description','visual_signature','annotation_relation','scope','key_difference'].some(name=>old[name]!==body[name]))
+        for(const item of detail.items)evidence_changes.push({group_id:'G1',action:'keep',role:item.role,reference:item.reference,reason:'重新核对旧引用，仍支持当前限定主张。'});
+      return {name:'audit_batch_commit',arguments:{...submission,discoveries:body?[body]:[],evidence_changes,
+        representative_changes:fresh?[{group_id:'G1',representatives:fresh.representatives}]:[]}};
+    }
+    return {name:'audit_batch_commit',arguments:submission};
+  }
+  return {name:'audit_report_commit',arguments:{commit_key:'report-'+context.revision,discovery_ids:context.discoveries.filter(item=>item.status!=='withdrawn').map(item=>item.group_id),
+    consistency_analysis:'逐项核对上游差异，候选不作为真值。',knowledge_analysis:context.knowledge?'所选知识按适用性核对。':'',
+    conclusion:'完成范围可用于视觉探索，已保存的独立疑点需人工复核。',coverage_analysis:'覆盖主体边缘和原始标注，未采集场景未评价。',
+    independence_analysis:'独立物理件、批次与序列仅依据真实元数据评价。',capabilities:[],usability:
+      ['exploration','training_experiment','debug','image_evaluation','bbox_evaluation','pixel_evaluation','formal_benchmark'].map(purpose=>({
+        purpose,status:['exploration','training_experiment','debug'].includes(purpose)?'candidate':'not_evaluated',reason:'评价依据为冻结原图及实际已有结果。'})),
+    review_priorities:[],limitations:['未完成范围不能视为正常。']}};
 }

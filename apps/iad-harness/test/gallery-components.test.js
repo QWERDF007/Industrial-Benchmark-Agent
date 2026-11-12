@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
-import {ReferencedText} from '../lib/client/direction-evidence.js';
 import {Pagination} from '../lib/client/components/Pagination.js';
 import {explorationDirections,ExplorationNarrative} from '../lib/client/exploration-view.js';
 import {DatasetKnowledge} from '../lib/client/components/DatasetKnowledge.js';
@@ -43,7 +42,7 @@ test('current direction results exclude removals while retaining frozen provenan
       limitations:[],evidence_ids:[],counter_evidence_ids:[],dataset_ids:['dataset-one'],applies_to:'both'}))}};
   const current=explorationDirections(snapshot);
   assert.deepEqual(current.map(direction=>direction.id),['retained']);
-  assert.equal(current[0].versionId,'version-one');
+  assert.deepEqual(current[0].source,{kind:'published',versionId:'version-one'});
   assert.deepEqual(explorationDirections(snapshot,'removed').map(direction=>direction.id),['removed','retained']);
   assert.equal(snapshot.catalog.directions.length,2);
 });
@@ -63,30 +62,8 @@ test('native direction citations group key whole images by sample identity indep
   const before=JSON.stringify(snapshot);
   const direction=explorationDirections(snapshot)[0];
   assert.deepEqual(direction.evidences.map(item=>[item.evidenceId,item.kind]),[['img_original','normal'],['img_defect','defect'],['img_unknown','unknown']]);
-  assert.equal(direction.references.get('img_crop').id,'N1');
-  assert.equal(direction.references.get('img_mask').label,'良品 N1');
-  assert.equal(direction.references.has('normal.png'),false);
-  assert.equal(direction.references.has('defect.png'),false);
   assert.ok(direction.evidences.every(item=>item.url.endsWith(item.evidenceId)));
   assert.equal(JSON.stringify(snapshot),before,'展示只取条目引用，不追加全部已观察图，也不删改局部和反例');
-});
-
-test('consecutive references to the same original form one citation without altering separate statements', () => {
-  const references=new Map([
-    ['img_111111',{id:'first',label:'异常 A1'}],
-    ['img_222222',{id:'first',label:'异常 A1'}],
-    ['img_333333',{id:'second',label:'异常 A2'}],
-  ]);
-  const render=text=>renderToStaticMarkup(React.createElement(ReferencedText,{text,references,onReference(){},onPreview(){}}));
-  const list=render('对比img_111111、img_222222、img_333333。');
-  assert.equal((list.match(/data-evidence-ref=/g)||[]).length,2,'原图和裁剪在同一引用列表内不能重复显示');
-  const range=render('观察img_111111至img_222222的标注区域。');
-  assert.equal((range.match(/data-evidence-ref=/g)||[]).length,1,'同一原图不能显示为A1至A1');
-  assert.doesNotMatch(range,/>至</);
-  const statements=render('img_111111显示亮线，img_222222存在反光。');
-  assert.equal((statements.match(/data-evidence-ref=/g)||[]).length,2,'两个独立描述应保留各自的定位引用');
-  assert.match(statements,/显示亮线，/);
-  assert.match(statements,/存在反光。/);
 });
 
 test('shared pagination keeps the image browser five-page window and boundary controls', () => {
@@ -141,7 +118,17 @@ test('exploration prose resolves real references without changing frozen IDs', (
   const before=JSON.stringify(snapshot);
   const prose=new ExplorationNarrative(snapshot,{ds_1:'Test'});
   assert.equal(prose.text('analysis_job_1 对 ds_1:part.png 的 img_original 和 ann_1 观察，ds_1 的 direction_1。'),
-    '本次探索 对 part.png 的 part.png 和 原始标注 观察，Test 的 边缘连续性。');
-  assert.equal(prose.text('img_original',new Map([['img_original',{id:'A1',label:'异常 A1'}]])),'img_original');
+    '本次探索 对 图像 的 图像 和 原始标注 观察，Test 的 边缘连续性。');
   assert.equal(JSON.stringify(snapshot),before);
+});
+
+test('exploration prose renders descriptions without inline image identities or filename substitutions',()=>{
+  const snapshot={job_id:'analysis_job',version_id:'version',session_id:'session',catalog:{directions:[]},evidence:[
+    {evidence_id:'img_whole',sample_id:'ds:source_123.png',filename:'source_123.png',sampling_group:'abnormal',image:{annotation_ids:[]}},
+  ]};
+  const prose=new ExplorationNarrative(snapshot);
+  const text=prose.text('异常图 [img_whole] 的右缘有亮线，source_123.png 的暗边连续。');
+  assert.doesNotMatch(text,/img_whole|source_123|\.png/);
+  assert.match(text,/右缘有亮线/);
+  assert.match(text,/暗边连续/);
 });

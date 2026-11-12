@@ -5,6 +5,8 @@ from iad_core.evidence.registrations import PreparedRegistration
 from iad_core.analysis.delegation_models import ExplorationBatchReport, AnalysisBatchTask, AnalysisWave, AnalysisWorkerMaterials
 from iad_core.analysis.batch_evidence import AnalysisBatchEvidence
 from iad_core.knowledge.observation_models import KnowledgeBatchReport
+from iad_core.exploration.observation_models import ExplorationEvidenceReport
+from iad_core.knowledge.observation_models import KnowledgeEvidenceReport
 
 
 class AnalysisDelegation:
@@ -12,6 +14,12 @@ class AnalysisDelegation:
 
     def __init__(self, jobs):
         self.jobs, self.db = jobs, jobs.db
+
+    @staticmethod
+    def report_schema(snapshot):
+        if snapshot.context_policy == 'evidence-on-demand-v1':
+            return KnowledgeEvidenceReport if snapshot.module == 'knowledge' else ExplorationEvidenceReport
+        return KnowledgeBatchReport if snapshot.module == 'knowledge' else ExplorationBatchReport
 
     def wave(self, run_id: str) -> AnalysisWave:
         snapshot, context = self.jobs.snapshot(run_id), self.jobs.context(run_id)
@@ -61,7 +69,7 @@ class AnalysisDelegation:
         task = self.task(run_id, session_id)
         snapshot = self.jobs.snapshot(run_id)
         knowledge = snapshot.module == 'knowledge'
-        report = (KnowledgeBatchReport if knowledge else ExplorationBatchReport).model_validate(request)
+        report = self.report_schema(snapshot).model_validate(request)
         canonical = report.model_dump_json()
         if task.report is not None:
             if task.report.model_dump() != report.model_dump():

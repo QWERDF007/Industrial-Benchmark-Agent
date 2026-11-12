@@ -1,8 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import { AuditWorkflowAgent } from './agent.js';
+import { AuditMasterAgent } from './agent.js';
 import { auditSessionPath } from './session-path.js';
-import { runConcurrent } from '../jobs/concurrency.js';
 export class AuditWorkflowScheduler {
     bridge;
     providers;
@@ -20,6 +19,11 @@ export class AuditWorkflowScheduler {
     async execute(operation, args, signal, dispatch) {
         if (operation === 'audit_start')
             return this.start(args.request);
+        if (operation === 'audit_report_regenerate') {
+            const job = await dispatch('audit_agent_report_regenerate', args, signal);
+            this.launch(args.run_id);
+            return job;
+        }
         if (operation === 'audit_cancel' || operation === 'audit_retry') {
             const job = await dispatch('analysis_node', { run_id: args.run_id }, signal);
             if (job.request?.audit_workflow_version)
@@ -64,25 +68,12 @@ export class AuditWorkflowScheduler {
         const snapshot = await this.bridge.execute('audit_agent_snapshot', { run_id: runId });
         const { samples } = await this.bridge.execute('audit_agent_samples', { run_id: runId });
         const pending = samples.filter(sample => sample.state !== 'COMPLETED');
-        const agent = new AuditWorkflowAgent(this.bridge, this.host, this.providers, this.dataRoot);
+        const agent = new AuditMasterAgent(this.bridge, this.host, this.providers, this.dataRoot);
         if (pending.length)
             await this.bridge.execute('audit_agent_prepare_inputs', { run_id: runId }, signal);
-        await runConcurrent(pending, snapshot.settings.concurrency, signal, async (sample) => {
-            try {
-                await agent.run(runId, sample.sample_id, snapshot, signal);
-                const final = await this.bridge.execute('audit_agent_sample', { run_id: runId, sample_id: sample.sample_id });
-                await this.projectFinal(final);
-            }
-            catch (error) {
-                if (signal.aborted)
-                    return;
-                await this.bridge.execute('audit_agent_failure', { run_id: runId, sample_id: sample.sample_id, message: error instanceof Error ? error.message : String(error) });
-            }
-        });
         if (!signal.aborted) {
             try {
-                await this.bridge.execute('audit_agent_report_begin', { run_id: runId }, signal);
-                await agent.run(runId, null, snapshot, signal);
+                await agent.run(runId, snapshot, signal);
             }
             catch (error) {
                 if (signal.aborted)
@@ -93,15 +84,12 @@ export class AuditWorkflowScheduler {
             await this.writeReport(runId);
         }
     }
-    async projectFinal(sample) {
-        await this.host.notice(sample.session_id, { type: 'iad/job', summary: '图级审计已提交',
-            value: { kind: 'audit-final', job_id: sample.job_id, sample_id: sample.sample_id, final: sample.result }, record_id: 'audit-final:' + sample.sample_id });
-    }
     async writeReport(runId) {
         const { samples } = await this.bridge.execute('audit_agent_samples', { run_id: runId });
         for (const sample of samples)
             if (sample.state === 'COMPLETED')
-                await this.projectFinal(sample);
+                await this.host.notice(sample.session_id, { type: 'iad/job', summary: '图级审计已提交',
+                    value: { kind: 'audit-final', job_id: sample.job_id, sample_id: sample.sample_id, final: sample.result }, record_id: 'audit-final:' + sample.sample_id });
         const location = await this.bridge.execute('audit_agent_session_location', { session_id: samples[0].session_id });
         const directory = path.dirname(auditSessionPath(this.dataRoot, location));
         const summary = await this.bridge.execute('audit_job_report', { run_id: runId });

@@ -58,24 +58,7 @@ export const consistencyStyles=`
 .dc-results-section{background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;box-shadow:none;padding:0}
 .dc-results-body{padding:18px 20px 22px}
 .dc-result-panel{min-height:100dvh}
-.dc-table-panel{overflow-x:auto}
-.dc-table{border-collapse:collapse;width:100%;min-width:1050px;text-align:left;font-size:13px}
-.dc-table th{font-weight:400;background:var(--iad-surface-muted);border-bottom:1px solid var(--iad-border)}
-.dc-table td{border-bottom:1px solid var(--iad-border);font-size:13px}
-.dc-table:not(.iad-job-table-grid) th{padding:12px 18px}
-.dc-table:not(.iad-job-table-grid) td{padding:14px 18px}
-.dc-table tbody tr:last-child td{border-bottom:0}
-.dc-table tbody tr{cursor:pointer}
-.dc-table tbody tr:hover{background:var(--iad-hover)}
-.dc-table tbody tr[data-selected=true]{background:var(--iad-hover)}
-.dc-table tbody tr:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}
-.dc-table .dc-operations{text-align:right;white-space:nowrap;width:120px}
-.dc-job-datasets{max-width:280px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.dc-mono,.dc-total,.dc-elapsed{font-variant-numeric:tabular-nums}
-.dc-time,.dc-total,.dc-elapsed{white-space:nowrap}
-.dc-state.exp-pill{font-weight:650}
 .dc-empty{min-height:132px;display:flex;align-items:center;justify-content:center;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:7px;padding:24px;text-align:center}
-.dc-jobs-section>.dc-empty{border:0;border-radius:0}
 .dc-refined-filterbar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;margin:0 0 17px;min-height:56px}
 .dc-filter-field{display:flex;flex-direction:column;gap:7px;min-width:0}
 .dc-search-field input{width:100%;height:38px;border:1px solid var(--iad-control-border);border-radius:5px;background:var(--iad-surface);padding:0 12px;font:inherit;color:var(--iad-text)}
@@ -183,6 +166,7 @@ export const consistencyStyles=`
   position: relative !important;
   width: clamp(16px, 65%, 42px) !important;
   flex: none !important;
+  cursor: pointer !important;
 }
 .dc-vchart-bar {
   position: relative !important;
@@ -190,14 +174,14 @@ export const consistencyStyles=`
   border: 0 !important;
   border-radius: 4px 4px 0 0 !important;
   background: #5379d2 !important;
-  cursor: pointer !important;
+  cursor: default !important;
   min-height: 2px !important;
   padding: 0 !important;
   transition: background 0.14s ease !important;
   flex: none !important;
   box-shadow: none !important;
 }
-.dc-vchart-bar:hover,.dc-vchart-bar:focus-visible {
+button.dc-vchart-bar:hover,button.dc-vchart-bar:focus-visible {
   background: #2859c2 !important;
 }
 .dc-vchart-zero {

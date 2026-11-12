@@ -3,15 +3,15 @@ import { randomUUID } from 'node:crypto';
 import { LlmError, MessageId } from '@deepseek-ai/dsh-llm';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
 import { defineTool } from '@deepseek-ai/dsh-tools';
-import { analysisMediaParameters } from '../../shared/analysis-agent.parameters.generated.js';
-import { evidenceReferenceParameters } from '../../shared/media-reference.parameters.generated.js';
-import { auditCommitParameters, auditCropParameters, auditRecordParameters, auditGroupParameters, auditReportParameters, auditReportEvidenceParameters } from '../../shared/audit.parameters.generated.js';
+import { auditBatchParameters, auditRecordParameters, auditReportParameters, auditReportEvidenceParameters } from '../../shared/audit.parameters.generated.js';
+import { auditBatchDeltaParameters, auditDiscoveryParameters } from '../../shared/audit-context.parameters.generated.js';
 import { NativeMediaAttachments, nativeMediaOutput } from '../sessions/media.js';
-import { NativeModelBudget } from '../sessions/model-budget.js';
 import { NativeModelCalls } from '../sessions/model-calls.js';
 import { workbenchJsonOutput } from '../tool-output.js';
 import { auditSessionPath } from './session-path.js';
-export class AuditWorkflowAgent {
+import { AuditImageAgents } from './images.js';
+const masterTools = ['audit_statistics', 'audit_records', 'audit_report_evidence', 'audit_batch_commit', 'audit_report_commit'];
+export class AuditMasterAgent {
     bridge;
     host;
     providers;
@@ -22,100 +22,126 @@ export class AuditWorkflowAgent {
         this.providers = providers;
         this.dataRoot = dataRoot;
     }
-    async run(runId, sampleId, snapshot, signal) {
-        const report = sampleId === null, identity = { run_id: runId, sample_id: sampleId };
-        const stateOperation = report ? 'audit_agent_report_state' : 'audit_agent_sample';
-        const state = await this.bridge.execute(stateOperation, identity);
+    async run(runId, snapshot, signal) {
+        const identity = { run_id: runId };
+        const state = await this.bridge.execute('audit_agent_report_state', identity);
         if (state.state === 'COMPLETED')
             return;
+        const master = state.prompts?.master_prompt || snapshot.master_prompt;
+        const reportInstruction = state.prompts?.report_instruction || snapshot.report_instruction;
         const location = await this.bridge.execute('audit_agent_session_location', { session_id: state.session_id });
         const { profile, native_profile } = snapshot.agent;
         if (!profile?.model_id || !native_profile)
             throw new Error('审计缺少冻结的原生模型');
         if (!state.session_created) {
             await this.host.create(state.session_id);
-            await this.host.notice(state.session_id, { type: 'iad/job', summary: report ? '数据集审计报告已受理' : '独立图像审计已受理', value: { job_id: runId, sample_id: sampleId } });
-            await this.bridge.execute(report ? 'audit_agent_report_session_created' : 'audit_agent_session_created', identity);
+            await this.host.notice(state.session_id, { type: 'iad/job', summary: '数据集联合审计已受理', value: { job_id: runId } });
+            await this.bridge.execute('audit_agent_report_session_created', identity);
         }
         const provider = 'audit-' + state.session_id;
-        let failure, attachments;
-        await this.host.withAgent(state.session_id, { signal, agentOptions: { provider, model: profile.model_id, maxTokens: profile.max_output_tokens ?? undefined },
-            setup: async (scope) => {
-                attachments = new NativeMediaAttachments(scope, path.join(path.dirname(auditSessionPath(this.dataRoot, location)), location.image_id));
+        const onDemand = snapshot.context_policy === 'evidence-on-demand-v1';
+        const failures = new Map();
+        let observers;
+        await this.host.withAgent(state.session_id, { signal, subagents: snapshot.settings.concurrency, evidenceOnDemand: onDemand,
+            agentOptions: { provider, model: profile.model_id, maxTokens: profile.max_output_tokens ?? undefined },
+            setup: async (scope) => { scope.tools.restrict({ allow: onDemand ? [...masterTools, 'audit_discovery'] : masterTools }); },
+            sharedSetup: async (scope) => {
+                const attachments = new NativeMediaAttachments(scope, path.dirname(auditSessionPath(this.dataRoot, location)));
                 if (profile.credential_ref)
                     scope.provide('credentials', this.providers.credentials);
-                const execution = await this.providers.credentialsFor(profile);
-                const budget = await NativeModelBudget.open({ ...native_profile, requestImagePixelBudget: Number.MAX_SAFE_INTEGER,
-                    requestImageMaxBytes: Number.MAX_SAFE_INTEGER }, (body, cancellation) => this.bridge.execute('audit_agent_capacity', { ...identity, body, _model_execution: execution }, cancellation));
-                scope.effect(() => () => budget.close());
-                await scope.plugin(piAi, { providers: { [provider]: budget.profile } });
+                await scope.plugin(piAi, { providers: { [provider]: { ...native_profile, requestImagePixelBudget: Number.MAX_SAFE_INTEGER,
+                            requestImageMaxBytes: Number.MAX_SAFE_INTEGER } } });
+                const { samples } = await this.bridge.execute('audit_agent_samples', identity);
+                await scope.inject(['subagents'], injected => { observers = new AuditImageAgents(this.bridge, runId, attachments, injected.subagents, snapshot, samples, failures); });
+                observers.register(scope);
                 new NativeModelCalls().attach(scope, {
                     start: async (request) => {
                         const messages = request.request.messages;
-                        const evidence_ids = [...new Set(messages.flatMap(message => message.content).flatMap(block => block.type === 'image' && !block.offloaded && block.attachment.name?.endsWith('.png')
-                                ? [block.attachment.name.slice(0, -4)] : []))];
+                        const evidence_ids = [...new Set(messages.flatMap(message => message.content).flatMap(block => block.type === 'image' && !block.offloaded && block.attachment.name?.endsWith('.png') ? [block.attachment.name.slice(0, -4)] : []))];
                         await this.bridge.execute('audit_agent_model_call_start', { ...identity, request, evidence_ids });
                     },
                     end: async (result) => { await this.bridge.execute('audit_agent_model_call_end', { ...identity, result }); },
                 });
-                scope.on('agent/error', event => { failure = event.error; });
-                scope.on('session/event', (_session, event) => {
+                scope.on('agent/error', event => { failures.set(event.agent.id, event.error); });
+                scope.on('session/event', (session, event) => {
                     if (event.type === 'turn/end' && event.data.reason.kind === 'max-tokens')
-                        failure = new LlmError('审计输出达到本次请求上限，未提交终稿', 'MAX_TOKENS');
+                        failures.set(session.id, new LlmError('审计输出达到本次请求上限，尚未提交当前结果', 'MAX_TOKENS'));
                 });
-                scope.on('agent/request', async (_event, next) => ({ ...await next(),
-                    ...(profile.request_parameters.temperature !== undefined ? { temperature: profile.request_parameters.temperature } : {}),
-                    ...(profile.request_parameters.stop !== undefined ? { stop: profile.request_parameters.stop } : {}),
-                }));
-                scope.systemPrompt.section({ name: 'audit-instruction', order: 100, text: snapshot.system_prompt ?? snapshot.instruction });
-                if (report) {
-                    scope.tools.register(defineTool({ name: 'audit_statistics', description: '读取程序统计：完成覆盖、两类业务结论、未完成、独立问题次数、涉及图数、子集分布、上游一致性交叉表和知识作用。不自行估计数量。', parameters: {}, output: workbenchJsonOutput,
-                        execute: (_args, execution) => this.bridge.execute('audit_agent_report_statistics', identity, execution.signal) }));
-                    scope.tools.register(defineTool({ name: 'audit_records', description: '分页读取本作业图级结果、全部疑点及关联的一致性原始分析和逐项处理意见。total用于遍历全部记录，不用候选代替主图统计。', parameters: auditRecordParameters, output: workbenchJsonOutput,
-                        execute: (query, execution) => this.bridge.execute('audit_agent_report_records', { ...identity, query }, execution.signal) }));
-                    scope.tools.register(defineTool({ name: 'audit_group_issues', description: '分批保存、按group_id更新或用remove_group_ids删除主题，可在一次提交中重组；issue_refs必须完整引用真实完成图级疑点，每项只归一个主主题。每组1至3张代表图，可加1张判断边界对照图，数量由程序计算。', parameters: auditGroupParameters, output: workbenchJsonOutput,
-                        execute: (submission, execution) => this.bridge.execute('audit_agent_report_groups', { ...identity, submission }, execution.signal) }));
-                    scope.tools.register(defineTool({ name: 'audit_report_evidence', description: '补看本作业逐图已经实际观察的冻结原图或局部；不新增图级发现，不检索全库。', parameters: auditReportEvidenceParameters, output: nativeMediaOutput,
-                        execute: async (query, execution) => attachments.prepare(await this.bridge.execute('audit_agent_report_evidence', { ...identity, ...query }, execution.signal), execution.signal) }));
-                    scope.tools.register(defineTool({ name: 'audit_report_commit', description: '提交范围与方法、问题分析、一致性交叉分析、知识作用、整体结论和限制。程序核验全部疑点已归组、引用真实、统计可复算。成功保存后结束报告；失败未保存，可修正重提。', parameters: auditReportParameters, output: workbenchJsonOutput,
-                        execute: async (submission, execution) => { const result = await this.bridge.execute('audit_agent_report_commit', { ...identity, submission }, execution.signal); execution.concludeTurn(); return result; } }));
-                }
-                else {
-                    scope.tools.register(defineTool({ name: 'audit_context', description: '重读本图冻结主图、已选知识与一致性完整分析，不含其他主图审计终稿。首次输入已联合提供主图及全部局部。', parameters: {}, output: workbenchJsonOutput,
-                        execute: (_args, execution) => this.bridge.execute('audit_agent_context', identity, execution.signal) }));
-                    scope.tools.register(defineTool({ name: 'audit_images', description: '按需补看本主图或其已登记一致性候选的原图和标注局部。首次审核所需主图材料已经一次发送，无需分批取齐。', parameters: analysisMediaParameters, output: nativeMediaOutput,
-                        execute: async (query, execution) => attachments.prepare(await this.bridge.execute('audit_agent_media', { ...identity, query }, execution.signal), execution.signal) }));
-                    scope.tools.register(defineTool({ name: 'audit_crop', description: '主动补看主图或已登记候选的原像素裁窗，bbox为[x0,y0,x1,y1]半开区间，不新增审计主图。', parameters: auditCropParameters, output: nativeMediaOutput,
-                        execute: async (query, execution) => attachments.prepare(await this.bridge.execute('audit_agent_crop', { ...identity, query }, execution.signal), execution.signal) }));
-                    scope.tools.register(defineTool({ name: 'audit_reference', description: '按真实evidence_id补看已选知识的冻结支持或反例，不读取未选知识或全库图片。', parameters: evidenceReferenceParameters, output: nativeMediaOutput,
-                        execute: async (args, execution) => attachments.prepare(await this.bridge.execute('audit_agent_reference', { ...identity, ...args }, execution.signal), execution.signal) }));
-                    scope.tools.register(defineTool({ name: 'audit_commit', description: '保存本图执行状态、两类业务结论、全部疑点、上游差异逐项处理、知识适用性与真实证据。未完成记录可保存线索；completed必须完成必要观察、逐项覆盖上游差异和已选知识。成功保存completed终稿后结束本图，校验失败未保存。', parameters: auditCommitParameters, output: workbenchJsonOutput,
-                        execute: async (submission, execution) => { const result = await this.bridge.execute('audit_agent_commit', { ...identity, submission }, execution.signal); if (result.execution_status === 'completed')
-                            execution.concludeTurn(); return result; } }));
-                }
+                scope.on('agent/request', async (event, next) => {
+                    const request = await next();
+                    return { ...request,
+                        ...(profile.request_parameters.temperature !== undefined ? { temperature: profile.request_parameters.temperature } : {}),
+                        ...(profile.request_parameters.stop !== undefined ? { stop: profile.request_parameters.stop } : {}),
+                    };
+                });
+                scope.systemPrompt.section({ name: 'audit-role', order: 100, interpolate: false,
+                    text: ({ agent }) => (agent?.id === state.session_id ? master : snapshot.observer_prompt).system_prompt || '' });
+                scope.tools.register(defineTool({ name: 'audit_statistics', description: '读取按有效图级版本计算的覆盖、疑点、观察、一致性交叉和知识作用统计。', parameters: {}, output: workbenchJsonOutput,
+                    execute: (_args, execution) => this.bridge.execute('audit_agent_report_statistics', identity, execution.signal) }));
+                scope.tools.register(defineTool({ name: 'audit_records', description: '分页读取冻结范围的有效图级结果及上游记录，压缩后可重读。', parameters: auditRecordParameters, output: workbenchJsonOutput,
+                    execute: (query, execution) => this.bridge.execute('audit_agent_report_records', { ...identity, query }, execution.signal) }));
+                if (onDemand)
+                    scope.tools.register(defineTool({ name: 'audit_discovery', description: '分页读取指定发现的完整业务正文、正式精选和支持或反例引用。修改主张或范围前读齐旧引用，逐项明确保留、移除或迁移角色；图级详情通过audit_records读取。',
+                        parameters: auditDiscoveryParameters, output: workbenchJsonOutput,
+                        execute: (query, execution) => this.bridge.execute('audit_agent_discovery', { ...identity, query }, execution.signal) }));
+                scope.tools.register(defineTool({ name: 'audit_report_evidence', description: '打开冻结主图的完整原图与原始人工标注，用于跨图比较和选择典型或对照证据。', parameters: auditReportEvidenceParameters, output: nativeMediaOutput,
+                    execute: async (query, execution) => attachments.prepare(await this.bridge.execute('audit_agent_report_evidence', { ...identity, ...query }, execution.signal), execution.signal) }));
+                scope.tools.register(defineTool({ name: 'audit_batch_commit', description: onDemand ?
+                        '一次提交本批联合分析的发现增量和必要定向复审。discoveries仅新增或正文改变的完整条目；evidence_changes只提交支持、反例引用的add/remove/keep；representative_changes按条目独立替换精选。改变主张或范围须逐项复核旧引用，未改变条目省略。保留撤回历史，不把子报告自动接纳为正式依据。原子成功后结束本轮。' :
+                        '提交本批联合分析后的完整全局发现账本和必要的定向复审请求。保留支持、反例、范围及撤回记录，下一批只接收发布后的短线索。成功结束本轮。',
+                    parameters: onDemand ? auditBatchDeltaParameters : auditBatchParameters, output: workbenchJsonOutput, execute: async (submission, execution) => {
+                        if (execution.agent?.id !== state.session_id)
+                            throw new Error('仅主 Agent 可以发布全局发现');
+                        const result = await this.bridge.execute('audit_agent_batch_commit', { ...identity, submission }, execution.signal);
+                        execution.concludeTurn();
+                        return result;
+                    } }));
+                scope.tools.register(defineTool({ name: 'audit_report_commit', description: '完成全部批次后提交六维分析和分用途评价，只选择有真实原图的有效全局发现。数量和正式就绪来自程序。成功结束报告。',
+                    parameters: auditReportParameters, output: workbenchJsonOutput, execute: async (submission, execution) => {
+                        if (execution.agent?.id !== state.session_id)
+                            throw new Error('仅主 Agent 可以提交整体报告');
+                        const result = await this.bridge.execute('audit_agent_report_commit', { ...identity, submission }, execution.signal);
+                        execution.concludeTurn();
+                        return onDemand ? { job_id: result.job_id, state: result.state, revision: result.revision } : result;
+                    } }));
             } }, async (agent) => {
             const abort = () => agent.cancel({ kind: 'parent' });
             signal.addEventListener('abort', abort, { once: true });
             try {
-                const content = [];
-                if (report) {
-                    content.push({ type: 'text', text: JSON.stringify(await this.bridge.execute('audit_agent_report_context', identity)) + '\n\n' }, { type: 'text', text: snapshot.report_instruction || '' });
+                while (true) {
+                    signal.throwIfAborted();
+                    const batch = await this.bridge.execute('audit_agent_batch', identity, signal);
+                    if (batch)
+                        await agent.runMaintenance(async () => {
+                            try {
+                                await observers.wave(agent, batch, signal);
+                            }
+                            finally {
+                                for (const message of [...agent.inbox.nextTurn, ...agent.inbox.nextStep])
+                                    if (message.source.kind === 'subagent-settled')
+                                        agent.inbox.remove(message.id);
+                            }
+                        });
+                    else
+                        await this.bridge.execute('audit_agent_report_begin', identity, signal);
+                    const context = await this.bridge.execute('audit_agent_batch_context', identity, signal);
+                    failures.delete(state.session_id);
+                    agent.followup({ id: MessageId(randomUUID()), role: 'user', source: { kind: 'user' }, content: [
+                            { type: 'text', text: JSON.stringify(context) + '\n\n' },
+                            { type: 'text', text: batch ? master.user_prompt : reportInstruction },
+                        ] });
+                    await agent.whenIdle();
+                    if (failures.has(state.session_id))
+                        throw failures.get(state.session_id);
+                    const saved = await this.bridge.execute('audit_agent_report_state', identity);
+                    if (!batch) {
+                        if (saved.state !== 'COMPLETED')
+                            throw new Error('主 Agent 结束但未提交整体报告');
+                        break;
+                    }
+                    if (saved.revision === context.revision)
+                        throw new Error('主 Agent 结束但未发布本批联合分析');
                 }
-                else {
-                    const context = await this.bridge.execute('audit_agent_context', identity);
-                    const input = await this.bridge.execute('audit_agent_media', { ...identity, query: { sample_id: sampleId } }, signal);
-                    if (input.error)
-                        throw new Error(input.error);
-                    if (!input.images.length || input.images.length !== input.total)
-                        throw new Error('主图完整输入缺失，不能分批审核');
-                    content.push({ type: 'text', text: JSON.stringify(context) }, ...nativeMediaOutput.render({}, await attachments.prepare(input, signal)), { type: 'text', text: snapshot.instruction });
-                }
-                agent.followup({ id: MessageId(randomUUID()), role: 'user', source: { kind: 'user' }, content });
-                await agent.whenIdle();
-                if (failure)
-                    throw failure;
-                if ((await this.bridge.execute(stateOperation, identity)).state !== 'COMPLETED')
-                    throw new Error(report ? 'Agent已结束但未提交完整审计报告' : 'Agent已结束但未提交本图审计终稿');
             }
             finally {
                 signal.removeEventListener('abort', abort);

@@ -68,3 +68,21 @@ test('no-candidate tabs select persisted reasons and share image filters without
   assert.deepEqual(ConsistencyView.filter(cards,{...filters,model:'EQUIVALENT'},'NO_CANDIDATES'),[]);
   assert.deepEqual(ConsistencyView.filter(cards,{...filters,review:'confirmed'},'NO_ELIGIBLE_CANDIDATES'),[]);
 });
+
+test('the consistent tab uses the program conclusion while preserving independent model and review filters',()=>{
+  const cards=ConsistencyView.imageCards('job',[
+    image('confirmed.png',reviewed('一致','无冲突','EQUIVALENT'),'confirmed'),
+    image('uncertain.png',reviewed('一致',null,'UNCERTAIN')),
+    image('disagreed.png',reviewed('一致','位置差异'),'rejected'),
+    image('program-conflict.png',reviewed('位置差异','无冲突','EQUIVALENT')),
+    image('none.png',{reason:'NO_CANDIDATES',program_conclusion:'无候选',verdict:'EQUIVALENT'}),
+    image('no-eligible.png',{reason:'NO_ELIGIBLE_CANDIDATES',program_conclusion:'无有效候选',verdict:'EQUIVALENT'}),
+    image('failed.png',{reason:'EXECUTION_ERROR'}),image('pending.png'),
+  ]);
+  const filenames=values=>ConsistencyView.filter(cards,{...filters,...values},'PROGRAM_CONSISTENT').map(card=>card.filename);
+  assert.deepEqual(filenames({}),['confirmed.png','uncertain.png','disagreed.png']);
+  assert.deepEqual(filenames({model:'EQUIVALENT'}),['confirmed.png']);
+  assert.deepEqual(filenames({agreement:'different'}),['disagreed.png']);
+  assert.deepEqual(filenames({search:'uncertain',review:'pending'}),['uncertain.png']);
+  assert.deepEqual(filenames({review:'confirmed'}),['confirmed.png']);
+});

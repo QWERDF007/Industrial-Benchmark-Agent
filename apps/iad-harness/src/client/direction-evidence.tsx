@@ -1,12 +1,6 @@
-import React from 'react';
-import type {AnalysisDirection, AnalysisPublicationView} from '../shared/domain.generated.js';
+import type {AnalysisDirection, AnalysisResultView} from '../shared/domain.generated.js';
 
-export interface EvidenceReference {
-  id: string;
-  label: string;
-}
-
-export function directionEvidence(snapshot: AnalysisPublicationView, direction: AnalysisDirection) {
+export function directionEvidence(snapshot: AnalysisResultView, direction: AnalysisDirection) {
   const all=snapshot.evidence.map(evidence=>{
     return {id:evidence.evidence_id,evidence,title:evidence.filename,filename:evidence.filename.split('/').at(-1)!};
   });
@@ -28,50 +22,5 @@ export function directionEvidence(snapshot: AnalysisPublicationView, direction: 
     const ref={normal:'N',defect:'A',unknown:'U'}[kind]+ ++counters[kind];
     return {...item,kind,ref,label:`${{normal:'良品',defect:'异常',unknown:'未分类'}[kind]} ${ref}`};
   });
-  const references=new Map<string,EvidenceReference>();
-  for(const item of entries){
-    if(item.evidence)references.set(item.id,{id:item.ref,label:item.label});
-  }
-  for(const item of all){
-    const original=displayed.get(item.id);
-    const reference=original&&references.get(original.id);
-    if(reference)references.set(item.id,reference);
-  }
-  return {entries,references,counters};
-}
-
-export function ReferencedText({text,references,onReference,onPreview,className='iad-evidence-ref',highlightedId}: {
-  text:string;
-  references:Map<string,EvidenceReference>;
-  onReference(id:string):void;
-  onPreview(id:string,active:boolean):void;
-  className?:string;
-  highlightedId?:string|null;
-}) {
-  if(!references.size)return <>{text}</>;
-  const ids=[...references.keys()].map(id=>id.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
-  const pattern=new RegExp(`(?<![A-Za-z0-9_])(${ids.join('|')})(?![A-Za-z0-9_])`,'g');
-  const rendered:React.ReactNode[]=[];
-  const cited=new Set<string>();
-  let separator='';
-  for(const [index,part] of text.split(pattern).entries()){
-    if(!part)continue;
-    const reference=references.get(part);
-    if(!reference){
-      if(cited.size && /^[\s、，,和与及至到~～—–-]+$/.test(part))separator=part;
-      else {rendered.push(separator,part);separator='';cited.clear();}
-      continue;
-    }
-    if(cited.has(reference.id)){separator='';continue;}
-    rendered.push(separator,<button key={index} type="button"
-      className={`${className}${highlightedId===reference.id?' is-related':''}`}
-      data-evidence-ref={reference.id} aria-label={`定位证据 ${reference.label}`}
-      onClick={()=>onReference(reference.id)}
-      onMouseEnter={()=>onPreview(reference.id,true)} onMouseLeave={()=>onPreview(reference.id,false)}
-      onFocus={()=>onPreview(reference.id,true)} onBlur={()=>onPreview(reference.id,false)}
-    >{reference.label}</button>);
-    separator='';cited.add(reference.id);
-  }
-  rendered.push(separator);
-  return <>{rendered}</>;
+  return {entries,counters};
 }

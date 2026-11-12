@@ -1,0 +1,1 @@
+{"version":3,"file":"useJobList.d.ts","sourceRoot":"","sources":["../../src/client/useJobList.ts"],"names":[],"mappings":"AACA,OAAO,KAAK,EAAC,WAAW,EAAC,MAAM,wBAAwB,CAAC;AAGxD,wBAAgB,UAAU,CAAC,IAAI,EAAC,WAAW,EAAE,EAAC,KAAK,EAAC,MAAM,EAAC,aAAa,SAAG,EAAC,QAAQ,CAAC,EAAC,CAAC,GAAG,EAAC,WAAW,KAAG,IAAI;;;;;;;;;;;;;kBAoBzF,WAAW;qBAEL,MAAM;qBAA0C,MAAM;;qBAE7D,MAAM;EAKxB"}

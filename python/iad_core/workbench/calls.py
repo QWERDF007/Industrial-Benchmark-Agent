@@ -71,6 +71,16 @@ class ModelCalls:
     def __init__(self, db: Database):
         self.db = db
 
+    def successful_native_ids(self, run_id: str, *, complete_response: bool = False) -> set[str]:
+        with self.db.connection() as connection:
+            return {row[0] for row in connection.execute("""SELECT call_id FROM model_calls WHERE run_id=?
+                AND json_extract(summary_json,'$.source')='native_llm'
+                AND json_extract(summary_json,'$.finished_at') IS NOT NULL
+                AND json_extract(summary_json,'$.finish_reason') NOT IN ('error','aborted')
+                AND json_extract(summary_json,'$.error') IS NULL
+                AND (?=0 OR json_extract(summary_json,'$.finish_reason') IN ('stop','tool-calls'))""",
+                (run_id, int(complete_response)))}
+
     def start_native(self, run_id: str, request: NativeModelCallStart, *, sample_id: str | None, session_id: str,
                      attempt: int) -> None:
         with self.db.connection() as connection:

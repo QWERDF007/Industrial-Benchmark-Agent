@@ -54,6 +54,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     await driver.get(`http://127.0.0.1:${server.address().port}/`);
     const element=css=>driver.wait(until.elementLocated(By.css(css)),10000);
     const texts=async css=>Promise.all((await driver.findElements(By.css(css))).map(item=>item.getText()));
+    await(await element('[data-dc="raw-tab"][data-id="类别不一致"]')).click();
     await element('[data-dc="open-conflict"]');
     await(await element('[data-dc="view-prompt"]')).click();
     const prompt=await element('dialog[aria-label="查看提示词"]');
@@ -67,7 +68,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     await fs.writeFile('/tmp/consistency-identity-prompts-history.png',await driver.takeScreenshot(),'base64');
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     assert.deepEqual(await texts('#dc-model-filter option'),['全部判断','类别不一致','一致']);
-    assert.deepEqual(await texts('[data-dc="raw-tab"] span:first-child'),['全部图像','全部冲突','类别不一致']);
+    assert.deepEqual(await texts('[data-dc="raw-tab"] span:first-child'),['全部图像','类别不一致','无候选','无有效候选','一致']);
     await(await element('[data-dc="open-conflict"]')).click();
     await element('#dc-compare-mask');
     assert.equal(await(await element('.dc-conclusion-panel .dc-verdict-value')).getText(),'类别不一致');
@@ -86,7 +87,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     assert.doesNotMatch(await(await element('.dc-model-panel')).getText(),/未进行标注审核|暂无已保存|尚无已保存/);
     await(await element('.dc-dialog-head [aria-label="关闭"]')).click();
     const calls=fixture.wires.length;
-    await(await element('[data-dc="raw-tab"][data-id="all"]')).click();
+    await(await element('[data-dc="raw-tab"][data-id="类别不一致"]')).click();
     await(await element('#dc-filename-search')).sendKeys('A.png');
     const savedPosition=await driver.executeAsyncScript(`const done=arguments[arguments.length-1],surface=document.querySelector('.iad-workbench');surface.scrollTop=120;requestAnimationFrame(()=>done(surface.scrollTop));`);
     await driver.executeScript('document.querySelector(\'[data-dc="start-check"]\').click()');
@@ -133,7 +134,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
         editorHeights:[...form.querySelectorAll('textarea')].map(input=>input.getBoundingClientRect().height)};`);
     assert.ok(bounds.left>=0&&bounds.right<=bounds.viewport,JSON.stringify(bounds));
     assert.equal(bounds.scrollable,true);
-    assert.deepEqual(bounds.editorHeights,[400,400,400,400,400]);
+    assert.deepEqual(bounds.editorHeights,[300,300,300,300,300]);
     const submit=await element('[data-dc="create-job"]');
     await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',submit);
     assert.equal(await driver.executeScript('const r=arguments[0].getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight',submit),true);

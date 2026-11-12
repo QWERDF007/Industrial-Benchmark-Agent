@@ -12,6 +12,8 @@ import { workbenchJsonOutput } from '../tool-output.js';
 import { registerExplorationTools } from './exploration.js';
 import { registerKnowledgeTools } from './knowledge.js';
 import { AnalysisObservers } from './observers.js';
+import { AnalysisPromptContext } from './context.js';
+import { analysisEvidenceReferenceParameters, analysisImageViewParameters } from '../../shared/analysis-context.parameters.generated.js';
 export function analysisSessionPath(root, location) {
     const directory = path.join(root, location.module + '-sessions', new Date(location.submitted_at).toISOString().replaceAll(':', '-'), location.job_id);
     return location.round_id ? path.join(directory, 'observers', String(location.round_id), 'session', 'events.jsonl')
@@ -31,6 +33,7 @@ export class AnalysisWorkflowAgent {
     async run(runId, signal) {
         const identity = { run_id: runId };
         const snapshot = await this.bridge.execute('analysis_agent_snapshot', identity);
+        const prompt = new AnalysisPromptContext(snapshot);
         const initial = await this.bridge.execute('analysis_agent_context', identity);
         if (!initial.round && snapshot.schema_version === 2) {
             const finalization = await this.bridge.execute('analysis_agent_finalization_context', identity);
@@ -59,7 +62,7 @@ export class AnalysisWorkflowAgent {
             attachments = new NativeMediaAttachments(scope, path.dirname(analysisSessionPath(this.dataRoot, location)));
             if (delegated)
                 await scope.inject(['subagents'], injected => {
-                    observers = new AnalysisObservers(this.bridge, runId, attachments, injected.subagents, snapshot);
+                    observers = new AnalysisObservers(this.bridge, runId, attachments, injected.subagents, snapshot, prompt);
                 });
             if (profile.credential_ref)
                 scope.provide('credentials', this.providers.credentials);
@@ -75,7 +78,7 @@ export class AnalysisWorkflowAgent {
             new NativeModelCalls().attach(scope, {
                 start: async (request) => {
                     const messages = request.request.messages;
-                    const evidence_ids = [...new Set(messages.flatMap(message => message.content).flatMap(block => block.type === 'image' && !block.offloaded && block.attachment.name?.endsWith('.png') ? [block.attachment.name.slice(0, -4)] : []))];
+                    const evidence_ids = prompt.onDemand && request.request.purpose === 'compaction' ? [] : [...new Set(messages.flatMap(message => message.content).flatMap(block => block.type === 'image' && !block.offloaded && block.attachment.name?.endsWith('.png') ? [block.attachment.name.slice(0, -4)] : []))];
                     await this.bridge.execute('analysis_agent_model_call_start', { ...identity, request, evidence_ids });
                 },
                 end: async (result) => { await this.bridge.execute('analysis_agent_model_call_end', { ...identity, result }); },
@@ -103,15 +106,19 @@ export class AnalysisWorkflowAgent {
             scope.systemPrompt.section({ name: 'analysis-instruction', order: 100, interpolate: false,
                 text: ({ agent }) => (delegated && agent && agent.id !== initial.session_id ? snapshot.observer_prompt?.system_prompt : null)
                     ?? snapshot.system_prompt ?? snapshot.instruction });
+            if (snapshot.context_instruction)
+                scope.systemPrompt.section({ name: 'analysis-context-protocol', order: 110,
+                    interpolate: false, text: snapshot.context_instruction });
             scope.tools.register(defineTool({ name: 'analysis_context', description: '读取本场目标、原始标注状态、目录revision、媒体覆盖、支持反例、待答问题和已选方向；状态变化或提交冲突后重新读取。当前目标全部完成或明确错误后进入后续登记；目标耗尽返回定稿阶段、锁定base_revision及pending_entry_ids。' + (snapshot.module === 'exploration' ? '探索首批严格是页面手选集合。' : '挖掘从首批开始按冻结计划自动取图，无手选首批。'),
                 parameters: {}, output: workbenchJsonOutput, execute: async (_args, execution) => {
                     if (delegated && execution.agent?.id !== initial.session_id)
-                        return await observers.context(execution.agent.id, execution.signal);
+                        return prompt.worker(await observers.context(execution.agent.id, execution.signal));
                     const context = await this.bridge.execute('analysis_agent_context', identity, execution.signal);
                     if (delegated && context.round && context.round.round_id > 1)
-                        return await observers.review(context, execution.signal);
+                        return prompt.review(await observers.review(context, execution.signal));
                     return !context.round && snapshot.schema_version === 2
-                        ? this.bridge.execute('analysis_agent_finalization_context', identity, execution.signal) : context;
+                        ? prompt.finalization(await this.bridge.execute('analysis_agent_finalization_context', identity, execution.signal))
+                        : prompt.context(context);
                 } }));
             scope.tools.register(defineTool({ name: 'analysis_catalog', description: '按稳定ID或offset/limit分页读取本场当前目录的完整方向或知识，返回revision和next_offset。catalog_counts是全目录总数，活动上下文可以只加载部分条目；不把未加载当作不存在。',
                 parameters: analysisCatalogParameters, output: workbenchJsonOutput,
@@ -125,13 +132,17 @@ export class AnalysisWorkflowAgent {
             scope.tools.register(defineTool({ name: 'analysis_claims', description: '按稳定entry_id分页回查主张修订、原文、原因与revision，合并前的来源ID仍可回查。',
                 parameters: analysisClaimParameters, output: workbenchJsonOutput,
                 execute: (query, execution) => this.bridge.execute('analysis_agent_claims', { ...identity, query }, execution.signal) }));
-            scope.tools.register(defineTool({ name: 'analysis_evidence', description: '按完整原图evidence_id重开本场已保存的冻结原图、原始标注及所属局部，适用于跨轮回看支持和反例。读取不会新增观察或完成覆盖，局部不提供独立图像引用。',
-                parameters: evidenceReferenceParameters, output: nativeMediaOutput,
+            scope.tools.register(defineTool({ name: 'analysis_evidence', description: prompt.onDemand
+                    ? '按evidence_id显式重开冻结图证。默认view=whole只发送完整原图和原始标注元数据；view=annotation_rois读取该原图的原标注局部。可按局部ID重开单张；自定裁窗用analysis_crop。本次观察成功提交文字事实后卸载附件，事实与原件保留。读取不新增观察或完成覆盖。'
+                    : '按完整原图evidence_id重开本场已保存的冻结原图、原始标注及所属局部，适用于跨轮回看支持和反例。读取不会新增观察或完成覆盖，局部不提供独立图像引用。',
+                parameters: prompt.onDemand ? analysisEvidenceReferenceParameters : evidenceReferenceParameters, output: nativeMediaOutput,
                 execute: async (query, execution) => attachments.prepare(await this.bridge.execute('analysis_agent_reference', { ...identity, query }, execution.signal), execution.signal) }));
-            scope.tools.register(defineTool({ name: 'analysis_images', description: batchInput
-                    ? '补看当前批次一条登记的完整原图、原始标注与全部必需局部。首次请求已包含本批全部材料；本工具一次返回该登记全部附件，取证受限或失败如实返回。'
-                    : '读取当前轮一条登记的原图、原始标注与全部必需ROI。total给出总附件数；可用offset和limit分页，但所有必需附件均观察才完成该登记。已提交过的媒体可按同一sample_id重读。取证错误如实返回，允许保留整图受限观察并报告错误。',
-                parameters: batchInput ? explorationImageParameters : analysisMediaParameters, output: nativeMediaOutput,
+            scope.tools.register(defineTool({ name: 'analysis_images', description: prompt.onDemand
+                    ? '按当前批次sample_id显式补看图证。默认view=whole只返回完整原图和原始标注元数据；view=annotation_rois只读取原始标注局部。主动裁窗使用analysis_crop，历史引用使用analysis_evidence。成功提交观察后卸载附件，首次整批原图与必需局部已整体提供。'
+                    : batchInput
+                        ? '补看当前批次一条登记的完整原图、原始标注与全部必需局部。首次请求已包含本批全部材料；本工具一次返回该登记全部附件，取证受限或失败如实返回。'
+                        : '读取当前轮一条登记的原图、原始标注与全部必需ROI。total给出总附件数；可用offset和limit分页，但所有必需附件均观察才完成该登记。已提交过的媒体可按同一sample_id重读。取证错误如实返回，允许保留整图受限观察并报告错误。',
+                parameters: prompt.onDemand ? analysisImageViewParameters : batchInput ? explorationImageParameters : analysisMediaParameters, output: nativeMediaOutput,
                 execute: async (query, execution) => attachments.prepare(await this.bridge.execute('analysis_agent_media', { ...identity, query, ...(delegated && execution.agent?.id !== initial.session_id ? { session_id: execution.agent.id } : {}) }, execution.signal), execution.signal) }));
             scope.tools.register(defineTool({ name: 'analysis_crop', description: batchInput
                     ? '补看当前批次冻结原图的原始像素裁窗，bbox为原图半开区间[x0,y0,x1,y1]。部分越界取有效交集，一次返回一个完整裁窗；归属原登记，不是人工标注或独立样本，不计入必需材料。'
@@ -139,13 +150,15 @@ export class AnalysisWorkflowAgent {
                 parameters: batchInput ? explorationCropParameters : analysisCropParameters, output: nativeMediaOutput,
                 execute: async (query, execution) => attachments.prepare(await this.bridge.execute('analysis_agent_crop', { ...identity, query, ...(delegated && execution.agent?.id !== initial.session_id ? { session_id: execution.agent.id } : {}) }, execution.signal), execution.signal) }));
             if (snapshot.module === 'exploration')
-                registerExplorationTools(scope, this.bridge, runId);
+                registerExplorationTools(scope, this.bridge, runId, prompt.onDemand);
             else
-                registerKnowledgeTools(scope, this.bridge, runId);
+                registerKnowledgeTools(scope, this.bridge, runId, prompt.onDemand);
             if (delegated)
                 observers.register(scope);
         };
         await this.host.withAgent(initial.session_id, { signal,
+            evidenceOnDemand: prompt.onDemand,
+            imageHandoffTools: prompt.onDemand ? [snapshot.module + '_observe', snapshot.module + '_commit', snapshot.module + '_finalize'] : undefined,
             subagents: delegated && 'concurrency' in snapshot.settings ? snapshot.settings.concurrency : undefined,
             agentOptions: { provider, model: profile.model_id, maxTokens: profile.max_output_tokens ?? undefined },
             ...(delegated ? { sharedSetup: setup } : { setup }),
@@ -174,7 +187,8 @@ export class AnalysisWorkflowAgent {
                     const task = context.round ? (review?.context ?? materials?.context ?? context) : await this.bridge.execute('analysis_agent_finalization_context', identity);
                     if ('complete' in task && task.complete)
                         break;
-                    const content = [{ type: 'text', text: JSON.stringify(task) + '\n\n' }];
+                    const taskContext = 'round' in task ? prompt.review(task) : prompt.finalization(task);
+                    const content = [{ type: 'text', text: JSON.stringify(taskContext) + '\n\n' }];
                     if (review)
                         content.push(...review.media);
                     for (const page of materials?.registrations ?? [])

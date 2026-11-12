@@ -21,7 +21,7 @@ test('killing the audit owner after a committed image preserves its final and re
       let raw='';for await(const chunk of req)raw+=chunk;const body=JSON.parse(raw);
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
       const {context,outputs,pages}=auditMessages(body);
-      if(context?.phase==='report'){wire.push({sample_id:null,body});respondFixtureTools(res,[auditReportTool(context,outputs)]);return;}
+      if(context?.phase){wire.push({sample_id:null,body});respondFixtureTools(res,[auditReportTool(context,outputs)]);return;}
       assert.equal(context.knowledge,null);assert.ok(!JSON.stringify(context).includes('首图独立观察'));
       wire.push({sample_id:context.sample_id,body});
       let call;
@@ -73,6 +73,8 @@ test('killing the audit owner after a committed image preserves its final and re
   assert.ok((await runtime.host.exportJsonl(committed.sample.session_id)).startsWith(committed.jsonl));
   const report=await runtime.bridge.execute('audit_job_report',{run_id:committed.run_id});assert.equal(report.audited_samples,2);
   const html=await runtime.bridge.execute('audit_job_export',{run_id:committed.run_id});
-  assert.ok(html.html.includes('首图独立观察'));assert.ok(html.html.includes('次图独立观察'));
+  assert.ok(html.html.includes('完成范围可用于视觉探索'));
+  assert.ok(!html.html.includes('首图独立观察'));assert.ok(!html.html.includes('次图独立观察'));
+  assert.deepEqual(samples.map(sample=>sample.result.analysis).sort(),['次图独立观察。','首图独立观察。'].sort());
   assert.deepEqual(await runtime.bridge.execute('audit_job_export',{run_id:committed.run_id}),html);
 });

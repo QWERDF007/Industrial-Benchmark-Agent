@@ -3,9 +3,10 @@ from contextlib import nullcontext
 from collections import Counter, defaultdict
 
 from iad_core.audit.models import AuditFinal, AuditSampleRun
-from iad_core.audit.report_models import (AuditCount, AuditStatistics, AuditRecordQuery, AuditGroupCommit,
-    AuditReportCommit, AuditReportSession, AuditIssueGroup)
+from iad_core.audit.report_models import (AuditCount, AuditStatistics, AuditRecordQuery,
+    AuditReportCommit, AuditReportSession, AuditDiscovery, AuditRepresentative)
 from iad_core.audit.state import AuditState
+from iad_core.workbench.calls import ModelCalls
 
 
 class AuditReports:
@@ -20,7 +21,7 @@ class AuditReports:
         records = {record.sample.sample_id:record for record in self.state.snapshot(run_id).manifest.records}
         for sample in samples:
             final = sample.result
-            completed = sample.state == 'COMPLETED' and isinstance(final, AuditFinal) and final.execution_status == 'completed'
+            completed = sample.state == 'COMPLETED' and final is not None and final.execution_status == 'completed'
             state = final.state if completed else 'incomplete'
             counts[state] += 1
             datasets[records[sample.sample_id].sample.dataset_id][state] += 1
@@ -37,7 +38,7 @@ class AuditReports:
             for check in final.check_assessments:
                 knowledge[check.check_id][check.status] += 1
         observations = [sample.result.observations for sample in samples if sample.state == 'COMPLETED'
-            and isinstance(sample.result, AuditFinal) and sample.result.execution_status == 'completed' and sample.result.observations]
+            and sample.result is not None and sample.result.execution_status == 'completed' and sample.result.observations]
         total, completed = len(samples), counts['normal'] + counts['suspect']
         return AuditStatistics(total_images=total, completed_images=completed, normal_images=counts['normal'],
             suspect_images=counts['suspect'], incomplete_images=total-completed,
@@ -56,9 +57,9 @@ class AuditReports:
             status = final.state if sample.state == 'COMPLETED' and final else 'incomplete'
             if query.sample_id and query.sample_id != sample.sample_id or query.state and query.state != status:
                 continue
-            if query.issue_type and (not isinstance(final, AuditFinal) or not any(f.type == query.issue_type for f in final.findings)):
+            if query.issue_type and (final is None or not any(f.type == query.issue_type for f in final.findings)):
                 continue
-            if query.consistency_assessment and (not isinstance(final, AuditFinal) or not any(r.assessment == query.consistency_assessment for r in final.consistency_review)):
+            if query.consistency_assessment and (final is None or not any(r.assessment == query.consistency_assessment for r in final.consistency_review)):
                 continue
             if query.knowledge_id and (not final or not any(a.check_id == query.knowledge_id for a in final.check_assessments)):
                 continue
@@ -66,17 +67,13 @@ class AuditReports:
         return selected
 
     def records(self, run_id: str, query: dict) -> dict:
+        from iad_core.audit.master_models import AuditMasterRecord
         query = AuditRecordQuery.model_validate(query)
         selected = self.matching(run_id,query)
         start = (query.page-1)*query.page_size
-        items = [dict(sample_id=sample.sample_id,execution_state=sample.state,
-            final=sample.result.model_dump(mode='json') if sample.result else None,
-            consistency=dict(reason=sample.consistency.reason,program_conclusion=sample.consistency.program_conclusion,
-                model_conclusion=sample.consistency.model_conclusion,
-                result=sample.consistency.result.model_dump(mode='json') if sample.consistency.result else None,
-                gates=[gate.model_dump(mode='json',include={'candidate_id','gate_status','relation','reason','limitations','region_checks'})
-                    for gate in sample.consistency.gates])) for sample in selected[start:start+query.page_size]]
-        return dict(kind='audit_records',job_id=run_id,generation=self.session(run_id).generation if self.state.snapshot(run_id).schema_version>=3 else 0,
+        items = [AuditMasterRecord.capture(sample).model_dump(mode='json',exclude_computed_fields=True)
+            for sample in selected[start:start+query.page_size]]
+        return dict(kind='audit_records',job_id=run_id,
             total=len(selected),page=query.page,page_size=query.page_size,items=items)
 
     def session(self, run_id: str) -> AuditReportSession:
@@ -84,8 +81,15 @@ class AuditReports:
             row = connection.execute('SELECT * FROM audit_report_runs WHERE job_id=?', (run_id,)).fetchone()
         if row is None:
             raise LookupError('本作业没有原生报告Session')
-        return AuditReportSession(job_id=run_id,session_id=row['session_id'],session_created=bool(row['session_created']),generation=row['generation'],state=row['state'],
-            groups=json.loads(row['groups_json']),result=json.loads(row['result_json']) if row['result_json'] else None,error=row['error'])
+        with self.db.connection() as connection:
+            latest = connection.execute('SELECT revision,submission_json FROM audit_global_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1',(run_id,)).fetchone()
+        return AuditReportSession(revision=latest[0] if latest else 0,discoveries=json.loads(latest[1])['discoveries'] if latest else [],job_id=run_id,session_id=row['session_id'],session_created=bool(row['session_created']),state=row['state'],
+            result=json.loads(row['result_json']) if row['result_json'] else None,error=row['error'],
+            prompts=json.loads(row['prompts_json']) if row['prompts_json'] else None)
+
+    def discovery(self, run_id: str, query: dict) -> dict:
+        from iad_core.audit.discoveries import AuditDiscoveries
+        return AuditDiscoveries(self).page(run_id, query)
 
     def begin(self, run_id: str):
         if any(sample.state in ('PENDING','RUNNING') for sample in self.state.samples(run_id)):
@@ -94,135 +98,154 @@ class AuditReports:
             connection.execute("UPDATE audit_report_runs SET state='RUNNING',error=NULL WHERE job_id=? AND state!='COMPLETED'", (run_id,))
         return self.session(run_id)
 
-    def context(self, run_id: str) -> dict:
-        snapshot = self.state.snapshot(run_id)
-        report = self.session(run_id)
-        return dict(phase='report',job_id=run_id,session_id=report.session_id,generation=report.generation,dataset_ids=snapshot.manifest.dataset_ids,
-            dataset_format=snapshot.manifest.records[0].dataset_format,
-            consistency_job_id=snapshot.consistency_job_id,knowledge=snapshot.knowledge.model_dump(mode='json') if snapshot.knowledge else None,
-            statistics=self.statistics(run_id).model_dump(mode='json'),groups=[group.model_dump(mode='json') for group in report.groups],
-            record_count=len(snapshot.manifest.records),pending_sample_ids=sorted({record.sample.sample_id for record in snapshot.manifest.records}-self.read_ids(run_id)))
-
-    def delivered(self, run_id: str, call):
-        generation = self.session(run_id).generation
-        registered = {sample.sample_id for sample in self.state.samples(run_id)}
+    def delivered(self, run_id: str, call, evidence_ids: list[str] = ()):
+        samples = {sample.sample_id:sample for sample in self.state.samples(run_id)}
         delivered = set()
         for message in call.request.get('messages',[]):
-            if message.get('role') != 'tool':
-                continue
             for block in message.get('content',[]):
-                if block.get('type') != 'text':
+                if not isinstance(block,dict) or block.get('type') != 'text':
                     continue
                 try:
-                    page = json.loads(block['text'])
+                    page = json.loads(block['text'].splitlines()[0])
                 except (ValueError,KeyError):
                     continue
-                if isinstance(page,dict) and page.get('kind')=='audit_records' and page.get('job_id')==run_id and page.get('generation')==generation:
-                    delivered.update(item['sample_id'] for item in page['items'])
-        if delivered - registered:
-            raise ValueError('报告读取包含本作业范围外记录')
+                if isinstance(page,dict) and page.get('kind')=='audit_records' and page.get('job_id')==run_id:
+                    delivered.update((item['sample_id'],item['result_revision']) for item in page['items'])
+        if {item[0] for item in delivered} - samples.keys():
+            raise ValueError('主 Agent 读取包含本作业范围外记录')
+        from iad_core.evidence.registrations import PreparedRegistration
         with self.db.connection() as connection:
-            connection.executemany('INSERT OR IGNORE INTO audit_report_reads VALUES(?,?,?,?)',[(run_id,generation,call.call_id,sample_id) for sample_id in delivered])
+            available = {image.image.evidence_id for row in connection.execute('SELECT media_json FROM audit_sample_media WHERE job_id=?',(run_id,))
+                for image in PreparedRegistration.model_validate_json(row[0]).images
+                if image.image.is_whole_image and image.image.representation=='raw'}
+            if set(evidence_ids) - available:
+                raise ValueError('主 Agent 仅接收本作业冻结完整原图')
+            connection.executemany('INSERT OR IGNORE INTO audit_master_reads VALUES(?,?,?,?)',
+                [(run_id,call.call_id,sample_id,revision) for sample_id,revision in delivered])
+            connection.executemany('INSERT OR IGNORE INTO audit_master_media_deliveries VALUES(?,?,?)',
+                [(run_id,call.call_id,eid) for eid in evidence_ids])
 
-    def read_ids(self, run_id: str) -> set[str]:
-        generation = self.session(run_id).generation
+    def read_versions(self, run_id: str) -> set[tuple[str,int]]:
+        successful = ModelCalls(self.db).successful_native_ids(run_id,
+            complete_response=self.state.snapshot(run_id).context_policy == 'evidence-on-demand-v1')
         with self.db.connection() as connection:
-            return {row[0] for row in connection.execute("""SELECT r.sample_id FROM audit_report_reads r JOIN model_calls c ON c.call_id=r.call_id
-                WHERE r.job_id=? AND r.generation=? AND json_extract(c.summary_json,'$.finished_at') IS NOT NULL
-                AND json_extract(c.summary_json,'$.finish_reason') NOT IN ('error','aborted') AND json_extract(c.summary_json,'$.error') IS NULL""",(run_id,generation))}
+            return {(row[0],row[1]) for row in connection.execute(
+                'SELECT sample_id,result_revision,call_id FROM audit_master_reads WHERE job_id=?',(run_id,)) if row[2] in successful}
 
-    def groups(self, run_id: str, request: dict) -> AuditReportSession:
-        submission = AuditGroupCommit.model_validate(request)
-        if len({group.group_id for group in submission.groups}) != len(submission.groups):
-            raise ValueError('本次主题ID重复')
+    def observed(self, run_id: str) -> set[str]:
+        successful = ModelCalls(self.db).successful_native_ids(run_id,
+            complete_response=self.state.snapshot(run_id).context_policy == 'evidence-on-demand-v1')
         with self.db.connection() as connection:
-            connection.execute('BEGIN IMMEDIATE')
-            current = connection.execute('SELECT r.*,j.status FROM audit_report_runs r JOIN job_runs j ON j.job_id=r.job_id WHERE r.job_id=?',(run_id,)).fetchone()
-            if current is None:
-                raise LookupError('审计报告不存在')
-            canonical = json.dumps(dict(kind='groups',generation=current['generation'],value=submission.model_dump(mode='json')),sort_keys=True,ensure_ascii=False)
-            saved = connection.execute('SELECT submission_json FROM audit_report_commits WHERE job_id=? AND commit_key=?',(run_id,submission.commit_key)).fetchone()
-            if saved:
-                if saved[0] != canonical:
-                    raise ValueError('同一报告提交键不能用于不同内容')
-            else:
-                if current['state'] != 'RUNNING' or current['status'] != 'RUNNING':
-                    raise ValueError('报告不在执行中，不能保存主题')
-                merged = {item['group_id']:AuditIssueGroup.model_validate(item) for item in json.loads(current['groups_json'])}
-                if set(submission.remove_group_ids) - merged.keys():
-                    raise ValueError('删除的主题不存在')
-                for group_id in submission.remove_group_ids:
-                    del merged[group_id]
-                merged.update({group.group_id:group for group in submission.groups})
-                self.validate_groups(run_id,list(merged.values()),complete=False)
-                connection.execute('INSERT INTO audit_report_commits VALUES(?,?,?)',(run_id,submission.commit_key,canonical))
-                connection.execute('UPDATE audit_report_runs SET groups_json=? WHERE job_id=?',
-                    (json.dumps([group.model_dump(mode='json') for group in merged.values()],ensure_ascii=False),run_id))
-        return self.session(run_id)
+            return {row[0] for row in connection.execute(
+                'SELECT evidence_id,call_id FROM audit_master_media_deliveries WHERE job_id=?',(run_id,)) if row[1] in successful}
 
-    def validate_groups(self, run_id: str, groups: list[AuditIssueGroup], *, complete: bool):
+    def validate_references(self, run_id: str, refs, *, current_only: bool = False):
         samples = {sample.sample_id:sample for sample in self.state.samples(run_id)}
-        issues = {(sample.sample_id,finding.finding_id) for sample in samples.values()
-            if sample.state == 'COMPLETED' and isinstance(sample.result,AuditFinal) for finding in sample.result.findings}
-        seen = set()
-        for group in groups:
-            refs = [(ref.sample_id,ref.finding_id) for ref in group.issue_refs]
-            if len(set(refs)) != len(refs) or set(refs) - issues or seen & set(refs):
-                raise ValueError('主题必须引用真实完成疑点且每项疑点只归入一个主主题')
-            seen.update(refs)
-            representatives = [item for item in group.representatives if item.role == 'representative']
-            counters = [item for item in group.representatives if item.role == 'counter']
-            if not 1 <= len(representatives) <= 3 or len(counters) > 1:
-                raise ValueError('每个主题选择1至3张典型图，至多1张判断边界对照图')
-            if len({item.sample_id for item in group.representatives}) != len(group.representatives):
-                raise ValueError('主题图像证据不能重复')
-            for item in group.representatives:
-                sample = samples.get(item.sample_id)
-                if sample is None or sample.state != 'COMPLETED' or not sample.result or not sample.result.evidence_ids:
-                    raise ValueError('代表图必须属于本作业真实完成观察的图像')
-                if item.finding_id is not None and (item.sample_id,item.finding_id) not in issues:
-                    raise ValueError('典型图或对照图引用的疑点不存在')
-                if item.role == 'representative' and (item.sample_id,item.finding_id) not in set(refs):
-                    raise ValueError('代表图必须关联本主题真实疑点')
-        if complete and seen != issues:
-            raise ValueError('报告主题尚未覆盖全部已完成图级疑点')
+        for ref in refs:
+            sample = samples.get(ref.sample_id)
+            if sample is None:
+                raise ValueError('引用不属于冻结范围')
+            with self.db.connection() as connection:
+                row = connection.execute('SELECT result_json FROM audit_image_versions WHERE job_id=? AND sample_id=? AND revision=?',
+                    (run_id,ref.sample_id,ref.result_revision)).fetchone()
+            if row is None:
+                raise ValueError('须引用真实已保存的图级版本')
+            result = AuditFinal.model_validate_json(row[0])
+            records = {'finding':result.findings,'observation':result.observations,'feature':result.visual_features}
+            if ref.kind != 'image' and (ref.index is None or ref.index >= len(records[ref.kind])):
+                raise ValueError('引用的图级记录不存在')
+            if current_only and ref.result_revision != sample.result_revision:
+                raise ValueError('正式发现必须引用当前有效图级版本')
+
+    def validate_gallery(self, run_id: str, representatives: list[AuditRepresentative],
+            role_samples: dict[str,set[str]], *, required: bool):
+        from iad_core.audit.evidence import AuditEvidence
+        if required and not any(item.role=='representative' for item in representatives):
+            raise ValueError('正式图证须包含典型完整原图')
+        if len({item.sample_id for item in representatives}) != len(representatives):
+            raise ValueError('同组图像证据不能重复')
+        observed = self.observed(run_id)
+        for item in representatives:
+            if item.sample_id not in role_samples[item.role]:
+                raise ValueError('典型原图须关联实际支持，对照原图须关联实际反例')
+            page = AuditEvidence(self.state).prepare(run_id,item.sample_id,item.sample_id)
+            if page.evidence_id not in observed:
+                raise ValueError('主 Agent 尚未实际观察所选完整原图')
+
+    def validate_discoveries(self, run_id: str, discoveries: list[AuditDiscovery], *, final: bool = False):
+        if len({item.group_id for item in discoveries}) != len(discoveries):
+            raise ValueError('全局发现引用不能重复')
+        for discovery in discoveries:
+            refs = [*discovery.support_refs,*discovery.counter_refs]
+            self.validate_references(run_id,refs,current_only=final and discovery.status!='withdrawn')
+            if discovery.kind=='quality_issue' and not any(ref.kind=='finding' for ref in discovery.support_refs):
+                raise ValueError('质量疑点主题必须有真实图级疑点')
+            self.validate_gallery(run_id,discovery.representatives,{
+                'representative':{ref.sample_id for ref in discovery.support_refs},
+                'counter':{ref.sample_id for ref in discovery.counter_refs}},required=final and discovery.status!='withdrawn')
 
     def commit(self, run_id: str, request: dict) -> AuditReportSession:
+        from iad_core.audit.batches import AuditBatches
         submission = AuditReportCommit.model_validate(request)
+        canonical = submission.model_dump_json(exclude_computed_fields=True)
+        current = self.session(run_id)
+        with self.db.connection() as connection:
+            saved = connection.execute('SELECT submission_json FROM audit_report_commits WHERE job_id=? AND commit_key=?',
+                (run_id,submission.commit_key)).fetchone()
+        if saved:
+            if json.loads(saved[0]) != json.loads(canonical):
+                raise ValueError('同一报告提交键不能用于不同内容')
+            return current
+        if current.state!='RUNNING' or AuditBatches(self.state).begin(run_id) is not None or AuditBatches(self.state).rechecks(run_id):
+            raise ValueError('须完成全部批次联合分析和定向复审后提交报告')
+        catalog = {item.group_id:item for item in current.discoveries}
+        if len(set(submission.discovery_ids))!=len(submission.discovery_ids) or set(submission.discovery_ids)-catalog.keys():
+            raise ValueError('报告须选择真实全局发现')
+        selected = [catalog[identity] for identity in submission.discovery_ids]
+        if any(item.status=='withdrawn' for item in selected):
+            raise ValueError('已撤回假设不能作为正式发现')
+        self.validate_discoveries(run_id,selected,final=True)
+        samples = self.state.samples(run_id)
+        if {(sample.sample_id,sample.result_revision) for sample in samples} - self.read_versions(run_id):
+            raise ValueError('报告尚未实际读取全部有效图级记录')
+        from iad_core.audit.report_models import AUDIT_ISSUE_TYPES_BY_FORMAT
+        if submission.consistency_analyses and {item.issue_type for item in submission.consistency_analyses} != set(
+                AUDIT_ISSUE_TYPES_BY_FORMAT[self.state.snapshot(run_id).dataset_profile.dataset_format]):
+            raise ValueError('一致性分析须分别覆盖本数据格式的全部适用差异类型')
+        for section in [*submission.capabilities,*submission.coverage_topics,*submission.consistency_analyses]:
+            self.validate_references(run_id,section.evidence_refs,current_only=True)
+            if section.representatives:
+                evidence_samples={ref.sample_id for ref in section.evidence_refs}
+                self.validate_gallery(run_id,section.representatives,
+                    {'representative':evidence_samples,'counter':evidence_samples},required=True)
+        source = self.state.snapshot(run_id).dataset_profile.benchmark
+        for assessment in submission.usability:
+            if assessment.status!='usable' or assessment.purpose in ('exploration','training_experiment','debug'):
+                continue
+            if source is None or not source.source_matches_scope or not source.leakage.is_passed or source.readiness.standard_ad.status!='READY':
+                raise ValueError('正式评测用途须有本范围真实 Gold、独立划分和已执行的就绪结果')
+            if assessment.purpose=='pixel_evaluation' and source.pixel_gold_images==0:
+                raise ValueError('矩形标注不能作为像素级 Gold')
+            if assessment.purpose=='bbox_evaluation' and source.readiness.small_weak.status!='READY':
+                raise ValueError('框级评测缺少真实定位就绪证据')
         with self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
-            current = connection.execute('SELECT r.*,j.status FROM audit_report_runs r JOIN job_runs j ON j.job_id=r.job_id WHERE r.job_id=?',(run_id,)).fetchone()
-            if current is None:
-                raise LookupError('审计报告不存在')
-            canonical = json.dumps(dict(kind='report',generation=current['generation'],value=submission.model_dump(mode='json')),sort_keys=True,ensure_ascii=False)
-            saved = connection.execute('SELECT submission_json FROM audit_report_commits WHERE job_id=? AND commit_key=?',(run_id,submission.commit_key)).fetchone()
-            if saved:
-                if saved[0] != canonical:
-                    raise ValueError('同一报告提交键不能用于不同内容')
-            else:
-                if current['state'] != 'RUNNING' or current['status'] != 'RUNNING':
-                    raise ValueError('作业不在执行中，不能提交迟到报告')
-                self.validate_groups(run_id,[AuditIssueGroup.model_validate(group) for group in json.loads(current['groups_json'])],complete=True)
-                if {sample.sample_id for sample in self.state.samples(run_id)} != self.read_ids(run_id):
-                    raise ValueError('报告尚未实际读取全部图级记录，请使用audit_records读取剩余页')
-                connection.execute('INSERT INTO audit_report_commits VALUES(?,?,?)',(run_id,submission.commit_key,canonical))
-                connection.execute("UPDATE audit_report_runs SET result_json=?,state='COMPLETED',error=NULL WHERE job_id=?",(submission.model_dump_json(),run_id))
+            if connection.execute('SELECT status FROM job_runs WHERE job_id=?',(run_id,)).fetchone()[0]!='RUNNING':
+                raise ValueError('作业已停止，不能提交报告')
+            connection.execute('INSERT INTO audit_report_commits VALUES(?,?,?)',(run_id,submission.commit_key,canonical))
+            connection.execute("UPDATE audit_report_runs SET result_json=?,state='COMPLETED',error=NULL WHERE job_id=?",(canonical,run_id))
         return self.session(run_id)
 
     def evidence(self, run_id: str, sample_id: str, evidence_id: str):
         from iad_core.audit.evidence import AuditEvidence
-        from iad_core.evidence.registrations import PreparedRegistration, RegistrationMediaPage
-        sample = self.state.sample(run_id,sample_id)
-        if sample.state != 'COMPLETED' or evidence_id not in AuditEvidence(self.state).observed(run_id,sample_id):
-            raise ValueError('报告仅能读取本作业逐图已完成实际观察的证据')
-        with self.db.connection() as connection:
-            media = [PreparedRegistration.model_validate_json(row[0]) for row in connection.execute(
-                'SELECT media_json FROM audit_sample_media WHERE job_id=? AND target_id=?',(run_id,sample_id))]
-        image = next((image for page in media for image in page.images if image.image.evidence_id == evidence_id),None)
+        from iad_core.evidence.registrations import RegistrationMediaPage
+        self.state.sample(run_id,sample_id)
+        media=AuditEvidence(self.state).prepare(run_id,sample_id,sample_id)
+        image=next((item for item in media.images if item.image.evidence_id==evidence_id
+            and item.image.is_whole_image and item.image.representation=='raw'),None)
         if image is None:
-            raise LookupError('实际观察证据没有保存的像素')
-        whole = next((page.evidence_id for page in media if page.sample_id == image.sample_id and page.evidence_id),None)
-        return RegistrationMediaPage(sample_id=image.sample_id,evidence_id=whole,total=1,offset=0,images=[image],error=None)
+            raise ValueError('主 Agent 和报告仅能读取冻结完整原图')
+        return RegistrationMediaPage(sample_id=sample_id,evidence_id=evidence_id,total=1,offset=0,images=[image],error=None)
 
     def failure(self, run_id: str, message: str):
         with self.db.connection() as connection:

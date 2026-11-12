@@ -30,7 +30,9 @@ def analysis_results(args, db_path):
     from iad_core.analysis.queries import AnalysisQueries
     db = Database(db_path)
     state = AnalysisJobViews(db).status(args['run_id'])
-    return AnalysisResults(publication=AnalysisQueries(db).view(state['analysis_version_id']) if state['analysis_version_id'] else None).model_dump(mode='json')
+    queries = AnalysisQueries(db)
+    return AnalysisResults(current=queries.current(state['run_id']),
+        publication=queries.view(state['analysis_version_id']) if state['analysis_version_id'] else None).model_dump(mode='json')
 
 
 def analysis_cancel(args, db_path):

@@ -106,6 +106,7 @@ export function FullscreenViewer({ open, item, items = [], currentIndex = -1, on
     }, [open, zoomMode, fitScale]);
     // Navigate prev / next
     const moveViewer = useCallback((step) => {
+        stageRef.current?.focus({ preventScroll: true });
         if (navigation) {
             if (!navigation.busy && (step < 0 ? navigation.previous : navigation.next))
                 navigation.move(step < 0 ? -1 : 1);

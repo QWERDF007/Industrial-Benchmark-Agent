@@ -62,7 +62,7 @@ test('native settings preserve General and Models while business settings persis
       assert.equal((await driver.findElements(By.xpath("//*[@data-module-settings]//button[.='保存设置' or .='恢复默认']"))).length,0,'修改后自动保存');
       await selectModuleModel(driver,'Second model（Second service）');
       await driver.wait(async()=>(await api(null,`/settings/modules/${module}`)).data.settings.model?.model_id==='second-model',5000);
-      if(module==='audit')assert.ok(await driver.findElement(By.css('input[aria-label="同时审计的主图数"]')).isEnabled());
+      if(module==='audit')assert.ok(await driver.findElement(By.css('input[aria-label="同时运行的子 Agent 数量"]')).isEnabled());
       else{
         const values=[['后续每批图像数',2],['良品抽取权重',3],['异常品抽取权重',1]];
         if(module==='knowledge')values.splice(0,3,['每批图像数',2],['良品抽取权重',1],['异常品抽取权重',3]);

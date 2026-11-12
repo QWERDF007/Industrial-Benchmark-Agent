@@ -62,13 +62,16 @@ class ExplorationStart(AnalysisModel):
         return self
 
 
-class DirectionContent(AnalysisModel):
+class DirectionDescription(AnalysisModel):
     title: NonBlankText
     instruction: NonBlankText
     applies_to: Literal['normal', 'defect', 'both']
     rationale: NonBlankText
-    evidence_ids: list[str] = Field(min_length=1)
     limitations: list[str]
+
+
+class DirectionContent(DirectionDescription):
+    evidence_ids: list[str] = Field(min_length=1)
 
 
 class ProposedDirection(DirectionContent):

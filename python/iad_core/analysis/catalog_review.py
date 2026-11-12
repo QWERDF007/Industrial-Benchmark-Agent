@@ -13,10 +13,14 @@ class AnalysisCatalogReview:
         return ['正文需按全部相关证据改写，不能用发现顺序、文件名或未登记的图像编号代替依据：' + '、'.join(dict.fromkeys(signals))] if signals else []
 
     @classmethod
-    def prose(cls, item: BaseModel) -> list[str]:
+    def prose(cls, item: BaseModel, *, allow_image_references: bool = True) -> list[str]:
         texts = item.model_dump(include={'title','instruction','rationale','subject','location','criterion',
             'allowed_variations','limitations','summary','unresolved_questions'})
-        return cls.wording('\n'.join(text if isinstance(text, str) else '\n'.join(text) for text in texts.values()))
+        text = '\n'.join(text if isinstance(text, str) else '\n'.join(text) for text in texts.values())
+        issues = cls.wording(text)
+        if not allow_image_references and re.search(r'\bimg_[a-f0-9]{64}\b|(?:良品|异常|未分类)\s*[NAU]\d+|\b[NAU]\d+\b', text):
+            issues.append('正文只描述可见现象、比较关系和检查动作；图像编号仅填写结构化论据及精选，不写文件名、图号或图像ID')
+        return issues
 
     def entry(self, item, arguments) -> list[str]:
         issues = self.prose(item)

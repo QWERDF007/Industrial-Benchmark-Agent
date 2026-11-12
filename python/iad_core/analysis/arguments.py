@@ -3,7 +3,7 @@ from sqlite3 import Connection
 
 from iad_core.analysis.argument_models import (AnalysisArgumentPage,
     AnalysisArgumentQuery, AnalysisArgumentRecord)
-from iad_core.analysis.models import ProposedAnalysisDirection, ProposedAnalysisCheck
+from iad_core.analysis.models import ProposedAnalysisDirection, ProposedAnalysisCheck, AnalysisDirectionBody, AnalysisCheckBody
 
 
 class AnalysisArguments:
@@ -36,6 +36,7 @@ class AnalysisArguments:
     def apply(self, connection: Connection, run_id: str, revision: int, entries: dict,
               submission, snapshot, media) -> None:
         exploration = snapshot.module == 'exploration'
+        on_demand = snapshot.context_policy == 'evidence-on-demand-v1'
         support = 'evidence_ids' if exploration else 'support_evidence_ids'
         owners = {image.image.evidence_id: (source, image.image) for source in media.values() for image in source.images}
         datasets = {record.sample.sample_id: record.sample.dataset_id for record in snapshot.manifest.records}
@@ -81,13 +82,15 @@ class AnalysisArguments:
             claim_revision = (row['claim_revision'] + int(changed)) if row else 1
             if row is None or changed:
                 schema = ProposedAnalysisDirection if exploration else ProposedAnalysisCheck
+                if on_demand:
+                    schema = AnalysisDirectionBody if exploration else AnalysisCheckBody
                 claim = schema.model_validate({name: entry[name] for name in schema.model_fields if name in entry})
                 connection.execute('''INSERT INTO analysis_claim_revisions
                     (job_id,entry_id,claim_revision,revision,reason,content_json) VALUES(?,?,?,?,?,?)''',
                     (run_id, entry_id, claim_revision, revision, entry.get('change_reason'), claim.model_dump_json()))
             # Explicit legacy ID associations remain factual, with unknown reasons until reviewed.
             proposed = {(eid, role): None for role, name in [('support', support), ('counter', 'counter_evidence_ids')]
-                for eid in entry[name] if (eid, role) not in current}
+                for eid in entry[name] if (eid, role) not in current} if not on_demand else {}
             for merge in submission.merges:
                 if merge.target_id == entry_id:
                     for source_id in merge.source_ids:

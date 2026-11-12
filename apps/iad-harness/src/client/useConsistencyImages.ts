@@ -3,6 +3,7 @@ import {useQuery} from '@tanstack/react-query';
 import {ConsistencyView,type ConsistencyComparisonItem} from './consistency-view.js';
 import {message} from './api.js';
 import {queryClient} from './query-client.js';
+import {JOB_POLL_INTERVAL} from '../shared/job-display.js';
 
 export interface ConsistencyImageCollection {
   items:ConsistencyComparisonItem[];
@@ -12,7 +13,7 @@ export interface ConsistencyImageCollection {
 
 export function useConsistencyImages(jobId:string|undefined,revision:string,running:boolean):ConsistencyImageCollection {
   const result=useQuery({queryKey:['iad','consistency-images',jobId],enabled:!!jobId,
-    queryFn:({signal})=>ConsistencyView.loadImages(jobId!,signal),refetchInterval:running?5000:false,
+    queryFn:({signal})=>ConsistencyView.loadImages(jobId!,signal),refetchInterval:running?JOB_POLL_INTERVAL:false,
   },queryClient);
   const previous=useRef(revision);
   useEffect(()=>{

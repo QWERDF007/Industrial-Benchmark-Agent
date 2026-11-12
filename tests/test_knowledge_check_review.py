@@ -43,7 +43,7 @@ def test_support_and_counter_evidence_have_independent_filtered_pages(native_kno
     support = entry.knowledge_details(dict(query,evidence_role='support'),db.db_path)
     counter = entry.knowledge_details(dict(query,evidence_role='counter'),db.db_path)
     second = entry.knowledge_details(dict(query,evidence_role='support',page=2),db.db_path)
-    assert (support['total'],len(support['items']),len(second['items'])) == (2,1,1)
+    assert (support['total'],len(support['items']),len(second['items'])) == (3,1,1)
     assert support['check']['support_count'] == len(support['support_evidence_ids']) == 3
     assert counter['total'] == len(counter['items']) == 1
     assert set(item['sample_id'] for item in support['items']).isdisjoint(item['sample_id'] for item in counter['items'])
@@ -99,7 +99,6 @@ def test_knowledge_read_requires_one_native_run_or_fixed_version(native_knowledg
             entry.knowledge_get(arguments,db.db_path)
 
 
-@pytest.mark.parametrize('observed_claim',[3],indirect=True)
 def test_selected_images_preserve_human_review_until_the_claim_changes(observed_claim):
     from iad_core.analysis.commits import AnalysisCommits
     from iad_core.analysis.publications import AnalysisPublications
@@ -114,9 +113,10 @@ def test_selected_images_preserve_human_review_until_the_claim_changes(observed_
         expected_revision=0,submission_id=uuid4(),status='confirmed',note='主体外缘可复核。'))
     jobs.resume(run_id)
     context = jobs.context(run_id)
+    round_id = jobs.snapshot(run_id).plan.rounds[-1].round_id
     check = submission['checks'][0]
     AnalysisCommits(jobs).accept(run_id,{**submission,'commit_key':'key-only','base_revision':context.revision,
-        'round_id':context.round.round_id,'observations':[],'checks':[{**check,'key_evidence':[
+        'round_id':round_id,'observations':[],'checks':[{**check,'key_evidence':[
             dict(evidence_id=whole_ids[0],role='support',reason='用于复核同一主体外缘。')]}]})
     second_id = jobs.cancel(run_id)['analysis_version_id']
     second = publications.get(second_id)
@@ -133,7 +133,7 @@ def test_selected_images_preserve_human_review_until_the_claim_changes(observed_
     jobs.resume(run_id)
     context = jobs.context(run_id)
     AnalysisCommits(jobs).accept(run_id,{**submission,'commit_key':'claim-changed','base_revision':context.revision,
-        'round_id':context.round.round_id,'observations':[],'checks':[{**check,'criterion':'仅沿上侧外缘复核轮廓的连续关系。',
+        'round_id':round_id,'observations':[],'checks':[{**check,'criterion':'仅沿上侧外缘复核轮廓的连续关系。',
             'change_reason':'目标缩小到可辨的上侧外缘。'}],
         'arguments':[dict(entry_id='edge',evidence_id=eid,role='support',reason='上侧外缘可辨，仍支持修订后的主张。')
             for eid in whole_ids]})

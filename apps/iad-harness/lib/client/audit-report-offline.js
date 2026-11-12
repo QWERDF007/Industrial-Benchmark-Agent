@@ -1,10 +1,10 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { jsx as _jsx } from "react/jsx-runtime";
 import { createRoot } from 'react-dom/client';
 import { AuditReportContent } from './components/AuditReportContent.js';
 import { workbenchStyles } from './styles.js';
 const input = document.getElementById('audit-report-data');
 const { report, images } = JSON.parse(input.textContent);
 const style = document.createElement('style');
-style.textContent = workbenchStyles + '\nbody{margin:0;background:#fff}.iad-offline-report{max-width:1380px;margin:24px auto;padding:0 20px}.iad-offline-report h1{font-size:24px}';
+style.textContent = workbenchStyles + '\nbody{margin:0;background:#fff}.iad-offline-report{width:100%;margin:24px auto;padding:0 20px}';
 document.head.append(style);
-createRoot(document.getElementById('audit-offline-root')).render(_jsxs("main", { className: "iad-workbench iad-offline-report", id: "audit-page", children: [_jsx("h1", { children: "\u6A21\u578B\u5BA1\u8BA1\u62A5\u544A" }), _jsx("section", { className: "iad-dataset-report", id: "audit-report", children: _jsx("div", { className: "iad-report-body", children: _jsx(AuditReportContent, { report: report, imageUrl: item => images[item.image.evidence_id] }) }) })] }));
+createRoot(document.getElementById('audit-offline-root')).render(_jsx("main", { className: "iad-workbench iad-offline-report", id: "audit-page", children: _jsx("section", { className: "iad-dataset-report", id: "audit-report", children: _jsx("div", { className: "iad-report-body", children: _jsx(AuditReportContent, { report: report, imageUrl: item => images[item.image.evidence_id] }) }) }) }));

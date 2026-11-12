@@ -18,6 +18,300 @@ export const auditEvidenceParameters = {
         "title": "Suggestion Id"
     }
 };
+export const auditBatchParameters = {
+    "commit_key": {
+        "type": "string",
+        "title": "Commit Key",
+        "required": true
+    },
+    "batch_number": {
+        "type": "integer",
+        "title": "Batch Number",
+        "required": true
+    },
+    "base_revision": {
+        "type": "integer",
+        "title": "Base Revision",
+        "required": true
+    },
+    "discoveries": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "group_id": {
+                    "type": "string",
+                    "title": "Group Id",
+                    "required": true
+                },
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "quality_issue",
+                        "visual_pattern",
+                        "judgment_boundary"
+                    ],
+                    "title": "Kind",
+                    "required": true
+                },
+                "dimension": {
+                    "type": "string",
+                    "enum": [
+                        "annotation_quality",
+                        "visual_coverage",
+                        "evaluation_difficulty"
+                    ],
+                    "title": "Dimension",
+                    "required": true
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "pending",
+                        "supported",
+                        "disputed",
+                        "withdrawn"
+                    ],
+                    "title": "Status",
+                    "required": true
+                },
+                "title": {
+                    "type": "string",
+                    "title": "Title",
+                    "required": true
+                },
+                "description": {
+                    "type": "string",
+                    "title": "Description",
+                    "required": true
+                },
+                "visual_signature": {
+                    "type": "string",
+                    "title": "Visual Signature",
+                    "required": true
+                },
+                "annotation_relation": {
+                    "type": "string",
+                    "title": "Annotation Relation",
+                    "required": true
+                },
+                "scope": {
+                    "type": "string",
+                    "title": "Scope",
+                    "required": true
+                },
+                "key_difference": {
+                    "type": "string",
+                    "title": "Key Difference",
+                    "default": ""
+                },
+                "unresolved_question": {
+                    "type": "string",
+                    "title": "Unresolved Question",
+                    "default": ""
+                },
+                "next_batch_focus": {
+                    "type": "string",
+                    "title": "Next Batch Focus",
+                    "default": ""
+                },
+                "support_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
+                                "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Index"
+                            }
+                        },
+                        "title": "AuditResultReference"
+                    },
+                    "title": "Support Refs",
+                    "required": true
+                },
+                "counter_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
+                                "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Index"
+                            }
+                        },
+                        "title": "AuditResultReference"
+                    },
+                    "title": "Counter Refs"
+                },
+                "representatives": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "representative",
+                                    "counter"
+                                ],
+                                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
+                                "title": "Role",
+                                "default": "representative"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "AuditRepresentative"
+                    },
+                    "title": "Representatives"
+                }
+            },
+            "title": "AuditDiscovery"
+        },
+        "title": "Discoveries",
+        "required": true
+    },
+    "review_requests": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "sample_id": {
+                    "type": "string",
+                    "title": "Sample Id",
+                    "required": true
+                },
+                "result_revision": {
+                    "type": "integer",
+                    "title": "Result Revision",
+                    "required": true
+                },
+                "reason": {
+                    "type": "string",
+                    "title": "Reason",
+                    "required": true
+                },
+                "conflict_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
+                                "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Index"
+                            }
+                        },
+                        "title": "AuditResultReference"
+                    },
+                    "title": "Conflict Refs",
+                    "required": true
+                }
+            },
+            "title": "AuditReviewRequest"
+        },
+        "title": "Review Requests"
+    }
+};
 export const auditCommitParameters = {
     "commit_key": {
         "type": "string",
@@ -286,6 +580,91 @@ export const auditCommitParameters = {
                 "description": "有理解价值但不足以形成质量疑点的简短观察，不计入疑点，也不改变业务结论；不因缺少类别语义或假设规范而填写。",
                 "title": "Observations"
             },
+            "hypothesis_assessments": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "group_id": {
+                            "type": "string",
+                            "title": "Group Id",
+                            "required": true
+                        },
+                        "assessment": {
+                            "type": "string",
+                            "enum": [
+                                "supported",
+                                "counter",
+                                "unconfirmed",
+                                "not_applicable"
+                            ],
+                            "title": "Assessment",
+                            "required": true
+                        },
+                        "reason": {
+                            "type": "string",
+                            "title": "Reason",
+                            "required": true
+                        },
+                        "evidence_ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Evidence Ids",
+                            "required": true
+                        }
+                    },
+                    "title": "AuditHypothesisAssessment"
+                },
+                "title": "Hypothesis Assessments"
+            },
+            "visual_features": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                        "kind": {
+                            "type": "string",
+                            "enum": [
+                                "morphology",
+                                "location",
+                                "size",
+                                "contrast",
+                                "structural_relation",
+                                "instances",
+                                "background"
+                            ],
+                            "title": "Kind",
+                            "required": true
+                        },
+                        "description": {
+                            "type": "string",
+                            "title": "Description",
+                            "required": true
+                        },
+                        "annotation_ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Annotation Ids"
+                        },
+                        "evidence_ids": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            },
+                            "title": "Evidence Ids",
+                            "required": true
+                        }
+                    },
+                    "title": "AuditVisualFeature"
+                },
+                "title": "Visual Features"
+            },
             "limitations": {
                 "type": "array",
                 "items": {
@@ -295,7 +674,7 @@ export const auditCommitParameters = {
                 "required": true
             }
         },
-        "title": "AuditFinal",
+        "title": "AuditLegacyFinal",
         "required": true
     }
 };
@@ -376,34 +755,53 @@ export const auditRecordParameters = {
         "title": "State"
     }
 };
-export const auditGroupParameters = {
+export const auditReportParameters = {
     "commit_key": {
         "type": "string",
         "title": "Commit Key",
         "required": true
     },
-    "groups": {
+    "discovery_ids": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        },
+        "title": "Discovery Ids",
+        "required": true
+    },
+    "conclusion": {
+        "type": "string",
+        "title": "Conclusion",
+        "required": true
+    },
+    "consistency_analysis": {
+        "type": "string",
+        "title": "Consistency Analysis",
+        "required": true
+    },
+    "knowledge_analysis": {
+        "type": "string",
+        "title": "Knowledge Analysis",
+        "default": ""
+    },
+    "coverage_analysis": {
+        "type": "string",
+        "title": "Coverage Analysis",
+        "required": true
+    },
+    "coverage_topics": {
         "type": "array",
         "items": {
             "type": "object",
             "additionalProperties": false,
             "properties": {
-                "group_id": {
+                "analysis": {
                     "type": "string",
-                    "title": "Group Id",
+                    "description": "围绕现象、共性、差异与判断边界的综合分析，不写逐图详情。",
+                    "title": "Analysis",
                     "required": true
                 },
-                "title": {
-                    "type": "string",
-                    "title": "Title",
-                    "required": true
-                },
-                "description": {
-                    "type": "string",
-                    "title": "Description",
-                    "required": true
-                },
-                "issue_refs": {
+                "evidence_refs": {
                     "type": "array",
                     "items": {
                         "type": "object",
@@ -414,15 +812,37 @@ export const auditGroupParameters = {
                                 "title": "Sample Id",
                                 "required": true
                             },
-                            "finding_id": {
-                                "type": "string",
-                                "title": "Finding Id",
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
                                 "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Index"
                             }
                         },
-                        "title": "AuditIssueReference"
+                        "title": "AuditResultReference"
                     },
-                    "title": "Issue Refs",
+                    "title": "Evidence Refs",
                     "required": true
                 },
                 "representatives": {
@@ -436,16 +856,107 @@ export const auditGroupParameters = {
                                 "title": "Sample Id",
                                 "required": true
                             },
-                            "finding_id": {
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "representative",
+                                    "counter"
+                                ],
+                                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
+                                "title": "Role",
+                                "default": "representative"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "AuditRepresentative"
+                    },
+                    "description": "主Agent已实际观察的精选完整原图，数量按信息价值决定，不强行凑图。",
+                    "title": "Representatives"
+                },
+                "title": {
+                    "type": "string",
+                    "description": "根据本作业实际观察命名，不加序号，不照搬固定的覆盖主题。",
+                    "title": "Title",
+                    "required": true
+                }
+            },
+            "title": "AuditCoverageTopic"
+        },
+        "description": "本作业有真实图证的覆盖画像主题，标题、条数、正文及选图由实际作业决定。",
+        "title": "Coverage Topics"
+    },
+    "consistency_analyses": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "analysis": {
+                    "type": "string",
+                    "description": "围绕现象、共性、差异与判断边界的综合分析，不写逐图详情。",
+                    "title": "Analysis",
+                    "required": true
+                },
+                "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
+                                "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
                                 "oneOf": [
                                     {
-                                        "type": "string"
+                                        "type": "integer"
                                     },
                                     {
                                         "type": "null"
                                     }
                                 ],
-                                "title": "Finding Id"
+                                "title": "Index"
+                            }
+                        },
+                        "title": "AuditResultReference"
+                    },
+                    "description": "支撑本项分析的当前有效图级记录。没有相关材料时为空并在正文说明。",
+                    "title": "Evidence Refs",
+                    "required": true
+                },
+                "representatives": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
                             },
                             "role": {
                                 "type": "string",
@@ -453,83 +964,227 @@ export const auditGroupParameters = {
                                     "representative",
                                     "counter"
                                 ],
-                                "description": "representative为典型疑点图；counter为已观察的判断边界对照图，不是人工确认的正常真值。",
+                                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
                                 "title": "Role",
                                 "default": "representative"
                             },
                             "reason": {
                                 "type": "string",
+                                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
                                 "title": "Reason",
                                 "required": true
                             }
                         },
                         "title": "AuditRepresentative"
                     },
-                    "title": "Representatives",
+                    "description": "主Agent已实际观察的精选完整原图，数量按信息价值决定，不强行凑图。",
+                    "title": "Representatives"
+                },
+                "issue_type": {
+                    "type": "string",
+                    "enum": [
+                        "image_label_mismatch",
+                        "category_mismatch",
+                        "extra_annotation",
+                        "missing_annotation",
+                        "position_difference",
+                        "split",
+                        "merge"
+                    ],
+                    "description": "沿用本数据格式的现有差异类型，每类单独分析，不合并多标少标或拆分合并。",
+                    "title": "Issue Type",
                     "required": true
-                },
-                "normal_explanations": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "title": "Normal Explanations"
-                },
-                "limitations": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "title": "Limitations"
                 }
             },
-            "title": "AuditIssueGroup"
+            "title": "AuditConsistencyAnalysis"
         },
-        "title": "Groups"
+        "description": "本格式每个适用差异类型各一项；零疑点也如实分析，不将无候选、无有效候选、一致作为类型。",
+        "title": "Consistency Analyses"
     },
-    "remove_group_ids": {
+    "independence_analysis": {
+        "type": "string",
+        "title": "Independence Analysis",
+        "required": true
+    },
+    "capabilities": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "tag": {
+                    "type": "string",
+                    "enum": [
+                        "representative_test_set",
+                        "ordinary_normal",
+                        "hard_normal",
+                        "near_ok_ng_pair",
+                        "tiny_defect",
+                        "low_contrast_defect",
+                        "structural_relation",
+                        "missing_component",
+                        "misalignment",
+                        "multi_object",
+                        "in_domain",
+                        "unseen_batch",
+                        "lighting_shift"
+                    ],
+                    "title": "Tag",
+                    "required": true
+                },
+                "coverage_status": {
+                    "type": "string",
+                    "enum": [
+                        "observed",
+                        "candidate",
+                        "not_observed",
+                        "not_applicable"
+                    ],
+                    "title": "Coverage Status",
+                    "required": true
+                },
+                "reason": {
+                    "type": "string",
+                    "title": "Reason",
+                    "required": true
+                },
+                "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
+                                "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Index"
+                            }
+                        },
+                        "title": "AuditResultReference"
+                    },
+                    "title": "Evidence Refs",
+                    "required": true
+                },
+                "representatives": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "representative",
+                                    "counter"
+                                ],
+                                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
+                                "title": "Role",
+                                "default": "representative"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "AuditRepresentative"
+                    },
+                    "title": "Representatives"
+                },
+                "missing_conditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Missing Conditions"
+                }
+            },
+            "title": "AuditCapability"
+        },
+        "title": "Capabilities",
+        "required": true
+    },
+    "usability": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "purpose": {
+                    "type": "string",
+                    "enum": [
+                        "exploration",
+                        "training_experiment",
+                        "debug",
+                        "image_evaluation",
+                        "bbox_evaluation",
+                        "pixel_evaluation",
+                        "formal_benchmark"
+                    ],
+                    "title": "Purpose",
+                    "required": true
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "usable",
+                        "candidate",
+                        "not_ready",
+                        "not_evaluated"
+                    ],
+                    "title": "Status",
+                    "required": true
+                },
+                "reason": {
+                    "type": "string",
+                    "title": "Reason",
+                    "required": true
+                }
+            },
+            "title": "AuditUsabilityAssessment"
+        },
+        "title": "Usability",
+        "required": true
+    },
+    "review_priorities": {
         "type": "array",
         "items": {
             "type": "string"
         },
-        "title": "Remove Group Ids"
-    }
-};
-export const auditReportParameters = {
-    "commit_key": {
-        "type": "string",
-        "title": "Commit Key",
-        "required": true
-    },
-    "scope_analysis": {
-        "type": "string",
-        "title": "Scope Analysis",
-        "required": true
-    },
-    "issue_analysis": {
-        "type": "string",
-        "title": "Issue Analysis",
-        "required": true
-    },
-    "consistency_analysis": {
-        "type": "string",
-        "title": "Consistency Analysis",
-        "required": true
-    },
-    "knowledge_analysis": {
-        "type": "string",
-        "title": "Knowledge Analysis",
-        "required": true
-    },
-    "boundary_analysis": {
-        "type": "string",
-        "description": "解释相似现象在已保存图级记录中的判断边界；不重判终稿，不假设类别语义、实例规范或采集工艺。没有实际对照时不编造。",
-        "title": "Boundary Analysis",
-        "default": ""
-    },
-    "conclusion": {
-        "type": "string",
-        "title": "Conclusion",
+        "title": "Review Priorities",
         "required": true
     },
     "limitations": {
@@ -585,6 +1240,35 @@ export const auditCropParameters = {
     }
 };
 export const auditStartParameters = {
+    "master_prompt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "system_prompt": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "title": "System Prompt",
+                "required": true
+            },
+            "user_prompt": {
+                "type": "string",
+                "title": "User Prompt",
+                "required": true
+            }
+        },
+        "title": "AnalysisRolePrompts"
+    },
+    "report_instruction": {
+        "type": "string",
+        "title": "Report Instruction",
+        "default": "全部主图已有完成、未完成或失败记录。基于当前有效图级版本、已保存全局发现、真实程序统计及实际取得的元数据和 Benchmark 成果，提交整个冻结范围的质量与可评测能力报告。\n\n先回答可用于哪些用途，再选择有证据的共性质量问题、视觉规律与判断边界。归纳视觉现象的形态、位置、尺寸、对比可见度、结构和实例覆盖；依据真实来源评价独立性与代表性。能力覆盖或候选与正式就绪分开，按探索、训练实验、内部调试、图级、框级、像素级及正式基准分别判断。没有 Gold、划分或来源则保持未评价，bbox不能充当像素 mask，疑点率不是错误率。\n\ncoverage_analysis简要概括覆盖情况；coverage_topics按本作业实际观察形成主题，分别提交具体标题、综合analysis、当前有效evidence_refs及已实际观察的精选representatives。主题和数量不预设，不照搬其他作业的微小目标、低对比或端部示例。没有图证的主题不强造。关键发现直接选择真实发现账本，不另写一套固定发现。\n\nconsistency_analysis概括一致性判断；consistency_analyses按现有差异类型分别提交综合analysis、有效evidence_refs及必要representatives。labelme采用category_mismatch、extra_annotation、missing_annotation、position_difference、split、merge；folder_classification采用image_label_mismatch。多标和少标、拆分和合并各自独立，不加入无候选、无有效候选、一致等状态主题。没有相关材料时引用可为空，明确区分未保留该类疑点和缺少判断依据，不能把零疑点说成人工确认无误。统计数字由程序计算。标题不加序号或数量，正文不按图片逐一讲解。同组证据优先放在最能说明结论的主题中，避免在多个板块反复选取。\n\n零疑点也正常提供覆盖、能力与用途分析。所有内部引用只进入结构化字段，不进入自然语言正文。\n\n报告是对整个冻结范围的综合分析，以现象、跨图规律、关键发现和总结组织正文，说明共性、差异、适用范围与判断边界，不拼接逐图详情或批次过程。\n\n正文只包含业务分析，不叙述重新汇总、版本保留、工具调用、Session或是否登记复审等执行过程。执行约束应遵守，不复述到报告中。\n\n覆盖画像的综述与各主题只分析实际观察到的视觉场景、形态变化、结构关系、可见度及代表性。不写标注数量、有框或空标注图像数量、单框或多框分布，以及框面积、宽高比、位置坐标的范围和分位数等标注统计，不用标注统计代替视觉覆盖分析。\n\n由主 Agent 根据解释结论所需的信息自主决定典型原图及必要对照的数量。每张图须补充有意义的视觉差异或证据，不为凑数量选图，不全量罗列或重复堆图，不强造反例。只选主 Agent 已实际观察的真实完整原图，保留原始人工标注，不使用局部裁剪、拼接图或模型新增标注。图像仅作为综合结论的证据，图库不附逐图图注或详细分析。"
+    },
     "submission_id": {
         "type": "string",
         "title": "Submission Id",
@@ -628,12 +1312,31 @@ export const auditStartParameters = {
         },
         "title": "AuditKnowledgeSelection"
     },
-    "instruction": {
-        "type": "string",
-        "title": "Instruction",
-        "default": "审核当前主图的标注质量。实际观察本次提供的完整原图、原始标注和全部必要局部，逐项核对本图数据一致性结果。\n\n对于上游存在的每项差异，分别判断“支持为疑点、不支持、证据不足”并说明当前主图的实际依据；若上游没有差异，则直接继续本图独立审核，不虚构差异。知识可以为空；如已选用知识，先确认适用性，再结合本图实际证据使用。\n\n重点检查当前可见内容与现有标注之间的遗漏嫌疑、额外标注、覆盖异常和实例组织等质量关系。不验证人工类别语义或真值，不假设有未提供的规范。只有具有可核查依据时才保存质量疑点；普通视觉变化不得自动认定为少标，必要时可保留简短待判别观察。\n\n保存图级结论、全部独立疑点、真实图像证据、上游及知识关联、必要的正常替代解释与实际限制。自然语言不要罗列内部 ID、文件路径或执行信息，不修改原始标注。"
+    "observer_prompt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "system_prompt": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "title": "System Prompt",
+                "required": true
+            },
+            "user_prompt": {
+                "type": "string",
+                "title": "User Prompt",
+                "required": true
+            }
+        },
+        "title": "AnalysisRolePrompts"
     },
-    "system_prompt": {
+    "benchmark_build_id": {
         "oneOf": [
             {
                 "type": "string"
@@ -642,11 +1345,6 @@ export const auditStartParameters = {
                 "type": "null"
             }
         ],
-        "title": "System Prompt"
-    },
-    "report_instruction": {
-        "type": "string",
-        "title": "Report Instruction",
-        "default": "根据本次作业全部已保存的图级审计终稿、冻结的数据一致性结果、实际选用的知识以及程序提供的准确统计，形成面向使用者的数据集质量审计报告。\n\n说明审计范围、完成情况、图级结论分布，区分疑点图像数、独立质量疑点次数与未完成图像；如记录待判别观察，则单独统计，不并入质量疑点。逐项统计口径以程序计算为准，不估算未提供的数量。\n\n归并主要质量问题主题，说明各主题涉及的不同图像数量、问题次数、具体视觉与原始标注关系及必要限制；对相似现象但审核结论不同的情况，分析当前记录体现的判断边界，不修改图级终稿。\n\n交叉分析上游数据一致性结果与图级审计结论，说明知识条目的实际作用；未选知识时不虚构知识贡献。每类主要主题只选择少量关键图像证据，必要时提供判断边界的对照图，保留真实结构化引用并由界面关联完整原图及原始标注。\n\n报告正文仅呈现用户关心的质量发现、统计、关键证据、整体结论和人工复核重点。不得输出作业、数据集、图像、标注、媒体或问题的内部 ID、完整文件名、工具参数、数据库字段、分页或执行日志。这些仅存于结构化关联字段。\n\n模型疑点率不等于人工确认错误率。不得验证人工类别真实语义，不推断不存在的标注规范，不修改标注，不生成建议类别、建议框或 Gold 结论。不凭历史对话猜数字，不重判或覆盖已保存图级结果。\n\n典型证据与判断边界对照仅引用完整原图，局部裁剪图不作为报告证据。"
+        "title": "Benchmark Build Id"
     }
 };

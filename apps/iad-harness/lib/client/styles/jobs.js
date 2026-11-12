@@ -1,6 +1,22 @@
 export const jobsStyles = `
 .iad-job-list{min-width:0;overflow:hidden;padding:0;background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;margin-bottom:var(--iad-layout-gap);font-size:var(--iad-font-size)}
 .iad-job-list>nav.iad-pagination{margin:0;padding:11px 18px;border-top:1px solid var(--iad-border)}
+.iad-job-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.iad-job-list .iad-jobs-table{width:100%;min-width:1120px;table-layout:fixed;border-collapse:collapse;font-size:var(--iad-font-size);color:var(--iad-text)}
+.iad-jobs-table th{text-align:left;font-weight:600;white-space:nowrap}
+.iad-jobs-table td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-top:1px solid var(--iad-border)}
+.iad-jobs-table tr[aria-selected=true]{background:var(--iad-surface-muted)}
+.iad-jobs-table tbody tr{cursor:pointer}.iad-jobs-table tbody tr:hover{background:var(--iad-hover)}.iad-jobs-table tbody tr:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}
+.iad-jobs-table th:last-child{text-align:right}.iad-jobs-table td:is(:nth-child(4),:nth-child(6)){font-variant-numeric:tabular-nums}
+.iad-job-col-id{width:27%}.iad-job-col-status{width:10%}.iad-job-col-dataset{width:17%}.iad-job-col-progress{width:9%}
+.iad-job-col-submitted{width:16%}.iad-job-col-elapsed{width:8%}.iad-job-col-actions{width:156px}
+.iad-job-actions{display:flex;gap:4px;align-items:center;justify-content:flex-end}
+.iad-audit-statistics{padding:20px 24px}.iad-audit-statistics dl{display:flex;gap:24px;flex-wrap:wrap;margin:0 0 20px}.iad-audit-statistics dt{color:var(--iad-muted)}.iad-audit-statistics dd{margin:8px 0;font-size:24px;font-variant-numeric:tabular-nums}
+.iad-audit-statistics table{width:100%;border-collapse:collapse}.iad-audit-statistics :is(th,td){padding:10px 16px;text-align:left}
+.iad-job-badge{display:inline-block;border-radius:4px;padding:3px 8px;color:#8e6d24;background:#fff5df;font-size:12px;font-weight:500}
+.iad-job-badge:is([data-status=COMPLETED],[data-status=PARTIAL]){background:#e8f5ee;color:#177b53}
+.iad-job-badge[data-status=RUNNING]{background:#e9f0ff;color:#285ed6}
+.iad-job-badge:is([data-status=FAILED],[data-status=CANCELLED],[data-status=INTERRUPTED]){background:#ffedf0;color:#b23c43}
 .iad-job-panel{min-width:0}.iad-job-panel>h2{margin-top:26px}
 .iad-job-drawer-body{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 24px 28px;color:var(--iad-text);font-size:var(--iad-font-size)}
 .iad-job-statusline{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}

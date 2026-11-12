@@ -29,8 +29,8 @@ export function ModuleSettingsSection({module}:{module:BusinessModule}) {
         </Select>
       </label>}
       {'batch_size' in settings && <>
-        <ModuleNumberSetting label={module==='exploration'?'后续每批图像数':'每批图像数'} value={settings.batch_size} min={1} max={module==='knowledge'?200:undefined} step={1}
-          validationMessage={module==='knowledge'?'每批图像数需要为 1～200 的整数':'后续每批图像数需要为正整数'} onSave={batch_size=>save({batch_size})}/>
+        <ModuleNumberSetting label={module==='audit'?'主 Agent 联合分析间隔':module==='exploration'?'后续每批图像数':'每批图像数'} value={settings.batch_size} min={1} max={module==='knowledge'?200:undefined} step={1}
+          validationMessage={module==='knowledge'?'每批图像数需要为 1～200 的整数':'图像数量需要为正整数'} onSave={batch_size=>save({batch_size})}/>
       </>}
       {'sampling_ratio' in settings && <>
         <ModuleNumberSetting label="良品抽取权重" value={settings.sampling_ratio.normal} min={1} step={1}
@@ -38,7 +38,7 @@ export function ModuleSettingsSection({module}:{module:BusinessModule}) {
         <ModuleNumberSetting label="异常品抽取权重" value={settings.sampling_ratio.abnormal} min={1} step={1}
           validationMessage="异常品抽取权重需要为正整数" onSave={abnormal=>save({sampling_ratio:{...settings.sampling_ratio,abnormal}})}/>
       </>}
-      {'concurrency' in settings && <ModuleNumberSetting label={(module==='exploration'||module==='knowledge')?'并行观察批次数':module==='consistency'?'同时检查的主图数':'同时审计的主图数'} value={settings.concurrency} min={1} step={1}
+      {'concurrency' in settings && <ModuleNumberSetting label={(module==='exploration'||module==='knowledge')?'并行观察批次数':module==='consistency'?'同时检查的主图数':'同时运行的子 Agent 数量'} value={settings.concurrency} min={1} step={1}
         validationMessage="并发数量需要为正整数" onSave={concurrency=>save({concurrency})}/>}
       {module!=='audit'&&'whole_image_max_side' in settings && <>
         <label className="iad-module-row"><span>整图输入分辨率</span><Select aria-label="整图输入分辨率" value={module==='knowledge'||module==='exploration'?0:settings.whole_image_max_side ?? 0} disabled={module==='knowledge'||module==='exploration'}

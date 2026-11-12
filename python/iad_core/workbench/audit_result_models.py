@@ -4,7 +4,8 @@ from pydantic import Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.workbench.job_models import JobStatus
-from iad_core.audit.report_models import AuditStatistics, AuditReportedGroup, AuditReportImage
+from iad_core.audit.profile_models import AuditDatasetProfile
+from iad_core.audit.report_models import AuditStatistics, AuditReportImage, AuditDiscovery, AuditReportedCapability, AuditUsabilityAssessment, AuditCoverageTopic, AuditConsistencyAnalysis
 
 AuditState = Literal['suspect', 'insufficient', 'normal', 'unprocessed', 'incomplete']
 AUDIT_STATE_LABELS: dict[AuditState, str] = {
@@ -47,6 +48,7 @@ class AuditSamplePage(AnalysisModel):
     page_size: int
     distribution: dict[AuditState, int]
     items: list[AuditSampleItem]
+    archived: bool = False
 
 
 class AuditRunReport(AnalysisModel):
@@ -65,21 +67,25 @@ class AuditRunReport(AnalysisModel):
     submitted_at: str
     finished_at: str | None
     generated_at: str
-    analysis: str
     conclusion: str
     limitations: list[str]
-    key_evidence: list[AuditSampleItem]
-
     export_ready: bool = True
     statistics: AuditStatistics | None = None
-    groups: list[AuditReportedGroup] = Field(default_factory=list)
     consistency_job_id: str | None = None
     report_state: JobStatus | None = None
     report_session_id: str | None = None
-    scope_analysis: str = ''
     consistency_analysis: str = ''
     knowledge_analysis: str = ''
-    boundary_analysis: str = ''
     dataset_names: dict[str,str] = Field(default_factory=dict)
     knowledge_titles: dict[str,str] = Field(default_factory=dict)
     evidence_groups: dict[str,list[AuditReportImage]] = Field(default_factory=dict)
+    discoveries: list[AuditDiscovery] = Field(default_factory=list)
+    dataset_profile: AuditDatasetProfile | None = None
+    coverage_analysis: str = ''
+    coverage_topics: list[AuditCoverageTopic] = Field(default_factory=list)
+    consistency_analyses: list[AuditConsistencyAnalysis] = Field(default_factory=list)
+    independence_analysis: str = ''
+    capabilities: list[AuditReportedCapability] = Field(default_factory=list)
+    usability: list[AuditUsabilityAssessment] = Field(default_factory=list)
+    review_priorities: list[str] = Field(default_factory=list)
+    archived: bool = False

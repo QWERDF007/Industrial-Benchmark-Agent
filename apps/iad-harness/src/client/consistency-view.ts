@@ -2,7 +2,7 @@ import type {AnchorImageItem, AnchorImagePage, ConsistencyAnchorRun, Consistency
 import {conflictCategories,modelConclusionLabels} from '../shared/consistency.parameters.generated.js';
 import {mediaUrl,request} from './api.js';
 
-export const consistencyImageGroups={NO_CANDIDATES:'无候选',NO_ELIGIBLE_CANDIDATES:'无有效候选'} as const;
+export const consistencyImageGroups={NO_CANDIDATES:'无候选',NO_ELIGIBLE_CANDIDATES:'无有效候选',PROGRAM_CONSISTENT:'一致'} as const;
 export type ConsistencyImageGroup='images'|keyof typeof consistencyImageGroups;
 
 export interface ConsistencyComparisonItem {
@@ -52,9 +52,9 @@ export class ConsistencyView {
     return program===model || program===modelConclusionLabels[model] ? 'same':'different';
   }
 
-  static filter<T extends ConsistencyComparisonItem>(items:T[],filters:ConsistencyFilterValues,reason?:keyof typeof consistencyImageGroups):T[] {
+  static filter<T extends ConsistencyComparisonItem>(items:T[],filters:ConsistencyFilterValues,group?:keyof typeof consistencyImageGroups):T[] {
     const search=filters.search.trim().toLowerCase();
-    return items.filter(item=>(!reason || item.reason===reason)
+    return items.filter(item=>(!group || (group==='PROGRAM_CONSISTENT'?item.type==='一致':item.reason===group))
       && (!search || item.filename.toLowerCase().includes(search))
       && (filters.model==='all' || item.model.modelType===filters.model)
       && (filters.agreement==='all' || item.agreement===filters.agreement)

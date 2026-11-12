@@ -5,6 +5,21 @@ VISION_DEFAULTS = {'context_tokens': None, 'max_output_tokens': None, 'request_p
     'max_request_bytes': None, 'connect_timeout_seconds': None, 'write_timeout_seconds': None, 'pool_timeout_seconds': None}
 
 
+def test_audit_feedback_interval_and_parallel_children_are_independent(dataset):
+    from iad_core.workbench.module_settings import ModuleSettings
+    db, _, _ = dataset
+    store = ModuleSettings(db)
+    initial = store.read('audit')
+    assert initial.settings.batch_size == 8
+    assert initial.settings.concurrency == 2
+    saved = store.save(dict(module='audit', expected_revision=0,
+        settings=dict(batch_size=3, concurrency=4)))
+    assert store.read('audit') == saved
+    assert saved.settings.batch_size == 3
+    assert saved.settings.concurrency == 4
+    assert store.read('consistency').settings.concurrency == 1
+
+
 def test_initialization_removes_shared_model_storage_and_preserves_module_settings(tmp_path):
     import sqlite3
     from iad_core.storage.database import Database
@@ -66,7 +81,7 @@ def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
     assert saved['revision'] == 1
     assert module_settings_get({'module': 'consistency'}, database) == saved
     assert module_settings_get({'module': 'knowledge'}, database)['settings'] == {'model': None, 'reasoning_effort': None,
-        'batch_size': 12, 'sampling_ratio': {'normal':1,'abnormal':1}, 'whole_image_max_side': None,
+        'batch_size': 12, 'concurrency': 2, 'sampling_ratio': {'normal':1,'abnormal':1}, 'whole_image_max_side': None,
         'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     with pytest.raises(ValueError, match='配置已变化'):
         module_settings_save({'module': 'consistency', 'expected_revision': 0, 'settings': saved['settings']}, database)

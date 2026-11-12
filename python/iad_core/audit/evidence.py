@@ -2,6 +2,9 @@ import json
 
 from iad_core.analysis.queries import AnalysisQueries
 from iad_core.evidence.images import EvidenceImages, PreparedImage
+from iad_core.workbench.calls import ModelCalls
+from iad_core.audit.models import AuditMediaQuery
+from iad_core.analysis.evidence_models import AnalysisEvidenceReferenceQuery
 from iad_core.evidence.registrations import (EvidenceReferenceQuery, PreparedRegistration, RegistrationImages, RegistrationMedia, RegistrationMediaPage, RegistrationMediaQuery, RegistrationCropQuery)
 
 
@@ -24,12 +27,17 @@ class AuditEvidence:
         return media
 
     def read(self, run_id: str, target_id: str, query: dict | RegistrationMediaQuery) -> RegistrationMediaPage:
-        query = RegistrationMediaQuery.model_validate(query)
+        on_demand = self.jobs.snapshot(run_id).context_policy == 'evidence-on-demand-v1'
+        query = (AuditMediaQuery if on_demand else RegistrationMediaQuery).model_validate(query)
         media = self.prepare(run_id, target_id, query.sample_id)
-        return media.page(query.offset, query.limit)
+        if not on_demand or query.view == 'all':
+            return media.page(query.offset, query.limit)
+        images = [item for item in media.images if item.image.is_whole_image == (query.view == 'whole')]
+        return media.page(query.offset, query.limit, images=images)
 
-    def reference(self, run_id: str, target_id: str, evidence_id: str) -> RegistrationMediaPage:
-        evidence_id = EvidenceReferenceQuery(evidence_id=evidence_id).evidence_id
+    def reference(self, run_id: str, target_id: str, evidence_id: str, view: str = 'whole') -> RegistrationMediaPage:
+        query = AnalysisEvidenceReferenceQuery(evidence_id=evidence_id, view=view)
+        evidence_id = query.evidence_id
         self.jobs.sample(run_id,target_id)
         snapshot = self.jobs.snapshot(run_id)
         reference = next((item for item in snapshot.knowledge.evidence if item.image.evidence_id == evidence_id), None) if snapshot.knowledge else None
@@ -38,19 +46,19 @@ class AuditEvidence:
         source = AnalysisQueries(self.db).sample_evidence(snapshot.knowledge.selection.version_id, reference.sample_id)
         record = source.registration
         images = []
-        for view in source.items:
-            if not view.observed or not view.image.is_whole_image or view.image.representation != 'raw':
+        for item in source.items:
+            if not item.observed or item.image.representation != 'raw' or item.image.is_whole_image != (query.view == 'whole'):
                 continue
-            path = EvidenceImages(self.db.db_path).path(view.image)
-            prepared = PreparedImage(view.image, path).with_source(record.sample, record.dataset_format, record.annotations)
+            path = EvidenceImages(self.db.db_path).path(item.image)
+            prepared = PreparedImage(item.image, path).with_source(record.sample, record.dataset_format, record.annotations)
             images.append(RegistrationMedia(sample_id=reference.sample_id, dataset_id=record.sample.dataset_id,
-                image=view.image, path=path, model_context=prepared.model_context(), required=False))
+                image=item.image, path=path, model_context=prepared.model_context(), required=False))
         media = PreparedRegistration(sample_id=reference.sample_id, images=images)
         with self.db.connection() as connection:
             connection.execute('''INSERT INTO audit_sample_media(job_id,target_id,media_key,sample_id,media_json)
                 VALUES(?,?,?,?,?) ON CONFLICT(job_id,target_id,media_key) DO NOTHING''',
-                (run_id,target_id,'reference:'+evidence_id,media.sample_id,media.model_dump_json()))
-        return media.page()
+                (run_id,target_id,'reference:'+evidence_id+(':'+query.view if snapshot.context_policy == 'evidence-on-demand-v1' else ''),media.sample_id,media.model_dump_json()))
+        return media.page().model_copy(update={'evidence_id':evidence_id})
 
     def crop(self, run_id: str, target_id: str, query: dict) -> RegistrationMediaPage:
         query = RegistrationCropQuery.model_validate(query)
@@ -69,12 +77,12 @@ class AuditEvidence:
         return prepared.page(query.offset, query.limit, images=media.images)
 
     def observed(self, run_id: str, target_id: str) -> set[str]:
+        successful = ModelCalls(self.db).successful_native_ids(run_id,
+            complete_response=self.jobs.snapshot(run_id).context_policy == 'evidence-on-demand-v1')
         with self.db.connection() as connection:
-            return {row[0] for row in connection.execute("""SELECT d.evidence_id FROM audit_media_deliveries d
-                JOIN model_calls c ON c.call_id=d.call_id WHERE d.job_id=? AND d.target_id=?
-                AND json_extract(c.summary_json,'$.finished_at') IS NOT NULL
-                AND json_extract(c.summary_json,'$.finish_reason') NOT IN ('error','aborted')
-                AND json_extract(c.summary_json,'$.error') IS NULL""", (run_id,target_id))}
+            return {row[0] for row in connection.execute(
+                'SELECT evidence_id,call_id FROM audit_media_deliveries WHERE job_id=? AND target_id=?',
+                (run_id,target_id)) if row[1] in successful}
 
     def delivered(self, run_id: str, target_id: str, call_id: str, evidence_ids: list[str]):
         sample = self.jobs.sample(run_id, target_id)

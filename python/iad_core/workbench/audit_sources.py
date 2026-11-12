@@ -7,6 +7,9 @@ from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.knowledge.models import KnowledgeCheckSummary
 from iad_core.storage.database import Database
 from iad_core.workbench.job_families import JobFamilies
+from iad_core.storage.repositories import BenchmarkRepository
+from iad_core.dataset.registry import DatasetRegistry
+from pathlib import Path
 
 
 class AuditKnowledgeSource(AnalysisModel):
@@ -31,9 +34,17 @@ class AuditConsistencySource(AnalysisModel):
     batch_id: str | None = None
 
 
+class AuditBenchmarkChoice(AnalysisModel):
+    build_id: str
+    name: str
+    source_images: int
+    covered_images: int
+
+
 class AuditSourceCatalog(AnalysisModel):
     knowledge_jobs: list[AuditKnowledgeSource]
     consistency_jobs: list[AuditConsistencySource]
+    benchmark_builds: list[AuditBenchmarkChoice]
 
 
 class AuditSources:
@@ -78,4 +89,17 @@ class AuditSources:
                     continue
                 count = ConsistencyAgentResults(self.db).report(job.run_id).original_conflicts
                 consistency.append(AuditConsistencySource(**metadata,dataset_ids=job.dataset_ids,conflict_count=count))
-        return AuditSourceCatalog(knowledge_jobs=knowledge, consistency_jobs=consistency)
+        builds=[]
+        repository=BenchmarkRepository(self.db)
+        tasks={DatasetRegistry(self.db).get(identity).task.task_id for identity in dataset_ids}
+        for task_id in sorted(tasks):
+            for build in repository.list_builds_by_task(task_id):
+                directory=Path(build.output_dir)
+                if not all((directory/name).is_file() for name in ('gold.jsonl','split.json','leakage_report.json')):
+                    continue
+                assignments=repository.list_split_assignments(build.build_id)
+                covered=len(required & {item.sample_id for item in assignments})
+                if covered:
+                    builds.append(AuditBenchmarkChoice(build_id=build.build_id,name=f'Benchmark 成果 {len(builds)+1}',
+                        source_images=len(assignments),covered_images=covered))
+        return AuditSourceCatalog(knowledge_jobs=knowledge, consistency_jobs=consistency,benchmark_builds=builds)

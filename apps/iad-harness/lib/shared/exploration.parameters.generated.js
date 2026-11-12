@@ -168,20 +168,20 @@ export const explorationBatchReportParameters = {
                     "title": "Rationale",
                     "required": true
                 },
-                "evidence_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "title": "Evidence Ids",
-                    "required": true
-                },
                 "limitations": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     },
                     "title": "Limitations",
+                    "required": true
+                },
+                "evidence_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Evidence Ids",
                     "required": true
                 },
                 "candidate_id": {
@@ -200,14 +200,6 @@ export const explorationBatchReportParameters = {
         "title": "Discovery Summary",
         "required": true
     },
-    "key_evidence_ids": {
-        "type": "array",
-        "items": {
-            "type": "string"
-        },
-        "title": "Key Evidence Ids",
-        "required": true
-    },
     "limitations": {
         "type": "array",
         "items": {
@@ -221,5 +213,13 @@ export const explorationBatchReportParameters = {
             "type": "string"
         },
         "title": "Unresolved Questions"
+    },
+    "key_evidence_ids": {
+        "type": "array",
+        "items": {
+            "type": "string"
+        },
+        "title": "Key Evidence Ids",
+        "required": true
     }
 };

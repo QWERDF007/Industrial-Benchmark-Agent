@@ -2,6 +2,7 @@ import json
 
 from iad_core.evidence.registrations import EvidenceReferenceQuery, RegistrationImages, RegistrationImageQuery, RegistrationMediaPage, RegistrationMediaQuery, RegistrationCropQuery, ExplorationCropQuery, PreparedRegistration
 from iad_core.analysis.models import AnalysisBatchMaterials
+from iad_core.analysis.evidence_models import AnalysisEvidenceReferenceQuery, AnalysisImageQuery, AnalysisImageView
 
 
 class AnalysisEvidence:
@@ -40,6 +41,9 @@ class AnalysisEvidence:
         return AnalysisBatchMaterials(context=self.jobs.context(run_id), registrations=registrations)
 
     def read(self, run_id: str, query: dict | RegistrationMediaQuery, *, session_id: str | None = None) -> RegistrationMediaPage:
+        if self.jobs.snapshot(run_id).context_policy == 'evidence-on-demand-v1':
+            query = AnalysisImageQuery.model_validate(query)
+            return self._view(self.prepare(run_id, query.sample_id, session_id=session_id), query.view)
         if self.jobs.snapshot(run_id).input_organization != 'registration-tools':
             query = RegistrationImageQuery.model_validate(query)
             return self.prepare(run_id, query.sample_id, session_id=session_id).page()
@@ -48,7 +52,8 @@ class AnalysisEvidence:
         return prepared.page(query.offset, query.limit)
 
     def reference(self, run_id: str, query: dict | EvidenceReferenceQuery) -> RegistrationMediaPage:
-        query = EvidenceReferenceQuery.model_validate(query)
+        on_demand = self.jobs.snapshot(run_id).context_policy == 'evidence-on-demand-v1'
+        query = (AnalysisEvidenceReferenceQuery if on_demand else EvidenceReferenceQuery).model_validate(query)
         with self.db.connection() as connection:
             row = connection.execute('''SELECT media_json FROM analysis_sample_media
                 WHERE job_id=? AND EXISTS(SELECT 1 FROM json_each(media_json,'$.images')
@@ -56,10 +61,17 @@ class AnalysisEvidence:
         if row is None:
             raise LookupError('证据不属于本场已保存媒体')
         prepared = PreparedRegistration.model_validate_json(row[0])
+        if on_demand and (query.view == 'annotation_rois' or query.evidence_id == prepared.evidence_id):
+            return self._view(prepared, query.view)
         if query.evidence_id == prepared.evidence_id:
             return prepared.page()
         image = next(item for item in prepared.images if item.image.evidence_id == query.evidence_id)
         return prepared.page(images=[image])
+
+    @staticmethod
+    def _view(prepared: PreparedRegistration, view: AnalysisImageView) -> RegistrationMediaPage:
+        return prepared.page(images=[item for item in prepared.images if (item.image.is_whole_image
+            if view == 'whole' else item.required and not item.image.is_whole_image)])
 
     def delivered(self, run_id: str, call_id: str, evidence_ids: list[str]):
         with self.db.connection() as connection:
@@ -82,7 +94,8 @@ class AnalysisEvidence:
         batch_input = self.jobs.snapshot(run_id).input_organization != 'registration-tools'
         query=(ExplorationCropQuery if batch_input else RegistrationCropQuery).model_validate(query)
         context=self.jobs.context(run_id)
-        if not session_id and (context.round is None or query.sample_id not in {target.sample_id for target in context.round.targets}):
+        if not session_id and self.jobs.snapshot(run_id).context_policy != 'evidence-on-demand-v1' and (
+                context.round is None or query.sample_id not in {target.sample_id for target in context.round.targets}):
             raise ValueError('裁窗图像不属于本场当前轮目标')
         prepared=self.prepare(run_id,query.sample_id,session_id=session_id)
         if prepared.error and (not batch_input or prepared.evidence_id is None):

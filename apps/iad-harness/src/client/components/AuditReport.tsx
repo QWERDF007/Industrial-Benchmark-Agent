@@ -11,7 +11,7 @@ export function AuditReport({job,revision}:{job:JobSnapshot|null;revision:number
   const resource=useResource<AuditRunReport>(terminal?`/audit/jobs/${encodeURIComponent(job.run_id)}/report`:null,revision);
   const report=resource.data;
   return <section className="audit-panel iad-dataset-report" id="audit-report" data-run-id={job?.run_id}>
-    <header className="audit-panel-head"><h2>模型审计报告</h2><div className="iad-actions">
+    <header className="audit-panel-head">{!report&&<h2>模型审计报告</h2>}<div className="iad-actions">
       <Button disabled={!report?.export_ready} onClick={()=>window.location.assign(`/api/iad/audit/jobs/${encodeURIComponent(job!.run_id)}/export`)}>导出 HTML</Button>
     </div></header>
     <div className="iad-report-body">
@@ -20,7 +20,8 @@ export function AuditReport({job,revision}:{job:JobSnapshot|null;revision:number
       {resource.loading&&<p role="status">正在读取本作业报告…</p>}
       {resource.error&&<p role="alert">{resource.error}</p>}
       {report?.statistics&&report.report_state!=='COMPLETED'&&<p role="status">整体报告未完成</p>}
-      {report&&<AuditReportContent report={report} imageUrl={item=>nativeAuditEvidenceUrl(report.run_id,item.sample_id,item.image)}/>}
+      {report?.archived&&<p>历史审计已归档，可下载冻结报告。</p>}
+      {report&&!report.archived&&<AuditReportContent report={report} imageUrl={item=>nativeAuditEvidenceUrl(report.run_id,item.sample_id,item.image)}/>}
     </div>
   </section>;
 }

@@ -5,8 +5,8 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.analysis.models import AnalysisCatalog, FrozenAnalysisDirection
 from iad_core.evidence.registrations import RegistrationMediaPage
-from iad_core.exploration.observation_models import ExplorationBatchReport
-from iad_core.knowledge.observation_models import KnowledgeBatchReport
+from iad_core.exploration.observation_models import ExplorationBatchReport, ExplorationEvidenceReport
+from iad_core.knowledge.observation_models import KnowledgeBatchReport, KnowledgeEvidenceReport
 from iad_core.workbench.analysis_manifest import AnalysisRegistration, AnalysisRound
 
 
@@ -16,7 +16,7 @@ class AnalysisBatchTask(AnalysisModel):
     session_id: str
     catalog_revision: int
     catalog: AnalysisCatalog
-    report: ExplorationBatchReport | KnowledgeBatchReport | None = None
+    report: ExplorationBatchReport | KnowledgeBatchReport | ExplorationEvidenceReport | KnowledgeEvidenceReport | None = None
     reviewed: bool = False
 
 

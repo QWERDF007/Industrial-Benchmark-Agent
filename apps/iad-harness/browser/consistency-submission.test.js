@@ -123,8 +123,8 @@ for i,color in enumerate(['red','blue']):
   assert.equal(finished.status,'COMPLETED');assert.equal(finished.completed,2);
   assert.equal(finished.consistency_check_version,1);assert.deepEqual(failures,[]);
   await driver.wait(async()=>{
-    const rows=await driver.findElements(By.css(`[data-dc-row="${finished.run_id}"]`));
-    return rows.length&&(await rows[0].getText()).includes('已完成')&&await rows[0].findElement(By.css('.dc-total')).getText()==='0';
-  },10000,'新主图作业读取真实业务统计');
+    const rows=await driver.findElements(By.css(`[data-run-id="${finished.run_id}"]`));
+    return rows.length&&(await rows[0].getText()).includes('已完成')&&await rows[0].findElement(By.css('td:nth-child(4)')).getText()==='2 / 2';
+  },10000,'新主图作业实时读取真实完成进度');
   assert.equal((await driver.findElements(By.css('[data-dc="open-conflict"]'))).length,0,'零候选通过不出现在原始冲突网格');
 });

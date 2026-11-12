@@ -1,9 +1,9 @@
+import type {AnalysisReadSource} from '../analysis-results.js';
 import {Modal} from './Modal.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
-import React, { useRef, useState } from "react";
+import React from "react";
 
 import { IconButton } from "./IconButton.js";
-import {ReferencedText, type EvidenceReference} from "../direction-evidence.js";
 
 export interface DirectionEvidenceItem {
   evidenceId: string;
@@ -18,7 +18,7 @@ export interface DirectionEvidenceItem {
 
 export interface DirectionItem {
   id: string;
-  versionId: string;
+  source: AnalysisReadSource;
   datasetId: string;
   title: string;
   applies: string;
@@ -26,7 +26,6 @@ export interface DirectionItem {
   rationale: string;
   limitations: string[];
   evidences: DirectionEvidenceItem[];
-  references: Map<string,EvidenceReference>;
 }
 
 export interface DirectionDetailDialogProps {
@@ -35,37 +34,14 @@ export interface DirectionDetailDialogProps {
   onClose: () => void;
 }
 
-/**
- * Reusable modal dialog for displaying exploration direction details,
- * comparative rationale with linked evidence chips, limitations, and visual evidence cards.
- */
 export function DirectionDetailDialog({
   direction: dir,
   onOpenFullscreen,
   onClose,
 }: DirectionDetailDialogProps) {
-  const evidenceContainerRef = useRef<HTMLDivElement>(null);
-  const [highlightRef,setHighlightRef]=useState<string|null>(null);
   const groups=([{kind:'normal',label:'良品'},{kind:'defect',label:'异常'},{kind:'unknown',label:'未分类'}] as const)
     .map(group=>({...group,items:dir.evidences.filter(item=>item.kind===group.kind)}))
     .filter(group=>group.kind!=='unknown'||group.items.length);
-
-  const handleChipClick = (ref: string) => {
-    setHighlightRef(ref);
-    if (!evidenceContainerRef.current) return;
-    const cardEl = evidenceContainerRef.current.querySelector<HTMLElement>(`[data-evidence-card="${ref}"]`);
-    if (cardEl && cardEl.parentElement) {
-      const vp = cardEl.parentElement;
-      const left = cardEl.offsetLeft - vp.offsetLeft;
-      const right = left + cardEl.offsetWidth;
-      if (left < vp.scrollLeft + 6) vp.scrollTo({ left: Math.max(0, left - 4), behavior: "smooth" });
-      else if (right > vp.scrollLeft + vp.clientWidth - 6) vp.scrollTo({ left: right - vp.clientWidth + 4, behavior: "smooth" });
-    }
-  };
-
-  const renderText=(text:string)=><ReferencedText text={text} references={dir.references}
-    className="exp-evidence-ref" highlightedId={highlightRef} onReference={handleChipClick}
-    onPreview={(ref,active)=>{if(active)handleChipClick(ref);else setHighlightRef(null);}}/>;
 
   return (
     <Modal title={dir.title} className="exp-dialog exp-direction-dialog" id="exp-modal" header={false} onClose={onClose}>
@@ -73,22 +49,22 @@ export function DirectionDetailDialog({
           <strong>{dir.title}</strong>
           <IconButton icon="close" label="关闭方向详情" title="关闭" onClick={onClose} />
         </div>
-        <div className="exp-dialog-main" ref={evidenceContainerRef}>
+        <div className="exp-dialog-main">
           <div className="exp-direction-body">
             {/* Goal */}
             <section className="exp-direction-goal">
               <h3>观察目标</h3>
-              <p>{renderText(dir.brief)}</p>
+              <p>{dir.brief}</p>
             </section>
 
             <section className="exp-direction-rationale">
               <h3>比较依据</h3>
-              <p>{renderText(dir.rationale)}</p>
+              <p>{dir.rationale}</p>
             </section>
             <section className="exp-direction-limitations">
               <h3>限制与待确认</h3>
               {dir.limitations.length ? <ul>
-                {dir.limitations.map((lim,i)=><li key={i}>{renderText(lim)}</li>)}
+                {dir.limitations.map((lim,i)=><li key={i}>{lim}</li>)}
               </ul> : <p>未记录限制</p>}
             </section>
 
@@ -106,12 +82,10 @@ export function DirectionDetailDialog({
                       if(motion)event.currentTarget.scrollLeft+=motion;
                     }}>
                     {group.items.length?group.items.map(image=><ThumbnailCard key={image.ref}
-                      className={`exp-direction-evidence-card ${highlightRef===image.ref?'is-related':''}`}
-                      data-evidence-card={image.ref} data-highlighted={highlightRef===image.ref}
+                      className="exp-direction-evidence-card"
+                      data-evidence-card={image.ref}
                       aria-label={`查看${image.label}大图`} title={`点击放大 ${image.label}`}
                       src={image.url} label={image.label}
-                      onMouseEnter={()=>setHighlightRef(image.ref)} onMouseLeave={()=>setHighlightRef(null)}
-                      onFocus={()=>setHighlightRef(image.ref)} onBlur={()=>setHighlightRef(null)}
                       onClick={()=>onOpenFullscreen(image.ref)}/>):<p className="exp-direction-empty">未精选{group.label}原图</p>}
                   </div>
                 </section>)}

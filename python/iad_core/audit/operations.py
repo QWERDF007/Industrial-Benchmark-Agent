@@ -3,11 +3,10 @@ from iad_core.audit.evidence import AuditEvidence
 from iad_core.audit.jobs import AuditAgentJobs
 from iad_core.audit.state import AuditState
 from iad_core.audit.reports import AuditReports
+from iad_core.audit.batches import AuditBatches
 from iad_core.storage.database import Database
 from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
-from iad_core.workbench.model_settings import ModelExecution
 from iad_core.workbench.runtime import workbench
-from iad_core.workbench.vision import VlmClient
 
 
 def audit_agent_configuration(args, db_path):
@@ -47,7 +46,7 @@ def audit_agent_media(args, db_path):
 
 
 def audit_agent_reference(args, db_path):
-    return AuditEvidence(AuditAgentJobs(workbench(db_path))).reference(args['run_id'],args['sample_id'],args['evidence_id']).model_dump(mode='json')
+    return AuditEvidence(AuditAgentJobs(workbench(db_path))).reference(args['run_id'],args['sample_id'],args['evidence_id'],args.get('view','whole')).model_dump(mode='json')
 
 
 def audit_agent_crop(args, db_path):
@@ -60,34 +59,30 @@ def audit_agent_commit(args, db_path):
 
 def audit_agent_model_call_start(args, db_path):
     jobs = AuditAgentJobs(workbench(db_path))
-    sample_id = args.get('sample_id')
-    session = jobs.sample(args['run_id'],sample_id) if sample_id else AuditReports(jobs.db).session(args['run_id'])
     call = NativeModelCallStart.model_validate(args['request'])
+    master = AuditReports(jobs.db).session(args['run_id'])
+    session_id = call.request.get('sessionId') or master.session_id
+    sample = next((sample for sample in jobs.samples(args['run_id']) if sample.session_id==session_id),None)
+    if sample is None and session_id!=master.session_id:
+        raise ValueError('模型请求没有本作业的主或子 Session')
+    sample_id = sample.sample_id if sample else None
+    session = sample or master
     ModelCalls(jobs.db).start_native(args['run_id'],call,sample_id=sample_id,session_id=session.session_id,attempt=1)
+    if jobs.snapshot(args['run_id']).context_policy == 'evidence-on-demand-v1' and call.request.get('purpose'):
+        return {}
     if sample_id:
         AuditEvidence(jobs).delivered(args['run_id'],sample_id,call.call_id,args['evidence_ids'])
     else:
-        AuditReports(jobs.db).delivered(args['run_id'],call)
+        AuditReports(jobs.db).delivered(args['run_id'],call,args['evidence_ids'])
     return {}
 
 
 def audit_agent_model_call_end(args, db_path):
-    ModelCalls(workbench(db_path).db).finish_native(args['run_id'],args.get('sample_id'),NativeModelCallEnd.model_validate(args['result']))
+    db=workbench(db_path).db
+    with db.connection() as connection:
+        sample_id=connection.execute("SELECT json_extract(summary_json,'$.sample_id') FROM model_calls WHERE run_id=? AND call_id=?",(args['run_id'],args['result']['call_id'])).fetchone()[0]
+    ModelCalls(db).finish_native(args['run_id'],sample_id,NativeModelCallEnd.model_validate(args['result']))
     return {}
-
-
-def audit_agent_capacity(args, db_path):
-    runtime = workbench(db_path)
-    execution = ModelExecution.model_validate(args['_model_execution'])
-    snapshot = AuditState(runtime.db).snapshot(args['run_id'])
-    if snapshot.agent.profile != execution.profile or args['body']['model'] != execution.profile.model_id:
-        raise ValueError('实际审计容量请求与冻结模型不一致')
-    client = VlmClient(profile=execution.profile,api_key=execution.api_key.get_secret_value() if execution.api_key else None)
-    try:
-        with ModelCalls(runtime.db).bind(args['run_id'],sample_id=args.get('sample_id'),role='agent'):
-            return client.token_budget(args['body'],execution.profile.max_output_tokens,'AuditAgent').model_dump(mode='json')
-    finally:
-        client.close()
 
 
 def audit_agent_failure(args, db_path):
@@ -108,6 +103,10 @@ def audit_agent_cancel(args, db_path):
 
 def audit_agent_resume(args, db_path):
     return AuditAgentJobs(workbench(db_path)).resume(args['run_id'])
+
+
+def audit_agent_report_regenerate(args, db_path):
+    return AuditAgentJobs(workbench(db_path)).regenerate_report(args['run_id'],args.get('prompts'))
 
 
 def audit_agent_interrupt(args, db_path):
@@ -144,10 +143,6 @@ def audit_agent_report_session_created(args, db_path):
     return {}
 
 
-def audit_agent_report_context(args, db_path):
-    return AuditReports(Database(db_path)).context(args['run_id'])
-
-
 def audit_agent_report_statistics(args, db_path):
     return AuditReports(Database(db_path)).statistics(args['run_id']).model_dump(mode='json')
 
@@ -156,8 +151,8 @@ def audit_agent_report_records(args, db_path):
     return AuditReports(Database(db_path)).records(args['run_id'],args['query'])
 
 
-def audit_agent_report_groups(args, db_path):
-    return AuditReports(workbench(db_path).db).groups(args['run_id'],args['submission']).model_dump(mode='json')
+def audit_agent_discovery(args, db_path):
+    return AuditReports(Database(db_path)).discovery(args['run_id'],args['query'])
 
 
 def audit_agent_report_commit(args, db_path):
@@ -176,14 +171,53 @@ def audit_agent_report_failure(args, db_path):
 
 
 def audit_job_prompts(args, db_path):
-    snapshot = AuditState(Database(db_path)).snapshot(args['run_id'])
-    return dict(system_prompt=snapshot.system_prompt or '',instruction=snapshot.instruction,report_instruction=snapshot.report_instruction or '')
+    state=AuditState(Database(db_path))
+    if state.is_archived(args['run_id']):
+        with state.db.connection() as connection:
+            import json
+            snapshot=json.loads(connection.execute('SELECT snapshot_json FROM audit_workflow_runs WHERE job_id=?',(args['run_id'],)).fetchone()[0])
+        return dict(sections=[dict(title=title,text=snapshot.get(key) or '') for key,title in (
+            ('system_prompt','图级系统提示词'),('instruction','图级用户提示词'),('report_instruction','报告用户提示词'))])
+    snapshot=state.snapshot(args['run_id'])
+    prompts=AuditReports(state.db).session(args['run_id']).prompts
+    master=prompts.master_prompt if prompts else snapshot.master_prompt
+    return dict(sections=[dict(title=title,text=text or '') for title,text in (
+        ('主 Agent 系统提示词',master.system_prompt),('主 Agent 用户提示词',master.user_prompt),
+        ('子 Agent 系统提示词',snapshot.observer_prompt.system_prompt),('子 Agent 用户提示词',snapshot.observer_prompt.user_prompt),
+        ('报告用户提示词',prompts.report_instruction if prompts else snapshot.report_instruction))])
+
+
+def audit_agent_batch(args, db_path):
+    batch=AuditBatches(AuditState(Database(db_path))).begin(args['run_id'])
+    return batch.model_dump(mode='json') if batch else None
+
+
+def audit_agent_batch_context(args, db_path):
+    return AuditBatches(AuditState(Database(db_path))).context(args['run_id'])
+
+
+def audit_agent_batch_commit(args, db_path):
+    from iad_core.audit.report_models import AuditDiscoveryIndex
+    state = AuditState(workbench(db_path).db)
+    result = AuditBatches(state).publish(args['run_id'],args['submission'])
+    if state.snapshot(args['run_id']).context_policy == 'evidence-on-demand-v1':
+        return dict(revision=result.revision, discoveries=[AuditDiscoveryIndex.capture(item).model_dump(mode='json') for item in result.discoveries])
+    return result.model_dump(mode='json')
+
+
+def audit_agent_rechecks(args, db_path):
+    return {'reviews':[item.model_dump(mode='json') for item in AuditBatches(AuditState(Database(db_path))).rechecks(args['run_id'])]}
+
+
+def audit_agent_versions(args, db_path):
+    return {'versions':[item.model_dump(mode='json') for item in AuditBatches(AuditState(Database(db_path))).history(args['run_id'],args['sample_id'])]}
 
 
 AUDIT_AGENT_OPERATIONS = (audit_agent_configuration,audit_agent_start,audit_agent_snapshot,audit_agent_samples,audit_agent_sample,
     audit_agent_context,audit_agent_session_location,audit_agent_session_created,audit_agent_media,audit_agent_reference,audit_agent_crop,
-    audit_agent_commit,audit_agent_model_call_start,audit_agent_model_call_end,audit_agent_capacity,audit_agent_failure,
-    audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,
+    audit_agent_commit,audit_agent_model_call_start,audit_agent_model_call_end,audit_agent_failure,
+    audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,audit_agent_report_regenerate,
     audit_agent_prepare_inputs,audit_agent_report_begin,audit_agent_report_state,audit_agent_report_session_created,
-    audit_agent_report_context,audit_agent_report_statistics,audit_agent_report_records,audit_agent_report_groups,
-    audit_agent_report_commit,audit_agent_report_evidence,audit_agent_report_failure,audit_job_prompts)
+    audit_agent_report_statistics,audit_agent_report_records,audit_agent_discovery,
+    audit_agent_report_commit,audit_agent_report_evidence,audit_agent_report_failure,audit_job_prompts,
+    audit_agent_batch,audit_agent_batch_context,audit_agent_batch_commit,audit_agent_rechecks,audit_agent_versions)

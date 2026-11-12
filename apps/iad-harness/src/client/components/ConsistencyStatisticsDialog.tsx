@@ -5,6 +5,7 @@ import {conflictCategories} from '../../shared/consistency.parameters.generated.
 
 export type ConsistencyStatisticAction='stat-category'|'stat-model'|'stat-agreement';
 interface StatisticRow {name:string;count:number;id?:string}
+type FilterStatistics=(action:ConsistencyStatisticAction,id:string)=>void;
 
 function niceAxis(max:number):number {
   const target=max/4;
@@ -15,7 +16,8 @@ function niceAxis(max:number):number {
 }
 
 function StatisticChart({title,rows,action,axis,onFilter}:{title:string;rows:StatisticRow[];
-  action:ConsistencyStatisticAction;axis:number;onFilter(action:ConsistencyStatisticAction,id:string):void}) {
+  action:ConsistencyStatisticAction;axis:number;onFilter?:FilterStatistics}) {
+  const Bar=onFilter?'button':'div';
   return <section className={`dc-vchart-panel ${action==='stat-agreement'?'dc-vchart-agreement':''}`} aria-label={`${title}柱状图`}>
     <h3>{title}</h3>
     <div className="dc-vchart-body">
@@ -25,11 +27,11 @@ function StatisticChart({title,rows,action,axis,onFilter}:{title:string;rows:Sta
         <div className="dc-vchart-columns" style={{'--chart-cols':rows.length} as React.CSSProperties}>
           {rows.map(row=><div className="dc-vchart-column" key={row.name}>
             <div className="dc-vchart-barslot">
-              <button type="button" className={`dc-vchart-bar ${row.count?'':'dc-vchart-zero'}`} style={{height:`${Math.max(.6,100*row.count/axis)}%`}}
-                data-dc={action} data-id={row.id||row.name} aria-label={`${row.name} ${row.count} 组，点击查看`}
-                title={`${row.name}：${row.count} 组，点击筛选`} onClick={()=>onFilter(action,row.id||row.name)}>
+              <Bar type={onFilter?'button':undefined} className={`dc-vchart-bar ${row.count?'':'dc-vchart-zero'}`} style={{height:`${Math.max(.6,100*row.count/axis)}%`}}
+                data-dc={action} data-id={row.id||row.name} aria-label={`${row.name} ${row.count} 组${onFilter?'，点击查看':''}`}
+                title={`${row.name}：${row.count} 组${onFilter?'，点击筛选':''}`} onClick={onFilter?()=>onFilter(action,row.id||row.name):undefined}>
                 <span className="dc-vchart-value">{row.count}</span>
-              </button>
+              </Bar>
             </div>
             <span className="dc-vchart-label" title={row.name}>{row.name}</span>
           </div>)}
@@ -39,8 +41,8 @@ function StatisticChart({title,rows,action,axis,onFilter}:{title:string;rows:Sta
   </section>;
 }
 
-export function ConsistencyStatisticsDialog({items,onFilter,onClose}:{items:ConflictCardItem[];
-  onFilter(action:ConsistencyStatisticAction,id:string):void;onClose():void}) {
+export function ConsistencyStatisticsDialog({items,onFilter,onClose,loading=false,error}:{items:ConflictCardItem[];
+  onFilter?:FilterStatistics;onClose():void;loading?:boolean;error?:string}) {
   const original=conflictCategories.filter(name=>items.some(item=>item.types.includes(name)))
     .map(name=>({name,count:items.filter(item=>item.types.includes(name)).length}));
   const judged=items.filter(item=>item.model.status!=='unknown');
@@ -49,10 +51,10 @@ export function ConsistencyStatisticsDialog({items,onFilter,onClose}:{items:Conf
     {name:'不一致',id:'different',count:items.filter(item=>item.agreement==='different').length}];
   const distributionAxis=niceAxis(Math.max(1,...original.map(row=>row.count),...model.map(row=>row.count)));
   return <Modal title="标注冲突统计" size="form" className="dc-stats-dialog" onClose={onClose}>
-    <div className="dc-stats-content"><div className="dc-stats-charts">
+    <div className="dc-stats-content">{error?<p role="alert">{error}</p>:loading?<p role="status">正在读取统计…</p>:<div className="dc-stats-charts">
       <StatisticChart title="差异类型" rows={original} action="stat-category" axis={distributionAxis} onFilter={onFilter} />
       <StatisticChart title="模型判断" rows={model} action="stat-model" axis={distributionAxis} onFilter={onFilter} />
       <StatisticChart title="结论一致性" rows={agreement} action="stat-agreement" axis={niceAxis(Math.max(1,...agreement.map(row=>row.count)))} onFilter={onFilter} />
-    </div></div>
+    </div>}</div>
   </Modal>;
 }

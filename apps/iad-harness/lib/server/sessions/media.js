@@ -6,7 +6,7 @@ export const nativeMediaOutput = {
     render(_args, value) {
         const page = value;
         const images = page.images.map(({ attachment, ...image }) => image);
-        return [{ type: 'text', text: JSON.stringify({ ...page, images }) }, ...page.images.map(image => ({ type: 'image', attachment: image.attachment }))];
+        return [{ type: 'text', text: JSON.stringify({ ...page, images }) + '\n\n' }, ...page.images.map(image => ({ type: 'image', attachment: image.attachment }))];
     },
 };
 export class NativeMediaAttachments {

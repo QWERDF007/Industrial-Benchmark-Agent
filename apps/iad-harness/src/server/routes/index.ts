@@ -97,6 +97,12 @@ export function createIadHttpHandler(bridge: PythonBridge) {
       if(analysisPrompts&&method==='GET')return await call('analysis_prompts',{run_id:decodeURIComponent(analysisPrompts[1])});
       const publication = pathname.match(/^\/api\/iad\/analysis\/publications\/([^/]+)$/);
       if (publication && method === 'GET') return await call('analysis_publication', {version_id: decodeURIComponent(publication[1])});
+      const analysisEvidence=pathname.match(/^\/api\/iad\/analysis\/(results|publications)\/([^/]+)\/evidence\/([^/]+)$/);
+      if(analysisEvidence&&method==='GET')return await sendMedia(res,await bridge.execute<{path:string;media_type:string}>(analysisEvidence[1]==='results'?'analysis_current_evidence':'analysis_evidence',{
+        [analysisEvidence[1]==='results'?'run_id':'version_id']:decodeURIComponent(analysisEvidence[2]),evidence_id:decodeURIComponent(analysisEvidence[3])}),true);
+      const currentSample=pathname.match(/^\/api\/iad\/analysis\/results\/([^/]+)\/samples\/([^/]+)\/evidence$/);
+      if(currentSample&&method==='GET')return await call('analysis_current_sample_evidence',{
+        run_id:decodeURIComponent(currentSample[1]),sample_id:decodeURIComponent(currentSample[2])});
       const analysisObservations=pathname.match(/^\/api\/iad\/analysis\/publications\/([^/]+)\/observations$/);
       if(analysisObservations&&method==='GET')return await call('analysis_observations',{
         version_id:decodeURIComponent(analysisObservations[1]),query});
@@ -223,6 +229,8 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         run_id: decodeURIComponent(modelCall[1]), call_id: decodeURIComponent(modelCall[2]),
       });
       if (pathname === "/api/iad/audit/jobs" && method === "GET") return await call("audit_list", query);
+      const auditRegenerate=pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/report\/regenerate$/);
+      if(auditRegenerate&&method==='POST')return await call('audit_report_regenerate',{...body,run_id:decodeURIComponent(auditRegenerate[1])});
       const auditReportSession=pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/report-session\.jsonl$/);
       if(auditReportSession&&method==='GET'){
         const output=await bridge.execute<{filename:string;jsonl:string}>('audit_agent_report_session_export',{run_id:decodeURIComponent(auditReportSession[1])});
@@ -242,6 +250,8 @@ export function createIadHttpHandler(bridge: PythonBridge) {
           run_id:decodeURIComponent(auditMedia[1]),sample_id:decodeURIComponent(auditMedia[2]),evidence_id:decodeURIComponent(auditMedia[3])}),true);
       }
       const auditPrompts = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/prompts$/);
+      const auditStatistics=pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/statistics$/);
+      if(auditStatistics&&method==='GET')return await call('audit_agent_report_statistics',{run_id:decodeURIComponent(auditStatistics[1])});
       if(auditPrompts&&method==='GET')return await call('audit_job_prompts',{run_id:decodeURIComponent(auditPrompts[1])});
       const auditSample = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/samples\/([^/]+)$/);
       if (auditSample && method === 'GET') return await call('audit_job_sample', {

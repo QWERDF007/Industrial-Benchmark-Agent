@@ -106,8 +106,8 @@ for module in ['exploration','knowledge','consistency']:
   for(const module of ['exploration','knowledge','consistency','audit']){
     await driver.get(`http://127.0.0.1:${server.address().port}/page?module=${module}`);
     await click({exploration:'#exp-new',knowledge:'#create-btn',consistency:'button[data-dc="start-check"]',audit:'button[title="新建审计"]'}[module]);
-    const system=await element(module==='exploration'?'#exp-prompt-system':module==='knowledge'?'#prompt-text-system':'textarea[aria-label="系统提示词"]'),
-      user=await element(module==='exploration'?'#exp-prompt':module==='knowledge'?'#prompt-text':'textarea[aria-label="用户提示词"]');
+    const system=await element(module==='exploration'?'#exp-prompt-system':module==='knowledge'?'#prompt-text-system':module==='audit'?'#audit-master-prompt-system':'textarea[aria-label="系统提示词"]'),
+      user=await element(module==='exploration'?'#exp-prompt':module==='knowledge'?'#prompt-text':module==='audit'?'#audit-master-prompt':'textarea[aria-label="用户提示词"]');
     if(module==='knowledge')assert.equal((await driver.findElements(By.css('textarea.iad-prompt-editor'))).length,4);
     if(module==='exploration'){
       assert.equal((await driver.findElements(By.css('details.exp-observer-prompt'))).length,0);
@@ -200,7 +200,13 @@ for module in ['exploration','knowledge','consistency']:
       }
       await click('#general-directions input[type="checkbox"]');
     }
-    else if(module==='audit')await click(`input[aria-label="选择一致性作业 ${data.consistency_job_id}"]`);
+    else if(module==='audit'){
+      assert.equal((await driver.findElements(By.css('textarea.iad-prompt-editor'))).length,5);
+      for(const [selector,text] of [['#audit-observer-prompt-system','审计子系统：独立观察。'],['#audit-observer-prompt','审计子任务：核对原图。'],['#audit-report-prompt','报告任务：解释原图证据。']]){
+        const input=await element(selector);await input.clear();await input.sendKeys(text,Key.TAB);
+      }
+      await click('input[name="audit-consistency-source"]');
+    }
     assert.equal(await system.getAttribute('value'),systemText);assert.equal(await user.getAttribute('value'),userText);
     const submit={exploration:'button[data-action="start-exploration"]',knowledge:'#submit-job',consistency:'button[data-dc="create-job"]',audit:'#audit-create-submit'}[module];
     const button=module==='exploration'?await driver.findElement(By.xpath('//button[normalize-space(.)="启动联合探索"]')):await element(submit);
@@ -218,43 +224,46 @@ for module in ['exploration','knowledge','consistency']:
       const shown=await bridge.execute('analysis_prompts',{run_id:job.run_id});
       assert.ok(shown.main.user_prompt.includes(snapshot.knowledge_tasks.review));
       assert.ok(shown.observer.user_prompt.includes(snapshot.knowledge_tasks.observe));
-      await click('button[data-job-prompt="'+job.run_id+'"]');
+      await click('tr[data-run-id="'+job.run_id+'"] button[title="查看提示词"]');
       await driver.wait(async()=>(await driver.findElements(By.css('dialog .iad-prompt-text'))).length===4,5000);
       const displayed=await driver.findElements(By.css('dialog .iad-prompt-text'));
-      assert.deepEqual(await Promise.all(displayed.map(item=>item.getText())),[shown.main.system_prompt,shown.main.user_prompt,shown.observer.system_prompt,shown.observer.user_prompt]);
+      assert.deepEqual(await Promise.all(displayed.map(item=>item.getAttribute('textContent'))),[shown.main.system_prompt,shown.main.user_prompt,shown.observer.system_prompt,shown.observer.user_prompt]);
       await click('button[aria-label="关闭知识挖掘提示词抽屉"]');
 
     }
-    assert.equal(request.system_prompt,systemText);assert.equal(snapshot.system_prompt,systemText);assert.equal(snapshot.instruction,userText);
+    if(module==='audit'){
+      assert.deepEqual(snapshot.master_prompt,{system_prompt:systemText,user_prompt:userText});
+      assert.deepEqual(snapshot.observer_prompt,{system_prompt:'审计子系统：独立观察。',user_prompt:'审计子任务：核对原图。'});
+      assert.equal(snapshot.report_instruction,'报告任务：解释原图证据。');
+      const shown=await bridge.execute('audit_job_prompts',{run_id:job.run_id});
+      assert.deepEqual(shown.sections.map(item=>item.text),[systemText,userText,'审计子系统：独立观察。','审计子任务：核对原图。','报告任务：解释原图证据。']);
+    }else{assert.equal(request.system_prompt,systemText);assert.equal(snapshot.system_prompt,systemText);assert.equal(snapshot.instruction,userText);}
     if(module==='exploration'){
       assert.deepEqual(request.observer_prompt,{system_prompt:'子系统：逐图记录事实。',user_prompt:'子任务：独立发现新现象。'});
       assert.deepEqual(snapshot.observer_prompt,request.observer_prompt);
       assert.equal(snapshot.settings.concurrency,2);assert.equal(snapshot.execution_mode,'dsh-subagents');
       assert.ok(snapshot.exploration_prompt.preset_revision);
-      await click('button[data-exp="show-prompt"]');
+      const shown=await bridge.execute('analysis_prompts',{run_id:job.run_id});
+      await click('tr[data-run-id="'+job.run_id+'"] button[title="查看提示词"]');
       await driver.wait(async()=>(await driver.findElements(By.css('dialog .iad-prompt-text'))).length===4,5000);
       const texts=await driver.findElements(By.css('dialog .iad-prompt-text'));
-      assert.deepEqual(await Promise.all(texts.map(input=>input.getText())),[systemText,userText,
-        '子系统：逐图记录事实。','子任务：独立发现新现象。'].map((text,index)=>index===1?[text,
-          snapshot.exploration_tasks.initial,snapshot.exploration_tasks.review,snapshot.exploration_tasks.finalize].join('\n\n'):
-          index===3?text+'\n\n'+snapshot.exploration_tasks.observe:text));
+      assert.deepEqual(await Promise.all(texts.map(input=>input.getAttribute('textContent'))),[shown.main.system_prompt,shown.main.user_prompt,
+        shown.observer.system_prompt,shown.observer.user_prompt]);
       await click('button[aria-label="关闭探索提示词抽屉"]');
       await driver.manage().window().setRect({width:1200,height:1080});
-      const identity=await element('.exp-job-table .exp-row-title');
+      const identity=await element('tr[data-run-id="'+job.run_id+'"] td:first-child');
       assert.equal(await identity.getText(),job.run_id);
-      assert.equal(await driver.executeScript(`
-        const title=arguments[0],cell=title.closest('td'),range=document.createRange();range.selectNodeContents(title);
-        const edge=cell.getBoundingClientRect().right-parseFloat(getComputedStyle(cell).paddingRight);
-        return [...range.getClientRects()].every(line=>line.right<=edge+1);
-      `,identity),true,'完整作业编号不得覆盖相邻状态列');
+      assert.equal(await identity.getAttribute('title'),job.run_id);
+      assert.equal(await identity.getCssValue('overflow-x'),'hidden');
+      assert.equal(await identity.getCssValue('text-overflow'),'ellipsis');
       await driver.manage().window().setRect({width:1440,height:1080});
     }
-    t.diagnostic(module+'：'+(['exploration','knowledge'].includes(module)?'主子四段独立正文':'两个编辑值')+'已由真实作业快照保存');
+    t.diagnostic(module+'：'+(module==='audit'?'主子与报告五段独立正文':['exploration','knowledge'].includes(module)?'主子四段独立正文':'两个编辑值')+'已由真实作业快照保存');
   }
   await bridge.execute('analysis_agent_cancel',{run_id:accepted.find(item=>item.module==='exploration').job.run_id});
   await driver.get(`http://127.0.0.1:${server.address().port}/page?module=exploration`);
-  await element('.exp-job-table tbody tr');
-  assert.equal((await driver.findElements(By.css('button[data-exp="copy-job"]'))).length,0,'作业操作列不提供复制配置新建');
+  await element('.iad-jobs-table tbody tr');
+  assert.equal((await driver.findElements(By.css('.iad-jobs-table button[data-icon="copy"]'))).length,0,'作业操作列不提供复制配置新建');
   await click('#exp-new');
   assert.equal((await driver.findElements(By.css('.exp-preview .iad-thumbnail-card'))).length,0);
   await(await driver.findElement(By.xpath('//button[normalize-space(.)="返回作业与结果"]'))).click();

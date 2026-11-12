@@ -33,6 +33,8 @@ class AnalysisExports:
             row = connection.execute('''SELECT r.snapshot_json,r.session_id,json_extract(j.payload_json,'$.submitted_at') submitted_at
                 FROM analysis_workflow_runs r JOIN job_runs j ON j.job_id=r.job_id WHERE r.job_id=?''', (publication.job_id,)).fetchone()
             snapshot = AnalysisWorkflowSnapshot.model_validate_json(row['snapshot_json'])
+            frozen_publication = json.loads(connection.execute(
+                'SELECT publication_json FROM analysis_publications WHERE version_id=?', (version_id,)).fetchone()[0])
             inherited = connection.execute('SELECT session_event_count FROM analysis_publication_exports WHERE version_id=?',
                 (publication.parent_version_id,)).fetchone() if publication.manual_edit is not None else None
             connection.execute('INSERT INTO analysis_publication_exports(version_id,session_event_count) VALUES(?,?) ON CONFLICT DO NOTHING',
@@ -63,15 +65,15 @@ class AnalysisExports:
         manifest = dict(version_id=version_id,run_id=publication.job_id,session_id=row['session_id'],submitted_at=row['submitted_at'],
             snapshot={name:value for name,value in frozen.items() if name!='agent'},
             model={name:value for name,value in frozen['agent']['profile'].items() if name!='credential_ref'})
-        texts = {'manifest.json':encode(manifest),'coverage.json':encode(publication.coverage.model_dump(mode='json')),
-            ('directions.json' if publication.module=='exploration' else 'knowledge.json'):encode(publication.model_dump(mode='json')),
+        texts = {'manifest.json':encode(manifest),'coverage.json':encode(frozen_publication['coverage']),
+            ('directions.json' if publication.module=='exploration' else 'knowledge.json'):encode(frozen_publication),
             'session/events.jsonl':'\n'.join(lines[:event_count+1])+'\n'}
         if publication.delegations:
             manifest['observer_sessions'] = [dict(session_id=task.session_id, round_id=task.round_id,
                 trace_available=task.session_id in child_counts) for task in publication.delegations]
             texts['manifest.json'] = encode(manifest)
-            texts['observer-reports.jsonl'] = ''.join(json.dumps(task.model_dump(mode='json'),ensure_ascii=False)+'\n'
-                for task in publication.delegations)
+            texts['observer-reports.jsonl'] = ''.join(json.dumps(task,ensure_ascii=False)+'\n'
+                for task in frozen_publication['delegations'])
             for sid, count in child_counts.items():
                 child_lines = (child_sessions or {}).get(sid, '').splitlines()
                 if len(child_lines) < count + 1:

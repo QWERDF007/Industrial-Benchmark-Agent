@@ -1,4 +1,3 @@
-import { Fragment as _Fragment, jsx as _jsx } from "react/jsx-runtime";
 export function directionEvidence(snapshot, direction) {
     const all = snapshot.evidence.map(evidence => {
         return { id: evidence.evidence_id, evidence, title: evidence.filename, filename: evidence.filename.split('/').at(-1) };
@@ -22,49 +21,5 @@ export function directionEvidence(snapshot, direction) {
         const ref = { normal: 'N', defect: 'A', unknown: 'U' }[kind] + ++counters[kind];
         return { ...item, kind, ref, label: `${{ normal: '良品', defect: '异常', unknown: '未分类' }[kind]} ${ref}` };
     });
-    const references = new Map();
-    for (const item of entries) {
-        if (item.evidence)
-            references.set(item.id, { id: item.ref, label: item.label });
-    }
-    for (const item of all) {
-        const original = displayed.get(item.id);
-        const reference = original && references.get(original.id);
-        if (reference)
-            references.set(item.id, reference);
-    }
-    return { entries, references, counters };
-}
-export function ReferencedText({ text, references, onReference, onPreview, className = 'iad-evidence-ref', highlightedId }) {
-    if (!references.size)
-        return _jsx(_Fragment, { children: text });
-    const ids = [...references.keys()].map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-    const pattern = new RegExp(`(?<![A-Za-z0-9_])(${ids.join('|')})(?![A-Za-z0-9_])`, 'g');
-    const rendered = [];
-    const cited = new Set();
-    let separator = '';
-    for (const [index, part] of text.split(pattern).entries()) {
-        if (!part)
-            continue;
-        const reference = references.get(part);
-        if (!reference) {
-            if (cited.size && /^[\s、，,和与及至到~～—–-]+$/.test(part))
-                separator = part;
-            else {
-                rendered.push(separator, part);
-                separator = '';
-                cited.clear();
-            }
-            continue;
-        }
-        if (cited.has(reference.id)) {
-            separator = '';
-            continue;
-        }
-        rendered.push(separator, _jsx("button", { type: "button", className: `${className}${highlightedId === reference.id ? ' is-related' : ''}`, "data-evidence-ref": reference.id, "aria-label": `定位证据 ${reference.label}`, onClick: () => onReference(reference.id), onMouseEnter: () => onPreview(reference.id, true), onMouseLeave: () => onPreview(reference.id, false), onFocus: () => onPreview(reference.id, true), onBlur: () => onPreview(reference.id, false), children: reference.label }, index));
-        separator = '';
-        cited.add(reference.id);
-    }
-    rendered.push(separator);
-    return _jsx(_Fragment, { children: rendered });
+    return { entries, counters };
 }

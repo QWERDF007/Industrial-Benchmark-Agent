@@ -80,19 +80,19 @@ print(json.dumps(dict(datasets=datasets)));runtime.close()
   };
   const selected=async dataset=>{
     await driver.wait(async()=>await(await element(`#subset-menu input[value="${dataset.dataset_id}"]`)).isSelected(),10000);
-    const row=await element(`tr[data-pick-job="${dataset.run_id}"]`);await driver.wait(async()=>await row.getAttribute('aria-selected')==='true',10000);
+    const row=await element(`tr[data-run-id="${dataset.run_id}"]`);await driver.wait(async()=>await row.getAttribute('aria-selected')==='true',10000);
     assert.ok(!(await driver.findElement(By.css('body')).getText()).includes('所选作业不属于当前数据集'));
   };
   try{
     await driver.get(`http://127.0.0.1:${server.address().port}/`);
     await navigate('知识挖掘');
     await element('#knowledge-page');const[first,second]=data.datasets;
-    await selectSubset(first);await click(`tr[data-pick-job="${first.run_id}"] td`);await selected(first);
-    await click(`button[data-job-prompt="${first.run_id}"]`);
+    await selectSubset(first);await click(`tr[data-run-id="${first.run_id}"] td`);await selected(first);
+    await click(`tr[data-run-id="${first.run_id}"] button[data-icon="prompt"]`);
     const text=await(await element('.iad-prompt-drawer')).getText();
     assert.ok(text.includes(first.name+'的冻结系统正文。')&&text.includes(first.name+'的冻结用户正文。'));
-    await click('button[aria-label="关闭查看提示词抽屉"]');
-    await selectSubset(second);await click(`tr[data-pick-job="${second.run_id}"] td`);await selected(second);
+    await click('button[aria-label="关闭知识挖掘提示词抽屉"]');
+    await selectSubset(second);await click(`tr[data-run-id="${second.run_id}"] td`);await selected(second);
     await driver.navigate().refresh();await selected(second);
     let location=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad'));
     assert.equal(location.datasetId,second.dataset_id);assert.equal(location.job,second.run_id);
@@ -106,7 +106,7 @@ print(json.dumps(dict(datasets=datasets)));runtime.close()
     assert.equal(await(await element('#prompt-text-system')).isEnabled(),true);assert.equal(await(await element('#prompt-text')).isEnabled(),true);
     await click('#kb-setup-back');await selected(second);
     await click('#subset');await click(`#subset-menu input[value="${first.dataset_id}"]`);await click('#subset');
-    await element(`tr[data-pick-job="${first.run_id}"]`);await element(`tr[data-pick-job="${second.run_id}"]`);
+    await element(`tr[data-run-id="${first.run_id}"]`);await element(`tr[data-run-id="${second.run_id}"]`);
     await driver.navigate().refresh();
     for(const dataset of data.datasets)assert.equal(await(await element(`#subset-menu input[value="${dataset.dataset_id}"]`)).isSelected(),true);
     await click('#create-btn');await element('#kb-setup-page');

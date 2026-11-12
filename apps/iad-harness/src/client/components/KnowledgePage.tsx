@@ -1,3 +1,5 @@
+import {jobIsActive} from '../../shared/job-display.js';
+import type {AnalysisReadSource} from '../analysis-results.js';
 import {SectionHeading} from './layout/SectionHeading.js';
 import {AnalysisExportButton} from './AnalysisExportButton.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
@@ -19,9 +21,10 @@ import {useDatasetCatalog} from '../useDatasetCatalog.js';
 import { useWorkspace } from "../workspace.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 
-import type { KnowledgeCheckPage, KnowledgeCheckReview, KnowledgeVersion, KnowledgeVersionCatalog } from "../../shared/domain.generated.js";
-import {formatJobTime,jobStatuses} from '../../shared/job-display.js';
-import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
+import type { AnalysisResults, KnowledgeCheckPage, KnowledgeCheckReview, KnowledgeVersion, KnowledgeVersionCatalog } from "../../shared/domain.generated.js";
+import {JobList} from './JobList.js';
+import {useJobList} from '../useJobList.js';
+import {JobStatusDrawer} from './JobStatusDrawer.js';
 import {KnowledgeEntryDialog} from "./KnowledgeEntryDialog.js";
 import {KnowledgeMiningCreate} from "./KnowledgeMiningCreate.js";
 import {KnowledgeConfirmation, type KnowledgeConfirmationState} from "./KnowledgeConfirmation.js";
@@ -34,25 +37,6 @@ interface KnowledgeItemData {
   supportCount: number;
   counterCount: number;
   review: KnowledgeCheckReview;
-}
-
-interface UiJobItem {
-  id: string;
-  name: string;
-  status: "completed" | "running" | "interrupted" | "failed";
-  statusLabel: string;
-  statusBadgeClass: string;
-  count: number | null;
-  at: string;
-  durationText: string;
-  knowledgeVersionId: string | null;
-}
-
-function formatDuration(sec: number | null): string {
-  if (sec == null) return "—";
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
 export function KnowledgePage({
@@ -89,13 +73,9 @@ export function KnowledgePage({
   },[scopeKey,revision,refreshRevision]);
   const loadError=catalog.error;
 
-  // Local job list & selection
-  const [selectedJobId, setSelectedJobId] = useState<string | null>(view.job || null);
-  const [jobDetails, setJobDetails] = useState<string | null>(null);
-  useEffect(()=>setSelectedJobId(view.job || null),[view.job]);
-  const [jobSearch, setJobSearch] = useState("");
-  const [jobStatus, setJobStatus] = useState("all");
-  const [jobPage, setJobPage] = useState(1);
+  const [jobDetails,setJobDetails]=useState<string|null>(null);
+  const jobList=useJobList(polling.jobs,scopeKey,view.job,job=>selectJob(job.run_id));
+  const selectedJob=jobList.selected;
 
   // Lower panel search & filter
   const [knowledgeSearch, setKnowledgeSearch] = useState("");
@@ -103,26 +83,14 @@ export function KnowledgePage({
   const [entryPage, setEntryPage] = useState(1);
 
   // Modals & Drawers
-  const [promptJob, setPromptJob] = useState<UiJobItem | null>(null);
-  const [detailItem, setDetailItem] = useState<Pick<React.ComponentProps<typeof KnowledgeEntryDialog>, 'versionId' | 'checkId'> | null>(null);
+  const [promptJob, setPromptJob] = useState<JobSnapshot | null>(null);
+  const [detailItem, setDetailItem] = useState<Pick<React.ComponentProps<typeof KnowledgeEntryDialog>, 'source' | 'checkId'> | null>(null);
   const [confirmState, setConfirmState] = useState<KnowledgeConfirmationState | null>(null);
   const createOpen = view.tab === 'setup';
   const [toastMsg, setToastMsg] = useState("");
 
   const toast = useCallback((msg: string) => setToastMsg(msg), []);
   useEffect(()=>{if(!toastMsg)return;const timer=setTimeout(()=>setToastMsg(""),2800);return()=>clearTimeout(timer);},[toastMsg]);
-
-  const jobList: UiJobItem[] = polling.jobs.map(job => {
-    const status = job.status === 'COMPLETED' ? 'completed' : ['RUNNING', 'PENDING'].includes(job.status) ? 'running'
-      : ['INTERRUPTED', 'CANCELLED'].includes(job.status) ? 'interrupted' : 'failed';
-    const seconds = job.finished_at && job.started_at ? Math.max(0, Math.round((Date.parse(job.finished_at) - Date.parse(job.started_at)) / 1000)) : null;
-    return {id: job.run_id, name: job.mining_prompt?.configuration.objective.split('\n')[0] || `知识挖掘 ${job.run_id.slice(-6)}`,
-      status, statusLabel: jobStatuses[job.status],
-      statusBadgeClass: {completed:'green',running:'blue',interrupted:'gray',failed:'red'}[status],
-      count: versions.find(version => version.version_id === job.knowledge_version_id)?.check_count ?? null,
-      at: formatJobTime(job.submitted_at), durationText: formatDuration(seconds),
-      knowledgeVersionId: job.knowledge_version_id || null};
-  });
 
   // Current scope datasets
   const parentGroups = useMemo(()=>buildHierarchyGroups(datasets,groups),[datasets,groups]);
@@ -147,40 +115,15 @@ export function KnowledgePage({
     toast("已刷新当前数据");
   };
 
-  // Filter jobs in the selected scope.
-  const filteredJobs = useMemo(() => {
-    return jobList.filter(j => {
-      const matchSearch = !jobSearch.trim() || j.name.toLowerCase().includes(jobSearch.toLowerCase());
-      const matchStatus = jobStatus === "all" || j.status === jobStatus;
-      return matchSearch && matchStatus;
-    });
-  }, [jobList, jobSearch, jobStatus]);
-
-  // Job pagination (8 per page SSOT)
-  const jobsPerPage = 8;
-  const maxJobPages = Math.max(1, Math.ceil(filteredJobs.length / jobsPerPage));
-  const currentJobPage = Math.min(maxJobPages, Math.max(1, jobPage));
-  const pageJobs = useMemo(() => {
-    return filteredJobs.slice((currentJobPage - 1) * jobsPerPage, currentJobPage * jobsPerPage);
-  }, [filteredJobs, currentJobPage]);
-
-  // Selected job
-  const selectedJob = useMemo(() => {
-    return filteredJobs.find(j => j.id === selectedJobId) || filteredJobs[0] || null;
-  }, [jobList, selectedJobId, filteredJobs]);
-
-  const selectJob = (id: string) => {
-    setSelectedJobId(id);
-    workspace.updateView(pageId, {job:id, version:""});
-    setEntryPage(1);
-    setKnowledgeSearch("");
-    setKnowledgeStatus("all");
-  };
+  function selectJob(id:string) {
+    workspace.updateView(pageId,{job:id,version:''});
+    setEntryPage(1);setKnowledgeSearch('');setKnowledgeStatus('all');
+  }
 
   const resultVersions = useMemo(() => {
-    if (!selectedJob?.knowledgeVersionId) return [];
-    const ids = new Set([selectedJob.knowledgeVersionId,
-      ...versions.filter(version=>version.source_run_id===selectedJob.id).map(version=>version.version_id)]);
+    if (!selectedJob?.knowledge_version_id) return [];
+    const ids = new Set([selectedJob.knowledge_version_id,
+      ...versions.filter(version=>version.source_run_id===selectedJob.run_id).map(version=>version.version_id)]);
     let changed = true;
     while (changed) {
       changed = false;
@@ -189,45 +132,33 @@ export function KnowledgePage({
       }
     }
     return versions.filter(version => ids.has(version.version_id));
-  }, [versions, selectedJob?.knowledgeVersionId]);
-  const selectedVersionId = view.job === selectedJob?.id && resultVersions.some(version => version.version_id === view.version)
-    ? view.version : selectedJob?.knowledgeVersionId;
+  }, [versions, selectedJob?.knowledge_version_id]);
+  const selectedVersionId = view.job === selectedJob?.run_id && resultVersions.some(version => version.version_id === view.version)
+    ? view.version : jobIsActive(selectedJob)?null:selectedJob?.knowledge_version_id;
+  const results=useResource<AnalysisResults>(selectedJob?`/analysis/results/${encodeURIComponent(selectedJob.run_id)}`:null,
+    `${revision}:${refreshRevision}:${selectedJob?.status}:${selectedJob?.analysis_version_id}`,jobIsActive(selectedJob));
+  const preview=selectedVersionId?null:results.data?.current;
+  const readSource:AnalysisReadSource|null=selectedVersionId?{kind:'published',versionId:selectedVersionId}:preview?{kind:'current',view:preview}:null;
   const canMaintain = !!selectedVersionId && versionResources.some(result=>result.data?.current_version_id === selectedVersionId);
   const checkQuery = new URLSearchParams({version_id:selectedVersionId || '', page:String(entryPage), page_size:'8', search:knowledgeSearch, review_status:knowledgeStatus});
   const checksResource = useResource<KnowledgeCheckPage>(selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
-  const filteredChecks = checksResource.data?.items || [];
-  const maxEntryPages = Math.max(1, Math.ceil((checksResource.data?.total || 0) / 8));
+  const previewChecks=preview?.checks.filter(check=>(!knowledgeSearch||`${check.title} ${check.criterion}`.toLocaleLowerCase().includes(knowledgeSearch.toLocaleLowerCase()))
+    &&(knowledgeStatus==='all'||knowledgeStatus===check.review.status||knowledgeStatus==='conflict'&&check.status==='conflicted'))||[];
+  const totalChecks=selectedVersionId?checksResource.data?.total||0:previewChecks.length;
+  const maxEntryPages = Math.max(1, Math.ceil(totalChecks / 8));
   const currentEntryPage = Math.min(maxEntryPages, Math.max(1, entryPage));
+  const filteredChecks = selectedVersionId?checksResource.data?.items||[]:previewChecks.slice((currentEntryPage-1)*8,currentEntryPage*8);
   useEffect(() => {if (entryPage > maxEntryPages && !checksResource.loading) setEntryPage(maxEntryPages);}, [entryPage, maxEntryPages, checksResource.loading]);
   const pagedChecks: KnowledgeItemData[] = filteredChecks.map(check => ({id:check.check_id, name:check.title,
     summary:check.criterion, supportCount:check.support_count, counterCount:check.counter_count, review:check.review}));
-  useEffect(() => {setDetailItem(null);}, [scopeKey, selectedJob?.id]);
-  useEffect(() => {setEntryPage(1);}, [selectedJob?.id, selectedVersionId]);
+  useEffect(() => {setDetailItem(null);}, [scopeKey, selectedJob?.run_id]);
+  useEffect(() => {setEntryPage(1);}, [selectedJob?.run_id, selectedVersionId]);
 
   // Prompt drawer handlers
-  const openJobPrompt = (id: string) => {
-    const j = jobList.find(v => v.id === id);
-    if (!j) return;
-    setPromptJob(j);
-  };
+  const closePrompt=()=>setPromptJob(null);
+  const openDetail=(item:KnowledgeItemData)=>{if(readSource)setDetailItem({source:readSource,checkId:item.id});};
+  const closeDetail=()=>setDetailItem(null);
 
-  const closePrompt = () => {
-    setPromptJob(null);
-  };
-
-  const openDetail = (item: KnowledgeItemData) => {
-    if (selectedVersionId) setDetailItem({versionId:selectedVersionId, checkId:item.id});
-  };
-  const closeDetail = () => setDetailItem(null);
-  const askDeleteJob = (id: string) => {
-    const job = jobList.find(item => item.id === id);
-    if (!job) return;
-    setConfirmState({title:'删除挖掘作业', message:`确定删除“${job.name}”的作业记录吗？`, danger:true,confirmLabel:'删除',
-      onConfirm: async () => {
-        try {await request(`/analysis/delete/${encodeURIComponent(id)}`, {}); polling.refresh(); updated(); toast('作业已删除');}
-        catch (error) {toast(message(error));}
-      }});
-  };
   const askDeleteEntry = (item: KnowledgeItemData) => {
     if (!selectedVersionId || !selectedJob) return;
     setConfirmState({title:'移除知识条目', message:`从当前知识中移除“${item.name}”并生成维护版本？`, danger:true,
@@ -235,7 +166,7 @@ export function KnowledgePage({
         try {
           const version = await request<KnowledgeVersion>(`/knowledge/versions/${encodeURIComponent(selectedVersionId)}/checks/remove`,
             {submission_id:uuid(), check_id:item.id});
-          workspace.updateView(pageId, {job:selectedJob.id, version:version.version_id}); updated(); toast('已生成维护版本');
+          workspace.updateView(pageId, {job:selectedJob.run_id, version:version.version_id}); updated(); toast('已生成维护版本');
         } catch (error) {toast(message(error));}
       }});
   };
@@ -273,119 +204,17 @@ export function KnowledgePage({
             <div className="context-info" id="dataset-info"></div>
           </DatasetScopeSelector>
 
-          {/* Upper Panel: 挖掘作业 */}
-          <section className="panel" aria-labelledby="jobs-heading">
-            <SectionHeading title="挖掘作业" titleId="jobs-heading">
-              {jobList.length>0&&<div className="filterset" id="jobs-filterset">
-                <input
-                  className="f"
-                  id="job-search"
-                  placeholder="搜索作业名称"
-                  aria-label="搜索作业名称"
-                  value={jobSearch}
-                  onChange={e => {
-                    setJobSearch(e.target.value);
-                    setJobPage(1);
-                  }}
-                />
-                <Select
-                  className="f"
-                  id="job-status"
-                  aria-label="筛选作业状态"
-                  value={jobStatus}
-                  onChange={e => {
-                    setJobStatus(e.target.value);
-                    setJobPage(1);
-                  }}
-                >
-                  <option value="all">全部状态</option>
-                  <option value="completed">已完成</option>
-                  <option value="running">运行中</option>
-                  <option value="interrupted">已中断</option>
-                  <option value="failed">失败</option>
-                </Select>
-                <ClearFilterButton
-                  id="kb-clear-job-filters"
-                  ariaLabel="清除筛选条件"
-                  title="清除筛选条件"
-                  disabled={!jobSearch && jobStatus === "all"}
-                  onClick={() => {
-                    setJobSearch("");
-                    setJobStatus("all");
-                    setJobPage(1);
-                  }}
-                />
-              </div>}
-            </SectionHeading>
-            <div className="tableframe iad-job-table-scroll" id="jobs-table-frame">
-              {filteredJobs.length > 0 ? (
-                <table className="jobs-table iad-job-table-grid" id="jobs-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: "36%" }}>作业名称</th>
-                      <th>状态</th>
-                      <th className="num" title="关联发布知识版本中的判据数量">
-                        判据数
-                      </th>
-                      <th>提交时间</th>
-                      <th>耗时</th>
-                      <th className="right">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody id="job-rows">
-                    {pageJobs.map(j => (
-                      <tr
-                        key={j.id}
-                        tabIndex={0}
-                        aria-label={`选择挖掘作业 ${j.name}`}
-                        aria-selected={j.id === selectedJob?.id}
-                        className={j.id === selectedJob?.id ? "current" : ""}
-                        data-pick-job={j.id}
-                        onClick={() => selectJob(j.id)}
-                        onKeyDown={e => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            selectJob(j.id);
-                          }
-                        }}
-                      >
-                        <td>
-                          <div className="jobtitle" title={j.name}>
-                            {j.name}
-                          </div>
-                        </td>
-                        <td>
-                          <JobStatusButton job={polling.jobs.find(job=>job.run_id===j.id)!} onClick={()=>setJobDetails(polling.jobs.find(job=>job.run_id===j.id)!.root_run_id)}>
-                            <span className={`status ${j.statusBadgeClass}`}>{j.statusLabel}</span></JobStatusButton>
-                        </td>
-                        <td className="num">{j.count ?? "—"}</td>
-                        <td>{j.at}</td>
-                        <td>{j.durationText}</td>
-                        <td>
-                          <div className="jobact" onClick={e => e.stopPropagation()}>
-                            <JobStatusAction job={polling.jobs.find(job=>job.run_id===j.id)!} onClick={()=>setJobDetails(polling.jobs.find(job=>job.run_id===j.id)!.root_run_id)} />
-                            <IconButton icon="prompt" type="button" title="查看提示词" label="查看提示词" data-job-prompt={j.id} onClick={() => openJobPrompt(j.id)} />
-                            <IconButton icon="delete" type="button" title="删除作业" label={`删除作业 ${j.name}`} data-remove-job={j.id} onClick={() => askDeleteJob(j.id)} />
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div id="jobs-empty" className="tableempty">
-                  {jobList.length ? "没有符合筛选条件的挖掘作业。" : polling.loading?"正在读取挖掘作业…":"当前没有挖掘作业"}
-                </div>
-              )}
-            </div>
-            <Pagination id="job-pager" total={filteredJobs.length} page={currentJobPage} size={jobsPerPage} onPage={setJobPage} label="挖掘作业" />
-          </section>
+          <JobList title="挖掘作业" list={jobList} datasets={datasets} loading={polling.loading} actions={{
+            status:job=>setJobDetails(job.root_run_id),prompt:setPromptJob,delete:async job=>{
+              await request(`/analysis/delete/${encodeURIComponent(job.run_id)}`,{});polling.refresh();updated();
+            },
+          }}/>
 
           {/* Lower Panel: 知识条目 */}
           <section className="panel" id="knowledge-panel" aria-labelledby="knowledge-heading">
             <SectionHeading title="知识条目" titleId="knowledge-heading">
               {selectedVersionId?.startsWith('analysis_version_')&&<AnalysisExportButton versionId={selectedVersionId}/>}
-              {selectedVersionId&&versions.find(version=>version.version_id===selectedVersionId)?.check_count ? (
+              {(selectedVersionId?versions.find(version=>version.version_id===selectedVersionId)?.check_count:preview?.checks.length) ? (
                 <div className="filterset" id="knowledge-filterset">
                   <input
                     className="f"
@@ -429,15 +258,13 @@ export function KnowledgePage({
               ) : null}
             </SectionHeading>
             {selectedVersionId&&resultVersions.length > 1 && <label className="control">结果版本<Select className="f" aria-label="知识结果版本" value={selectedVersionId || ''}
-              onChange={event=>workspace.updateView(pageId,{job:selectedJob!.id,version:event.target.value})}>
+              onChange={event=>workspace.updateView(pageId,{job:selectedJob!.run_id,version:event.target.value})}>
               {resultVersions.map(version=><option key={version.version_id} value={version.version_id}>{version.manually_edited ? '维护版本' : '作业冻结版本'} {version.version_id.slice(-8)}</option>)}
             </Select></label>}
             <div className="knowledge-wrap" id="knowledge-body">
               {!selectedJob ? (
                 <p className="iad-result-empty" role="status">当前没有知识条目</p>
-              ) : !selectedVersionId ? (
-                <p className="iad-result-empty" role="status">当前作业没有已发布结果</p>
-              ) : !selectedJob.knowledgeVersionId ? (
+              ) : !readSource ? (
                 <p className="iad-result-empty" role="status">当前没有知识条目</p>
               ) : checksResource.error ? <p role="alert">{checksResource.error}</p>
                 : checksResource.loading ? <div className="blank">正在读取作业冻结知识</div>
@@ -487,20 +314,20 @@ export function KnowledgePage({
                       </div>
                     ))}
                   </div>
-                  <Pagination total={checksResource.data?.total || 0} page={currentEntryPage} size={8} onPage={setEntryPage} label="知识条目" />
+                  <Pagination hideSinglePage total={totalChecks} page={currentEntryPage} size={8} onPage={setEntryPage} label="知识条目" />
                 </div>
               )}
             </div>
           </section>
 
-          {(loadError || polling.error || versionError) && <p role="alert">{loadError || polling.error || (versionError?message(versionError):'')}</p>}
+          {(loadError || polling.error || versionError || results.error) && <p role="alert">{loadError || polling.error || results.error || (versionError?message(versionError):'')}</p>}
           </>}
 
             {createOpen && <KnowledgeMiningCreate key={scopeKey} dataset={dataset} datasets={datasets} groups={parentGroups}
               selectedParentId={selectedParentId} selectedChildIds={selectedChildIds}
               onClose={()=>workspace.updateView(pageId,{tab:'results'})} onStarted={jobs=>{
                 const first=jobs[0];
-                if(first) {workspace.openLocation({pageId,datasetId:first.dataset_id,datasetIds:first.dataset_ids,job:first.run_id,version:'',tab:'results'}); setSelectedJobId(first.run_id);}
+                if(first) {workspace.openLocation({pageId,datasetId:first.dataset_id,datasetIds:first.dataset_ids,job:first.run_id,version:'',tab:'results'});}
                 polling.refresh(); updated(); toast('挖掘作业已启动');
               }} />}
         </div>
@@ -508,9 +335,9 @@ export function KnowledgePage({
 
       {/* Overlays and Drawers */}
       {/* 1. Job Prompt Drawer */}
-      {promptJob && <AnalysisPromptDrawer title="知识挖掘提示词" jobId={promptJob.id} onClose={closePrompt} />}
+      {promptJob && <AnalysisPromptDrawer title="知识挖掘提示词" jobId={promptJob.run_id} onClose={closePrompt} />}
 
-            {detailItem && <KnowledgeEntryDialog key={`${detailItem.versionId}:${detailItem.checkId}`} {...detailItem}
+            {detailItem && <KnowledgeEntryDialog key={detailItem.checkId} {...detailItem}
               onClose={closeDetail} onSaved={()=>{updated();toast('人工核实已保存');}} />}
             {jobDetails && polling.jobs.some(job=>job.run_id===jobDetails || job.root_run_id===jobDetails) && <JobStatusDrawer
               job={polling.jobs.find(job=>job.run_id===jobDetails || job.root_run_id===jobDetails)!} onClose={()=>setJobDetails(null)}

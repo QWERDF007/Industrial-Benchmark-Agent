@@ -139,7 +139,7 @@ def test_typical_images_are_saved_before_finalization_and_crop_candidates_are_re
     assert AnalysisQueries(jobs.db).arguments(run_id,dict(entry_id='edge',role='counter')).items[0].evidence_id==counter
 
 
-def test_knowledge_display_uses_readable_references_and_only_typical_originals(knowledge_job):
+def test_knowledge_display_uses_readable_references_and_all_cited_originals(knowledge_job):
     from iad_core.knowledge.models import KnowledgeDetailQuery
     from iad_core.analysis.publications import AnalysisPublications
     jobs,did,run_id=knowledge_job
@@ -163,7 +163,8 @@ def test_knowledge_display_uses_readable_references_and_only_typical_originals(k
     detail=AnalysisQueries(jobs.db).details(KnowledgeDetailQuery(version_id=version,check_id='edge',section='checks'))
     assert all(identity not in detail.check.criterion for identity in [ids[0],annotation.annotation_id,run_id])
     assert '原图' in detail.check.criterion
-    assert [item.image.evidence_id for item in detail.items]==[ids[0]]
+    assert [item.image.evidence_id for item in detail.items]==ids
+    assert detail.total==detail.check.support_count==2
     assert len(detail.support_evidence_ids)==2
     assert AnalysisPublications(jobs.db).get(version).catalog.checks[0].criterion==body
 

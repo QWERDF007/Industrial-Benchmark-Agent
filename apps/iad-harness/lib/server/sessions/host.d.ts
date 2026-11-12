@@ -24,7 +24,7 @@ export declare class JobSessionHost {
     private readonly stop;
     private readonly active;
     private constructor();
-    static open(root: string, locate: SessionLocator): Promise<JobSessionHost>;
+    static open(root: string, locate: SessionLocator, evidenceOnDemand?: boolean): Promise<JobSessionHost>;
     create(id: string): Promise<void>;
     withAgent<T>(id: string, options: {
         agentOptions?: AgentOptions;
@@ -32,6 +32,8 @@ export declare class JobSessionHost {
         sharedSetup?: (scope: Context) => Promise<void>;
         signal?: AbortSignal;
         subagents?: number;
+        evidenceOnDemand?: boolean;
+        imageHandoffTools?: readonly string[];
     }, operation: (agent: Agent) => T | Promise<T>): Promise<T>;
     read(id: string): Promise<{
         header: SessionHeader;

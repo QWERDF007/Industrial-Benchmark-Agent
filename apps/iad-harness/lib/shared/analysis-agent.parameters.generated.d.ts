@@ -726,14 +726,6 @@ export declare const explorationFinalizeParameters: {
                     readonly title: "Rationale";
                     readonly required: true;
                 };
-                readonly evidence_ids: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Evidence Ids";
-                    readonly required: true;
-                };
                 readonly limitations: {
                     readonly type: "array";
                     readonly items: {
@@ -753,6 +745,14 @@ export declare const explorationFinalizeParameters: {
                         readonly type: "string";
                     };
                     readonly title: "Dataset Ids";
+                    readonly required: true;
+                };
+                readonly evidence_ids: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                    };
+                    readonly title: "Evidence Ids";
                     readonly required: true;
                 };
                 readonly counter_evidence_ids: {
@@ -1007,22 +1007,6 @@ export declare const knowledgeFinalizeParameters: {
                     readonly title: "Status";
                     readonly required: true;
                 };
-                readonly support_evidence_ids: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Support Evidence Ids";
-                    readonly required: true;
-                };
-                readonly counter_evidence_ids: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Counter Evidence Ids";
-                    readonly required: true;
-                };
                 readonly check_id: {
                     readonly type: "string";
                     readonly title: "Check Id";
@@ -1044,6 +1028,22 @@ export declare const knowledgeFinalizeParameters: {
                     };
                     readonly description: "仅列当前条目实际有证据的子数据集。";
                     readonly title: "Dataset Ids";
+                    readonly required: true;
+                };
+                readonly support_evidence_ids: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                    };
+                    readonly title: "Support Evidence Ids";
+                    readonly required: true;
+                };
+                readonly counter_evidence_ids: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                    };
+                    readonly title: "Counter Evidence Ids";
                     readonly required: true;
                 };
             };
@@ -1373,14 +1373,6 @@ export declare const explorationCommitParameters: {
                     readonly title: "Rationale";
                     readonly required: true;
                 };
-                readonly evidence_ids: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Evidence Ids";
-                    readonly required: true;
-                };
                 readonly limitations: {
                     readonly type: "array";
                     readonly items: {
@@ -1400,6 +1392,14 @@ export declare const explorationCommitParameters: {
                         readonly type: "string";
                     };
                     readonly title: "Dataset Ids";
+                    readonly required: true;
+                };
+                readonly evidence_ids: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                    };
+                    readonly title: "Evidence Ids";
                     readonly required: true;
                 };
                 readonly counter_evidence_ids: {
@@ -1682,14 +1682,6 @@ export declare const knowledgeBatchReportParameters: {
         readonly title: "Discovery Summary";
         readonly required: true;
     };
-    readonly key_evidence_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
-        };
-        readonly title: "Key Evidence Ids";
-        readonly required: true;
-    };
     readonly limitations: {
         readonly type: "array";
         readonly items: {
@@ -1703,6 +1695,14 @@ export declare const knowledgeBatchReportParameters: {
             readonly type: "string";
         };
         readonly title: "Unresolved Questions";
+    };
+    readonly key_evidence_ids: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly title: "Key Evidence Ids";
+        readonly required: true;
     };
 };
 export declare const knowledgeCommitParameters: {
@@ -2025,22 +2025,6 @@ export declare const knowledgeCommitParameters: {
                     readonly title: "Status";
                     readonly required: true;
                 };
-                readonly support_evidence_ids: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Support Evidence Ids";
-                    readonly required: true;
-                };
-                readonly counter_evidence_ids: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Counter Evidence Ids";
-                    readonly required: true;
-                };
                 readonly check_id: {
                     readonly type: "string";
                     readonly title: "Check Id";
@@ -2062,6 +2046,22 @@ export declare const knowledgeCommitParameters: {
                     };
                     readonly description: "仅列当前条目实际有证据的子数据集。";
                     readonly title: "Dataset Ids";
+                    readonly required: true;
+                };
+                readonly support_evidence_ids: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                    };
+                    readonly title: "Support Evidence Ids";
+                    readonly required: true;
+                };
+                readonly counter_evidence_ids: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                    };
+                    readonly title: "Counter Evidence Ids";
                     readonly required: true;
                 };
             };

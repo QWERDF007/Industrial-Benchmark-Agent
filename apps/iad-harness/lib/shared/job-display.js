@@ -1,8 +1,17 @@
+export const JOB_POLL_INTERVAL = 1200;
+export const jobIsActive = (job) => !!job && ['PENDING', 'RUNNING'].includes(job.status);
 const jobTimeFormat = new Intl.DateTimeFormat('zh-CN', {
     year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
 });
 export function formatJobTime(value) {
     return jobTimeFormat.format(new Date(value));
+}
+export function formatJobElapsed(job, now = Date.now()) {
+    const end = job.finished_at ? Date.parse(job.finished_at) : job.status === 'RUNNING' ? now : null;
+    if (!job.started_at || end === null)
+        return '—';
+    const seconds = Math.max(0, Math.floor((end - Date.parse(job.started_at)) / 1000));
+    return Number.isFinite(seconds) ? `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}` : '—';
 }
 export const jobStatuses = {
     PENDING: "等待执行", RUNNING: "执行中", COMPLETED: "已完成", PARTIAL: "部分成功",

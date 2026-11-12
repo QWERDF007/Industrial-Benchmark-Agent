@@ -1,21 +1,15 @@
-import React, {useEffect, useState} from 'react';
+import React from 'react';
 import type {JobSnapshot} from '../../shared/contracts.js';
-import {formatJobTime,jobPhases,jobStatuses,jobWorkflow} from '../../shared/job-display.js';
+import {formatJobElapsed,formatJobTime,jobPhases,jobStatuses,jobWorkflow} from '../../shared/job-display.js';
+import {useJobClock} from '../useJobClock.js';
 
 
 export function JobDetail({job,stale=false}: {job:JobSnapshot;stale?:boolean}) {
-  const [now,setNow]=useState(Date.now);
-  useEffect(()=>{
-    if(job.status!=='RUNNING')return;
-    setNow(Date.now());
-    const timer=setInterval(()=>setNow(Date.now()),1000);
-    return()=>clearInterval(timer);
-  },[job.run_id,job.status]);
+  const now=useJobClock(job.status==='RUNNING');
   const workflow=jobWorkflow(job,now),index=workflow.index;
   const failed=['FAILED','PARTIAL','INTERRUPTED'].includes(job.status), pending=job.status==='PENDING';
   const phase=jobPhases[job.phase || ''] || job.phase || '未记录具体执行阶段';
-  const seconds=job.started_at?Math.max(0,Math.floor(((job.finished_at?Date.parse(job.finished_at):now)-Date.parse(job.started_at))/1000)):null;
-  const elapsed=seconds===null?'—':`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
+  const elapsed=formatJobElapsed(job,now);
   const meta=[['作业 ID',job.run_id],['提交时间',job.submitted_at?formatJobTime(job.submitted_at):'未记录'],
     ...(job.model_name?[['模型',job.model_name]]:[]),['开始时间',job.started_at?formatJobTime(job.started_at):'未开始'],['耗时',elapsed],
     ['样本进度',`${job.completed} / ${job.total_samples}${job.failed?`，失败 ${job.failed}`:''}`],

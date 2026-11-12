@@ -29,7 +29,7 @@ test('mutual candidates keep marked, omitted and insufficient judgments in two a
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
       wire.push(body);
       const {context,outputs,pages}=auditMessages(body);
-      if(context?.phase==='report'){respondFixtureTools(res,[auditReportTool(context,outputs)]);return;}
+      if(context?.phase){respondFixtureTools(res,[auditReportTool(context,outputs)]);return;}
       if(outputs.some(value=>value?.execution_status==='incomplete')){
         res.writeHead(200,{'Content-Type':'text/event-stream'});
         res.end('data: '+JSON.stringify({choices:[{index:0,delta:{role:'assistant',content:'必要观察未完成，已保存线索。'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');return;
@@ -114,7 +114,7 @@ for filename in (Path(sys.argv[1])/'images').glob('*.png'):
     assert.equal(new Set(detail.evidence.map(item=>item.sample_id)).size,2);
   }
   assert.equal(wire.length,7);assert.deepEqual(errors,[]);
-  const html=await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text();assert.ok(html.includes('划痕漏标疑点'));
+  const html=await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text();assert.ok(html.includes('覆盖范围需复核'));
   const firstReport=await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json();
   insufficient=true;expectedConsistencyRun=laterCheck.run_id;
   const secondResponse=await fetch(base+'/audit/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
@@ -127,14 +127,15 @@ for filename in (Path(sys.argv[1])/'images').glob('*.png'):
   const secondReport=await(await fetch(base+'/audit/jobs/'+second.run_id+'/report')).json();
   assert.equal(secondReport.audited_samples,1);assert.equal(secondReport.insufficient_samples,1);assert.equal(secondReport.suspect_samples,0);
   const secondHtml=await(await fetch(base+'/audit/jobs/'+second.run_id+'/export')).text();
-  assert.ok(secondHtml.includes('当前局部细节不足以判断标注完整性。'));
-  assert.ok(secondHtml.includes('当前细节无法消解标注范围的不确定性。'));
+  assert.ok(secondHtml.includes('未完成范围不能视为正常。'));
+  const incomplete=(await bridge.execute('audit_agent_samples',{run_id:second.run_id})).samples.find(item=>item.result?.execution_status==='incomplete');
+  assert.equal(incomplete.result.conclusion,'当前局部细节不足以判断标注完整性。');
   assert.ok(!secondHtml.includes('划痕漏标疑点'));assert.notEqual(secondHtml,html);
   const expected=new Map([[job.run_id,check.run_id],[second.run_id,laterCheck.run_id]]),sessions=new Set();
   for(const body of wire){
     const {context}=auditMessages(body);
-    sessions.add(context.session_id);
-    if(context.phase==='report')continue;
+    sessions.add(context.session_id||context.job_id);
+    if(context.phase)continue;
     assert.equal(context.consistency.job_id,expected.get(context.job_id));
   }
   assert.equal(sessions.size,6);

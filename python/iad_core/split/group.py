@@ -41,6 +41,12 @@ class DisjointSetUnion:
                 self.rank[rx] += 1
 
 
+def physical_sample_key(sample: Sample, scope: str = 'batch') -> str | None:
+    if not sample.physical_sample_id:
+        return None
+    return f'{sample.batch_id}_{sample.physical_sample_id}' if scope=='batch' and sample.batch_id else sample.physical_sample_id
+
+
 def build_split_groups(
     samples: List[Sample],
     verified_pairs: Optional[List[Tuple[str, str]]] = None,
@@ -68,11 +74,8 @@ def build_split_groups(
     # 1. Union by physical_sample_id considering physical_sample_scope
     phys_map: Dict[str, List[str]] = {}
     for s in samples:
-        if s.physical_sample_id:
-            if physical_sample_scope == "batch" and s.batch_id:
-                phys_key = f"{s.batch_id}_{s.physical_sample_id}"
-            else:
-                phys_key = s.physical_sample_id
+        phys_key = physical_sample_key(s,physical_sample_scope)
+        if phys_key:
             phys_map.setdefault(phys_key, []).append(s.sample_id)
 
     for p_id, s_ids in phys_map.items():

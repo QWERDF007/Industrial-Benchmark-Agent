@@ -1,6 +1,6 @@
 import { conflictCategories, modelConclusionLabels } from '../shared/consistency.parameters.generated.js';
 import { mediaUrl, request } from './api.js';
-export const consistencyImageGroups = { NO_CANDIDATES: '无候选', NO_ELIGIBLE_CANDIDATES: '无有效候选' };
+export const consistencyImageGroups = { NO_CANDIDATES: '无候选', NO_ELIGIBLE_CANDIDATES: '无有效候选', PROGRAM_CONSISTENT: '一致' };
 export const initialConsistencyFilters = { search: '', model: 'all', agreement: 'all', review: 'all' };
 export class ConsistencyView {
     static modelConclusion(value, verdict) {
@@ -13,9 +13,9 @@ export class ConsistencyView {
             return null;
         return program === model || program === modelConclusionLabels[model] ? 'same' : 'different';
     }
-    static filter(items, filters, reason) {
+    static filter(items, filters, group) {
         const search = filters.search.trim().toLowerCase();
-        return items.filter(item => (!reason || item.reason === reason)
+        return items.filter(item => (!group || (group === 'PROGRAM_CONSISTENT' ? item.type === '一致' : item.reason === group))
             && (!search || item.filename.toLowerCase().includes(search))
             && (filters.model === 'all' || item.model.modelType === filters.model)
             && (filters.agreement === 'all' || item.agreement === filters.agreement)

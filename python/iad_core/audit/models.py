@@ -2,9 +2,10 @@ from typing import Literal
 from uuid import UUID
 
 from pydantic import Field, RootModel, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence
-from iad_core.analysis.models import AnalysisCoverageSummary, AnalysisKnowledgeCheck, FrozenAnalysisDirection
+from iad_core.analysis.models import AnalysisCoverageSummary, AnalysisKnowledgeCheck
 from iad_core.consistency.agent_result_models import AnchorEvidenceReference, AnchorResultDetail, AnchorResultSummary
 from iad_core.consistency.agent_models import AnchorResult
 from iad_core.consistency.agent_review_models import AnchorAssessmentRecord, AnchorObservation
@@ -16,9 +17,15 @@ from iad_core.workbench.job_models import JobStatus
 from iad_core.workbench.calls import ModelCallError
 from iad_core.workbench.model_profile import FrozenModelRole
 from iad_core.workbench.module_settings import AuditSettingsValues
-from iad_core.audit.prompt_text import DEFAULT_AUDIT_USER_PROMPT, DEFAULT_AUDIT_REPORT_PROMPT
+from iad_core.audit.prompt_text import DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDIT_SYSTEM_PROMPT
+from iad_core.analysis.prompt_models import AnalysisRolePrompts
+from iad_core.analysis.evidence_models import ContextPolicy, AnalysisEvidenceCandidate
+from iad_core.audit.delegation_models import AuditBatch, AuditRecheck, AuditHypothesisAssessment, AuditVisualFeature
+from iad_core.audit.profile_models import AuditDatasetProfile
 from iad_core.consistency.annotation_issues import IssueType
 from iad_core.workbench.audit_result_models import AuditSampleItem
+from iad_core.audit.report_models import AuditReportPrompts
+from iad_core.evidence.registrations import RegistrationMediaQuery
 
 
 class AuditKnowledgeSelection(AnalysisModel):
@@ -27,29 +34,19 @@ class AuditKnowledgeSelection(AnalysisModel):
     entry_ids: list[NonBlankText]
 
 
-class AuditAgentStart(AnalysisModel):
+class AuditAgentStart(AuditReportPrompts):
     submission_id: UUID
     subset_ids: list[NonBlankText] = Field(min_length=1)
     consistency_job_id: NonBlankText
     knowledge: AuditKnowledgeSelection | None = None
-    instruction: NonBlankText = DEFAULT_AUDIT_USER_PROMPT
-    system_prompt: NonBlankText | None = None
-    report_instruction: NonBlankText = DEFAULT_AUDIT_REPORT_PROMPT
+    observer_prompt: AnalysisRolePrompts = Field(default_factory=lambda:AnalysisRolePrompts(
+        system_prompt=OBSERVER_AUDIT_SYSTEM_PROMPT,user_prompt=DEFAULT_AUDIT_USER_PROMPT))
+    benchmark_build_id: NonBlankText | None = None
 
 
 class AuditSelectedCheck(AnalysisModel):
     check: AnalysisKnowledgeCheck | KnowledgeCheck
     review: KnowledgeCheckReview
-
-
-class LegacyAuditKnowledge(AnalysisModel):
-    selection: AuditKnowledgeSelection
-    summary: str
-    limitations: list[str]
-    unresolved_questions: list[str] = Field(default_factory=list)
-    directions: list[FrozenAnalysisDirection] = Field(default_factory=list)
-    entries: list[AuditSelectedCheck]
-    evidence: list[KnowledgeEvidence]
 
 
 class AuditKnowledgeScope(AnalysisModel):
@@ -76,33 +73,22 @@ class AuditKnowledge(AnalysisModel):
     evidence: list[KnowledgeEvidence]
 
 
-FrozenAuditKnowledge = AuditKnowledge | LegacyAuditKnowledge
-
-
 class AuditAgentConfiguration(AnalysisModel):
     settings_revision: int
     settings: AuditSettingsValues
 
 
 class AuditWorkflowSnapshot(AuditAgentConfiguration):
-    schema_version: Literal[1, 2, 3] = 1
+    schema_version: Literal[4] = 4
+    context_policy: ContextPolicy = 'legacy'
     manifest: AnalysisManifest
     agent: FrozenModelRole
-    instruction: NonBlankText
-    system_prompt: NonBlankText | None = None
-    report_instruction: NonBlankText | None = None
+    report_instruction: NonBlankText
     consistency_job_id: str
-    knowledge: FrozenAuditKnowledge | None
-
-
-class LegacyAuditFinding(AnalysisModel):
-    finding_id: NonBlankText
-    description: NonBlankText
-    location: NonBlankText
-    check_ids: list[str] = Field(default_factory=list,description='仅引用本场选中知识的check_id；无选中知识或独立发现时为空，不填写自拟图像检查项。')
-    evidence_ids: list[str] = Field(min_length=1)
-    normal_explanation: str
-    limitations: list[str]
+    knowledge: AuditKnowledge | None
+    master_prompt: AnalysisRolePrompts
+    observer_prompt: AnalysisRolePrompts
+    dataset_profile: AuditDatasetProfile
 
 
 class AuditCheckAssessment(AnalysisModel):
@@ -112,20 +98,14 @@ class AuditCheckAssessment(AnalysisModel):
     evidence_ids: list[str] = Field(description='本次实际观察的完整原图身份；局部图仅用于观察，不单独引用。')
 
 
-class LegacyAuditFinal(AnalysisModel):
-    state: Literal['normal', 'suspect', 'insufficient'] = Field(
-        description='normal表示现有标注与可见图像相符，包括已正确标注的缺陷；suspect表示可见标注问题需复核；insufficient表示证据不足以判断标注是否正确。')
-    analysis: NonBlankText
-    conclusion: NonBlankText
-    basis: list[str]
-    evidence_ids: list[str] = Field(min_length=1,
-        description='本场实际打开并观察的完整原图ID，原始标注及全部局部视图属于该原图，不单独引用裁图或掩膜。')
-    check_assessments: list[AuditCheckAssessment] = Field(description='恰好覆盖全部已选check_id，各有观察原因；未选择知识时为空数组。')
-    findings: list[LegacyAuditFinding] = Field(description='本图全部需要复核的标注问题，无疑点时为空数组，不按数量截断。')
+class AuditFinding(AnalysisModel):
+    finding_id: NonBlankText
+    description: NonBlankText
+    location: NonBlankText
+    check_ids: list[str] = Field(default_factory=list,description='仅引用本场选中知识的check_id；无选中知识或独立发现时为空，不填写自拟图像检查项。')
+    evidence_ids: list[str] = Field(min_length=1)
+    normal_explanation: str
     limitations: list[str]
-
-
-class AuditFinding(LegacyAuditFinding):
     type: IssueType
     annotation_ids: list[str] = Field(default_factory=list,description='引用当前主图真实annotation_id；类别、多标、位置和合并至少1个，拆分至少2个，少标或图像级可以为空。')
     consistency_issue_refs: list[str] = Field(default_factory=list,description='只引用本图上游result.issues中的真实issue_id，独立发现且不采纳上游问题时为空。')
@@ -136,7 +116,6 @@ class AuditFinding(LegacyAuditFinding):
         if len(set(self.annotation_ids)) != len(self.annotation_ids) or len(self.annotation_ids) < minimum:
             raise ValueError('疑点必须引用本图实际标注对象，拆分至少涉及两个原始对象')
         return self
-
 
 
 class AuditConsistencyAssessment(AnalysisModel):
@@ -169,6 +148,10 @@ class AuditFinal(AnalysisModel):
     consistency_review: list[AuditConsistencyAssessment] = Field(description='恰好处理本图上游result.issues中的每个issue_id一次；无上游问题时为空。supported须由findings关联，unsupported不能作为本图疑点来源。')
     findings: list[AuditFinding]
     observations: list[AuditObservation] = Field(default_factory=list, description='有理解价值但不足以形成质量疑点的简短观察，不计入疑点，也不改变业务结论；不因缺少类别语义或假设规范而填写。')
+    hypothesis_assessments: list[AuditHypothesisAssessment] = Field(default_factory=list)
+    visual_features: list[AuditVisualFeature] = Field(default_factory=list)
+    selected_evidence: list[AnalysisEvidenceCandidate] = Field(default_factory=list,
+        description='推荐供主Agent复看的少数完整原图及选择理由，可为空；不自动成为正式精选，不重复另一份精选ID列表。')
     limitations: list[str]
 
     @model_validator(mode='after')
@@ -186,6 +169,10 @@ class AuditFinal(AnalysisModel):
         return self
 
 
+class AuditLegacyFinal(AuditFinal):
+    selected_evidence: SkipJsonSchema[list[AnalysisEvidenceCandidate]] = Field(default_factory=list, exclude=True)
+
+
 class AuditSampleRun(AnalysisModel):
     job_id: str
     sample_id: str
@@ -194,7 +181,14 @@ class AuditSampleRun(AnalysisModel):
     session_created: bool
     state: JobStatus
     consistency: AnchorResultDetail
-    result: AuditFinal | LegacyAuditFinal | None = None
+    result: AuditFinal | None = None
+    result_revision: int = 0
+
+
+class AuditResultVersion(AnalysisModel):
+    revision: int
+    final: AuditFinal
+    review_id: str | None
 
 
 class AuditConsistencyContext(AnchorResultSummary):
@@ -212,13 +206,25 @@ class AuditAgentContext(AnalysisModel):
     session_id: str
     target: AnalysisRegistration
     consistency: AuditConsistencyContext
-    knowledge: FrozenAuditKnowledge | None
+    knowledge: AuditKnowledge | None
     saved_progress: AuditFinal | None = None
+    batch: AuditBatch | None = None
+    review: AuditRecheck | None = None
+    prior_result: AuditFinal | None = None
 
 
 class AuditCommit(AnalysisModel):
     commit_key: NonBlankText = Field(description='本次图级终稿的幂等键，仅同内容重传复用。')
+    final: AuditLegacyFinal
+
+
+class AuditEvidenceCommit(AuditCommit):
     final: AuditFinal
+
+
+class AuditMediaQuery(RegistrationMediaQuery):
+    view: Literal['whole', 'annotation_rois', 'all'] = Field(default='whole',
+        description='whole仅完整原图和标注元数据；annotation_rois为全部标注局部；all显式读取整图及全部必需局部。')
 
 
 class AuditMediaView(AnalysisModel):
@@ -229,8 +235,8 @@ class AuditMediaView(AnalysisModel):
 
 class NativeAuditSampleDetail(AnalysisModel):
     sample: AuditSampleItem
-    final: AuditFinal | LegacyAuditFinal | None
-    knowledge: FrozenAuditKnowledge | None
+    final: AuditFinal | None
+    knowledge: AuditKnowledge | None
     consistency: AnchorResultDetail
     evidence: list[AuditMediaView]
     errors: list[str]
@@ -251,7 +257,10 @@ class AuditEvidenceQuery(RootModel[NativeAuditEvidenceReference | HistoricalAudi
     pass
 
 
+class AuditPromptSection(AnalysisModel):
+    title: str
+    text: str
+
+
 class AuditJobPrompts(AnalysisModel):
-    system_prompt: str
-    instruction: str
-    report_instruction: str
+    sections: list[AuditPromptSection]

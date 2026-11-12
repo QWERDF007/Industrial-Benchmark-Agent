@@ -28,7 +28,7 @@ export async function createAuditAgentHost(root,endpoint,{onCommit,onError=()=>{
   const ctx=new Context();new LlmRuntime(ctx);new SystemPrompt(ctx,{});new ToolRuntime(ctx);
   new NativeMediaAttachments(ctx,path.join(root,'public-evidence'));
   const providers={fixture:{api:protocol,baseURL:endpoint,apiKeyEnv:'AUDIT_TEST_KEY',
-    models:[{id:'native-audit',input:protocol==='openai-responses'?['text']:['text','image'],contextWindow:65536,...(optionalOutput?{}:{maxTokens:4096}),...(protocol==='openai-responses'?{reasoningEfforts:{high:'high'}}:{})}]}};
+    models:[{id:'native-audit',input:['text','image'],contextWindow:65536,...(optionalOutput?{}:{maxTokens:4096}),...(protocol==='openai-responses'?{reasoningEfforts:{high:'high'}}:{})}]}};
   ctx.provide('settings',{configure:()=>()=>{},describe:()=>[{ns:'llm-pi-ai',revision:1,value:{providers}}]});
   ctx.provide('credentials',{resolve:async()=>({value:'audit-test-key'})});
   const plugin=await ctx.plugin(piAi,{providers});

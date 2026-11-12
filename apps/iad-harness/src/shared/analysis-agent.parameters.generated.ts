@@ -836,14 +836,6 @@ export const explorationFinalizeParameters = {
           "title": "Rationale",
           "required": true
         },
-        "evidence_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Evidence Ids",
-          "required": true
-        },
         "limitations": {
           "type": "array",
           "items": {
@@ -863,6 +855,14 @@ export const explorationFinalizeParameters = {
             "type": "string"
           },
           "title": "Dataset Ids",
+          "required": true
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
           "required": true
         },
         "counter_evidence_ids": {
@@ -1141,22 +1141,6 @@ export const knowledgeFinalizeParameters = {
           "title": "Status",
           "required": true
         },
-        "support_evidence_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Support Evidence Ids",
-          "required": true
-        },
-        "counter_evidence_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Counter Evidence Ids",
-          "required": true
-        },
         "check_id": {
           "type": "string",
           "title": "Check Id",
@@ -1178,6 +1162,22 @@ export const knowledgeFinalizeParameters = {
           },
           "description": "仅列当前条目实际有证据的子数据集。",
           "title": "Dataset Ids",
+          "required": true
+        },
+        "support_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Support Evidence Ids",
+          "required": true
+        },
+        "counter_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Counter Evidence Ids",
           "required": true
         }
       },
@@ -1538,14 +1538,6 @@ export const explorationCommitParameters = {
           "title": "Rationale",
           "required": true
         },
-        "evidence_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Evidence Ids",
-          "required": true
-        },
         "limitations": {
           "type": "array",
           "items": {
@@ -1565,6 +1557,14 @@ export const explorationCommitParameters = {
             "type": "string"
           },
           "title": "Dataset Ids",
+          "required": true
+        },
+        "evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
           "required": true
         },
         "counter_evidence_ids": {
@@ -1871,14 +1871,6 @@ export const knowledgeBatchReportParameters = {
     "title": "Discovery Summary",
     "required": true
   },
-  "key_evidence_ids": {
-    "type": "array",
-    "items": {
-      "type": "string"
-    },
-    "title": "Key Evidence Ids",
-    "required": true
-  },
   "limitations": {
     "type": "array",
     "items": {
@@ -1892,6 +1884,14 @@ export const knowledgeBatchReportParameters = {
       "type": "string"
     },
     "title": "Unresolved Questions"
+  },
+  "key_evidence_ids": {
+    "type": "array",
+    "items": {
+      "type": "string"
+    },
+    "title": "Key Evidence Ids",
+    "required": true
   }
 } as const;
 export const knowledgeCommitParameters = {
@@ -2245,22 +2245,6 @@ export const knowledgeCommitParameters = {
           "title": "Status",
           "required": true
         },
-        "support_evidence_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Support Evidence Ids",
-          "required": true
-        },
-        "counter_evidence_ids": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "title": "Counter Evidence Ids",
-          "required": true
-        },
         "check_id": {
           "type": "string",
           "title": "Check Id",
@@ -2282,6 +2266,22 @@ export const knowledgeCommitParameters = {
           },
           "description": "仅列当前条目实际有证据的子数据集。",
           "title": "Dataset Ids",
+          "required": true
+        },
+        "support_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Support Evidence Ids",
+          "required": true
+        },
+        "counter_evidence_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "Counter Evidence Ids",
           "required": true
         }
       },

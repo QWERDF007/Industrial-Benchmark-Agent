@@ -2,10 +2,12 @@ import {useEffect,useRef} from 'react';
 import {useQuery} from '@tanstack/react-query';
 import {message,request} from './api.js';
 import {queryClient} from './query-client.js';
+import {JOB_POLL_INTERVAL} from '../shared/job-display.js';
 
-export function useResource<T>(path:string|null,revision:number|string=0) {
+export function useResource<T>(path:string|null,revision:number|string=0,live=false) {
   const result=useQuery({queryKey:['iad','resource',path],enabled:!!path,
     queryFn:({signal})=>request<T>(path!,undefined,undefined,signal),
+    refetchInterval:live?JOB_POLL_INTERVAL:false,refetchOnWindowFocus:live,
   },queryClient);
   const previous=useRef({path,revision});
   useEffect(()=>{

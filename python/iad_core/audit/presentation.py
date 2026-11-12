@@ -12,8 +12,8 @@ ModelT = TypeVar('ModelT',bound=BaseModel)
 
 class AuditNarrative:
     TEXT_FIELDS = frozenset({'analysis','conclusion','basis','limitations','description','location',
-        'normal_explanation','reason','scope_analysis','issue_analysis','consistency_analysis',
-        'knowledge_analysis','boundary_analysis','title','normal_explanations','findings','observations','consistency_review','knowledge_assessments'})
+        'normal_explanation','reason','consistency_analysis',
+        'knowledge_analysis','coverage_analysis','independence_analysis','review_priorities','visual_signature','annotation_relation','scope','key_difference','unresolved_question','next_batch_focus','missing_conditions','title'})
 
     def __init__(self, state, run_id):
         snapshot = state.snapshot(run_id)
@@ -48,10 +48,12 @@ class AuditNarrative:
                 for finding in sample.result.findings:
                     self.names[finding.finding_id] = '本图疑点'
         with state.db.connection() as connection:
-            report = connection.execute('SELECT session_id,groups_json FROM audit_report_runs WHERE job_id=?',(run_id,)).fetchone()
+            report = connection.execute('SELECT session_id FROM audit_report_runs WHERE job_id=?',(run_id,)).fetchone()
             if report:
                 self.names[report[0]] = '报告会话'
-                self.names.update({group['group_id']:group['title'] for group in json.loads(report[1])})
+            latest=connection.execute('SELECT submission_json FROM audit_global_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1',(run_id,)).fetchone()
+            if latest:
+                self.names.update({group['group_id']:group['title'] for group in json.loads(latest[0])['discoveries']})
             for row in connection.execute('SELECT media_json FROM audit_sample_media WHERE job_id=?',(run_id,)):
                 from iad_core.evidence.registrations import PreparedRegistration
                 for item in PreparedRegistration.model_validate_json(row[0]).images:
@@ -78,21 +80,27 @@ class AuditPresentation:
         self.queries = queries
 
     def report(self, run_id):
+        from iad_core.audit.evidence import AuditEvidence
         report = self.queries.report_data(run_id)
         narrative = AuditNarrative(self.queries.state,run_id)
+        evidence = AuditEvidence(self.queries.state)
         groups = {}
-        for group in report.groups:
+        evidence_sets=[(item.group_id,item.representatives) for item in report.discoveries]
+        evidence_sets.extend(('capability:'+item.tag,item.representatives) for item in report.capabilities)
+        evidence_sets.extend((f'coverage:{index}',item.representatives) for index,item in enumerate(report.coverage_topics))
+        evidence_sets.extend(('consistency:'+item.issue_type,item.representatives) for item in report.consistency_analyses)
+        for group_id,representatives in evidence_sets:
             images, counts = [], Counter()
-            for reference in group.representatives:
-                detail = self.queries.sample(run_id,reference.sample_id)
-                image = next((item for item in detail.evidence if item.sample_id==reference.sample_id
-                    and item.image.is_whole_image and item.image.representation=='raw' and item.source),None)
+            for reference in representatives:
+                media = evidence.prepare(run_id,reference.sample_id,reference.sample_id)
+                image = next((item for item in media.images if item.image.is_whole_image and item.image.representation=='raw'),None)
                 if image is None:
                     raise LookupError('报告引用的完整原图及原始标注未持久化')
                 counts[reference.role] += 1
                 caption = ('典型证据' if reference.role=='representative' else '对照证据')+f' {counts[reference.role]}'
                 images.append(AuditReportImage(sample_id=reference.sample_id,role=reference.role,caption=caption,
-                    reason=narrative.text(reference.reason),image=image.image,source=image.source))
-            groups[group.group_id] = images
+                    reason=narrative.text(reference.reason),image=image.image,
+                    source=self.queries.state.record(run_id,reference.sample_id,reference.sample_id)))
+            groups[group_id] = images
         return narrative.project(report.model_copy(update={'dataset_names':narrative.dataset_names,
             'knowledge_titles':narrative.knowledge_titles,'evidence_groups':groups}))

@@ -127,12 +127,19 @@ def dataset(tmp_path):
 
 
 @pytest.fixture
-def agent_jobs(dataset):
+def agent_jobs(dataset, monkeypatch):
     from iad_core.analysis.jobs import AnalysisAgentJobs
     from iad_core.workbench.runtime import WorkbenchRuntime
     db, _, config = dataset
     runtime = WorkbenchRuntime(db)
     jobs = AnalysisAgentJobs(runtime)
+    start = jobs.start
+    def start_legacy(*args, **kwargs):
+        job = start(*args, **kwargs)
+        with db.connection() as connection:
+            connection.execute("UPDATE analysis_workflow_runs SET snapshot_json=json_remove(snapshot_json,'$.context_policy','$.context_instruction') WHERE job_id=?", (job['run_id'],))
+        return job
+    monkeypatch.setattr(jobs, 'start', start_legacy)
     from iad_core.workbench.module_settings import ModuleSettings
     ModuleSettings(db).save({'module': 'exploration', 'expected_revision': 0, 'settings': {
         'model': {'provider_id': 'swift-30003', 'model_id': 'fixture'}, 'batch_size': 2}})

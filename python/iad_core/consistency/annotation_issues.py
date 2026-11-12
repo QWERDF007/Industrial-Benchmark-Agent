@@ -3,7 +3,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
-from iad_core.consistency.conflict_categories import ConflictCategory
+from iad_core.consistency.conflict_categories import ConflictCategory, CONFLICT_CATEGORY_DEFAULTS, CONFLICT_CATEGORY_LABELS
 
 
 IssueType = Literal['image_label_mismatch', 'category_mismatch', 'extra_annotation', 'missing_annotation',
@@ -12,6 +12,11 @@ IssueType = Literal['image_label_mismatch', 'category_mismatch', 'extra_annotati
 ISSUE_CATEGORIES = {'image_label_mismatch': ConflictCategory.CATEGORY, 'category_mismatch': ConflictCategory.CATEGORY,
     'extra_annotation': ConflictCategory.EXTRA, 'missing_annotation': ConflictCategory.MISSING,
     'position_difference': ConflictCategory.POSITION, 'split': ConflictCategory.SPLIT, 'merge': ConflictCategory.MERGE}
+
+ISSUE_TYPES_BY_FORMAT: dict[str, list[IssueType]] = {format: [kind for category in CONFLICT_CATEGORY_LABELS
+    if category in categories for kind, value in ISSUE_CATEGORIES.items()
+    if value == category and (kind == 'image_label_mismatch') == (format == 'folder_classification')]
+    for format, categories in CONFLICT_CATEGORY_DEFAULTS.items()}
 
 
 class IssueEvidenceFields(AnalysisModel):

@@ -10,12 +10,13 @@ import {auditStateLabels,auditIssueLabels,auditAssessmentLabels} from '../../sha
 import {buildHierarchyGroups, getDatasetGroupId} from '../dataset-hierarchy.js';
 import {useJobs} from '../useJobs.js';
 import {useResource} from '../useResource.js';
-import {useAuditJobSelection} from '../useAuditJobSelection.js';
+import {useJobList} from '../useJobList.js';
 import {useWorkspace} from '../workspace.js';
 import {DatasetScopeSelector} from './DatasetScopeSelector.js';
 import {PageTabs} from './layout/PageTabs.js';
 import {RefreshIconButton, ClearFilterButton} from './CommonFilterControls.js';
-import {AuditJobs} from './AuditJobs.js';
+import {JobList} from './JobList.js';
+import {AuditStatisticsDialog} from './AuditStatisticsDialog.js';
 import {AuditReport} from './AuditReport.js';
 import {AuditSampleDialog} from './AuditSampleDialog.js';
 import {auditSampleImage} from './AuditSampleMedia.js';
@@ -40,8 +41,9 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
   const [revision, setRevision] = useState(0);
   const [promptJob,setPromptJob]=useState('');
   const progress = useCallback(() => setRevision(value => value + 1), []);
-  const jobs = useJobs('audit', ids, progress, '', refreshRevision);
-  const selection = useAuditJobSelection(jobs.jobs, scope);
+  const jobs = useJobs('audit', ids, progress, workspace.view('industrial-audit').job, refreshRevision);
+  const selection = useJobList(jobs.jobs,scope,workspace.view('industrial-audit').job,job=>workspace.updateView('industrial-audit',{job:job.root_run_id}));
+  const [statisticsJob,setStatisticsJob]=useState<JobSnapshot|null>(null);
   const job = selection.selected;
   const [issueType,setIssueType]=useState(''),[sourceAssessment,setSourceAssessment]=useState('');
   const [search, setSearch] = useState(''), [status, setStatus] = useState('all'), [page, setPage] = useState(1);
@@ -61,7 +63,7 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
   const query = new URLSearchParams({page: String(page), page_size: '18', status, search,...(issueType?{issue_type:issueType}:{}),...(sourceAssessment?{consistency_assessment:sourceAssessment}:{})});
   const result = useResource<AuditSamplePage>(job && !createOpen && tab === 'audit'
     ? `/audit/jobs/${encodeURIComponent(job.run_id)}/samples?${query}` : null, revision);
-  const hasResults=!!job&&job.total_samples>0;
+  const hasResults=!!job&&job.total_samples>0&&!result.data?.archived;
   const setupDatasets = datasets.filter(item => ids.includes(item.dataset_id));
   const refresh = () => {jobs.refresh(); progress(); onDatasetsChanged();};
   return <div id="audit-page">
@@ -73,8 +75,11 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
         }}>新建审计</Button>}</WorkbenchHeader>
     <DatasetScopeSelector groups={hierarchy} selectedGroupId={groupId} onGroupChange={next => {
       setGroupId(next); setSelectedIds(datasets.filter(item => getDatasetGroupId(item) === next).slice(0, 1).map(item => item.dataset_id));
-    }} childDatasets={children} selectedChildIds={ids} onChildToggle={id => setSelectedIds(previous => previous.includes(id)
-      ? previous.filter(value => value !== id) : [...previous, id])} disabled={createOpen} className="audit-scope"
+      workspace.updateView('industrial-audit',{job:''});
+    }} childDatasets={children} selectedChildIds={ids} onChildToggle={id => {
+      setSelectedIds(previous => previous.includes(id)?previous.filter(value=>value!==id):[...previous,id]);
+      workspace.updateView('industrial-audit',{job:''});
+    }} disabled={createOpen} className="audit-scope"
       groupId="audit-dataset" childId="audit-child-trigger" childMenuId="audit-child-menu">
       <RefreshIconButton onClick={refresh} />
     </DatasetScopeSelector>
@@ -86,9 +91,11 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
         }} /> : <PageTabs<'audit' | 'reports'> label="审计视图" className="audit-tabs"
           items={[{id: 'audit', label: '模型审计'}, {id: 'reports', label: '报告'}]} value={tab} onChange={setTab}>
       <div hidden={tab !== 'audit'}>
-        <AuditJobs loading={jobs.loading} selection={selection} datasets={datasets} onDetails={setJobDetails} onPrompt={job=>setPromptJob(job.run_id)} onDelete={async job=>{
-          await request(`/audit/delete/${encodeURIComponent(job.run_id)}`,{});refresh();
-        }} />
+        <JobList title="审计作业" list={selection} datasets={datasets} loading={jobs.loading} actions={{
+          status:setJobDetails,prompt:job=>setPromptJob(job.run_id),delete:async job=>{
+            await request(`/audit/delete/${encodeURIComponent(job.run_id)}`,{});refresh();
+          },additional:[{id:'statistics',label:'统计',icon:'stats',onClick:setStatisticsJob}],
+        }}/>
         <section className="audit-panel" aria-label="审计结果"><SectionHeading title="审计结果">
           {hasResults&&<div className="audit-filters"><label className="audit-field"><span>文件名</span><input type="search" aria-label="搜索审计图像"
             value={search} onChange={event => {setSearch(event.target.value); setPage(1);}} /></label>
@@ -102,13 +109,15 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
             {!job && <p className="iad-result-empty" role="status">当前没有结果</p>}
             {result.loading && <p className="audit-empty" role="status">正在读取作业图像…</p>}
             {result.error && <p role="alert">{result.error}</p>}
-            {job && result.data && <><div className="iad-thumbnail-grid">{result.data.items.map(item=><ThumbnailCard key={item.sample_id} src={auditSampleImage(item,job.task_id)} label={item.filename}
+            {result.data?.archived&&<p>历史审计已归档，可在报告页下载冻结报告。</p>}
+            {job && result.data && !result.data.archived && <><div className="iad-thumbnail-grid">{result.data.items.map(item=><ThumbnailCard key={item.sample_id} src={auditSampleImage(item,job.task_id)} label={item.filename.split('/').pop()!}
               onClick={()=>setSample(item)} data-sample-id={item.sample_id} />)}</div>
               <Pagination total={result.data.total} page={page} size={18} unit="张图像" onPage={setPage} /></>}
           </div></section>
       </div>
       {tab === 'reports' && <AuditReport key={job?.run_id} job={job} revision={revision} />}
     </PageTabs>}
+    {statisticsJob&&<AuditStatisticsDialog job={jobs.jobs.find(job=>job.run_id===statisticsJob.run_id)||statisticsJob} revision={revision} onClose={()=>setStatisticsJob(null)}/>}
     {promptJob&&<AuditPromptDrawer runId={promptJob} onClose={()=>setPromptJob('')}/>}
     {sample && <AuditSampleDialog key={`${sample.run_id}:${sample.sample_id}`} sample={sample}
       taskId={datasets.find(item=>item.dataset_id===sample.dataset_id)?.task_id || dataset.task_id} onClose={() => setSample(null)} />}

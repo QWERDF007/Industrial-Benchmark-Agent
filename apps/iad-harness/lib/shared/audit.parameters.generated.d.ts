@@ -17,6 +17,260 @@ export declare const auditEvidenceParameters: {
         readonly title: "Suggestion Id";
     };
 };
+export declare const auditBatchParameters: {
+    readonly commit_key: {
+        readonly type: "string";
+        readonly title: "Commit Key";
+        readonly required: true;
+    };
+    readonly batch_number: {
+        readonly type: "integer";
+        readonly title: "Batch Number";
+        readonly required: true;
+    };
+    readonly base_revision: {
+        readonly type: "integer";
+        readonly title: "Base Revision";
+        readonly required: true;
+    };
+    readonly discoveries: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly group_id: {
+                    readonly type: "string";
+                    readonly title: "Group Id";
+                    readonly required: true;
+                };
+                readonly kind: {
+                    readonly type: "string";
+                    readonly enum: readonly ["quality_issue", "visual_pattern", "judgment_boundary"];
+                    readonly title: "Kind";
+                    readonly required: true;
+                };
+                readonly dimension: {
+                    readonly type: "string";
+                    readonly enum: readonly ["annotation_quality", "visual_coverage", "evaluation_difficulty"];
+                    readonly title: "Dimension";
+                    readonly required: true;
+                };
+                readonly status: {
+                    readonly type: "string";
+                    readonly enum: readonly ["pending", "supported", "disputed", "withdrawn"];
+                    readonly title: "Status";
+                    readonly required: true;
+                };
+                readonly title: {
+                    readonly type: "string";
+                    readonly title: "Title";
+                    readonly required: true;
+                };
+                readonly description: {
+                    readonly type: "string";
+                    readonly title: "Description";
+                    readonly required: true;
+                };
+                readonly visual_signature: {
+                    readonly type: "string";
+                    readonly title: "Visual Signature";
+                    readonly required: true;
+                };
+                readonly annotation_relation: {
+                    readonly type: "string";
+                    readonly title: "Annotation Relation";
+                    readonly required: true;
+                };
+                readonly scope: {
+                    readonly type: "string";
+                    readonly title: "Scope";
+                    readonly required: true;
+                };
+                readonly key_difference: {
+                    readonly type: "string";
+                    readonly title: "Key Difference";
+                    readonly default: "";
+                };
+                readonly unresolved_question: {
+                    readonly type: "string";
+                    readonly title: "Unresolved Question";
+                    readonly default: "";
+                };
+                readonly next_batch_focus: {
+                    readonly type: "string";
+                    readonly title: "Next Batch Focus";
+                    readonly default: "";
+                };
+                readonly support_refs: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly result_revision: {
+                                readonly type: "integer";
+                                readonly title: "Result Revision";
+                                readonly required: true;
+                            };
+                            readonly kind: {
+                                readonly type: "string";
+                                readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                readonly title: "Kind";
+                                readonly required: true;
+                            };
+                            readonly index: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "integer";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Index";
+                            };
+                        };
+                        readonly title: "AuditResultReference";
+                    };
+                    readonly title: "Support Refs";
+                    readonly required: true;
+                };
+                readonly counter_refs: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly result_revision: {
+                                readonly type: "integer";
+                                readonly title: "Result Revision";
+                                readonly required: true;
+                            };
+                            readonly kind: {
+                                readonly type: "string";
+                                readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                readonly title: "Kind";
+                                readonly required: true;
+                            };
+                            readonly index: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "integer";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Index";
+                            };
+                        };
+                        readonly title: "AuditResultReference";
+                    };
+                    readonly title: "Counter Refs";
+                };
+                readonly representatives: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly role: {
+                                readonly type: "string";
+                                readonly enum: readonly ["representative", "counter"];
+                                readonly description: "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。";
+                                readonly title: "Role";
+                                readonly default: "representative";
+                            };
+                            readonly reason: {
+                                readonly type: "string";
+                                readonly description: "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。";
+                                readonly title: "Reason";
+                                readonly required: true;
+                            };
+                        };
+                        readonly title: "AuditRepresentative";
+                    };
+                    readonly title: "Representatives";
+                };
+            };
+            readonly title: "AuditDiscovery";
+        };
+        readonly title: "Discoveries";
+        readonly required: true;
+    };
+    readonly review_requests: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly sample_id: {
+                    readonly type: "string";
+                    readonly title: "Sample Id";
+                    readonly required: true;
+                };
+                readonly result_revision: {
+                    readonly type: "integer";
+                    readonly title: "Result Revision";
+                    readonly required: true;
+                };
+                readonly reason: {
+                    readonly type: "string";
+                    readonly title: "Reason";
+                    readonly required: true;
+                };
+                readonly conflict_refs: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly result_revision: {
+                                readonly type: "integer";
+                                readonly title: "Result Revision";
+                                readonly required: true;
+                            };
+                            readonly kind: {
+                                readonly type: "string";
+                                readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                readonly title: "Kind";
+                                readonly required: true;
+                            };
+                            readonly index: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "integer";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Index";
+                            };
+                        };
+                        readonly title: "AuditResultReference";
+                    };
+                    readonly title: "Conflict Refs";
+                    readonly required: true;
+                };
+            };
+            readonly title: "AuditReviewRequest";
+        };
+        readonly title: "Review Requests";
+    };
+};
 export declare const auditCommitParameters: {
     readonly commit_key: {
         readonly type: "string";
@@ -258,6 +512,78 @@ export declare const auditCommitParameters: {
                 readonly description: "有理解价值但不足以形成质量疑点的简短观察，不计入疑点，也不改变业务结论；不因缺少类别语义或假设规范而填写。";
                 readonly title: "Observations";
             };
+            readonly hypothesis_assessments: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "object";
+                    readonly additionalProperties: false;
+                    readonly properties: {
+                        readonly group_id: {
+                            readonly type: "string";
+                            readonly title: "Group Id";
+                            readonly required: true;
+                        };
+                        readonly assessment: {
+                            readonly type: "string";
+                            readonly enum: readonly ["supported", "counter", "unconfirmed", "not_applicable"];
+                            readonly title: "Assessment";
+                            readonly required: true;
+                        };
+                        readonly reason: {
+                            readonly type: "string";
+                            readonly title: "Reason";
+                            readonly required: true;
+                        };
+                        readonly evidence_ids: {
+                            readonly type: "array";
+                            readonly items: {
+                                readonly type: "string";
+                            };
+                            readonly title: "Evidence Ids";
+                            readonly required: true;
+                        };
+                    };
+                    readonly title: "AuditHypothesisAssessment";
+                };
+                readonly title: "Hypothesis Assessments";
+            };
+            readonly visual_features: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "object";
+                    readonly additionalProperties: false;
+                    readonly properties: {
+                        readonly kind: {
+                            readonly type: "string";
+                            readonly enum: readonly ["morphology", "location", "size", "contrast", "structural_relation", "instances", "background"];
+                            readonly title: "Kind";
+                            readonly required: true;
+                        };
+                        readonly description: {
+                            readonly type: "string";
+                            readonly title: "Description";
+                            readonly required: true;
+                        };
+                        readonly annotation_ids: {
+                            readonly type: "array";
+                            readonly items: {
+                                readonly type: "string";
+                            };
+                            readonly title: "Annotation Ids";
+                        };
+                        readonly evidence_ids: {
+                            readonly type: "array";
+                            readonly items: {
+                                readonly type: "string";
+                            };
+                            readonly title: "Evidence Ids";
+                            readonly required: true;
+                        };
+                    };
+                    readonly title: "AuditVisualFeature";
+                };
+                readonly title: "Visual Features";
+            };
             readonly limitations: {
                 readonly type: "array";
                 readonly items: {
@@ -267,7 +593,7 @@ export declare const auditCommitParameters: {
                 readonly required: true;
             };
         };
-        readonly title: "AuditFinal";
+        readonly title: "AuditLegacyFinal";
         readonly required: true;
     };
 };
@@ -325,34 +651,53 @@ export declare const auditRecordParameters: {
         readonly title: "State";
     };
 };
-export declare const auditGroupParameters: {
+export declare const auditReportParameters: {
     readonly commit_key: {
         readonly type: "string";
         readonly title: "Commit Key";
         readonly required: true;
     };
-    readonly groups: {
+    readonly discovery_ids: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly title: "Discovery Ids";
+        readonly required: true;
+    };
+    readonly conclusion: {
+        readonly type: "string";
+        readonly title: "Conclusion";
+        readonly required: true;
+    };
+    readonly consistency_analysis: {
+        readonly type: "string";
+        readonly title: "Consistency Analysis";
+        readonly required: true;
+    };
+    readonly knowledge_analysis: {
+        readonly type: "string";
+        readonly title: "Knowledge Analysis";
+        readonly default: "";
+    };
+    readonly coverage_analysis: {
+        readonly type: "string";
+        readonly title: "Coverage Analysis";
+        readonly required: true;
+    };
+    readonly coverage_topics: {
         readonly type: "array";
         readonly items: {
             readonly type: "object";
             readonly additionalProperties: false;
             readonly properties: {
-                readonly group_id: {
+                readonly analysis: {
                     readonly type: "string";
-                    readonly title: "Group Id";
+                    readonly description: "围绕现象、共性、差异与判断边界的综合分析，不写逐图详情。";
+                    readonly title: "Analysis";
                     readonly required: true;
                 };
-                readonly title: {
-                    readonly type: "string";
-                    readonly title: "Title";
-                    readonly required: true;
-                };
-                readonly description: {
-                    readonly type: "string";
-                    readonly title: "Description";
-                    readonly required: true;
-                };
-                readonly issue_refs: {
+                readonly evidence_refs: {
                     readonly type: "array";
                     readonly items: {
                         readonly type: "object";
@@ -363,15 +708,29 @@ export declare const auditGroupParameters: {
                                 readonly title: "Sample Id";
                                 readonly required: true;
                             };
-                            readonly finding_id: {
-                                readonly type: "string";
-                                readonly title: "Finding Id";
+                            readonly result_revision: {
+                                readonly type: "integer";
+                                readonly title: "Result Revision";
                                 readonly required: true;
                             };
+                            readonly kind: {
+                                readonly type: "string";
+                                readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                readonly title: "Kind";
+                                readonly required: true;
+                            };
+                            readonly index: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "integer";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Index";
+                            };
                         };
-                        readonly title: "AuditIssueReference";
+                        readonly title: "AuditResultReference";
                     };
-                    readonly title: "Issue Refs";
+                    readonly title: "Evidence Refs";
                     readonly required: true;
                 };
                 readonly representatives: {
@@ -385,23 +744,214 @@ export declare const auditGroupParameters: {
                                 readonly title: "Sample Id";
                                 readonly required: true;
                             };
-                            readonly finding_id: {
-                                readonly oneOf: readonly [{
-                                    readonly type: "string";
-                                }, {
-                                    readonly type: "null";
-                                }];
-                                readonly title: "Finding Id";
-                            };
                             readonly role: {
                                 readonly type: "string";
                                 readonly enum: readonly ["representative", "counter"];
-                                readonly description: "representative为典型疑点图；counter为已观察的判断边界对照图，不是人工确认的正常真值。";
+                                readonly description: "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。";
                                 readonly title: "Role";
                                 readonly default: "representative";
                             };
                             readonly reason: {
                                 readonly type: "string";
+                                readonly description: "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。";
+                                readonly title: "Reason";
+                                readonly required: true;
+                            };
+                        };
+                        readonly title: "AuditRepresentative";
+                    };
+                    readonly description: "主Agent已实际观察的精选完整原图，数量按信息价值决定，不强行凑图。";
+                    readonly title: "Representatives";
+                };
+                readonly title: {
+                    readonly type: "string";
+                    readonly description: "根据本作业实际观察命名，不加序号，不照搬固定的覆盖主题。";
+                    readonly title: "Title";
+                    readonly required: true;
+                };
+            };
+            readonly title: "AuditCoverageTopic";
+        };
+        readonly description: "本作业有真实图证的覆盖画像主题，标题、条数、正文及选图由实际作业决定。";
+        readonly title: "Coverage Topics";
+    };
+    readonly consistency_analyses: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly analysis: {
+                    readonly type: "string";
+                    readonly description: "围绕现象、共性、差异与判断边界的综合分析，不写逐图详情。";
+                    readonly title: "Analysis";
+                    readonly required: true;
+                };
+                readonly evidence_refs: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly result_revision: {
+                                readonly type: "integer";
+                                readonly title: "Result Revision";
+                                readonly required: true;
+                            };
+                            readonly kind: {
+                                readonly type: "string";
+                                readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                readonly title: "Kind";
+                                readonly required: true;
+                            };
+                            readonly index: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "integer";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Index";
+                            };
+                        };
+                        readonly title: "AuditResultReference";
+                    };
+                    readonly description: "支撑本项分析的当前有效图级记录。没有相关材料时为空并在正文说明。";
+                    readonly title: "Evidence Refs";
+                    readonly required: true;
+                };
+                readonly representatives: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly role: {
+                                readonly type: "string";
+                                readonly enum: readonly ["representative", "counter"];
+                                readonly description: "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。";
+                                readonly title: "Role";
+                                readonly default: "representative";
+                            };
+                            readonly reason: {
+                                readonly type: "string";
+                                readonly description: "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。";
+                                readonly title: "Reason";
+                                readonly required: true;
+                            };
+                        };
+                        readonly title: "AuditRepresentative";
+                    };
+                    readonly description: "主Agent已实际观察的精选完整原图，数量按信息价值决定，不强行凑图。";
+                    readonly title: "Representatives";
+                };
+                readonly issue_type: {
+                    readonly type: "string";
+                    readonly enum: readonly ["image_label_mismatch", "category_mismatch", "extra_annotation", "missing_annotation", "position_difference", "split", "merge"];
+                    readonly description: "沿用本数据格式的现有差异类型，每类单独分析，不合并多标少标或拆分合并。";
+                    readonly title: "Issue Type";
+                    readonly required: true;
+                };
+            };
+            readonly title: "AuditConsistencyAnalysis";
+        };
+        readonly description: "本格式每个适用差异类型各一项；零疑点也如实分析，不将无候选、无有效候选、一致作为类型。";
+        readonly title: "Consistency Analyses";
+    };
+    readonly independence_analysis: {
+        readonly type: "string";
+        readonly title: "Independence Analysis";
+        readonly required: true;
+    };
+    readonly capabilities: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly tag: {
+                    readonly type: "string";
+                    readonly enum: readonly ["representative_test_set", "ordinary_normal", "hard_normal", "near_ok_ng_pair", "tiny_defect", "low_contrast_defect", "structural_relation", "missing_component", "misalignment", "multi_object", "in_domain", "unseen_batch", "lighting_shift"];
+                    readonly title: "Tag";
+                    readonly required: true;
+                };
+                readonly coverage_status: {
+                    readonly type: "string";
+                    readonly enum: readonly ["observed", "candidate", "not_observed", "not_applicable"];
+                    readonly title: "Coverage Status";
+                    readonly required: true;
+                };
+                readonly reason: {
+                    readonly type: "string";
+                    readonly title: "Reason";
+                    readonly required: true;
+                };
+                readonly evidence_refs: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly result_revision: {
+                                readonly type: "integer";
+                                readonly title: "Result Revision";
+                                readonly required: true;
+                            };
+                            readonly kind: {
+                                readonly type: "string";
+                                readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                readonly title: "Kind";
+                                readonly required: true;
+                            };
+                            readonly index: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "integer";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Index";
+                            };
+                        };
+                        readonly title: "AuditResultReference";
+                    };
+                    readonly title: "Evidence Refs";
+                    readonly required: true;
+                };
+                readonly representatives: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly role: {
+                                readonly type: "string";
+                                readonly enum: readonly ["representative", "counter"];
+                                readonly description: "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。";
+                                readonly title: "Role";
+                                readonly default: "representative";
+                            };
+                            readonly reason: {
+                                readonly type: "string";
+                                readonly description: "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。";
                                 readonly title: "Reason";
                                 readonly required: true;
                             };
@@ -409,70 +959,55 @@ export declare const auditGroupParameters: {
                         readonly title: "AuditRepresentative";
                     };
                     readonly title: "Representatives";
-                    readonly required: true;
                 };
-                readonly normal_explanations: {
+                readonly missing_conditions: {
                     readonly type: "array";
                     readonly items: {
                         readonly type: "string";
                     };
-                    readonly title: "Normal Explanations";
-                };
-                readonly limitations: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Limitations";
+                    readonly title: "Missing Conditions";
                 };
             };
-            readonly title: "AuditIssueGroup";
+            readonly title: "AuditCapability";
         };
-        readonly title: "Groups";
+        readonly title: "Capabilities";
+        readonly required: true;
     };
-    readonly remove_group_ids: {
+    readonly usability: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly purpose: {
+                    readonly type: "string";
+                    readonly enum: readonly ["exploration", "training_experiment", "debug", "image_evaluation", "bbox_evaluation", "pixel_evaluation", "formal_benchmark"];
+                    readonly title: "Purpose";
+                    readonly required: true;
+                };
+                readonly status: {
+                    readonly type: "string";
+                    readonly enum: readonly ["usable", "candidate", "not_ready", "not_evaluated"];
+                    readonly title: "Status";
+                    readonly required: true;
+                };
+                readonly reason: {
+                    readonly type: "string";
+                    readonly title: "Reason";
+                    readonly required: true;
+                };
+            };
+            readonly title: "AuditUsabilityAssessment";
+        };
+        readonly title: "Usability";
+        readonly required: true;
+    };
+    readonly review_priorities: {
         readonly type: "array";
         readonly items: {
             readonly type: "string";
         };
-        readonly title: "Remove Group Ids";
-    };
-};
-export declare const auditReportParameters: {
-    readonly commit_key: {
-        readonly type: "string";
-        readonly title: "Commit Key";
-        readonly required: true;
-    };
-    readonly scope_analysis: {
-        readonly type: "string";
-        readonly title: "Scope Analysis";
-        readonly required: true;
-    };
-    readonly issue_analysis: {
-        readonly type: "string";
-        readonly title: "Issue Analysis";
-        readonly required: true;
-    };
-    readonly consistency_analysis: {
-        readonly type: "string";
-        readonly title: "Consistency Analysis";
-        readonly required: true;
-    };
-    readonly knowledge_analysis: {
-        readonly type: "string";
-        readonly title: "Knowledge Analysis";
-        readonly required: true;
-    };
-    readonly boundary_analysis: {
-        readonly type: "string";
-        readonly description: "解释相似现象在已保存图级记录中的判断边界；不重判终稿，不假设类别语义、实例规范或采集工艺。没有实际对照时不编造。";
-        readonly title: "Boundary Analysis";
-        readonly default: "";
-    };
-    readonly conclusion: {
-        readonly type: "string";
-        readonly title: "Conclusion";
+        readonly title: "Review Priorities";
         readonly required: true;
     };
     readonly limitations: {
@@ -525,6 +1060,32 @@ export declare const auditCropParameters: {
     };
 };
 export declare const auditStartParameters: {
+    readonly master_prompt: {
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly system_prompt: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "System Prompt";
+                readonly required: true;
+            };
+            readonly user_prompt: {
+                readonly type: "string";
+                readonly title: "User Prompt";
+                readonly required: true;
+            };
+        };
+        readonly title: "AnalysisRolePrompts";
+    };
+    readonly report_instruction: {
+        readonly type: "string";
+        readonly title: "Report Instruction";
+        readonly default: "全部主图已有完成、未完成或失败记录。基于当前有效图级版本、已保存全局发现、真实程序统计及实际取得的元数据和 Benchmark 成果，提交整个冻结范围的质量与可评测能力报告。\n\n先回答可用于哪些用途，再选择有证据的共性质量问题、视觉规律与判断边界。归纳视觉现象的形态、位置、尺寸、对比可见度、结构和实例覆盖；依据真实来源评价独立性与代表性。能力覆盖或候选与正式就绪分开，按探索、训练实验、内部调试、图级、框级、像素级及正式基准分别判断。没有 Gold、划分或来源则保持未评价，bbox不能充当像素 mask，疑点率不是错误率。\n\ncoverage_analysis简要概括覆盖情况；coverage_topics按本作业实际观察形成主题，分别提交具体标题、综合analysis、当前有效evidence_refs及已实际观察的精选representatives。主题和数量不预设，不照搬其他作业的微小目标、低对比或端部示例。没有图证的主题不强造。关键发现直接选择真实发现账本，不另写一套固定发现。\n\nconsistency_analysis概括一致性判断；consistency_analyses按现有差异类型分别提交综合analysis、有效evidence_refs及必要representatives。labelme采用category_mismatch、extra_annotation、missing_annotation、position_difference、split、merge；folder_classification采用image_label_mismatch。多标和少标、拆分和合并各自独立，不加入无候选、无有效候选、一致等状态主题。没有相关材料时引用可为空，明确区分未保留该类疑点和缺少判断依据，不能把零疑点说成人工确认无误。统计数字由程序计算。标题不加序号或数量，正文不按图片逐一讲解。同组证据优先放在最能说明结论的主题中，避免在多个板块反复选取。\n\n零疑点也正常提供覆盖、能力与用途分析。所有内部引用只进入结构化字段，不进入自然语言正文。\n\n报告是对整个冻结范围的综合分析，以现象、跨图规律、关键发现和总结组织正文，说明共性、差异、适用范围与判断边界，不拼接逐图详情或批次过程。\n\n正文只包含业务分析，不叙述重新汇总、版本保留、工具调用、Session或是否登记复审等执行过程。执行约束应遵守，不复述到报告中。\n\n覆盖画像的综述与各主题只分析实际观察到的视觉场景、形态变化、结构关系、可见度及代表性。不写标注数量、有框或空标注图像数量、单框或多框分布，以及框面积、宽高比、位置坐标的范围和分位数等标注统计，不用标注统计代替视觉覆盖分析。\n\n由主 Agent 根据解释结论所需的信息自主决定典型原图及必要对照的数量。每张图须补充有意义的视觉差异或证据，不为凑数量选图，不全量罗列或重复堆图，不强造反例。只选主 Agent 已实际观察的真实完整原图，保留原始人工标注，不使用局部裁剪、拼接图或模型新增标注。图像仅作为综合结论的证据，图库不附逐图图注或详细分析。";
+    };
     readonly submission_id: {
         readonly type: "string";
         readonly title: "Submission Id";
@@ -568,23 +1129,34 @@ export declare const auditStartParameters: {
         };
         readonly title: "AuditKnowledgeSelection";
     };
-    readonly instruction: {
-        readonly type: "string";
-        readonly title: "Instruction";
-        readonly default: "审核当前主图的标注质量。实际观察本次提供的完整原图、原始标注和全部必要局部，逐项核对本图数据一致性结果。\n\n对于上游存在的每项差异，分别判断“支持为疑点、不支持、证据不足”并说明当前主图的实际依据；若上游没有差异，则直接继续本图独立审核，不虚构差异。知识可以为空；如已选用知识，先确认适用性，再结合本图实际证据使用。\n\n重点检查当前可见内容与现有标注之间的遗漏嫌疑、额外标注、覆盖异常和实例组织等质量关系。不验证人工类别语义或真值，不假设有未提供的规范。只有具有可核查依据时才保存质量疑点；普通视觉变化不得自动认定为少标，必要时可保留简短待判别观察。\n\n保存图级结论、全部独立疑点、真实图像证据、上游及知识关联、必要的正常替代解释与实际限制。自然语言不要罗列内部 ID、文件路径或执行信息，不修改原始标注。";
+    readonly observer_prompt: {
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly system_prompt: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "System Prompt";
+                readonly required: true;
+            };
+            readonly user_prompt: {
+                readonly type: "string";
+                readonly title: "User Prompt";
+                readonly required: true;
+            };
+        };
+        readonly title: "AnalysisRolePrompts";
     };
-    readonly system_prompt: {
+    readonly benchmark_build_id: {
         readonly oneOf: readonly [{
             readonly type: "string";
         }, {
             readonly type: "null";
         }];
-        readonly title: "System Prompt";
-    };
-    readonly report_instruction: {
-        readonly type: "string";
-        readonly title: "Report Instruction";
-        readonly default: "根据本次作业全部已保存的图级审计终稿、冻结的数据一致性结果、实际选用的知识以及程序提供的准确统计，形成面向使用者的数据集质量审计报告。\n\n说明审计范围、完成情况、图级结论分布，区分疑点图像数、独立质量疑点次数与未完成图像；如记录待判别观察，则单独统计，不并入质量疑点。逐项统计口径以程序计算为准，不估算未提供的数量。\n\n归并主要质量问题主题，说明各主题涉及的不同图像数量、问题次数、具体视觉与原始标注关系及必要限制；对相似现象但审核结论不同的情况，分析当前记录体现的判断边界，不修改图级终稿。\n\n交叉分析上游数据一致性结果与图级审计结论，说明知识条目的实际作用；未选知识时不虚构知识贡献。每类主要主题只选择少量关键图像证据，必要时提供判断边界的对照图，保留真实结构化引用并由界面关联完整原图及原始标注。\n\n报告正文仅呈现用户关心的质量发现、统计、关键证据、整体结论和人工复核重点。不得输出作业、数据集、图像、标注、媒体或问题的内部 ID、完整文件名、工具参数、数据库字段、分页或执行日志。这些仅存于结构化关联字段。\n\n模型疑点率不等于人工确认错误率。不得验证人工类别真实语义，不推断不存在的标注规范，不修改标注，不生成建议类别、建议框或 Gold 结论。不凭历史对话猜数字，不重判或覆盖已保存图级结果。\n\n典型证据与判断边界对照仅引用完整原图，局部裁剪图不作为报告证据。";
+        readonly title: "Benchmark Build Id";
     };
 };
 //# sourceMappingURL=audit.parameters.generated.d.ts.map

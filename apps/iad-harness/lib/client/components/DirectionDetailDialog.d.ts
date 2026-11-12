@@ -1,5 +1,5 @@
+import type { AnalysisReadSource } from '../analysis-results.js';
 import React from "react";
-import { type EvidenceReference } from "../direction-evidence.js";
 export interface DirectionEvidenceItem {
     evidenceId: string;
     sampleId: string;
@@ -12,7 +12,7 @@ export interface DirectionEvidenceItem {
 }
 export interface DirectionItem {
     id: string;
-    versionId: string;
+    source: AnalysisReadSource;
     datasetId: string;
     title: string;
     applies: string;
@@ -20,16 +20,11 @@ export interface DirectionItem {
     rationale: string;
     limitations: string[];
     evidences: DirectionEvidenceItem[];
-    references: Map<string, EvidenceReference>;
 }
 export interface DirectionDetailDialogProps {
     direction: DirectionItem;
     onOpenFullscreen: (ref: string) => void;
     onClose: () => void;
 }
-/**
- * Reusable modal dialog for displaying exploration direction details,
- * comparative rationale with linked evidence chips, limitations, and visual evidence cards.
- */
 export declare function DirectionDetailDialog({ direction: dir, onOpenFullscreen, onClose, }: DirectionDetailDialogProps): React.JSX.Element;
 //# sourceMappingURL=DirectionDetailDialog.d.ts.map

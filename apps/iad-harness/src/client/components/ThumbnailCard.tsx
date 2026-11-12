@@ -17,6 +17,6 @@ export const ThumbnailCard = forwardRef<HTMLButtonElement, ThumbnailCardProps>(f
 ) {
   return <button {...props} data-variant={variant} ref={ref} type="button" className={`iad-thumbnail-card ${className}`} title={title}>
     <span className="iad-thumbnail-media">{image ? <AnnotatedImageStage src={image.src} alt={image.title} width={image.width} height={image.height} annotationLayer={image.annotationLayer} qualityLabel={image.qualityLabel}/> : src ? <MediaImage src={src} alt={label} loading="lazy" decoding="async" /> : <span>图像不可用</span>}{mediaOverlay}</span>
-    <span className="iad-thumbnail-caption">{label}</span>{children}
+    {label&&<span className="iad-thumbnail-caption">{label}</span>}{children}
   </button>;
 });

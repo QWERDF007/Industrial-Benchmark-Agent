@@ -42,7 +42,7 @@ export const typographyStyles = `
 :is(.iad-workbench, .iad-detail-dialog, .iad-sidebar-content, .overlay, .modal, .iad-drawer, .app, .shell) div:not(:has(*)):not(:where(
   .brand-symbol, .nav-icon, .status, [class*="state"], [class*="status"], [class*="pill"], [class*="badge"]
 )) {
-  font-size: 13px !important;
+  font-size: var(--iba-unified-body-size, 13px) !important;
   color: var(--iba-unified-ink) !important;
 }
 

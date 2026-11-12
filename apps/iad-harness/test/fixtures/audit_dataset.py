@@ -63,6 +63,8 @@ try:
                 directions=[default_directions()[0].model_dump(mode='json'),
                     {**default_directions()[1].model_dump(mode='json'),'title':'未选方向哨兵','instruction':'未选观点不得进入审计。'}])),agent=role)
         run_id = mining['run_id']
+        with db.connection() as connection:
+            connection.execute("UPDATE analysis_workflow_runs SET snapshot_json=json_remove(snapshot_json,'$.context_policy','$.context_instruction') WHERE job_id=?", (run_id,))
         context = jobs.context(run_id)
         evidence = AnalysisEvidence(jobs)
         pages = [evidence.read(run_id,dict(sample_id=target.sample_id)) for target in context.round.targets]

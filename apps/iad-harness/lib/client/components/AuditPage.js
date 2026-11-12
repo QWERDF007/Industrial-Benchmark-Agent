@@ -9,12 +9,13 @@ import { auditStateLabels, auditIssueLabels, auditAssessmentLabels } from '../..
 import { buildHierarchyGroups, getDatasetGroupId } from '../dataset-hierarchy.js';
 import { useJobs } from '../useJobs.js';
 import { useResource } from '../useResource.js';
-import { useAuditJobSelection } from '../useAuditJobSelection.js';
+import { useJobList } from '../useJobList.js';
 import { useWorkspace } from '../workspace.js';
 import { DatasetScopeSelector } from './DatasetScopeSelector.js';
 import { PageTabs } from './layout/PageTabs.js';
 import { RefreshIconButton, ClearFilterButton } from './CommonFilterControls.js';
-import { AuditJobs } from './AuditJobs.js';
+import { JobList } from './JobList.js';
+import { AuditStatisticsDialog } from './AuditStatisticsDialog.js';
 import { AuditReport } from './AuditReport.js';
 import { AuditSampleDialog } from './AuditSampleDialog.js';
 import { auditSampleImage } from './AuditSampleMedia.js';
@@ -36,8 +37,9 @@ export function AuditPage({ dataset, datasets, groups, refreshRevision, onDatase
     const [revision, setRevision] = useState(0);
     const [promptJob, setPromptJob] = useState('');
     const progress = useCallback(() => setRevision(value => value + 1), []);
-    const jobs = useJobs('audit', ids, progress, '', refreshRevision);
-    const selection = useAuditJobSelection(jobs.jobs, scope);
+    const jobs = useJobs('audit', ids, progress, workspace.view('industrial-audit').job, refreshRevision);
+    const selection = useJobList(jobs.jobs, scope, workspace.view('industrial-audit').job, job => workspace.updateView('industrial-audit', { job: job.root_run_id }));
+    const [statisticsJob, setStatisticsJob] = useState(null);
     const job = selection.selected;
     const [issueType, setIssueType] = useState(''), [sourceAssessment, setSourceAssessment] = useState('');
     const [search, setSearch] = useState(''), [status, setStatus] = useState('all'), [page, setPage] = useState(1);
@@ -57,7 +59,7 @@ export function AuditPage({ dataset, datasets, groups, refreshRevision, onDatase
     const query = new URLSearchParams({ page: String(page), page_size: '18', status, search, ...(issueType ? { issue_type: issueType } : {}), ...(sourceAssessment ? { consistency_assessment: sourceAssessment } : {}) });
     const result = useResource(job && !createOpen && tab === 'audit'
         ? `/audit/jobs/${encodeURIComponent(job.run_id)}/samples?${query}` : null, revision);
-    const hasResults = !!job && job.total_samples > 0;
+    const hasResults = !!job && job.total_samples > 0 && !result.data?.archived;
     const setupDatasets = datasets.filter(item => ids.includes(item.dataset_id));
     const refresh = () => { jobs.refresh(); progress(); onDatasetsChanged(); };
     return _jsxs("div", { id: "audit-page", children: [_jsx(WorkbenchHeader, { pageId: "industrial-audit", className: "audit-heading", title: createOpen ? '新建审计' : undefined, children: createOpen
@@ -68,17 +70,22 @@ export function AuditPage({ dataset, datasets, groups, refreshRevision, onDatase
                         }, children: "\u65B0\u5EFA\u5BA1\u8BA1" }) }), _jsx(DatasetScopeSelector, { groups: hierarchy, selectedGroupId: groupId, onGroupChange: next => {
                     setGroupId(next);
                     setSelectedIds(datasets.filter(item => getDatasetGroupId(item) === next).slice(0, 1).map(item => item.dataset_id));
-                }, childDatasets: children, selectedChildIds: ids, onChildToggle: id => setSelectedIds(previous => previous.includes(id)
-                    ? previous.filter(value => value !== id) : [...previous, id]), disabled: createOpen, className: "audit-scope", groupId: "audit-dataset", childId: "audit-child-trigger", childMenuId: "audit-child-menu", children: _jsx(RefreshIconButton, { onClick: refresh }) }), jobs.error && _jsx("p", { role: "alert", children: jobs.error }), createOpen ? _jsx(AuditSetup, { datasets: setupDatasets, jobs: jobs.jobs, revision: revision + refreshRevision, onBusyChange: setCreatingBusy, onCancel: () => setCreateOpen(false), onStarted: started => {
+                    workspace.updateView('industrial-audit', { job: '' });
+                }, childDatasets: children, selectedChildIds: ids, onChildToggle: id => {
+                    setSelectedIds(previous => previous.includes(id) ? previous.filter(value => value !== id) : [...previous, id]);
+                    workspace.updateView('industrial-audit', { job: '' });
+                }, disabled: createOpen, className: "audit-scope", groupId: "audit-dataset", childId: "audit-child-trigger", childMenuId: "audit-child-menu", children: _jsx(RefreshIconButton, { onClick: refresh }) }), jobs.error && _jsx("p", { role: "alert", children: jobs.error }), createOpen ? _jsx(AuditSetup, { datasets: setupDatasets, jobs: jobs.jobs, revision: revision + refreshRevision, onBusyChange: setCreatingBusy, onCancel: () => setCreateOpen(false), onStarted: started => {
                     workspace.updateView('industrial-audit', { job: started[0]?.run_id || '' });
                     selection.clear();
                     setCreateOpen(false);
                     setTab('audit');
                     refresh();
-                } }, scope) : _jsxs(PageTabs, { label: "\u5BA1\u8BA1\u89C6\u56FE", className: "audit-tabs", items: [{ id: 'audit', label: '模型审计' }, { id: 'reports', label: '报告' }], value: tab, onChange: setTab, children: [_jsxs("div", { hidden: tab !== 'audit', children: [_jsx(AuditJobs, { loading: jobs.loading, selection: selection, datasets: datasets, onDetails: setJobDetails, onPrompt: job => setPromptJob(job.run_id), onDelete: async (job) => {
-                                    await request(`/audit/delete/${encodeURIComponent(job.run_id)}`, {});
-                                    refresh();
+                } }, scope) : _jsxs(PageTabs, { label: "\u5BA1\u8BA1\u89C6\u56FE", className: "audit-tabs", items: [{ id: 'audit', label: '模型审计' }, { id: 'reports', label: '报告' }], value: tab, onChange: setTab, children: [_jsxs("div", { hidden: tab !== 'audit', children: [_jsx(JobList, { title: "\u5BA1\u8BA1\u4F5C\u4E1A", list: selection, datasets: datasets, loading: jobs.loading, actions: {
+                                    status: setJobDetails, prompt: job => setPromptJob(job.run_id), delete: async (job) => {
+                                        await request(`/audit/delete/${encodeURIComponent(job.run_id)}`, {});
+                                        refresh();
+                                    }, additional: [{ id: 'statistics', label: '统计', icon: 'stats', onClick: setStatisticsJob }],
                                 } }), _jsxs("section", { className: "audit-panel", "aria-label": "\u5BA1\u8BA1\u7ED3\u679C", children: [_jsx(SectionHeading, { title: "\u5BA1\u8BA1\u7ED3\u679C", children: hasResults && _jsxs("div", { className: "audit-filters", children: [_jsxs("label", { className: "audit-field", children: [_jsx("span", { children: "\u6587\u4EF6\u540D" }), _jsx("input", { type: "search", "aria-label": "\u641C\u7D22\u5BA1\u8BA1\u56FE\u50CF", value: search, onChange: event => { setSearch(event.target.value); setPage(1); } })] }), _jsxs("label", { className: "audit-field", children: [_jsx("span", { children: "\u95EE\u9898\u7C7B\u522B" }), _jsxs(Select, { "aria-label": "\u5BA1\u8BA1\u95EE\u9898\u7C7B\u522B", value: issueType, onChange: event => { setIssueType(event.target.value); setPage(1); }, children: [_jsx("option", { value: "", children: "\u5168\u90E8\u7C7B\u522B" }), Object.entries(auditIssueLabels).map(([value, label]) => _jsx("option", { value: value, children: label }, value))] })] }), _jsxs("label", { className: "audit-field", children: [_jsx("span", { children: "\u4E00\u81F4\u6027\u6838\u5BF9" }), _jsxs(Select, { "aria-label": "\u4E00\u81F4\u6027\u5DEE\u5F02\u5904\u7406", value: sourceAssessment, onChange: event => { setSourceAssessment(event.target.value); setPage(1); }, children: [_jsx("option", { value: "", children: "\u5168\u90E8\u5904\u7406" }), Object.entries(auditAssessmentLabels).map(([value, label]) => _jsx("option", { value: value, children: label }, value))] })] }), _jsx(ClearFilterButton, { onClick: () => { setIssueType(''); setSourceAssessment(''); setSearch(''); setStatus('all'); setPage(1); } })] }) }), hasResults && _jsx(TabBar, { label: "\u5BA1\u8BA1\u56FE\u50CF\u72B6\u6001", value: status, onChange: value => { setStatus(value); setPage(1); }, items: ['all', ...Object.keys(result.data?.distribution || {})].map(value => ({ id: value,
                                             label: _jsxs(_Fragment, { children: [value === 'all' ? '全部图像' : auditStateLabels[value], result.data && _jsx("span", { className: "iad-tab-count", children: value === 'all'
-                                                            ? Object.values(result.data.distribution).reduce((sum, value) => sum + value, 0) : result.data.distribution[value] })] }) })) }), _jsxs("div", { id: "audit-images", children: [!job && _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }), result.loading && _jsx("p", { className: "audit-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u4F5C\u4E1A\u56FE\u50CF\u2026" }), result.error && _jsx("p", { role: "alert", children: result.error }), job && result.data && _jsxs(_Fragment, { children: [_jsx("div", { className: "iad-thumbnail-grid", children: result.data.items.map(item => _jsx(ThumbnailCard, { src: auditSampleImage(item, job.task_id), label: item.filename, onClick: () => setSample(item), "data-sample-id": item.sample_id }, item.sample_id)) }), _jsx(Pagination, { total: result.data.total, page: page, size: 18, unit: "\u5F20\u56FE\u50CF", onPage: setPage })] })] })] })] }), tab === 'reports' && _jsx(AuditReport, { job: job, revision: revision }, job?.run_id)] }), promptJob && _jsx(AuditPromptDrawer, { runId: promptJob, onClose: () => setPromptJob('') }), sample && _jsx(AuditSampleDialog, { sample: sample, taskId: datasets.find(item => item.dataset_id === sample.dataset_id)?.task_id || dataset.task_id, onClose: () => setSample(null) }, `${sample.run_id}:${sample.sample_id}`), jobDetails && _jsx(JobStatusDrawer, { job: jobs.jobs.find(job => job.root_run_id === jobDetails.root_run_id) || jobDetails, onClose: () => setJobDetails(null), stale: jobs.syncState === 'stale' })] });
+                                                            ? Object.values(result.data.distribution).reduce((sum, value) => sum + value, 0) : result.data.distribution[value] })] }) })) }), _jsxs("div", { id: "audit-images", children: [!job && _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }), result.loading && _jsx("p", { className: "audit-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u4F5C\u4E1A\u56FE\u50CF\u2026" }), result.error && _jsx("p", { role: "alert", children: result.error }), result.data?.archived && _jsx("p", { children: "\u5386\u53F2\u5BA1\u8BA1\u5DF2\u5F52\u6863\uFF0C\u53EF\u5728\u62A5\u544A\u9875\u4E0B\u8F7D\u51BB\u7ED3\u62A5\u544A\u3002" }), job && result.data && !result.data.archived && _jsxs(_Fragment, { children: [_jsx("div", { className: "iad-thumbnail-grid", children: result.data.items.map(item => _jsx(ThumbnailCard, { src: auditSampleImage(item, job.task_id), label: item.filename.split('/').pop(), onClick: () => setSample(item), "data-sample-id": item.sample_id }, item.sample_id)) }), _jsx(Pagination, { total: result.data.total, page: page, size: 18, unit: "\u5F20\u56FE\u50CF", onPage: setPage })] })] })] })] }), tab === 'reports' && _jsx(AuditReport, { job: job, revision: revision }, job?.run_id)] }), statisticsJob && _jsx(AuditStatisticsDialog, { job: jobs.jobs.find(job => job.run_id === statisticsJob.run_id) || statisticsJob, revision: revision, onClose: () => setStatisticsJob(null) }), promptJob && _jsx(AuditPromptDrawer, { runId: promptJob, onClose: () => setPromptJob('') }), sample && _jsx(AuditSampleDialog, { sample: sample, taskId: datasets.find(item => item.dataset_id === sample.dataset_id)?.task_id || dataset.task_id, onClose: () => setSample(null) }, `${sample.run_id}:${sample.sample_id}`), jobDetails && _jsx(JobStatusDrawer, { job: jobs.jobs.find(job => job.root_run_id === jobDetails.root_run_id) || jobDetails, onClose: () => setJobDetails(null), stale: jobs.syncState === 'stale' })] });
 }

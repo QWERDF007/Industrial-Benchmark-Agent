@@ -19,6 +19,9 @@ class AnalysisCommits:
     def accept(self, run_id: str, request: dict) -> AnalysisCommitReceipt:
         snapshot = self.jobs.snapshot(run_id)
         schema = ExplorationCommit if snapshot.module == 'exploration' else KnowledgeCommit
+        if snapshot.context_policy == 'evidence-on-demand-v1':
+            from iad_core.analysis.context_models import ExplorationDeltaCommit, KnowledgeDeltaCommit
+            schema = ExplorationDeltaCommit if snapshot.module == 'exploration' else KnowledgeDeltaCommit
         submission = schema.model_validate(request)
         canonical = json.dumps(submission.model_dump(mode='json'), ensure_ascii=False, sort_keys=True)
         with self.jobs.jobs.lock, self.db.connection() as connection:
@@ -47,7 +50,7 @@ class AnalysisCommits:
             rounds = [current]
             batch_tasks, reports = {}, {}
             if task:
-                from iad_core.analysis.delegation_models import ExplorationBatchReport
+                from iad_core.analysis.delegation import AnalysisDelegation
                 if submission.observations:
                     raise ValueError('复核子代理报告时observations传[]，宿主导入本波已核验报告，不能改写子代理看图记录')
                 tasks = connection.execute('''SELECT * FROM analysis_batch_tasks
@@ -60,7 +63,7 @@ class AnalysisCommits:
                 observations = []
                 batch_tasks = {row['round_id']:row for row in tasks}
                 for row in tasks:
-                    report = (KnowledgeBatchReport if snapshot.module == 'knowledge' else ExplorationBatchReport).model_validate_json(row['report_json'])
+                    report = AnalysisDelegation.report_schema(snapshot).model_validate_json(row['report_json'])
                     reports[row['round_id']] = report
                     decisions = reviews[row['round_id']]
                     if len(decisions) != len(report.discoveries) or {item.candidate_id for item in decisions} != {
@@ -85,7 +88,8 @@ class AnalysisCommits:
                         if len(supplied) != len(expected) or set(supplied) != expected:
                             raise ValueError('整批提交必须包含全部登记的简短适用性记录')
                         continue
-                    facts = [(item.rationale, item.evidence_ids, item.limitations) for item in submission.directions]
+                    facts = [(item.rationale, item.evidence_ids, item.limitations) for item in submission.directions
+                        if hasattr(item, 'evidence_ids')]
                     facts.extend((item.reason, [item.evidence_id], []) for item in submission.arguments)
                     if task:
                         report = reports[round.round_id]

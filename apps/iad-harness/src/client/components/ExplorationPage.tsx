@@ -1,3 +1,5 @@
+import {analysisReadSource,type AnalysisReadSource} from '../analysis-results.js';
+import {jobIsActive} from '../../shared/job-display.js';
 import {SectionHeading} from './layout/SectionHeading.js';
 import {AnalysisExportButton} from './AnalysisExportButton.js';
 import {AnalysisEvidenceViewer} from './AnalysisEvidenceViewer.js';
@@ -8,8 +10,9 @@ import {ExplorationSourceDialog} from './ExplorationSourceDialog.js';
 import {AnalysisPromptDrawer} from './AnalysisPromptDrawer.js';
 import {AgentPromptEditors} from './AgentPromptEditors.js';
 import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
-import {JobStatusDrawer, JobStatusButton, JobStatusAction} from './JobStatusDrawer.js';
-import {JobListPanel} from './JobListPanel.js';
+import {JobStatusDrawer} from './JobStatusDrawer.js';
+import {JobList} from './JobList.js';
+import {useJobList} from '../useJobList.js';
 import {Select} from './Select.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
@@ -19,7 +22,6 @@ import type { Dataset, JobSnapshot } from "../../shared/contracts.js";
 import { mediaUrl, message, request } from "../api.js";
 import {useJobs} from "../useJobs.js";
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
-import {formatJobTime,jobStatuses} from "../../shared/job-display.js";
 import { buildHierarchyGroups, getDatasetGroupId } from "../dataset-hierarchy.js";
 import {PlusIcon} from "../AuditIcon.js";
 import { IconButton } from "./IconButton.js";
@@ -27,21 +29,12 @@ import {DeleteAction} from './DeleteAction.js';
 import { DatasetScopeSelector } from "./DatasetScopeSelector.js";
 import { DirectionDetailDialog, type DirectionItem } from "./DirectionDetailDialog.js";
 import { FullscreenViewer, type FullscreenViewerItem } from "./FullscreenViewer.js";
-import { Pagination, IBA_JOBS_PAGE_SIZE } from "./Pagination.js";
-import { ClearFilterButton } from "./CommonFilterControls.js";
-import {ReferencedText} from '../direction-evidence.js';
 
-import type {AnalysisPublicationView, DirectionRemoval, ExplorationPromptPreset, ExplorationAgentStart} from "../../shared/domain.generated.js";
+import type {AnalysisPublicationView, AnalysisResults, DirectionRemoval, ExplorationPromptPreset, ExplorationAgentStart} from "../../shared/domain.generated.js";
 import {useModuleSettings} from '../useModuleSettings.js';
 import {useResource} from "../useResource.js";
 import {useWorkspace} from '../workspace.js';
 import {ExplorationNarrative,explorationCandidates,explorationDirections,type ExplorationCandidate} from "../exploration-view.js";
-
-function expElapsed(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return (m > 0 ? `${m}分` : "") + `${s}秒`;
-}
 
 export function ExplorationPage({
   dataset,
@@ -68,10 +61,7 @@ export function ExplorationPage({
 
   // View state: 'jobs' (unified layout) or 'setup' (3-step creation)
   const [view, setView] = useState<"jobs" | "setup">("jobs");
-  const [jobFilter, setJobFilter] = useState("全部");
-  const [jobSearch, setJobSearch] = useState("");
   const [statusJobId, setStatusJobId] = useState<string | null>(null);
-  const [jobPage, setJobPage] = useState<number>(1);
   const [refreshTick, setRefreshTick] = useState(0);
 
   const [error,setError]=useState("");
@@ -92,7 +82,7 @@ export function ExplorationPage({
   const [originalPrompt, setOriginalPrompt] = useState("");
 
   // Modals
-  const [modal, setModal] = useState<"" | "source" | "save" | "direction" | "prompt">("");
+  const [modal, setModal] = useState<"" | "source" | "save" | "direction">("");
   const [promptJobId,setPromptJobId]=useState<string|null>(null);
   const [viewingDirection, setViewingDirection] = useState<DirectionItem | null>(null);
 
@@ -103,7 +93,7 @@ export function ExplorationPage({
     items: FullscreenViewerItem[];
     currentIndex: number;
   } | null>(null);
-  const [analysisImage,setAnalysisImage]=useState<{versionId:string;source:FullscreenViewerItem&{sampleId:string}}|null>(null);
+  const [analysisImage,setAnalysisImage]=useState<{result:AnalysisReadSource;source:FullscreenViewerItem&{sampleId:string}}|null>(null);
 
 
 
@@ -169,41 +159,14 @@ export function ExplorationPage({
     }
   },[scopeFormat]);
 
-  const filteredJobs: JobSnapshot[] = useMemo(() => {
-    const q = jobSearch.trim().toLowerCase();
-    return jobs.filter((j) => {
-      const matchStatus = jobFilter === "全部" || j.status === jobFilter;
-      const matchSearch = !q || [j.run_id,j.root_run_id].some(id=>id.toLowerCase().includes(q));
-      return matchStatus && matchSearch;
-    });
-  }, [jobs, jobFilter, jobSearch]);
-
-  const jobPages = Math.max(1, Math.ceil(filteredJobs.length / IBA_JOBS_PAGE_SIZE));
-  const currentJobPage = Math.max(1, Math.min(jobPages, jobPage));
-  const shownJobs: JobSnapshot[] = useMemo(() => {
-    return filteredJobs.slice(
-      (currentJobPage - 1) * IBA_JOBS_PAGE_SIZE,
-      currentJobPage * IBA_JOBS_PAGE_SIZE
-    );
-  }, [filteredJobs, currentJobPage]);
-
-  const selectedJob: JobSnapshot | null = useMemo(() => {
-    if (!shownJobs.length) return null;
-    if (selectedJobId) {
-      const match = filteredJobs.find((j: JobSnapshot) => j.root_run_id === selectedJobId || j.run_id === selectedJobId);
-      if (match) return match;
-    }
-    return shownJobs[0] || null;
-  }, [shownJobs, filteredJobs, selectedJobId]);
-
-  useEffect(()=>{
-    if(!selectedJobId)return;
-    const index=filteredJobs.findIndex(job=>job.run_id===selectedJobId||job.root_run_id===selectedJobId);
-    if(index>=0)setJobPage(Math.floor(index/IBA_JOBS_PAGE_SIZE)+1);
-  },[selectedJobId,filteredJobs]);
-  const versionId=route.job===selectedJob?.run_id&&route.version?route.version:selectedJob?.analysis_version_id;
-  const results=useResource<AnalysisPublicationView>(versionId?`/analysis/publications/${encodeURIComponent(versionId)}`:null,refreshTick);
-  const publication=results.data;
+  const jobList=useJobList(jobs,jobQuery.identity,selectedJobId,job=>selectJob(job.root_run_id));
+  const selectedJob=jobList.selected;
+  const results=useResource<AnalysisResults>(selectedJob?`/analysis/results/${encodeURIComponent(selectedJob.run_id)}`:null,
+    `${refreshTick}:${selectedJob?.status}:${selectedJob?.analysis_version_id}`,jobIsActive(selectedJob));
+  const historical=useResource<AnalysisPublicationView>(route.job===selectedJob?.run_id&&route.version
+    ?`/analysis/publications/${encodeURIComponent(route.version)}`:null,refreshTick);
+  const publication=historical.data||(jobIsActive(selectedJob)?results.data?.current:results.data?.publication||results.data?.current);
+  const publicationSource=publication?analysisReadSource(publication):null;
   const datasetNames=useMemo(()=>Object.fromEntries(datasets.map(item=>[item.dataset_id,item.name])),[datasets]);
   const narrative=useMemo(()=>publication?new ExplorationNarrative(publication,datasetNames):null,[publication,datasetNames]);
   const selectedJobDirections=useMemo(()=>explorationDirections(publication,route.selected,datasetNames),[publication,route.selected,datasetNames]);
@@ -213,16 +176,7 @@ export function ExplorationPage({
     if(!route.selected||!publication)return;
     const direction=selectedJobDirections.find(item=>item.id===route.selected);
     if(direction){setViewingDirection(direction);setModal('direction');}
-  },[route.selected,publication?.version_id]);
-
-  const handleJobPageChange = (newPage: number) => {
-    const targetPage = Math.max(1, Math.min(jobPages, newPage));
-    setJobPage(targetPage);
-    const firstOnPage = filteredJobs[(targetPage - 1) * IBA_JOBS_PAGE_SIZE];
-    if (firstOnPage) {
-      selectJob(firstOnPage.root_run_id);
-    }
-  };
+  },[route.selected,publication&&('version_id' in publication?publication.version_id:publication.revision)]);
 
   const runningJob = jobs.find((j) => j.status === "RUNNING" || j.status === "PENDING");
   const runReason=runningJob ? '已有探索作业正在运行' : !selectedChildIds.length ? '请选择子数据集'
@@ -246,7 +200,7 @@ export function ExplorationPage({
     setSelectedParentId(newParentId);
     const children = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
     setSelectedChildIds(children.map((c) => c.dataset_id));
-    setJobPage(1);
+
   };
 
   // Toggle child dataset selection
@@ -255,7 +209,7 @@ export function ExplorationPage({
     setSelectedChildIds((prev) =>
       prev.includes(cid) ? prev.filter((id) => id !== cid) : [...prev, cid]
     );
-    setJobPage(1);
+
   };
 
   // Preset selection
@@ -281,7 +235,7 @@ export function ExplorationPage({
       const key=JSON.stringify(submissionBody);
       if(submission.current?.key!==key)submission.current={key,id:uuid()};
       const res=await request<JobSnapshot>('/analysis/start',{...submissionBody,submission_id:submission.current.id});
-      selectJob(res.run_id);setJobPage(1);refreshJobs();setView('jobs');submission.current=null;
+      selectJob(res.run_id);refreshJobs();setView('jobs');submission.current=null;
     } catch(error){setError(message(error));} finally {setSubmitting(false);}
   };
 
@@ -290,8 +244,8 @@ export function ExplorationPage({
   // Open FullscreenViewer on evidence click
   const handleOpenEvidenceFullscreen = (clickedRef: string) => {
     const selected=currentEvidence.find(item=>item.ref===clickedRef);
-    if(selected&&viewingDirection?.versionId.startsWith('analysis_version_')){
-      setAnalysisImage({versionId:viewingDirection.versionId,source:{id:selected.evidenceId,sampleId:selected.sampleId,title:selected.filename,imageUrl:selected.fullUrl}});return;
+    if(selected&&viewingDirection){
+      setAnalysisImage({result:viewingDirection.source,source:{id:selected.evidenceId,sampleId:selected.sampleId,title:selected.filename,imageUrl:selected.fullUrl}});return;
     }
     const allItems: FullscreenViewerItem[] = currentEvidence.map((item) => ({
       id: item.ref,sampleId:item.sampleId,
@@ -484,123 +438,12 @@ export function ExplorationPage({
         /* Unified Workspace Layout */
         <div className="exp-unified-layout">
           {/* Upper Panel: 探索作业 */}
-          <JobListPanel title="探索作业" className="exp-job-list" actions={jobs.length>0&&
-              <div className="exp-job-list-actions">
-                <label className="exp-input exp-filter-control" aria-label="搜索作业">
-                  <input
-                    id="exp-jobsearch"
-                    type="search"
-                    placeholder="搜索作业 ID"
-                    value={jobSearch}
-                    aria-label="搜索作业 ID"
-                    autoComplete="off"
-                    onChange={(e) => {
-                      setJobSearch(e.target.value);
-                      setJobPage(1);
-                    }}
-                  />
-                </label>
-                <label className="exp-input exp-filter-control" aria-label="筛选作业状态">
-                  <Select
-                    id="exp-jobfilter"
-                    aria-label="任务状态"
-                    value={jobFilter}
-                    onChange={(e) => {
-                      setJobFilter(e.target.value);
-                      setJobPage(1);
-                    }}
-                  >
-                    <option value="全部">全部状态</option>
-                    {Object.entries(jobStatuses).map(([value,label])=><option key={value} value={value}>{label}</option>)}
-                  </Select>
-                </label>
-                <ClearFilterButton
-                  data-exp="clear-job-filters"
-                  ariaLabel="清除筛选条件"
-                  title="清除筛选条件"
-                  disabled={!jobSearch && jobFilter === "全部"}
-                  onClick={() => {
-                    setJobSearch("");
-                    setJobFilter("全部");
-                    setJobPage(1);
-                  }}
-                />
-              </div>
-            }>
+          <JobList title="探索作业" className="exp-job-list" list={jobList} datasets={datasets} loading={jobQuery.loading} actions={{
+            status:job=>setStatusJobId(job.root_run_id),prompt:job=>setPromptJobId(job.run_id),delete:async job=>{
+              await request(`/analysis/delete/${encodeURIComponent(job.run_id)}`,{});refreshJobs();
+            },
+          }}/>
 
-            {filteredJobs.length ? (
-              <>
-                <div className="exp-job-table-wrap iad-job-table-scroll" role="region" aria-label="探索作业列表" tabIndex={0}>
-                  <table className="exp-job-table iad-job-table-grid">
-                    <thead>
-                      <tr>
-                        <th>作业 ID</th>
-                        <th>状态</th>
-                        <th>数据集</th>
-                        <th>提交时间</th>
-                        <th>耗时</th>
-                        <th className="exp-prompt-action-col">操作</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {shownJobs.map(j=>{
-                        const datasetNames=j.dataset_ids.map(id=>datasets.find(dataset=>dataset.dataset_id===id)?.name||id).join('、');
-                        const elapsed=j.started_at?Math.max(0,Math.round(((j.finished_at?Date.parse(j.finished_at):Date.now())-Date.parse(j.started_at))/1000)):0;
-                        return (
-                        <tr
-                          key={j.run_id}
-                          data-action="select-job"
-                          data-id={j.run_id}
-                          data-selected={selectedJob?.run_id === j.run_id}
-                          aria-selected={selectedJob?.run_id === j.run_id}
-                          tabIndex={0}
-                          aria-label={`选择作业 ${j.run_id}`}
-                          onClick={() => selectJob(j.root_run_id)}
-                          onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==='Enter'||event.key===' ')){event.preventDefault();selectJob(j.root_run_id);}}}
-                        >
-                          <td>
-                            <strong className="exp-row-title">{j.run_id}</strong>
-                          </td>
-                          <td><JobStatusButton job={j} onClick={()=>setStatusJobId(j.root_run_id)} /></td>
-                          <td><div className="exp-job-dataset" title={datasetNames}><span className="exp-job-dataset-name">{datasetNames}</span></div></td>
-                          <td className="exp-job-time">{formatJobTime(j.submitted_at)}</td>
-                          <td className="exp-job-duration">
-                            {j.status === "PENDING" ? "—" : expElapsed(elapsed)}
-                          </td>
-                          <td className="exp-prompt-action-col">
-                            <div className="exp-job-icon-actions" onClick={(e) => e.stopPropagation()}>
-                              <JobStatusAction job={j} onClick={()=>setStatusJobId(j.root_run_id)} />
-                              <IconButton icon="prompt" label="查看提示词" title="查看提示词" data-exp="show-prompt" data-id={j.run_id} onClick={() => {
-                                  setPromptJobId(j.run_id);
-                                  setModal("prompt");
-                                }} />
-                              <DeleteAction title="删除探索作业" name={j.run_id} confirmLabel="删除作业" confirmation={<>确定删除作业 {j.run_id} 吗？</>} description="删除后不再显示该作业及其探索结果。" disabled={j.status === 'RUNNING' || j.status === 'PENDING'}
-                                restoreFocus={()=>document.getElementById(jobs.length>1?'exp-jobsearch':'exp-new')} onDelete={async()=>{
-                                  await request(`/analysis/delete/${encodeURIComponent(j.run_id)}`,{});
-                                  refreshJobs();
-                                }} />
-                            </div>
-                          </td>
-                        </tr>
-                      );})}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  total={filteredJobs.length}
-                  page={currentJobPage}
-                  onPage={handleJobPageChange}
-                  label="探索作业"
-                  size={IBA_JOBS_PAGE_SIZE}
-                  hideSinglePage
-                />
-              </>
-            ) : (
-              <div className="exp-job-empty" role="status">
-                {jobQuery.loading?"正在读取探索作业…":jobs.length ? "没有符合筛选条件的探索作业。" : "当前没有探索作业"}
-              </div>
-            )}
-          </JobListPanel>
 
           {/* Lower Panel: 探索结果 */}
           {!selectedJob ? (
@@ -619,7 +462,7 @@ export function ExplorationPage({
           ) : (
             <section className="exp-panel exp-selected-result" aria-label="所选作业的探索结果">
               <SectionHeading title="探索结果">
-                {publication&&<AnalysisExportButton versionId={publication.version_id}/>}</SectionHeading>
+                {publicationSource?.kind==='published'&&<AnalysisExportButton versionId={publicationSource.versionId}/>}</SectionHeading>
               <div className="exp-result-content">
               {selectedJobSummary && <p className="exp-result-summary">{selectedJobSummary}</p>}
               {selectedJobDirections.length > 0 ? (
@@ -652,8 +495,7 @@ export function ExplorationPage({
                           >
                             <td className="exp-direction-name">{d.title}</td>
                             <td className="exp-direction-description" title={narrative?.text(d.brief)}>
-                              <ReferencedText text={d.brief} references={d.references}
-                                onReference={()=>{setViewingDirection(d);setModal('direction');}} onPreview={()=>{}}/>
+                              {d.brief}
                             </td>
                             <td>{d.applies}</td>
                             <td className="iad-number">{evidenceCount} 张</td>
@@ -662,11 +504,11 @@ export function ExplorationPage({
                                   setViewingDirection(d);
                                   setModal("direction");
                                 }} />
-                              <DeleteAction title="删除方向" name={d.title} description="保留原始模型结果和历史引用。" onDelete={async () => {
-                                const removal: DirectionRemoval = {dataset_id:d.datasetId,version_id:d.versionId,direction_id:d.id};
+                              {d.source.kind==='published'&&<DeleteAction title="删除方向" name={d.title} description="保留原始模型结果和历史引用。" onDelete={async () => {
+                                const removal: DirectionRemoval = {dataset_id:d.datasetId,version_id:d.source.kind==='published'?d.source.versionId:'',direction_id:d.id};
                                 await request('/exploration/directions/remove',removal);
                                 setRefreshTick(value=>value+1);
-                              }} />
+                              }} />}
                             </td>
                           </tr>
                         );
@@ -700,7 +542,7 @@ export function ExplorationPage({
       )}
 
             {/* Prompt Drawer */}
-      {modal === "prompt" && promptJobId && <AnalysisPromptDrawer jobId={promptJobId} onClose={()=>setModal('')} />}
+      {promptJobId && <AnalysisPromptDrawer jobId={promptJobId} onClose={()=>setPromptJobId(null)} />}
 
       {modal === 'save' && <ExplorationPresetDialog text={prompt} onClose={()=>setModal('')} onSaved={saved=>{
         setPresets(values=>[...values,saved]);setSelectedPresetId(saved.id);setOriginalPrompt(saved.text);setModal('');

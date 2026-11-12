@@ -5,13 +5,15 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm';
 import type { AnalysisAgentContext, AnalysisWorkflowSnapshot, AnalysisWave, AnalysisWorkerMaterials } from '../../shared/domain.generated.js';
 import type { PythonBridge } from '../python-bridge/index.js';
 import { NativeMediaAttachments } from '../sessions/media.js';
+import { AnalysisPromptContext } from './context.js';
 export declare class AnalysisObservers {
     private readonly bridge;
     private readonly runId;
     private readonly attachments;
     private readonly subagents;
     private readonly snapshot;
-    constructor(bridge: PythonBridge, runId: string, attachments: NativeMediaAttachments, subagents: SubagentRuntime, snapshot: AnalysisWorkflowSnapshot);
+    private readonly prompt;
+    constructor(bridge: PythonBridge, runId: string, attachments: NativeMediaAttachments, subagents: SubagentRuntime, snapshot: AnalysisWorkflowSnapshot, prompt: AnalysisPromptContext);
     register(scope: Context): void;
     context(sessionId: string, signal: AbortSignal): Promise<AnalysisWorkerMaterials>;
     review(context: AnalysisAgentContext, signal: AbortSignal): Promise<AnalysisAgentContext & {

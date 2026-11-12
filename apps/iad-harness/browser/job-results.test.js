@@ -1,0 +1,135 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import {spawn} from 'node:child_process';
+import {createInterface} from 'node:readline';
+import {fileURLToPath} from 'node:url';
+import {build} from 'esbuild';
+import {Builder,By,Key,until} from 'selenium-webdriver';
+import firefox from 'selenium-webdriver/firefox.js';
+import {PythonBridge,createIadHttpHandler} from '../lib/server/index.js';
+
+const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),workspace=path.resolve(app,'../..');
+test('four native job lists update results and statistics while preserving open analysis details',{timeout:120000},async t=>{
+ const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-job-results-'));
+ const bridge=new PythonBridge({cwd:workspace,dbPath:path.join(root,'test.db')});
+ const worker=spawn(bridge.pythonPath,[path.join(app,'browser/fixtures/job-results.py'),root],{cwd:workspace,env:{...process.env,PYTHONPATH:[path.join(workspace,'python'),workspace].join(path.delimiter)},stdio:['pipe','pipe','pipe']});
+ let workerErrors='';worker.stderr.on('data',data=>workerErrors+=data);
+ const lines=createInterface({input:worker.stdout});
+ const advance=(action,module)=>new Promise((resolve,reject)=>{
+  const timer=setTimeout(()=>reject(new Error('Fixture timed out: '+workerErrors)),20000);
+  lines.once('line',line=>{clearTimeout(timer);const result=JSON.parse(line);result.error?reject(new Error(result.error+'\n'+workerErrors)):resolve(result);});
+  worker.stdin.write(JSON.stringify({action,module})+'\n');
+ });
+ let driver,server;t.after(async()=>{await driver?.quit();bridge.destroy();worker.stdin.end();await new Promise(resolve=>worker.once('exit',resolve));if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}await fs.rm(root,{recursive:true,force:true});});
+ const fixture=await advance('init');
+ const dataset=await bridge.execute('dataset_get',{dataset_id:fixture.dataset_id});
+ const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';
+import {QueryClientProvider} from '@tanstack/react-query';import {queryClient} from './src/client/query-client.ts';
+import {Workspace,WorkspaceContext} from './src/client/workspace.tsx';import {workbenchStyles} from './src/client/styles.ts';
+import {ExplorationPage} from './src/client/components/ExplorationPage.tsx';import {KnowledgePage} from './src/client/components/KnowledgePage.tsx';import {AuditPage} from './src/client/components/AuditPage.tsx';import {ConsistencyPage} from './src/client/components/ConsistencyPage.tsx';
+const module=new URL(location.href).searchParams.get('module')||'exploration',fixture=window.fixture,dataset=window.dataset,workspace=new Workspace({});
+workspace.openLocation({pageId:'industrial-'+module,datasetId:fixture.dataset_id,datasetIds:[fixture.dataset_id],job:fixture.jobs[module],tab:'results'});
+if(module==='consistency')workspace.updateConsistency({datasetIds:[fixture.dataset_id],batchId:fixture.jobs[module]});
+const Component={exploration:ExplorationPage,knowledge:KnowledgePage,audit:AuditPage,consistency:ConsistencyPage}[module];
+createRoot(document.getElementById('root')).render(<QueryClientProvider client={queryClient}><WorkspaceContext.Provider value={workspace}><style>{workbenchStyles}</style><main className="iad-workbench iad-business-page"><Component dataset={dataset} datasets={[dataset]} groups={[]} refreshRevision={0} onDatasetsChanged={()=>{}}/></main></WorkspaceContext.Provider></QueryClientProvider>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
+ const api=createIadHttpHandler(bridge);
+ server=http.createServer((req,res)=>{if(req.url.startsWith('/api/iad'))return api(req,res);res.setHeader('Content-Type',req.url==='/browser.js'?'application/javascript':'text/html;charset=utf-8');res.end(req.url==='/browser.js'?bundle.outputFiles[0].contents:'<!doctype html><meta charset="utf-8"><script>window.browserErrors=[];window.addEventListener("error",event=>window.browserErrors.push(event.message));window.fixture='+JSON.stringify(fixture)+';window.dataset='+JSON.stringify(dataset)+'</script><div id="root"></div><script src="/browser.js"></script>');});
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;
+ const options=new firefox.Options().addArguments('-headless').setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox');
+ driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
+ await driver.manage().window().setRect({width:1600,height:1050});
+ const element=selector=>driver.wait(until.elementLocated(By.css(selector)),10000).catch(async error=>{
+  console.log('Browser failure',JSON.stringify(await driver.executeScript('return {errors:window.browserErrors,text:document.body.innerText,html:document.getElementById("root").innerHTML.slice(0,2000)}')));
+  throw error;
+ });
+ const click=async selector=>{const item=await element(selector);await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',item);await item.click();};
+ for(const module of ['exploration','knowledge']){
+  await driver.get(base+'/?module='+module);await element('.iad-jobs-table tbody tr');
+  await click('.iad-jobs-table button[title="查看提示词"]');await element('.iad-prompt-drawer');
+  await driver.actions().sendKeys(Key.ESCAPE).perform();await driver.wait(()=>driver.executeScript('return !document.querySelector("dialog[open]")'),5000);
+  assert.equal((await(await element('.iad-jobs-table tbody td:nth-child(4)')).getText()),'0 / 4');
+  await advance('advance',module);
+  await driver.wait(async()=>(await(await element('.iad-jobs-table tbody td:nth-child(4)')).getText())==='4 / 4',10000);
+  const detail=module==='exploration'?'button[aria-label="查看方向"]':'button[data-view-entry]';
+  await click(detail);const title=module==='exploration'?'.exp-dialog-head strong':'#kb-detail-title';
+  await driver.wait(async()=>(await(await element(title)).getText())==='外缘连续性',10000);
+  if(module==='knowledge'){
+   assert.equal((await driver.findElements(By.css('#save-review'))).length,0,'运行中结果只读');
+   await driver.wait(async()=>(await driver.findElements(By.css('[data-evidence-role="support"] img'))).length===3,10000,'完整支持证据与计数一致');
+   assert.equal((await driver.findElements(By.css('[data-evidence-role="support"] .iad-pagination'))).length,0);
+  }
+  await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll("dialog[open] img")].some(image=>image.complete&&image.naturalWidth===80)'),10000,'运行中证据原图可读');
+  await driver.executeScript('document.querySelector("dialog[open] img").closest("button").click()');
+  await element('#full-overlay');
+  await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll("#full-overlay img")].some(image=>image.complete&&image.naturalWidth===80)'),10000);
+  await driver.actions().sendKeys(Key.ESCAPE).perform();await driver.wait(()=>driver.executeScript('return !document.querySelector("#full-overlay")'),5000);
+  await advance('rename',module);
+  await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll(arguments[0])].some(node=>node.textContent.includes("外缘连续关系"))',module==='exploration'?'.exp-direction-name':'.knowledge-entry-name'),10000,'进度不变时仍更新目录修订');
+  assert.equal(await(await element(title)).getText(),'外缘连续性','打开的详情固定在原修订');
+  await driver.actions().sendKeys(Key.ESCAPE).perform();await driver.wait(()=>driver.executeScript('return !document.querySelector("dialog[open]")'),5000);
+  await click(detail);await driver.wait(async()=>(await(await element(title)).getText())==='外缘连续关系',5000);
+  await driver.actions().sendKeys(Key.ESCAPE).perform();await advance('cancel',module);
+  await driver.wait(async()=>(await(await element('.iad-jobs-table tbody td:nth-child(2)')).getText())==='已取消',10000);
+  await element('button[aria-label="导出当前作业成果"]');
+  if(module==='knowledge'){
+   await click(detail);await element('#save-review');
+   await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll("dialog[open] img")].some(image=>image.complete&&image.naturalWidth===80)'),10000,'正式版本复用统一证据接口');
+   await(await element('#review-note')).sendKeys('已核对当前冻结原图。');await click('#save-review');
+   await driver.wait(()=>driver.executeScript('return !document.querySelector("dialog[open]")'),5000);
+   await click(detail);assert.equal(await(await element('#review-note')).getAttribute('value'),'已核对当前冻结原图。');
+  }
+ }
+ await driver.get(base+'/?module=consistency');await element('.iad-jobs-table');
+ await advance('advance','consistency');
+ await driver.wait(async()=>(await(await element('[data-dc="raw-tab"][data-id="NO_CANDIDATES"] .iad-tab-count')).getText())==='1',10000);
+ await driver.get(base+'/?module=audit');await element('.iad-jobs-table');
+ await element('#audit-images .iad-thumbnail-caption');
+ assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("#audit-images .iad-thumbnail-caption")].map(node=>node.textContent)'),
+  ['part-0.png','part-1.png','part-2.png','part-3.png']);
+ assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("#audit-images .iad-thumbnail-card")].map(node=>node.title)'),
+  ['part-0.png','part-1.png','part-2.png','part-3.png']);
+ await click('.iad-jobs-table button[title="统计"]');await element('dialog[aria-label="模型审计统计"]');
+ const stats=()=>driver.executeScript('return [...document.querySelectorAll(".iad-audit-statistics dd")].map(node=>node.textContent)');
+ await driver.wait(async()=>JSON.stringify(await stats())===JSON.stringify(['4','0','0','0','4']),10000);
+ await advance('advance','audit');await advance('suspect','audit');
+ await driver.wait(async()=>JSON.stringify(await stats())===JSON.stringify(['4','2','1','1','2']),10000);
+ assert.match(await(await element('.iad-audit-statistics tbody')).getText(),/1/);
+ const output=path.join(workspace,'runs/verification/job-results');await fs.mkdir(output,{recursive:true});await fs.writeFile(path.join(output,'audit-statistics.png'),await driver.takeScreenshot(),'base64');
+ await click('button[aria-label="关闭模型审计统计"]');await click('#audit-new');
+ await element('#audit-create-knowledge-jobs tbody tr');
+ assert.equal(await(await element('#audit-create-knowledge-jobs th')).getText(),'选择');
+ assert.equal((await driver.findElements(By.css('#audit-create-knowledge-jobs tbody td:first-child input[type="radio"]'))).length,1);
+ await click('input[name="audit-knowledge-source"]');
+ const check=await element('#audit-create-entries tbody input[type="checkbox"]');
+ assert.equal(await check.isSelected(),false);
+ await click('#audit-create-entries tbody td:nth-child(2)');await element('dialog[aria-label="知识条目详情"]');
+ await driver.wait(async()=>await(await element('#kb-detail-title')).getText()==='外缘连续关系',10000);
+ assert.match(await(await element('#entry-dialog')).getText(),/沿可辨外缘核对连续关系/);
+ assert.equal((await driver.findElements(By.css('#save-review,#review-note'))).length,0,'来源查看只读');
+ await click('#close-detail');assert.equal(await check.isSelected(),false);
+ await check.click();assert.equal(await check.isSelected(),true);
+ assert.equal((await driver.findElements(By.css('dialog[open]'))).length,0,'勾选不打开详情');
+ await click('#audit-create-entries .audit-description');await element('#kb-detail-title');await click('#close-detail');
+ assert.equal(await check.isSelected(),true,'查看详情保留勾选');
+ const consistencyChoice=await element('input[name="audit-consistency-source"]');
+ assert.equal(await consistencyChoice.isSelected(),false);
+ await click('#audit-create-consistency-jobs button[title="统计"]');
+ await element('dialog[aria-label="标注冲突统计"]');await element('[aria-label="结论一致性柱状图"]');
+ assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll(".dc-vchart-value")].map(node=>node.textContent)'),['0','0']);
+ assert.equal((await driver.findElements(By.css('button.dc-vchart-bar'))).length,0,'来源统计不提供页面筛选操作');
+ await click('button[aria-label="关闭标注冲突统计"]');
+ assert.equal(await consistencyChoice.isSelected(),false,'查看统计不选择来源');
+ assert.equal(await check.isSelected(),true);
+ const insets=await driver.executeScript('return [...document.querySelectorAll("#audit-create-view textarea.iad-prompt-editor")].map(node=>{const r=node.getBoundingClientRect(),p=node.closest(".audit-source-panel").getBoundingClientRect();return [Math.round(r.left-p.left),Math.round(p.right-r.right)]})');
+ assert.equal(insets.length,5);
+ assert.ok(insets.every(value=>JSON.stringify(value)===JSON.stringify(insets[0])),'五个提示词编辑框保持相同左右边距：'+JSON.stringify(insets));
+ const detailButton=await element('#audit-create-entries button[aria-label^="查看知识条目"]');
+ await driver.executeScript('arguments[0].focus()',detailButton);await detailButton.sendKeys(Key.ENTER);
+ await element('#kb-detail-title');await driver.actions().sendKeys(Key.ESCAPE).perform();
+ await driver.wait(()=>driver.executeScript('return !document.querySelector("dialog[open]")'),5000);
+ assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',detailButton),true);
+});

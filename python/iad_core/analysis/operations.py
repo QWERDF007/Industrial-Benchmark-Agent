@@ -118,6 +118,18 @@ def analysis_publication(args, db_path):
     return AnalysisQueries(Database(db_path)).view(args['version_id']).model_dump(mode='json')
 
 
+def analysis_current_evidence(args, db_path):
+    return AnalysisQueries(Database(db_path)).current_evidence(args['run_id'], args['evidence_id'])
+
+
+def analysis_evidence(args, db_path):
+    return AnalysisQueries(Database(db_path)).evidence(args['version_id'], args['evidence_id'])
+
+
+def analysis_current_sample_evidence(args, db_path):
+    return AnalysisQueries(Database(db_path)).current_sample(args['run_id'], args['sample_id']).model_dump(mode='json')
+
+
 def analysis_sample_evidence(args, db_path):
     return AnalysisQueries(Database(db_path)).sample_evidence(args['version_id'],args['sample_id']).model_dump(mode='json')
 
@@ -187,6 +199,6 @@ ANALYSIS_AGENT_OPERATIONS = (analysis_agent_configuration, analysis_agent_start,
     analysis_agent_context, analysis_agent_session_location, analysis_agent_session_created, analysis_agent_media, analysis_agent_batch_materials, analysis_agent_crop, analysis_agent_reference,
     analysis_agent_commit, analysis_agent_model_call_start, analysis_agent_model_call_end, analysis_agent_capacity,
     analysis_agent_finish, analysis_agent_publication, analysis_agent_cancel, analysis_agent_resume, analysis_agent_interrupt,
-    analysis_publication, analysis_direction_choices, analysis_sources, analysis_agent_artifacts, analysis_agent_catalog, analysis_agent_history,
+    analysis_publication, analysis_evidence, analysis_current_evidence, analysis_current_sample_evidence, analysis_direction_choices, analysis_sources, analysis_agent_artifacts, analysis_agent_catalog, analysis_agent_history,
     analysis_agent_arguments, analysis_agent_claims, analysis_agent_finalization_context, analysis_agent_finalize,
     analysis_sample_evidence, analysis_observations)

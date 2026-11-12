@@ -1,3 +1,4 @@
+import { analysisImageUrl, analysisReadSource } from './analysis-results.js';
 import { mediaUrl, request } from './api.js';
 import { directionEvidence } from './direction-evidence.js';
 export class ExplorationNarrative {
@@ -13,19 +14,20 @@ export class ExplorationNarrative {
             this.names.set(direction.direction_id, direction.title);
         }
         for (const item of publication.evidence) {
-            this.names.set(item.sample_id, item.filename);
-            this.names.set(item.evidence_id, item.filename);
+            const label = item.sampling_group === 'normal' ? '良品图像' : item.sampling_group === 'abnormal' ? '异常图像' : '图像';
+            for (const id of [item.sample_id, item.evidence_id, item.filename, item.filename.split('/').at(-1)])
+                this.names.set(id, label);
             for (const id of item.image.annotation_ids ?? [])
                 this.names.set(id, '原始标注');
         }
-        for (const [id, name] of [[publication.job_id, '本次探索'], [publication.version_id, '本次结果'], [publication.session_id, '探索会话']])
+        for (const [id, name] of [[publication.job_id, '本次探索'], ['version_id' in publication ? publication.version_id : '', '本次结果'], [publication.session_id, '探索会话']])
             if (id)
                 this.names.set(id, name);
         const ids = [...this.names.keys()].sort((a, b) => b.length - a.length).map(id => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-        this.pattern = new RegExp(`(?<![A-Za-z0-9_])(${ids.join('|')})(?![A-Za-z0-9_])`, 'g');
+        this.pattern = new RegExp(`(?<![A-Za-z0-9_])\\[?(${ids.join('|')})\\]?(?![A-Za-z0-9_])`, 'g');
     }
-    text(value, references) {
-        return value.replace(this.pattern, id => references?.has(id) ? id : this.names.get(id));
+    text(value) {
+        return value.replace(this.pattern, (_match, id) => this.names.get(id));
     }
 }
 export async function explorationCandidates(datasetIds, signal) {
@@ -41,14 +43,13 @@ export function explorationDirections(publication, referencedDirectionId, datase
         const evidences = projection.entries.flatMap((item) => {
             if (!item.evidence)
                 return [];
-            const url = `/api/iad/exploration/evidence/${encodeURIComponent(publication.version_id)}/${encodeURIComponent(item.id)}`;
+            const url = analysisImageUrl(analysisReadSource(publication), item.id);
             return [{ evidenceId: item.id, sampleId: item.evidence.sample_id, kind: item.kind, ref: item.ref, label: item.label,
                     url, fullUrl: url, filename: item.title }];
         });
-        return { id: direction.direction_id, versionId: publication.version_id, datasetId: direction.dataset_ids[0], title: narrative.text(direction.title),
+        return { id: direction.direction_id, source: analysisReadSource(publication), datasetId: direction.dataset_ids[0], title: narrative.text(direction.title),
             applies: direction.applies_to === 'normal' ? '良品' : direction.applies_to === 'defect' ? '异常' : '通用',
-            brief: narrative.text(direction.instruction, projection.references), rationale: narrative.text(direction.rationale, projection.references),
-            limitations: direction.limitations.map(text => narrative.text(text, projection.references)), evidences,
-            references: projection.references };
+            brief: narrative.text(direction.instruction), rationale: narrative.text(direction.rationale),
+            limitations: direction.limitations.map(text => narrative.text(text)), evidences };
     }) || [];
 }

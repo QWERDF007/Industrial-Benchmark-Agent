@@ -43,7 +43,7 @@ export async function verifyAnalysisRoiPage(base) {
     const publication=await(await fetch(base+'/api/iad/analysis/publications/'+version)).json();
     const lastRoi=publication.evidence.filter(item=>item.image.role==='roi'&&item.image.representation==='raw').at(-1);
     await(await element('button[role="tab"][id$="counter"]')).click();
-    await(await element('button[aria-label="放大反对证据 1"]')).click();
+    await(await element('button[aria-label^="放大反对证据 "]')).click();
     await element('#full-overlay');
     await driver.wait(async()=>!!await(await element('button[aria-label="下一张图像"]')).isDisplayed(),10000);
     for(let index=0;index<59;index++)await driver.actions().sendKeys(Key.ARROW_RIGHT).perform();

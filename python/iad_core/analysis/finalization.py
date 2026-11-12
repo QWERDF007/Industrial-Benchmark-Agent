@@ -65,6 +65,10 @@ class AnalysisFinalizations:
     def accept(self, run_id: str, request: dict) -> AnalysisFinalizationReceipt:
         snapshot = self.jobs.snapshot(run_id)
         schema = ExplorationFinalize if snapshot.module == 'exploration' else KnowledgeFinalize
+        on_demand = snapshot.context_policy == 'evidence-on-demand-v1'
+        if on_demand:
+            from iad_core.analysis.context_models import ExplorationDeltaFinalize, KnowledgeDeltaFinalize
+            schema = ExplorationDeltaFinalize if snapshot.module == 'exploration' else KnowledgeDeltaFinalize
         submission = schema.model_validate(request)
         canonical = json.dumps(submission.model_dump(mode='json'), ensure_ascii=False, sort_keys=True)
         with self.jobs.jobs.lock, self.db.connection() as connection:
@@ -97,8 +101,10 @@ class AnalysisFinalizations:
             affected.update(merge.target_id for merge in submission.merges)
             reviewed.difference_update(affected)
             review = AnalysisCatalogReview()
-            for item in edited:
-                eid = item.direction_id if snapshot.module == 'exploration' else item.check_id
+            reviewed_ids = [item.direction_id if snapshot.module == 'exploration' else item.check_id for item in edited]
+            if on_demand:
+                reviewed_ids.extend(item.entry_id for item in submission.selections)
+            for eid in dict.fromkeys(reviewed_ids):
                 if eid not in entries:
                     continue
                 issues = review.entry(entries[eid], AnalysisArguments.read(connection, run_id, eid, revision))

@@ -41,7 +41,8 @@ class KnowledgeSettingsValues(AnalysisSamplingSettingsValues):
 
 class AuditSettingsValues(ModuleSettingsValues):
     whole_image_max_side: int | None = Field(default=None, ge=1, strict=True)
-    concurrency: JobConcurrency = 1
+    batch_size: int = Field(default=8, ge=1, strict=True)
+    concurrency: JobConcurrency = 2
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 

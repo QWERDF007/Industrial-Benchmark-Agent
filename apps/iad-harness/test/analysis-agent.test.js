@@ -209,6 +209,17 @@ print(json.dumps({'dataset_ids':datasets,'normal_images':[datasets[0]+':'+str(i)
         'instruction':'用户自定义：比较边缘。'}}))
 `, root, database], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
   const bridge = new PythonBridge({cwd: workspace, dbPath: database});
+  const executeLegacy=bridge.execute.bind(bridge);
+  bridge.execute=async(operation,...args)=>{
+    const result=await executeLegacy(operation,...args);
+    if(operation==='analysis_agent_start'&&result.created)execFileSync(resolvePythonPath(),['-c',`
+import sqlite3,sys
+with sqlite3.connect(sys.argv[1]) as db:
+ db.execute("UPDATE analysis_workflow_runs SET snapshot_json=json_remove(snapshot_json,'$.context_policy','$.context_instruction') WHERE job_id=?",(sys.argv[2],))
+`,database,result.run_id]);
+    return result;
+  };
+
   if(protocol==='openai-responses')await bridge.execute('module_settings_save',{module,expected_revision:1,settings:{reasoning_effort:'high'}});
   const host = await JobSessionHost.open(path.join(root, module + '-sessions'), async session_id =>
     analysisSessionPath(root, await bridge.execute('analysis_agent_session_location', {session_id})));

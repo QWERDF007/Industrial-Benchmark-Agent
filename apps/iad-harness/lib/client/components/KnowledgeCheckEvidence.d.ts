@@ -1,7 +1,8 @@
 import React from 'react';
 import type { KnowledgeCheckEvidencePage, KnowledgeDetailQuery, KnowledgeEvidence } from '../../shared/domain.generated.js';
-export declare function KnowledgeCheckEvidence({ versionId, checkId, role, active, onOpen, onLoaded }: {
-    versionId: string;
+import { type AnalysisReadSource } from '../analysis-results.js';
+export declare function KnowledgeCheckEvidence({ source, checkId, role, active, onOpen, onLoaded }: {
+    source: AnalysisReadSource;
     checkId: string;
     role: NonNullable<KnowledgeDetailQuery['evidence_role']>;
     active: boolean;

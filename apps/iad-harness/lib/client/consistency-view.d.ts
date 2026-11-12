@@ -3,6 +3,7 @@ import { modelConclusionLabels } from '../shared/consistency.parameters.generate
 export declare const consistencyImageGroups: {
     readonly NO_CANDIDATES: '无候选';
     readonly NO_ELIGIBLE_CANDIDATES: '无有效候选';
+    readonly PROGRAM_CONSISTENT: '一致';
 };
 export type ConsistencyImageGroup = 'images' | keyof typeof consistencyImageGroups;
 export interface ConsistencyComparisonItem {
@@ -42,7 +43,7 @@ export type ConsistencyAnalysisReference = GalleryReference | AnchorReviewRefere
 export declare class ConsistencyView {
     static modelConclusion(value: string | null | undefined, verdict?: GalleryItem['model_state'] | null): keyof typeof modelConclusionLabels | '';
     static agreement(program: string, model: ConsistencyComparisonItem['model']['modelType']): ConsistencyComparisonItem['agreement'];
-    static filter<T extends ConsistencyComparisonItem>(items: T[], filters: ConsistencyFilterValues, reason?: keyof typeof consistencyImageGroups): T[];
+    static filter<T extends ConsistencyComparisonItem>(items: T[], filters: ConsistencyFilterValues, group?: keyof typeof consistencyImageGroups): T[];
     static media(image: GalleryItem['anchor'], thumbnail?: boolean): string;
     static load(batchId: string, signal: AbortSignal): Promise<{
         queryId: string;

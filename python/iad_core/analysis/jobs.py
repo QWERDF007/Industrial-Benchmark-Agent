@@ -4,6 +4,7 @@ from iad_core.analysis.models import (AnalysisAgentConfiguration, AnalysisAgentC
     AnalysisCatalog, AnalysisSessionLocation, AnalysisWorkflowSnapshot, AnalysisWorkflowState, ExplorationAgentStart)
 from iad_core.analysis.directions import AnalysisDirections
 from iad_core.analysis.coverage import AnalysisCoverageReader
+from iad_core.analysis.prompt_text import EVIDENCE_ON_DEMAND_WORKFLOW
 from iad_core.exploration.prompts import ExplorationPrompts
 from iad_core.knowledge.instructions import FrozenMiningPrompt
 from iad_core.knowledge.support import KnowledgeSupport
@@ -66,7 +67,8 @@ class AnalysisAgentJobs:
             support_policy=KnowledgeSupport.configured(), selected_directions=directions,
             input_organization='exploration-batch-v2' if exploration else 'batch-materials-v1',
             exploration_review_policy='comparative-v1' if exploration else None,
-            execution_mode='dsh-subagents')
+            execution_mode='dsh-subagents', context_policy='evidence-on-demand-v1',
+            context_instruction=EVIDENCE_ON_DEMAND_WORKFLOW)
         payload = dict(submission=submission, analysis_workflow_version=2, analysis_kind=selected.analysis_kind,
             dataset_id=manifest.records[0].sample.dataset_id, dataset_ids=manifest.dataset_ids,
             sample_ids=[record.sample.sample_id for record in manifest.records])

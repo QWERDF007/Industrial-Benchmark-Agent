@@ -320,12 +320,13 @@ class JobRunner:
             callback()
         return self.status(run_id)
 
-    def resume_external(self, run_id: str, *, persist: Optional[Callable[[Connection], None]] = None) -> dict:
+    def resume_external(self, run_id: str, *, persist: Optional[Callable[[Connection], None]] = None,
+            restart_completed: bool = False) -> dict:
         with self.lock, self.db.connection() as conn:
             if self.closing:
                 raise ValueError('Worker is closing')
             state = self.status(run_id)
-            if state['status'] in ('PENDING', 'RUNNING', 'COMPLETED') or state['deleted_at']:
+            if state['status'] in ('PENDING', 'RUNNING') or state['status']=='COMPLETED' and not restart_completed or state['deleted_at']:
                 raise ValueError('当前作业不可继续')
             conn.execute('BEGIN IMMEDIATE')
             row = conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()

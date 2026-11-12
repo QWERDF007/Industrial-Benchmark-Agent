@@ -47,3 +47,21 @@ export function respondFixtureTools(response,calls,{protocol='openai-completions
   response.end('data: '+JSON.stringify({choices:[{index:0,delta:{},finish_reason:'tool_calls'}],
     usage:{prompt_tokens:500,completion_tokens:200,total_tokens:700}})+'\n\ndata: [DONE]\n\n');
 }
+
+export function evidenceOnDemandFixtureCalls(calls) {
+  return calls.map(call=>{
+    if(call.name.endsWith('_observe')){
+      const {key_evidence_ids,...report}=call.arguments;
+      return {...call,arguments:{...report,selected_evidence:key_evidence_ids.map(evidence_id=>({evidence_id,
+        reason:'该原图的可见外缘适合按需复核。'}))}};
+    }
+    if(!call.name.endsWith('_commit')&&!call.name.endsWith('_finalize'))return call;
+    const section=call.name.startsWith('knowledge')?'checks':'directions';
+    const entries=call.arguments[section];
+    const finalize=call.name.endsWith('_finalize');
+    return {...call,arguments:{...call.arguments,[section]:finalize?[]:entries.map(({evidence_ids,support_evidence_ids,
+      counter_evidence_ids,key_evidence,...body})=>body),
+      selections:entries.filter(entry=>entry.key_evidence?.length).map(entry=>({entry_id:entry.direction_id||entry.check_id,key_evidence:entry.key_evidence})),
+      ...(finalize?{arguments:[]}: {})}};
+  });
+}

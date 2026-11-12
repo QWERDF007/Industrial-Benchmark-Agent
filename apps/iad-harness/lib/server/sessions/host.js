@@ -11,9 +11,11 @@ import { sessionFormatCatalog } from '@deepseek-ai/dsh-session-format-catalog';
 import TokenMeter from '@deepseek-ai/dsh-token-meter';
 import BasicCompaction from '@deepseek-ai/dsh-compaction-basic';
 import * as ImageOffload from '@deepseek-ai/dsh-compaction-image-offload';
+import { imageOffloadProjection } from '@deepseek-ai/dsh-compaction-image-offload/projection';
 import SubagentRuntime from '@deepseek-ai/dsh-subagent';
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process';
 import SessionQuery from '@deepseek-ai/dsh-session-query-sqlite';
+import { ObservedImages } from './observed-images.js';
 export class JobSessionHost {
     root;
     locate;
@@ -28,7 +30,7 @@ export class JobSessionHost {
         this.sessions = sessions;
         this.stop = stop;
     }
-    static async open(root, locate) {
+    static async open(root, locate, evidenceOnDemand = false) {
         const ctx = new Context();
         let sessions;
         let owner;
@@ -38,7 +40,10 @@ export class JobSessionHost {
                 new AgentRegistry(scope);
                 new LlmRuntime(scope);
                 await scope.plugin(TokenMeter, {});
-                await scope.plugin(ImageOffload);
+                if (evidenceOnDemand)
+                    sessions.registerMessageProjection(imageOffloadProjection);
+                else
+                    await scope.plugin(ImageOffload);
                 new SystemPrompt(scope, { includeHarnessIdentity: false, includeRuntimeContext: false });
                 new ToolRuntime(scope);
                 new JobSessionPersistence(scope, root, locate);
@@ -73,7 +78,7 @@ export class JobSessionHost {
         const stored = await this.ctx.sessionPersistence.stat(sessionId);
         if (!stored)
             throw new Error('作业真实内部会话缺失，不能用同 ID 新建会话代替恢复');
-        const runtime = await JobSessionHost.open(this.root, this.locate);
+        const runtime = await JobSessionHost.open(this.root, this.locate, options.evidenceOnDemand);
         this.active.set(id, runtime);
         const dispose = this.ctx.effect(() => async () => {
             this.active.delete(id);
@@ -82,6 +87,9 @@ export class JobSessionHost {
         try {
             const { AgentLoop } = await import('@deepseek-ai/dsh-agent-loop');
             await runtime.ctx.plugin(AgentLoop, { agents: [] });
+            if (options.evidenceOnDemand)
+                new ObservedImages(runtime.sessions).attach(runtime.ctx, options.imageHandoffTools);
+            const retention = options.evidenceOnDemand ? { retainTokens: 0, compactionRetries: 0, maxOverflowRetries: 0 } : {};
             let owner = runtime.ctx;
             if (options.subagents !== undefined) {
                 await runtime.ctx.plugin(SessionQuery, { path: ':memory:', openAt: 'never' });
@@ -92,14 +100,14 @@ export class JobSessionHost {
             if (options.sharedSetup) {
                 await owner.inject(['llm', 'systemPrompt', 'tools'], async (injected) => { await options.sharedSetup(injected); });
                 const maxTokens = options.agentOptions?.maxTokens ?? 4096;
-                await owner.plugin(BasicCompaction, { headroomTokens: maxTokens, maxTokens });
+                await owner.plugin(BasicCompaction, { headroomTokens: maxTokens, maxTokens, ...retention });
             }
             const handle = await owner.agents.resume({ resumeSessionId: sessionId, ...options,
                 setup: async (scope, agent) => {
                     const commit = await options.setup?.(scope, agent);
                     const maxTokens = agent.options.maxTokens ?? 4096;
                     if (!options.sharedSetup)
-                        await scope.plugin(BasicCompaction, { headroomTokens: maxTokens, maxTokens });
+                        await scope.plugin(BasicCompaction, { headroomTokens: maxTokens, maxTokens, ...retention });
                     return commit;
                 } });
             try {

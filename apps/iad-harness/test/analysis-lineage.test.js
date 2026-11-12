@@ -11,7 +11,7 @@ import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/i
 import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {analysisPageBundle} from './fixtures/analysis-page.js';
 
-test('a knowledge entry opens its frozen preset and exact exploration publication beyond the first job page',{timeout:60000},async t=>{
+test('a knowledge entry shows only plain frozen direction titles and preserves the source publication when later directions change',{timeout:60000},async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-analysis-lineage-'));
   let bridge,server,driver;
   const previousDirectory=process.env.IAD_KNOWLEDGE_DIRECTIONS_DIR;
@@ -59,7 +59,7 @@ def observe(run_id,title,check=False):
  calls.start_native(run_id,NativeModelCallStart(call_id=cid,started_at='2026-11-09T12:00:00Z',request={'fixture':'frozen source page'}),sample_id=None,session_id=context.session_id,attempt=1)
  AnalysisEvidence(jobs).delivered(run_id,cid,[i.image.evidence_id for i in page.images]);calls.finish_native(run_id,None,NativeModelCallEnd(call_id=cid,finished_at='2026-11-09T12:00:01Z',elapsed_ms=1000,finish_reason='tool-calls'))
  observation=dict(sample_id=page.sample_id,dataset_id=dataset_id,description='本登记可见边缘。',evidence_ids=[i.image.evidence_id for i in page.images])
- change=dict(direction_id='assembly',title=title,instruction=title+'的冻结原文。',applies_to='both',rationale='依据本图边缘['+observation['evidence_ids'][0]+']。',evidence_ids=[observation['evidence_ids'][0]],counter_evidence_ids=[],dataset_ids=[dataset_id],limitations=['标签18含义未知','ROI仅21x17'])
+ change=dict(direction_id='assembly',title=title,instruction=title+'的冻结原文。',applies_to='both',rationale='依据本图可见边缘核对连续关系。',evidence_ids=[observation['evidence_ids'][0]],counter_evidence_ids=[],dataset_ids=[dataset_id],limitations=['标签18含义未知','ROI仅21x17'])
  change['key_evidence']=[dict(evidence_id=observation['evidence_ids'][0],role='support',reason='原图展示可辨边缘和局部定位。')]
  arguments=[]
  if not check and context.catalog.directions:
@@ -68,7 +68,11 @@ def observe(run_id,title,check=False):
  if check:
   observation['directions']=[dict(direction_ref=d.ref,status='applicable',reason='边缘可见。') for d in context.selected_directions]
   change=dict(check_id='C1',title='来源可追溯判据',subject='主体',location='边缘',criterion='核对边缘。',allowed_variations=[],limitations=[],status='provisional',support_evidence_ids=observation['evidence_ids'],counter_evidence_ids=[],direction_refs=[d.ref for d in context.selected_directions],dataset_ids=[dataset_id])
- return AnalysisCommits(jobs).accept(run_id,dict(commit_key=str(uuid4()),base_revision=context.revision,round_id=context.round.round_id,observations=[observation],arguments=arguments,summary=title if check else '主体边缘在已观察视图内可辨，其他视图待补。',limitations=[],unresolved_questions=[],**({'checks':[change]} if check else {'directions':[change]})))
+ identity=change.get('check_id',change.get('direction_id'))
+ evidence_ids=change.pop('support_evidence_ids' if check else 'evidence_ids');change.pop('counter_evidence_ids')
+ keys=change.pop('key_evidence',[])
+ arguments.extend(dict(entry_id=identity,evidence_id=eid,role='support',reason='本图外缘提供可复查的连续结构。') for eid in evidence_ids)
+ return AnalysisCommits(jobs).accept(run_id,dict(commit_key=str(uuid4()),base_revision=context.revision,round_id=context.round.round_id,observations=[observation],arguments=arguments,selections=[dict(entry_id=identity,key_evidence=keys)] if keys else [],summary=title if check else '主体边缘在已观察视图内可辨，其他视图待补。',limitations=[],unresolved_questions=[],**({'checks':[change]} if check else {'directions':[change]})))
 def seed_historical_summary(version_id):
  with db.connection() as connection:
   historical=json.loads(connection.execute('SELECT publication_json FROM analysis_publications WHERE version_id=?',(version_id,)).fetchone()[0])
@@ -84,14 +88,8 @@ jobs.jobs.finish_external(mining['run_id']);knowledge_version=AnalysisPublicatio
 AnalysisQueries(db).remove_direction(DirectionRemoval(dataset_id=dataset_id,version_id=source_version,direction_id='assembly'))
 jobs.resume(source['run_id']);observe(source['run_id'],'后续探索方向');jobs.jobs.finish_external(source['run_id']);latest_version=AnalysisPublications(db).publish(source['run_id']).version_id
 seed_historical_summary(latest_version)
-for i in range(9):
- other=jobs.start(dict(submission_id=str(uuid4()),analysis_kind='exploration',dataset_ids=[dataset_id],normal_images=[dataset_id+':0.png'],prompt={'text':'其他探索正文。'}),agent=role);jobs.cancel(other['run_id'])
 presets=root/'presets';presets.mkdir();(presets/'assembly.txt').write_text('当前目录的新预设\\n当前目录的新指令。')
-other_images=root/'other';other_images.mkdir();Image.new('RGB',(32,24),'green').save(other_images/'other.png')
-other=DatasetRegistry(db).import_labelme(DatasetImport(format='labelme',name='另一数据集',image_dir=str(other_images),annotation_dir=str(other_images)))
-registry.save(other,group_id=registry.create_group('另一组')['group_id'])
-other_job=jobs.start(dict(submission_id=str(uuid4()),analysis_kind='exploration',dataset_ids=[other.dataset.id],normal_images=[other.dataset.id+':other.png'],prompt={'text':'另一范围的探索。'}),agent=role);jobs.cancel(other_job['run_id'])
-print(json.dumps(dict(other_dataset=dataset_get({'dataset_id':other.dataset.id},db.db_path),other_run=other_job['run_id'],dataset=dataset_get({'dataset_id':dataset_id},db.db_path),source_run=source['run_id'],source_version=source_version,latest_version=latest_version,knowledge_version=knowledge_version,preset_revision=preset['source']['revision'],role=role)))
+print(json.dumps(dict(dataset=dataset_get({'dataset_id':dataset_id},db.db_path),source_run=source['run_id'],source_version=source_version,latest_version=latest_version,knowledge_version=knowledge_version,preset_revision=preset['source']['revision'],role=role)))
 runtime.close()
 `,root,database],{cwd:findWorkspaceRoot(),env:{...process.env,PYTHONPATH:path.join(findWorkspaceRoot(),'python')},encoding:'utf8'}));
   const {PythonBridge}=await import('../lib/server/python-bridge/index.js');
@@ -119,56 +117,32 @@ runtime.close()
   await driver.manage().window().setRect({width:1920,height:1080});
   await driver.get(`http://127.0.0.1:${server.address().port}/analysis-browser`);
   const element=selector=>driver.wait(until.elementLocated(By.css(selector)),10000);
-  await(await element('button[aria-label="查看知识条目 来源可追溯判据"]')).click();
-  await(await element('button[aria-label="查看方向来源 本场预设动作"]')).click();
-  const sourceText=await(await element('.iad-prompt-text')).getText();
-  assert.ok(sourceText.includes('装配与配合')&&sourceText.includes(data.preset_revision));
-  assert.ok(sourceText.includes('本场编辑后的预设动作。'));
-  await(await element('button[aria-label="关闭方向来源抽屉"]')).click();
-  await(await element('button[aria-label="查看方向来源 本场探索动作"]')).click();
-  const exploredText=await(await element('.iad-prompt-text')).getText();
-  assert.ok(exploredText.includes('首版探索方向的冻结原文。'));
-  assert.ok(exploredText.includes(data.source_version)&&exploredText.includes('本场编辑后的探索动作。'));
-  await(await element('button[aria-label="关闭方向来源抽屉"]')).click();
-  await(await element('button[aria-label="打开源探索版本 本场探索动作"]')).click();
-  await driver.wait(async()=>(await(await element('button[aria-label="导出当前作业成果"]')).getAttribute('data-version-id'))===data.source_version,10000);
-  assert.ok((await driver.findElement(By.css('#exploration-page')).getText()).includes('首版探索方向'));
-  await element('dialog[aria-label="首版探索方向"]');
-  assert.equal(await(await element('dialog .exp-dialog-head strong')).getText(),'首版探索方向');
-  await driver.wait(()=>driver.executeScript('const images=[...document.querySelectorAll("dialog .exp-direction-evidence img")];return images.length>0&&images.every(image=>image.complete&&image.naturalWidth===32)'),10000);
-  const citation=await element('.exp-direction-rationale [data-evidence-ref]');
-  assert.equal(await citation.getText(),'良品 N1');
-  const linkedCard=await element('[data-evidence-card="N1"]');
-  const priorFocus=await driver.executeScript('return document.activeElement.getAttribute("aria-label")');
-  await driver.actions().move({origin:citation}).perform();
-  await driver.wait(async()=>await linkedCard.getAttribute('data-highlighted')==='true',3000);
-  assert.equal(await driver.executeScript('return document.activeElement.getAttribute("aria-label")'),priorFocus);
-  await driver.actions().move({origin:await element('.exp-direction-goal h3')}).perform();
-  await driver.wait(async()=>await linkedCard.getAttribute('data-highlighted')==='false',3000);
-  await driver.executeScript('arguments[0].focus()',citation);
-  await driver.wait(async()=>await linkedCard.getAttribute('data-highlighted')==='true',3000);
-  await linkedCard.click();await element('#full-overlay');
+  const entry=await element('button[aria-label="查看知识条目 来源可追溯判据"]');
+  assert.equal((await driver.findElements(By.css('#job-pager'))).length,0,'挖掘作业只有一页时隐藏分页栏');
+  assert.equal((await driver.findElements(By.css('nav[aria-label="知识条目分页"]'))).length,0,'知识条目只有一页时隐藏分页栏');
+  await entry.click();
+  const source=await driver.wait(until.elementLocated(By.xpath('//section[h3[normalize-space(.)="方向来源"]]')),10000);
+  const sourceText=await source.getText();
+  const sourceTitles=await source.findElements(By.css('p'));
+  assert.deepEqual(await Promise.all(sourceTitles.map(item=>item.getText())),['首版探索方向','装配与配合']);
+  assert.equal(await driver.executeScript('return [...arguments[0].querySelectorAll("p")].every(p=>Number(getComputedStyle(p).fontWeight)<600)',source),true,'来源标题使用普通字重');
+  assert.doesNotMatch(sourceText,/后续探索方向|本场编辑后的|analysis_version_|analysis_/);
+  assert.equal((await source.findElements(By.css('strong,b,button,a'))).length,0,'来源标题无加粗、抽屉或跳转按钮');
+  assert.equal((await driver.findElements(By.css('dialog:modal'))).length,1);
+  assert.equal((await source.findElements(By.css('p'))).length,2);
+  assert.equal((await driver.findElements(By.css('nav[aria-label="支持证据分页"]'))).length,0,'一页证据不显示分页栏');
+  const evidence=await driver.wait(until.elementLocated(By.xpath('//section[h3[normalize-space(.)="图像证据"]]')),10000);
+  assert.equal((await evidence.findElements(By.css('[role="tablist"]'))).length,1,'图像证据标题位于支持/反对标签上方');
+  const captions=await evidence.findElements(By.css('.iad-thumbnail-caption'));
+  assert.deepEqual((await Promise.all(captions.map(item=>item.getText()))).sort(),['0.png','1.png'],'卡片显示原图文件名');
+  await(await element('#review-note')).sendKeys('保留未提交的核实备注');
+  await(await element('button[aria-label="放大支持证据 0.png"]')).click();await element('#full-overlay');
   await driver.wait(()=>driver.executeScript('const image=document.querySelector("#full-overlay img");return image?.complete&&image.naturalWidth===32'),10000);
-  await(await element('button[aria-label="下一张图像"]')).click();
-  await driver.wait(()=>driver.executeScript('const image=document.querySelector("#full-overlay img");return image?.complete&&image.naturalWidth===14&&document.querySelector("#full-file-name")?.textContent.trim()==="0.png"'),10000);
   await(await element('#full-close')).click();
-  assert.ok(!(await driver.findElement(By.css('#exploration-page')).getText()).includes('后续探索方向'));
-  const location=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad'));
-  assert.equal(location.job,data.source_run);assert.equal(location.version,data.source_version);
-  assert.equal(await(await element(`tr[data-id="${data.source_run}"]`)).getAttribute('data-selected'),'true');
-  await(await element('button[aria-label="关闭方向详情"]')).click();
-  await(await element(`#exp-parent option[value="${data.other_dataset.group_id}"]`)).click();
-  const otherRow=await element(`tr[data-id="${data.other_run}"]`);
-  await(await otherRow.findElement(By.css('td'))).click();
-  await driver.wait(async()=>JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad')).job===data.other_run,10000);
-  await(await element(`#exp-parent option[value="${data.dataset.group_id}"]`)).click();
-  await driver.wait(async()=>{
-    const response=JSON.parse(new URL(await driver.getCurrentUrl()).searchParams.get('iad'));
-    return !response.job||response.job!==data.other_run;
-  },5000,'切换数据集应清除上一范围的所选作业');
-  assert.ok(!(await driver.findElement(By.css('#exploration-page')).getText()).includes('所选作业不属于当前数据集'));
+  assert.equal(await(await element('#review-note')).getAttribute('value'),'保留未提交的核实备注');
+  assert.equal((await driver.findElements(By.css('dialog:modal'))).length,1);
   const output=path.resolve('runs/verification/analysis-native-pages');await fs.mkdir(output,{recursive:true});
-  await fs.writeFile(path.join(output,'knowledge-exploration-source-version.png'),await driver.takeScreenshot(),'base64');
+  await fs.writeFile(path.join(output,'knowledge-direction-source-title.png'),await driver.takeScreenshot(),'base64');
   await driver.get(`http://127.0.0.1:${server.address().port}/analysis-browser`);
   await(await element('#create-btn')).click();await(await element('#kb-tab-explore')).click();
   const sourceChoice=await driver.wait(async()=>{

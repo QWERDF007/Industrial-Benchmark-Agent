@@ -1,4 +1,5 @@
 import {finalizeFixtureCatalog,respondFixtureTools} from '../test/fixtures/analysis-finalization.js';
+import {auditReportTool} from '../test/fixtures/audit-report.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -23,6 +24,21 @@ export async function startNativeModelHost({bundlePath = path.join(workspace, 'a
       const context=index<0?null:parse(body.messages[index].content);
       const pages=body.messages.slice(index+1).filter(message=>message.role==='tool').map(message=>parse(message.content));
       let tools;
+      if(context?.role==='observer'){
+        const originals=body.messages[index].content.filter(part=>part.type==='text').map(part=>parse(part.text)).filter(item=>item?.images);
+        respondFixtureTools(res,[{name:'exploration_observe',arguments:{observations:originals.map(page=>({
+          sample_id:page.sample_id,dataset_id:page.images[0].dataset_id,description:'本批原图的轮廓可见。',evidence_ids:[page.evidence_id]})),
+          assessments:[],discoveries:[],discovery_summary:'本批未增加独立方向。',key_evidence_ids:[]}}],{model});return;
+      }
+      if(context?.role==='reviewer'){
+        respondFixtureTools(res,[{name:'exploration_commit',arguments:{commit_key:'review-'+context.revision,
+          round_id:context.round.round_id,base_revision:context.revision,observations:[],directions:[],
+          report_reviews:context.reports.map(task=>({round_id:task.round.round_id,discovery_decisions:[]})),
+          summary:'已核对完整批次观察。',limitations:[],unresolved_questions:[]}}],{model});return;
+      }
+      if(context?.kind==='audit_records'){
+        respondFixtureTools(res,[auditReportTool(context,pages)],{model});return;
+      }
       if(context?.phase==='finalize'){
         const module=body.tools.some(tool=>tool.function.name==='exploration_finalize')?'exploration':'knowledge';
         respondFixtureTools(res,finalizeFixtureCatalog(context,pages,module),{model});return;

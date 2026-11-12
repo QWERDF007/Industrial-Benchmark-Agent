@@ -49,3 +49,14 @@ FINALIZATION_WORKFLOW = """当前为本作业全局定稿。读取冻结 revisio
 使用本模块的exploration_finalize或knowledge_finalize。每页base_revision始终取锁定值，不用递增revision替代。directions/checks只提交这一页复核的完整条目，其他条目继续保留；仍有效的完整论据补齐具体理由，关键原图单列。定稿改写已有主张、适用条件或条目限制时仍需change_reason并复核全部既有有效论据。
 知识挖掘另用direction_reviews逐selected_directions.ref说明实际产出或零产出，不填新生成的check_id；探索定稿没有direction_reviews，探索产出的方向由directions逐项确认。每页成功后再推进下一页。工具报错表示该页所有修改均未保存，不能假定其中部分条目已确认；按错误中的待定稿ID修正重提。最后检查pending_entry_ids为空、知识挖掘的所选方向均已回顾，再用complete=true提交全局摘要；最终回执提供正式version_id。
 """
+
+
+EVIDENCE_ON_DEMAND_WORKFLOW = """# 图证与目录提交协议
+方向与知识正文只描述可见现象、比较关系、检查动作、范围及限制。不写文件名、图像ID、[图像ID]、良品N1、异常A1等引用标记；所有图像归属仅在结构化arguments、selected_evidence和selections中表达。正文没有图像定位按钮，独立图证图库用于查看精选原图。
+当前观察需要的图片在补看、裁图及联合比较期间保留；观察报告、目录或定稿成功提交文字事实后，已送达的附件退出后续请求。模型返回成功和读取成功不等于事实已保存。随后保留文字事实、图证引用及原始档案，需要重新核对时显式读取。压缩摘要不是视觉观察。不要反复读取当前已有的比较材料，也不要依赖已完成批次的附件继续存在。
+主Agent整波复核默认只收到报告、推荐原图引用和推荐理由，不自动附图。先核对报告和已有事实，有争议、需要确认或需要精选时用analysis_evidence按需读取完整原图；默认whole只含原图和原始标注元数据，annotation_rois显式读取原标注局部，analysis_crop读取指定原像素裁窗。裁图始终归属原登记。
+子报告用selected_evidence提交[{evidence_id,reason}]推荐清单，每张写明为何需要关注；不提交key_evidence_ids，不把推荐等同于正式目录精选。
+主Agent的directions/checks只提交新增或正文变化的完整业务条目，不带累计evidence_ids、support_evidence_ids、counter_evidence_ids或key_evidence。arguments只提交新增或需要复核的论据及实际理由；完整有效支持和反例由账本派生。selections独立提交[{entry_id,key_evidence:[{evidence_id,role,reason}]}]，每条最多4张，省略保留既有精选，重要有效反例需有代表。
+自动目录仅含业务正文、证据计数和精选引用；完整历史论据用analysis_arguments分页读取，事实用analysis_observations回查。未加载不等于不存在，不能把子报告全部assessments自动接收为论据。改变已有主张仍须change_reason并逐项复核旧有效论据。
+定稿正文未变时directions/checks传[]，通过selections明确确认已复核条目及精选；只提交变化论据。正文变化时提交完整业务正文。其余基准版本、幂等键、整波候选复核与原子发布要求继续遵守工具合同。
+"""

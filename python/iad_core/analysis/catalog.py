@@ -18,9 +18,10 @@ class AnalysisCatalogs:
         predecessor = 'predecessor_direction_ids' if exploration else 'predecessor_check_ids'
         entries = {getattr(item, identity): item.model_dump() for item in getattr(catalog, field)}
         edits = getattr(submission, field)
-        issues = AnalysisCatalogReview.prose(submission)
+        on_demand = snapshot.context_policy == 'evidence-on-demand-v1'
+        issues = AnalysisCatalogReview.prose(submission, allow_image_references=not on_demand)
         for item in edits:
-            issues.extend(AnalysisCatalogReview.prose(item))
+            issues.extend(AnalysisCatalogReview.prose(item, allow_image_references=not on_demand))
         if issues:
             raise ValueError('目录草稿未保存：' + '；'.join(dict.fromkeys(issues)))
         if len({getattr(item, identity) for item in edits}) != len(edits):
@@ -33,13 +34,14 @@ class AnalysisCatalogs:
                 raise ValueError('目录适用范围超出本场登记清单')
             if not exploration and not set(item.direction_refs).issubset(refs):
                 raise ValueError('知识关联了本场未选择的方向')
-            if set(getattr(item, support) + item.counter_evidence_ids) - observed:
+            evidence_ids = getattr(item, support, []) + getattr(item, 'counter_evidence_ids', [])
+            if set(evidence_ids) - observed:
                 raise ValueError('目录引用尚未提交观察的本场证据')
-            if not getattr(item, support) and not item.counter_evidence_ids:
+            if not on_demand and not evidence_ids:
                 raise ValueError('目录条目需要本场已提交的观察证据')
             entry_id = getattr(item, identity)
             previous = entries.get(entry_id, {})
-            updated = {**previous, **item.model_dump()}
+            updated = {support: [], 'counter_evidence_ids': [], **previous, **item.model_dump()}
             if 'key_evidence' not in item.model_fields_set:
                 updated['key_evidence'] = previous.get('key_evidence')
             updated['change_reason'] = item.change_reason
@@ -64,6 +66,13 @@ class AnalysisCatalogs:
                     target[name] = list(dict.fromkeys([*target.get(name, []), *source.get(name, [])]))
                 target[predecessor] = list(dict.fromkeys([*target.get(predecessor, []), source_id]))
         corrections = submission.citation_corrections
+        if on_demand:
+            if len({item.entry_id for item in submission.selections}) != len(submission.selections):
+                raise ValueError('同次提交的精选条目不能重复')
+            for selection in submission.selections:
+                if selection.entry_id not in entries:
+                    raise ValueError('精选条目不属于当前目录')
+                entries[selection.entry_id]['key_evidence'] = [item.model_dump() for item in selection.key_evidence]
         if len({(item.entry_id, item.evidence_id) for item in corrections}) != len(corrections):
             raise ValueError('同次提交的引用纠正不能重复')
         for correction in corrections:
@@ -101,6 +110,8 @@ class AnalysisCatalogs:
             raise ValueError('目录引用了非完整原图。请用citation_corrections按entry_id、evidence_id、whole_image_id显式纠正，未修改的directions/checks传[]；新条目仍需完整提交，已保存条目无需重写；'
                 'observations可保留局部观察。'+json.dumps(dict(invalid_citations=invalid_citations),ensure_ascii=False,separators=(',',':')))
         AnalysisArguments().apply(connection, run_id, revision, {**merged_entries, **entries}, submission, snapshot, media)
+        if on_demand and any(not item[support] and not item['counter_evidence_ids'] for item in entries.values()):
+            raise ValueError('目录条目需要本场有效的支持或反例论据')
         result = AnalysisCatalog(summary=submission.summary, limitations=submission.limitations,
             unresolved_questions=submission.unresolved_questions)
         if exploration:

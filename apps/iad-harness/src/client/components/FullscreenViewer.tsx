@@ -159,6 +159,7 @@ export function FullscreenViewer({
 
   // Navigate prev / next
   const moveViewer = useCallback((step: number) => {
+    stageRef.current?.focus({preventScroll:true});
     if(navigation){if(!navigation.busy && (step<0?navigation.previous:navigation.next))navigation.move(step<0?-1:1);return;}
     if (currentIndex < 0 || !items.length || !onNavigate) return;
     const next = Math.max(0, Math.min(items.length - 1, currentIndex + step));

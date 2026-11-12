@@ -1,6 +1,6 @@
 import json
 
-from iad_core.audit.models import AuditCommit, AuditFinal
+from iad_core.audit.models import AuditCommit, AuditEvidenceCommit, AuditFinal
 from iad_core.audit.evidence import AuditEvidence
 from iad_core.evidence.registrations import PreparedRegistration
 
@@ -10,9 +10,10 @@ class AuditCommits:
         self.jobs, self.db = jobs, jobs.db
 
     def accept(self, run_id: str, sample_id: str, request: dict) -> AuditFinal:
-        submission = AuditCommit.model_validate(request)
-        canonical = json.dumps(submission.model_dump(mode='json'), sort_keys=True, ensure_ascii=False)
         snapshot = self.jobs.snapshot(run_id)
+        commit_type = AuditEvidenceCommit if snapshot.context_policy == 'evidence-on-demand-v1' else AuditCommit
+        submission = commit_type.model_validate(request)
+        canonical = json.dumps(submission.model_dump(mode='json'), sort_keys=True, ensure_ascii=False)
         with self.jobs.jobs.lock, self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
             row = connection.execute('SELECT * FROM audit_sample_runs WHERE job_id=? AND sample_id=?', (run_id,sample_id)).fetchone()
@@ -23,12 +24,9 @@ class AuditCommits:
             if history:
                 if history[0] != canonical:
                     raise ValueError('同一终稿提交键不可用于不同内容')
-                return AuditCommit.model_validate_json(history[0]).final
-            if row['commit_key'] == submission.commit_key:
-                if row['submission_json'] != canonical:
-                    raise ValueError('同一终稿提交键不可用于不同内容')
-                return AuditFinal.model_validate_json(row['result_json'])
-            if row['state'] == 'COMPLETED':
+                return commit_type.model_validate_json(history[0]).final
+            review_row = connection.execute("SELECT review_id FROM audit_rechecks WHERE job_id=? AND sample_id=? AND state='RUNNING'",(run_id,sample_id)).fetchone()
+            if row['state'] == 'COMPLETED' and review_row is None:
                 raise ValueError('本场主图终稿已经提交')
             status = connection.execute('SELECT status FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0]
             if status != 'RUNNING':
@@ -37,18 +35,26 @@ class AuditCommits:
                 (run_id,sample_id,'sample:'+sample_id)).fetchone()
             delivered = AuditEvidence(self.jobs).observed(run_id,sample_id)
             final = submission.final
-            observed = set(final.evidence_ids + [eid for finding in final.findings for eid in finding.evidence_ids]
+            candidates = [item.evidence_id for item in final.selected_evidence]
+            if len(candidates) != len(set(candidates)):
+                raise ValueError('精选候选不能重复')
+            observed = set(final.evidence_ids + candidates + [eid for finding in final.findings for eid in finding.evidence_ids]
                 + [eid for assessment in final.check_assessments for eid in assessment.evidence_ids]
-                + [eid for observation in final.observations for eid in observation.evidence_ids])
+                + [eid for observation in final.observations for eid in observation.evidence_ids]
+                + [eid for feature in final.visual_features for eid in feature.evidence_ids]
+                + [eid for assessment in final.hypothesis_assessments for eid in assessment.evidence_ids])
             if observed - delivered:
                 raise ValueError('终稿引用没有本场已完成请求的实发证据')
-            whole_images = {item.image.evidence_id for media in connection.execute(
+            whole_images = {item.image.evidence_id:item.sample_id for media in connection.execute(
                 'SELECT media_json FROM audit_sample_media WHERE job_id=? AND target_id=?',(run_id,sample_id))
                 for item in PreparedRegistration.model_validate_json(media[0]).images
                 if item.image.is_whole_image and item.image.representation == 'raw'}
             referenced = observed | {eid for review in final.consistency_review for eid in review.evidence_ids}
-            if referenced - whole_images:
+            if referenced - whole_images.keys():
                 raise ValueError('审计证据只引用实际观察的完整原图，局部图关联所属原图')
+            report_samples = {record.sample.sample_id for record in snapshot.manifest.records}
+            if any(whole_images[eid] not in report_samples for eid in candidates):
+                raise ValueError('精选候选须属于本作业可进入报告的完整主图')
             main = PreparedRegistration.model_validate_json(saved_main[0]) if saved_main else None
             if final.execution_status == 'completed' and (main is None or main.error or not main.images or main.evidence_id not in observed
                     or not {item.image.evidence_id for item in main.images if item.required}.issubset(delivered)):
@@ -74,6 +80,13 @@ class AuditCommits:
             annotation_ids = {item.annotation_id for item in record.annotations}
             if any(set(observation.annotation_ids) - annotation_ids for observation in final.observations):
                 raise ValueError('观察引用不属于本图冻结标注')
+            if any(set(feature.annotation_ids) - annotation_ids for feature in final.visual_features):
+                raise ValueError('视觉特征引用不属于本图冻结标注')
+            context = self.jobs.context(run_id,sample_id)
+            clues = {clue.group_id for clue in context.batch.clues} if context.batch else set()
+            assessed_clues = [item.group_id for item in final.hypothesis_assessments]
+            if len(assessed_clues) != len(set(assessed_clues)) or set(assessed_clues) != clues:
+                raise ValueError('须逐项回应本批固定线索，支持视觉现象不自动生成质量疑点')
             for finding in final.findings:
                 if set(finding.annotation_ids) - annotation_ids or set(finding.consistency_issue_refs) - source_ids:
                     raise ValueError('疑点引用不属于本图冻结标注或一致性差异')
@@ -86,9 +99,18 @@ class AuditCommits:
             if len({finding.finding_id for finding in final.findings}) != len(final.findings):
                 raise ValueError('同图疑点ID不能重复')
             connection.execute('INSERT INTO audit_image_commits VALUES(?,?,?,?)',(run_id,sample_id,submission.commit_key,canonical))
+            if review_row and final.execution_status!='completed':
+                return final
             state = 'COMPLETED' if final.execution_status == 'completed' else 'RUNNING'
             connection.execute('''UPDATE audit_sample_runs SET state=?,result_json=?,commit_key=?,submission_json=?
                 WHERE job_id=? AND sample_id=?''', (state,final.model_dump_json(),submission.commit_key,canonical,run_id,sample_id))
             if state == 'COMPLETED':
-                self.jobs.jobs.record(run_id, sample_id, connection=connection)
+                revision = row['result_revision'] + 1
+                connection.execute('INSERT INTO audit_image_versions(job_id,sample_id,revision,result_json,review_id) VALUES(?,?,?,?,?)',
+                    (run_id,sample_id,revision,final.model_dump_json(),review_row[0] if review_row else None))
+                connection.execute('UPDATE audit_sample_runs SET result_revision=? WHERE job_id=? AND sample_id=?',(revision,run_id,sample_id))
+                if review_row:
+                    connection.execute("UPDATE audit_rechecks SET state='COMPLETED' WHERE job_id=? AND review_id=?",(run_id,review_row[0]))
+                else:
+                    self.jobs.jobs.record(run_id, sample_id, connection=connection)
             return final

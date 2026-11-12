@@ -72,7 +72,7 @@ export function createWorkbenchTools(bridge, ctx) {
         }),
         defineTool({
             name: "model_audit_start",
-            description: "审计subset_ids中全部登记图像。必须显式指定一个已完成的consistency_job_id；knowledge可空，选用时提供挖掘job_id、version_id和entry_ids。每张主图一个独立原生Session，实际观察整图与全部ROI，可复看本anchor候选及所选知识支持/反例。零知识或无候选也调用审计模型，保留完整图级终稿和当前作业报告。submission_id用于重传去重。",
+            description: "审计所选范围的全部登记图像，须选一个已完成且覆盖范围的一致性作业，知识可选。冻结模型、提示词、联合分析间隔和子 Agent 并发数；每图独立子 Session 实际观察完整原图及全部必要局部，每批由持续主 Agent 联合分析并发布线索，最终生成质量与用途报告。submission_id用于重传去重。",
             parameters: auditStartParameters,
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("audit_start", { request: args }, exec.signal),
@@ -86,14 +86,14 @@ export function createWorkbenchTools(bridge, ctx) {
         }),
         defineTool({
             name: "model_audit_cancel",
-            description: "请求停止 MLLM 审计作业并保留已完成建议；当前请求结束后停止，需查询最终状态。",
+            description: "停止模型审计作业，保留已完成图级终稿和全局发现；查询状态确认停止结果。",
             parameters: { run_id: { type: "string", required: true } },
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("audit_cancel", args, exec.signal),
         }),
         defineTool({
             name: "model_audit_retry",
-            description: "重试终态审计作业的失败/未处理样本，复用原冻结知识并核验来源，保留成功建议和原记录；输入变化时拒绝恢复。",
+            description: "沿原冻结输入和主子 Session 继续终态审计，保留有效图级终稿，只处理未完成图像和待完成的联合分析或报告。历史归档作业仅可查看冻结产物。",
             parameters: { run_id: { type: 'string', required: true } },
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("audit_retry", args, exec.signal),
@@ -107,7 +107,7 @@ export function createWorkbenchTools(bridge, ctx) {
         }),
         defineTool({
             name: "model_audit_report",
-            description: "读取指定审计run_id的本作业报告、审计覆盖、疑点分布和固定知识版本。只汇总该作业的逐图终稿，查看不触发模型调用。",
+            description: "读取指定审计作业的用途评价、跨图发现、典型与对照完整原图、程序统计和已有就绪结果。查看不触发模型调用；自然语言解释使用图像证据和业务描述，不罗列内部编号。",
             parameters: { run_id: { type: 'string', required: true } },
             output: workbenchJsonOutput,
             execute: (args, exec) => bridge.execute("audit_job_report", args, exec.signal),

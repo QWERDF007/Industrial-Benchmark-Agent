@@ -81,10 +81,13 @@ export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#d
 #audit-page .audit-source-panel .audit-panel-head h2{font-size:16px}
 #audit-page .audit-source-table{width:100%;overflow:auto;max-height:350px;scrollbar-width:thin}
 #audit-page .audit-source-table .audit-table{font-size:13px;min-width:720px;table-layout:fixed}
+#audit-create-consistency-jobs .audit-source-table .audit-table{min-width:900px}
 #audit-page .audit-source-table th{position:sticky;top:0;z-index:1;background:#f1f4f9}
 #audit-page .audit-source-table .audit-table :is(th,td){padding:11px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #audit-page .audit-source-table .audit-table .audit-description{white-space:normal;line-height:1.6;overflow-wrap:anywhere}
 #audit-page .audit-source-table input{width:16px;height:16px;accent-color:var(--audit-blue);cursor:pointer}
+#audit-page .audit-entry-row{cursor:pointer}
+#audit-page .audit-entry-title{border:0;background:none;padding:0;color:var(--iad-primary);font:inherit;text-align:left;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
 #audit-page .audit-entry-area{border-top:1px solid var(--audit-border)}
 #audit-page .audit-entry-header{padding:15px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
 #audit-page .audit-entry-header h3{font-size:15px;margin:0}

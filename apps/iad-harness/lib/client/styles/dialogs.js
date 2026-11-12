@@ -199,26 +199,6 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 }
 .exp-direction-dialog .exp-evidence-viewport:focus-visible {outline:2px solid #2458d5;outline-offset:-2px}
 
-/* Evidence reference tokens */
-:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref,
-.exp-direction-dialog .exp-evidence-ref {
-  color: var(--iba-dialog-ink, #172338) !important;
-  font-family: var(--iba-dialog-font) !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  border-color: #d9e2ed !important;
-  background: #fff !important;
-}
-:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref:hover,
-:is(.iad-workbench, [data-page="industrial-exploration"], .exp-direction-dialog, body) .exp-evidence-ref.is-related,
-.exp-direction-dialog .exp-evidence-ref:hover,
-.exp-direction-dialog .exp-evidence-ref.is-related {
-  background: #dce9ff !important;
-  border-color: #2458d5 !important;
-  color: #1742a0 !important;
-  box-shadow: 0 0 0 1px #2458d5 !important;
-}
-
 .detail-preview {
   height: clamp(310px, 46dvh, 500px) !important;
 }

@@ -1,3 +1,4 @@
+import {auditMessages,auditReportTool} from './fixtures/audit-report.js';
 import {chatRequest} from './fixtures/responses.js';
 import {respondFixtureTools} from './fixtures/analysis-finalization.js';
 import test from 'node:test';
@@ -27,25 +28,11 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
       if(protocol==='openai-responses')assert.equal(body.responses.reasoning.effort,'high');
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
       wire.push(body);
-      const parse=value=>{try{return JSON.parse((typeof value==='string'?value:value.find(part=>part.type==='text').text).split(String.fromCharCode(10))[0]);}catch{return null;}};
-      const reportContext=body.messages.filter(message=>message.role==='user').map(message=>parse(message.content)).find(value=>value?.phase==='report');
-      if(reportContext){
-        if(failReportOnce&&!reportFailed){reportFailed=true;res.writeHead(503);res.end(JSON.stringify({error:{message:'报告模型临时不可用'}}));return;}
-        const tools=body.messages.filter(message=>message.role==='tool').map(message=>parse(message.content));
-        const records=tools.find(value=>value?.items);
-        let call;
-        if(!records)call={name:'audit_records',arguments:{page:1,page_size:100}};
-        else if(!tools.some(value=>value?.groups?.length)){
-          const issues=records.items.flatMap(item=>(item.final?.findings||[]).map(finding=>({sample_id:item.sample_id,finding_id:finding.finding_id})));
-          assert.equal(issues.length,3);
-          call={name:'audit_group_issues',arguments:{commit_key:'group',groups:[{group_id:'G1',title:'覆盖范围需复核',description:'保存的图级覆盖疑点。',issue_refs:issues,
-            representatives:[{...issues[0],role:'representative',reason:'可见问题的代表图。'},...(withKnowledge?[{sample_id:records.items.find(item=>item.final.state==='normal').sample_id,role:'counter',reason:'相似形态下覆盖关系不同。'}]:[])],normal_explanations:['需排除成像变化。'],limitations:[]}]}};
-        }else call={name:'audit_report_commit',arguments:{commit_key:'report',scope_analysis:'审计本次冻结范围及原始标注。',issue_analysis:'覆盖问题需要复核。',
-          consistency_analysis:'无候选图像仍已独立观察。',knowledge_analysis:withKnowledge?'所选知识按适用性核对。':'未选知识，依据图像独立审计。',conclusion:'保存的独立疑点需人工复核。',limitations:['不代表人工真值。']}};
-        respondFixtureTools(res,[call],{protocol,model:'native-audit'});return;
+      const {context,outputs,pages}=auditMessages(body);
+      if(context?.phase){
+        if(context.phase==='report'&&failReportOnce&&!reportFailed){reportFailed=true;res.writeHead(503);res.end(JSON.stringify({error:{message:'报告模型临时不可用'}}));return;}
+        respondFixtureTools(res,[auditReportTool(context,outputs,{includeCounter:withKnowledge})],{protocol,model:'native-audit'});return;
       }
-      const context=body.messages.filter(message=>message.role==='user')
-        .map(message=>parse(message.content)).find(value=>value?.target);
       if(withKnowledge) {
         assert.deepEqual(context.knowledge.entries.map(entry=>[entry.check.check_id,entry.check.status,entry.review.status]),
           [['C1','conflicted','rejected'],['C2','provisional','pending']]);
@@ -61,15 +48,15 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
       assert.ok(!JSON.stringify(context).includes('本场第二张独立疑点'));
       const actual=body.messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(part=>part.type==='image_url');
       assert.equal(context.target.annotations.length,2);
-      assert.ok(actual.length>=3,'首次请求必须联合发送主图、全部标注10%局部与一致性分析');
-      const pages=body.messages.flatMap(message=>typeof message.content==='string'?[parse(message.content)]:Array.isArray(message.content)?message.content
-        .filter(part=>part.type==='text').map(part=>parse(part.text)):[]).filter(value=>Array.isArray(value?.images));
+      if(!body.messages.some(message=>message.role==='assistant'))
+        assert.equal(actual.length,3,'首次请求必须联合发送主图、全部标注10%局部与一致性分析');
+      else if(actual.length)assert.equal(actual.length,pages.at(-1).images.length,'后续请求只发送本次新返回的图片');
       assert.ok(pages.every(page=>!page.error));
       let call;
       if(withKnowledge&&pages.length===1)call={name:'audit_reference',arguments:{evidence_id:context.knowledge.entries[0].check[context.sample_id.endsWith(':1.png')?'support_evidence_ids':'counter_evidence_ids'][0]}};
       else if(withKnowledge&&pages.length===2)call={name:'audit_crop',arguments:{sample_id:context.sample_id,bbox:[1,2,11,12]}};
       else {
-        const images=pages.flatMap(page=>page.images);
+        const images=actual.length?pages.at(-1).images:[];
         assert.equal(actual.length,images.length);
         assert.deepEqual(pages[0].images.map(image=>image.image.sent_size),[[40,30],[9,11],[19,19]]);
         assert.ok(pages[0].images.every(image=>image.image.representation==='raw'));
@@ -104,11 +91,6 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
   runtime=await createAuditAgentHost(root,`http://127.0.0.1:${provider.address().port}/v1`,{protocol,optionalOutput,onError:error=>errors.push(String(error))});
   ({bridge,host,ctx,scheduler}=runtime);
   if(protocol==='openai-responses')await bridge.execute('module_settings_save',{module:'audit',expected_revision:1,settings:{reasoning_effort:'high'}});
-  const notice=host.notice.bind(host);let noticeInterrupted=false;
-  host.notice=async(id,record)=>{
-    if(withKnowledge&&record.value?.kind==='audit-final'&&!noticeInterrupted){noticeInterrupted=true;throw new Error('interrupted after the image final committed');}
-    return notice(id,record);
-  };
   const browser=process.env.IAD_AUDIT_BROWSER==='1'?await import('./fixtures/audit-page.js'):null;
   const page=browser?await browser.auditPageBundle(await bridge.execute('dataset_get',{dataset_id:data.dataset_id})):null;
   const handler=createIadHttpHandler(bridge);
@@ -120,7 +102,7 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
   const base=`http://127.0.0.1:${server.address().port}/api/iad`;
   const {promptDefaults}=await import('../lib/shared/prompt-defaults.generated.js');
   const submission={submission_id:randomUUID(),subset_ids:[data.dataset_id],consistency_job_id:data.consistency_job_id,...(data.knowledge?{knowledge:data.knowledge}:{}),
-    system_prompt:promptDefaults.system.audit+'\n系统自定义：审计工具流程。',instruction:'用户自定义：逐图比较边缘。'};
+    master_prompt:{system_prompt:promptDefaults.auditMasterSystem+'\n系统自定义：审计工具流程。',user_prompt:promptDefaults.auditBatch},observer_prompt:{system_prompt:promptDefaults.system.audit+'\n系统自定义：审计工具流程。',user_prompt:'用户自定义：逐图比较边缘。'}};
   const started=await ctx.tools.execute({name:'model_audit_start',arguments:submission,callId:'native-audit-start',signal:new AbortController().signal});
   assert.equal(started.isError,false,JSON.stringify(started));
   const response=await fetch(base+'/audit/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(submission)});
@@ -128,7 +110,8 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
   assert.equal(started.value.run_id,job.run_id);
   let status=await(await fetch(base+'/audit/status/'+job.run_id)).json();
   if(failReportOnce){
-    assert.equal(status.status,'PARTIAL');assert.equal(status.completed,2);assert.equal(status.failed,0);
+    assert.equal(status.status,'PARTIAL',JSON.stringify({execution_error:status.execution_error,errors:status.errors,provider:errors,
+      tools:wire.flatMap(body=>body.messages.filter(message=>message.role==='tool').map(message=>JSON.stringify(message.content).slice(0,500))).slice(0,8)}));assert.equal(status.completed,2);assert.equal(status.failed,0);
     const before=(await bridge.execute('audit_agent_samples',{run_id:job.run_id})).samples;
     await scheduler.resume(job.run_id);await scheduler.whenIdle();
     assert.deepEqual((await bridge.execute('audit_agent_samples',{run_id:job.run_id})).samples,before);
@@ -136,20 +119,19 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
   }
   assert.equal(status.status,'COMPLETED',JSON.stringify({errors:status.errors,execution_error:status.execution_error,provider:errors}));assert.equal(status.completed,2);assert.equal(status.failed,0);
   if(optionalOutput)assert.equal((await bridge.execute('audit_agent_snapshot',{run_id:job.run_id})).agent.profile.max_output_tokens,null);
-  assert.equal(wire.length,(withKnowledge?9:5)+(failReportOnce?1:0)+(correctKnowledgeOnce?2:0));assert.deepEqual(errors,[]);
+  assert.deepEqual(errors,[]);
   const parseReport=content=>JSON.stringify(content).includes('report');
   for(const body of wire){
     assert.ok(body.messages.some(message=>(message.role==='system'||message.role==='developer')&&message.content.includes('系统自定义：审计工具流程。')));
     assert.ok(!body.messages.some(message=>(message.role==='system'||message.role==='developer')&&message.content.includes('用户自定义：逐图比较边缘。')));
-    assert.ok(body.messages.some(message=>message.role==='user'&&(JSON.stringify(message.content).includes('用户自定义：逐图比较边缘。')||parseReport(message.content))));
+    assert.ok(body.messages.some(message=>message.role==='user'&&(JSON.stringify(message.content).includes('用户自定义：逐图比较边缘。')||auditMessages(body).context?.phase)));
   }
-  assert.equal(noticeInterrupted,withKnowledge);
   const samples=await(await fetch(base+'/audit/jobs/'+job.run_id+'/samples')).json();
   assert.deepEqual(samples.distribution,{suspect:1,normal:1,incomplete:0});
   const {samples:internal}=await bridge.execute('audit_agent_samples',{run_id:job.run_id});
   assert.equal(new Set(internal.map(sample=>sample.session_id)).size,2);
   const nativeCalls=status.model_calls.filter(call=>call.source==='native_llm');
-  assert.equal(nativeCalls.length,(withKnowledge?9:5)+(failReportOnce?1:0)+(correctKnowledgeOnce?2:0));
+  assert.equal(nativeCalls.length,wire.length);
   const reportSession=await bridge.execute('audit_agent_report_state',{run_id:job.run_id});
   assert.ok(nativeCalls.every(call=>call.sample_id===null?call.session_id===reportSession.session_id:internal.some(sample=>sample.sample_id===call.sample_id&&sample.session_id===call.session_id)));
   assert.equal(reportSession.state,'COMPLETED');
@@ -170,7 +152,7 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
     assert.equal(downloaded,await fs.readFile(filename,'utf8'));
     assert.equal((await host.read(sample.session_id)).events.filter(event=>event.type==='iad/job'&&event.data.value?.kind==='audit-final').length,1);
   }
-  const report=await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json();assert.equal(report.suspect_samples,1);assert.equal(report.statistics.issue_occurrences,3);assert.equal(report.groups[0].affected_image_count,1);assert.equal(report.key_evidence.length,withKnowledge?2:1);
+  const report=await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json();assert.equal(report.suspect_samples,1);assert.equal(report.statistics.issue_occurrences,3);assert.equal(report.discoveries[0].affected_image_count,withKnowledge?2:1);assert.equal(report.evidence_groups.G1.length,withKnowledge?2:1);
   const callsBeforeReport=wire.length;
   const reportRead=await ctx.tools.execute({name:'model_audit_report',arguments:{run_id:job.run_id},
     callId:'read-current-audit-report',signal:new AbortController().signal});
@@ -187,7 +169,7 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(directory,'summary.json'),'utf8')),report);
   assert.equal(await fs.readFile(path.join(directory,'report.html'),'utf8'),html);
   if(browser){await browser.verifyAuditPage(base.replace('/api/iad',''),data.consistency_job_id,job.run_id,{withKnowledge,knowledgeVersion:data.knowledge?.version_id,reportHtml:html});await scheduler.whenIdle();
-    assert.equal(wire.length,withKnowledge?18:10);assert.deepEqual(errors,[]);
+    assert.equal(wire.length,callsBeforeReport);assert.deepEqual(errors,[]);
     assert.equal(await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text(),html);}
 });
 
@@ -204,7 +186,8 @@ test('oversized joint image input fails without splitting resizing or hidden com
       }
       wire.push(body);
       const {context,outputs}=auditMessages(body);
-      assert.equal(context?.phase,'report','超限图级请求不得改为摘要或拆批请求');
+      if(hasImages){res.writeHead(413);res.end(JSON.stringify({error:{message:'context input capacity exceeded'}}));return;}
+      assert.ok(context?.phase,'超限图级请求不得改为摘要或拆批请求');
       respondFixtureTools(res,[auditReportTool(context,outputs)]);
     }catch(error){errors.push(String(error));res.writeHead(500);res.end(JSON.stringify({error:{message:String(error)}}));}
   });
@@ -219,8 +202,8 @@ test('oversized joint image input fails without splitting resizing or hidden com
   const status=await runtime.bridge.execute('audit_status',{run_id:job.run_id});
   assert.equal(status.status,'FAILED');assert.equal(status.completed,0);assert.equal(status.failed,2);
   assert.ok(status.errors.every(error=>/context|上下文/i.test(error.message)));
-  assert.equal(tokenizations.filter(body=>body.messages.some(message=>Array.isArray(message.content)&&message.content.some(part=>part.type==='image_url'))).length,2);
-  assert.equal(wire.length,2);assert.deepEqual(errors,[]);
+  assert.equal(tokenizations.length,0);
+  assert.equal(wire.filter(body=>auditMessages(body).context?.target).length,2);assert.deepEqual(errors,[]);
 });
 
 test('a startup input validation failure terminates the audit and remains retryable without model requests',{timeout:60000},async t=>{

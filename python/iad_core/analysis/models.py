@@ -4,12 +4,14 @@ from uuid import UUID
 from pydantic import Field, RootModel, model_validator
 
 from iad_core.analysis.prompt_models import AnalysisRolePrompts, FrozenAnalysisTasks
+from iad_core.analysis.evidence_models import ContextPolicy
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence, VisualView
-from iad_core.exploration.models import DirectionContent, FrozenExplorationPrompt, ExplorationReportReview
+from iad_core.exploration.models import DirectionContent, DirectionDescription, FrozenExplorationPrompt, ExplorationReportReview
 from iad_core.evidence.registrations import RegistrationMediaPage
 from iad_core.knowledge.instructions import MiningDirection
 from iad_core.knowledge.instructions import FrozenMiningPrompt, MiningDirectionSource, SubmittedMiningPrompt
 from iad_core.knowledge.models import KnowledgeSupportAssessment, KnowledgeSupportPolicy, LearnedCheck, KnowledgeCheckRemoval, KnowledgeCheckReview, KnowledgeCheckSummary, KnowledgeEvidence
+from iad_core.knowledge.models import KnowledgeCriterion
 from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisModule, AnalysisPlan, AnalysisRegistration, AnalysisRound
 from iad_core.workbench.analysis_sources import CandidateRole
 from iad_core.workbench.analysis_requests import SelectedDatasets
@@ -17,7 +19,7 @@ from iad_core.workbench.analysis_sampling import SamplingGroup
 from iad_core.workbench.model_profile import FrozenModelRole
 from iad_core.workbench.module_settings import ExplorationSettingsValues, KnowledgeSettingsValues
 from iad_core.workbench.calls import ModelCallError
-from iad_core.analysis.argument_models import AnalysisArgumentEdit, AnalysisEntrySelection, ArgumentRole
+from iad_core.analysis.argument_models import AnalysisArgumentEdit, AnalysisEntrySelection, AnalysisClaimChange, ArgumentRole
 from iad_core.analysis.finalization_state import AnalysisFinalizationProgress
 from iad_core.analysis.observation_models import AnalysisDirectionObservation, AnalysisSampleObservation, AnalysisObservationRecord
 from iad_core.exploration.observation_models import ExplorationBatchArchive
@@ -94,7 +96,7 @@ class FrozenAnalysisDirection(AnalysisModel):
 
 
 class KnowledgeCheckEvidencePage(AnalysisModel):
-    version_id: str
+    version_id: str | None = None
     dataset_id: str
     check: KnowledgeCheckSummary
     directions: list[FrozenAnalysisDirection]
@@ -124,11 +126,16 @@ class AnalysisWorkflowSnapshot(AnalysisAgentConfiguration):
     input_organization: Literal['registration-tools', 'exploration-batch-v2', 'batch-materials-v1'] = 'registration-tools'
     exploration_review_policy: Literal['comparative-v1'] | None = None
     execution_mode: Literal['serial', 'dsh-subagents'] = 'serial'
+    context_policy: ContextPolicy = 'legacy'
+    context_instruction: NonBlankText | None = None
 
 
-class ProposedAnalysisDirection(DirectionContent, AnalysisEntrySelection):
+class AnalysisDirectionBody(DirectionDescription, AnalysisClaimChange):
     direction_id: NonBlankText
     dataset_ids: list[str] = Field(min_length=1)
+
+
+class ProposedAnalysisDirection(DirectionContent, AnalysisDirectionBody, AnalysisEntrySelection):
     counter_evidence_ids: list[str] = Field(default_factory=list)
 
 
@@ -136,10 +143,14 @@ class AnalysisDirection(ProposedAnalysisDirection):
     predecessor_direction_ids: list[str] = Field(default_factory=list)
 
 
-class ProposedAnalysisCheck(LearnedCheck, AnalysisEntrySelection):
+class AnalysisCheckBody(KnowledgeCriterion, AnalysisClaimChange):
     check_id: NonBlankText
     direction_refs: list[str] = Field(min_length=1, description='只引用当前selected_directions中的完整ref。')
     dataset_ids: list[str] = Field(min_length=1, description='仅列当前条目实际有证据的子数据集。')
+
+
+class ProposedAnalysisCheck(LearnedCheck, AnalysisCheckBody, AnalysisEntrySelection):
+    pass
 
 
 class AnalysisKnowledgeCheck(ProposedAnalysisCheck, KnowledgeSupportAssessment):
@@ -150,7 +161,7 @@ class AnalysisClaimRevision(AnalysisModel):
     claim_revision: int
     revision: int
     reason: str | None
-    content: ProposedAnalysisDirection | ProposedAnalysisCheck
+    content: ProposedAnalysisDirection | ProposedAnalysisCheck | AnalysisDirectionBody | AnalysisCheckBody
 
 
 class AnalysisClaimHistory(AnalysisModel):
@@ -411,14 +422,35 @@ class AnalysisEvidenceView(AnalysisModel):
     observed: bool
 
 
-class AnalysisPublicationView(AnalysisPublication):
+class AnalysisCheckEvidence(AnalysisModel):
+    support: list[KnowledgeEvidence]
+    counter: list[KnowledgeEvidence]
+
+
+class AnalysisResultView(AnalysisModel):
+    job_id: str
+    module: AnalysisModule
+    revision: int
+    catalog: AnalysisCatalog
+    coverage: AnalysisCoverage
+    session_id: str | None = None
+    finalization: AnalysisFinalizationProgress | None = None
     evidence: list[AnalysisEvidenceView]
     selected_directions: list[FrozenAnalysisDirection]
     removed_direction_ids: list[str] = Field(default_factory=list)
 
 
+class AnalysisCurrentResultView(AnalysisResultView):
+    checks: list[KnowledgeCheckSummary] = Field(default_factory=list)
+    check_evidence: dict[str, AnalysisCheckEvidence] = Field(default_factory=dict)
+
+
+class AnalysisPublicationView(AnalysisPublication, AnalysisResultView):
+    pass
+
+
 class AnalysisSampleEvidence(AnalysisModel):
-    version_id: str
+    version_id: str | None = None
     module: AnalysisModule
     registration: AnalysisRegistration
     items: list[AnalysisEvidenceView]
@@ -437,6 +469,7 @@ class AnalysisSourceCatalog(AnalysisModel):
 
 
 class AnalysisResults(AnalysisModel):
+    current: AnalysisCurrentResultView
     publication: AnalysisPublicationView | None = None
 
 

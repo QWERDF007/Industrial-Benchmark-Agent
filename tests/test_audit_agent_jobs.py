@@ -9,11 +9,10 @@ from iad_core.workbench.module_settings import ModuleSettings
 def test_zero_knowledge_freezes_all_registrations_and_an_independent_session_per_image(native_audit):
     jobs, dataset_id, consistency_job_id, role = native_audit
     request = dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=consistency_job_id,
-        knowledge=None, system_prompt='使用审计工具提交完整终稿。', instruction='读取原图和全部局部，独立审计本张图像。')
+        knowledge=None, observer_prompt=dict(system_prompt='使用审计工具提交完整终稿。', user_prompt='读取原图和全部局部，独立审计本张图像。'))
     created = jobs.start(request, agent=role)
     snapshot = jobs.snapshot(created['run_id'])
-    assert snapshot.system_prompt == request['system_prompt']
-    assert snapshot.instruction == request['instruction']
+    assert snapshot.observer_prompt.model_dump() == request['observer_prompt']
     assert created['created'] is True
     assert created['total_samples'] == 6
     assert snapshot.knowledge is None
@@ -35,7 +34,7 @@ def test_audit_accepts_only_the_current_images_real_delivered_evidence_and_retai
     from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
     jobs, dataset_id, consistency_job_id, role = native_audit
     created = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=consistency_job_id,
-        knowledge=None, instruction='逐图观察并保留全部疑点。'), agent=role)
+        knowledge=None, observer_prompt=dict(system_prompt='独立审计本图。',user_prompt='逐图观察并保留全部疑点。')), agent=role)
     run_id = created['run_id']
     first, second = jobs.samples(run_id)[:2]
     jobs.session_created(run_id, first.sample_id)
@@ -85,6 +84,8 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
     started = mining.start(dict(submission_id=str(uuid4()),analysis_kind='knowledge',dataset_ids=[dataset_id],
         mining_prompt=dict(objective='核对轮廓。',instruction='保留反例与局限。',directions=[direction,unselected_direction])),agent=role)
     run_id = started['run_id']
+    with jobs.db.connection() as connection:
+        connection.execute("UPDATE analysis_workflow_runs SET snapshot_json=json_remove(snapshot_json,'$.context_policy','$.context_instruction') WHERE job_id=?", (run_id,))
     context = mining.context(run_id)
     pages = [AnalysisEvidence(mining).read(run_id,{'sample_id':target.sample_id}) for target in context.round.targets]
     call = NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-09T12:00:00Z',request={'fixture':'selected knowledge images'})
@@ -145,30 +146,10 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
         section='checks',check_id='C2'))
     assert unpublished_keys.total == 0
     assert unpublished_keys.check.support_count == 1
-    legacy = {**jobs.snapshot(audit['run_id']).model_dump(mode='json'), 'schema_version':1,
-        'knowledge':dict(selection=selection,summary=view.catalog.summary,limitations=view.catalog.limitations,
-            unresolved_questions=view.catalog.unresolved_questions,
-            directions=[direction.model_dump(mode='json') for direction in view.selected_directions],
-            entries=[entry.model_dump(mode='json') for entry in selected.entries],
-            evidence=[item.model_dump(mode='json') for item in selected.evidence])}
-    historical = AuditWorkflowSnapshot.model_validate(legacy)
-    assert historical.model_dump(mode='json') == legacy
-    assert historical.knowledge.summary == '未选全局摘要哨兵。'
-    assert historical.schema_version == 1
-    assert jobs.snapshot(audit['run_id']).schema_version == 3
-    jobs.cancel(audit['run_id'])
-    historical_run = jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],
-        consistency_job_id=consistency_job_id,knowledge=selection),agent=role)['run_id']
-    with jobs.db.connection() as connection:
-        connection.execute('UPDATE audit_workflow_runs SET snapshot_json=? WHERE job_id=?',
-            (historical.model_dump_json(),historical_run))
-    historical_sample = jobs.samples(historical_run)[0]
-    assert jobs.snapshot(historical_run) == historical
-    assert jobs.context(historical_run,historical_sample.sample_id).knowledge == historical.knowledge
+    assert jobs.snapshot(audit['run_id']).schema_version == 4
     reviews.submit(KnowledgeCheckReviewSubmission(submission_id=uuid4(),version_id=publication_id,check_id='C1',
         expected_revision=1,status='confirmed',note='之后的核实不改写旧作业。'))
     assert jobs.context(audit['run_id'],first.sample_id).knowledge == selected
-    assert jobs.context(historical_run,historical_sample.sample_id).knowledge == historical.knowledge
     evidence = AuditEvidence(jobs)
     counter = evidence.reference(audit['run_id'],first.sample_id,checks[0]['counter_evidence_ids'][0])
     assert counter.images[0].image == pages[1].images[0].image

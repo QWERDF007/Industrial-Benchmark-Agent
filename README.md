@@ -29,7 +29,7 @@ DINO 源码目录使用官方 [DINOv2](https://github.com/facebookresearch/dinov
 
 侧栏【模型设置】为方向探索、良品/异常知识挖掘、模型审计统一选择提供商与模型。提供商页与 DSH 原生设置共用资料及凭据；DSH 会话通过输入框的模型菜单独立选择。行为与能力范围见[设置规格](docs/specs/workbench-model-settings.md)，实现和验收见[架构索引](docs/architecture.md)。[启动补丁](config/dsh_web_lan_patch.yml)只配置服务监听和工业插件；独立 Python 验证的环境配置见下文。
 
-- **模型审计**：导入 Labelme 或目录图像级数据并挖掘可用良品知识后，按筛选范围启动审计；执行与证据入口见[架构索引](docs/architecture.md)。
+- **模型审计**：导入 Labelme 或目录图像级数据，选择已完成的一致性作业，按范围启动主子 Agent 审计；知识可选。设置、证据与验收入口见[审计说明](<docs/工业数据集质量与评测能力审计 Agent.md>)。
 - **人工复核**：查看复核明细并提交人工裁决。
 - **插件**：保留 DSH 原生插件管理入口。
 - **方向探索**：在侧栏【方向探索】联合选择良品、异常图；也可在 DSH 对话中调用 [`explore-inspection-directions`](apps/iad-harness/src/server/exploration/index.ts)。结果在【知识挖掘 → 挖掘方向 → 探索方向】勾选、修改并保存后使用；来源和验收见[独立方向探索](docs/specs/direction-exploration.md)。

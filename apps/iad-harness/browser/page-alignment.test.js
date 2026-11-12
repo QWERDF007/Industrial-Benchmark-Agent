@@ -46,11 +46,11 @@ test('six pages share content edges and job table rhythm while image filters and
    const root=document.querySelector('.iad-workbench'),header=root.querySelector('.iad-header'),scope=root.querySelector('.iba-scope-selector');
    const rect=e=>{if(!e)return null;const r=e.getBoundingClientRect();return {x:r.x,y:r.y,right:r.right,bottom:r.bottom,width:r.width,height:r.height};};
    const panels=[...root.querySelectorAll('section')].filter(e=>e.querySelector(':scope>.iad-section-heading'));
-   const table=root.querySelector('.exp-job-list table,.jobs-table,.dc-jobs-section table,.audit-panel table');
+   const table=root.querySelector('.iad-jobs-table');
    const frame=table?.parentElement;
    return {header:rect(header),scope:rect(scope),labels:[...scope?.querySelectorAll(':scope>div>label')||[]].map(rect),controls:[...scope?.querySelectorAll('select,button.iad-multiselect-trigger')||[]].map(rect),
     filter:rect(root.querySelector('.filter-bar,.iad-manager-search-wrap')),tabs:rect(root.querySelector('.audit-tabs')),panels:panels.map(e=>({rect:rect(e),header:rect(e.querySelector('.iad-section-heading'))})),
-    head:rect(table?.querySelector('thead tr')),headStyle:table?{background:getComputedStyle(table.querySelector('th')).backgroundColor,weight:getComputedStyle(table.querySelector('th')).fontWeight}:null,
+    columns:table?[...table.querySelectorAll('thead th')].map(node=>node.textContent):[],head:rect(table?.querySelector('thead tr')),headStyle:table?{background:getComputedStyle(table.querySelector('th')).backgroundColor,weight:getComputedStyle(table.querySelector('th')).fontWeight}:null,
     rows:[...table?.querySelectorAll('tbody tr')||[]].map(rect),frame:rect(frame),scroll:frame?{height:frame.clientHeight,total:frame.scrollHeight}:null,
     fields:[...root.querySelectorAll('.iad-section-heading input,.iad-section-heading select')].map(e=>({tag:e.tagName,type:e.type,...rect(e)})),overflow:root.scrollWidth-root.clientWidth};
   });
@@ -85,7 +85,7 @@ test('six pages share content edges and job table rhythm while image filters and
   assert.equal(m.header.height,42,`${key} page title bar`);
   assert.equal(m.overflow,0,`${key} page width contains tables`);
   if(m.scope){assert.equal(m.scope.y-m.header.bottom,20,`${key} title to scope`);assert.equal(m.scope.height,63,`${key} scope row`);for(const label of m.labels)assert.equal(label.height,19,`${key} label`);for(const control of m.controls)assert.equal(control.height,38,`${key} control`);}
-  if(m.head){for(const p of m.panels){assert.equal(p.header.height,70,`${key} section header`);assert.equal(p.rect.x,m.header.x,`${key} panel left`);assert.equal(p.rect.right,m.header.right,`${key} panel right`);}
+  if(m.head){assert.deepEqual(m.columns,['作业ID','状态','数据集','进度','提交时间','耗时','操作'],`${key} shares seven job columns`);for(const p of m.panels){assert.equal(p.header.height,70,`${key} section header`);assert.equal(p.rect.x,m.header.x,`${key} panel left`);assert.equal(p.rect.right,m.header.right,`${key} panel right`);}
    assert.equal(m.panels[1].rect.y-m.panels[0].rect.bottom,20,`${key} panel gap`);
    assert.equal(m.head.height,46,`${key} table header`);for(const row of m.rows)assert.ok(Math.abs(row.height-60)<1,`${key} job row ${row.height}`);
    assert.deepEqual(m.headStyle,measured.exploration.headStyle,`${key} table header appearance`);

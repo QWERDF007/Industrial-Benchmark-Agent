@@ -1,7 +1,7 @@
 import json
 from pathlib import PurePosixPath
 
-from iad_core.audit.models import AuditAgentContext, AuditConsistencyContext, AuditSampleRun, AuditWorkflowSnapshot, AuditFinal
+from iad_core.audit.models import AuditAgentContext, AuditConsistencyContext, AuditSampleRun, AuditWorkflowSnapshot
 from iad_core.consistency.repository import ConsistencyRepository
 from iad_core.evidence.sources import SampleContent
 from iad_core.workbench.analysis_manifest import AnalysisRegistration
@@ -17,16 +17,26 @@ class AuditState:
         with self.db.connection() as connection:
             return connection.execute('SELECT 1 FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone() is not None
 
+    def is_archived(self, run_id: str) -> bool:
+        with self.db.connection() as connection:
+            row=connection.execute("SELECT json_extract(snapshot_json,'$.schema_version') FROM audit_workflow_runs WHERE job_id=?",(run_id,)).fetchone()
+        if row is None:
+            raise LookupError('原生审计作业不存在')
+        return row[0] != 4
+
     def snapshot(self, run_id: str) -> AuditWorkflowSnapshot:
         with self.db.connection() as connection:
             row = connection.execute('SELECT snapshot_json FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
         if row is None:
             raise LookupError('原生审计作业不存在')
+        if json.loads(row[0]).get('schema_version') != 4:
+            raise ValueError('历史审计已归档，请查看冻结报告或新建作业')
         return AuditWorkflowSnapshot.model_validate_json(row[0])
 
     @staticmethod
     def _sample(row) -> AuditSampleRun:
         return AuditSampleRun(**{key:row[key] for key in ('job_id','sample_id','ordinal','session_id','state')},
+            result_revision=row['result_revision'],
             session_created=bool(row['session_created']), consistency=json.loads(row['consistency_json']),
             result=json.loads(row['result_json']) if row['result_json'] else None)
 
@@ -44,11 +54,15 @@ class AuditState:
         return self._sample(row)
 
     def context(self, run_id: str, sample_id: str) -> AuditAgentContext:
+        from iad_core.audit.batches import AuditBatches
         snapshot, sample = self.snapshot(run_id), self.sample(run_id, sample_id)
+        review = next((item for item in AuditBatches(self).rechecks(run_id) if item.sample_id==sample_id),None)
         return AuditAgentContext(job_id=run_id, sample_id=sample_id, session_id=sample.session_id,
             target=next(record for record in snapshot.manifest.records if record.sample.sample_id == sample_id),
             consistency=AuditConsistencyContext(**sample.consistency.model_dump(include=set(AuditConsistencyContext.model_fields))),
-            knowledge=snapshot.knowledge,saved_progress=sample.result if isinstance(sample.result,AuditFinal) and sample.result.execution_status!='completed' else None)
+            knowledge=snapshot.knowledge,saved_progress=sample.result if sample.result and sample.result.execution_status!='completed' else None,
+            batch=AuditBatches(self).for_sample(run_id,sample_id),review=review,
+            prior_result=sample.result if review else None)
 
     def record(self, run_id: str, target_id: str, sample_id: str) -> AnalysisRegistration:
         sample = self.sample(run_id, target_id)

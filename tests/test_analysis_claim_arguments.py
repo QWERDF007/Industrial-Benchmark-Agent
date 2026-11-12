@@ -85,10 +85,11 @@ def test_omitting_prior_support_does_not_reduce_a_claims_independent_sources(obs
     queries = AnalysisQueries(jobs.db)
     details = queries.details(KnowledgeDetailQuery(version_id=published.version_id, section='checks',
         check_id='edge', evidence_role='support'))
-    assert details.total == 1
-    assert [item.image.evidence_id for item in details.items] == [whole_ids[0]]
+    assert details.total == 4
+    assert set(item.image.evidence_id for item in details.items) == set(whole_ids)
     assert details.check.support_count == 4
     assert set(details.support_evidence_ids) == set(whole_ids)
+    assert queries.view(published.version_id).display_evidence_ids(revised, 'support') == [whole_ids[0]]
 
 
 def test_counterexample_resolution_keeps_observation_and_revision_history(observed_claim):
@@ -199,7 +200,8 @@ def test_history_filters_by_claim_and_controls_do_not_become_counterexamples(obs
     from iad_core.knowledge.models import KnowledgeDetailQuery
     version = jobs.cancel(run_id)['analysis_version_id']
     detail = queries.details(KnowledgeDetailQuery(version_id=version, section='checks', check_id='edge', evidence_role='support'))
-    assert detail.total == 1 and detail.items[0].image.evidence_id == whole_ids[1]
+    assert detail.total == detail.check.support_count == 4
+    assert {item.image.evidence_id for item in detail.items} == set(whole_ids)
 
 
 def test_key_evidence_rejects_duplicate_pixels_without_dropping_complete_sources(observed_claim):
@@ -319,3 +321,19 @@ def test_merging_a_new_claim_retains_its_explicit_counterargument_and_origin(obs
     assert queries.arguments(run_id,dict(entry_id='edge',revision=context.revision,role='counter')).total == 0
     assert AnalysisCommits(jobs).accept(run_id, merged) == receipt
     assert jobs.jobs.status(run_id)['completed'] == 4
+
+
+def test_export_preserves_frozen_publication_serialization_across_model_refactoring(observed_claim,tmp_path):
+    import json
+    import zipfile
+    from iad_core.analysis.exports import AnalysisExports
+    jobs,run_id,_,_ = observed_claim
+    version_id = jobs.cancel(run_id)['analysis_version_id']
+    with jobs.db.connection() as connection:
+        row = connection.execute('SELECT publication_json FROM analysis_publications WHERE version_id=?',(version_id,)).fetchone()
+        frozen = dict(reversed(list(json.loads(row[0]).items())))
+        connection.execute('UPDATE analysis_publications SET publication_json=? WHERE version_id=?',
+            (json.dumps(frozen,ensure_ascii=False),version_id))
+    archive = AnalysisExports(jobs.db).create(version_id,str(tmp_path/'frozen'),'{"type":"session"}\n')
+    with zipfile.ZipFile(archive.path) as exported:
+        assert exported.read('knowledge.json').decode()==json.dumps(frozen,ensure_ascii=False,indent=2)+'\n'

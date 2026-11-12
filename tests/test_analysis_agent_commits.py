@@ -60,6 +60,17 @@ def test_partial_publication_uses_global_draft_text_and_rejected_text_does_not_s
         assert jobs.jobs.status(run_id)['completed'] == 0
     receipt = commits.accept(run_id, submission)
     assert commits.accept(run_id, submission) == receipt
+    from iad_core.workbench.analysis_operations import analysis_results
+    live = analysis_results({'run_id':run_id}, jobs.db.db_path)
+    assert live['publication'] is None
+    assert live['current']['revision'] == 1
+    assert live['current']['catalog']['summary'] == submission['summary']
+    assert live['current']['coverage']['completed'] == 1
+    assert whole in {item['evidence_id'] for item in live['current']['evidence']}
+    assert jobs.jobs.status(run_id)['analysis_version_id'] is None
+    if module == 'knowledge':
+        assert live['current']['checks'][0]['support_count'] == 1
+        assert live['current']['check_evidence']['edge']['support'][0]['image']['evidence_id'] == whole
     cancelled = jobs.cancel(run_id)
     published = AnalysisPublications(jobs.db).get(cancelled['analysis_version_id'])
     assert published.coverage.completed == 1 and published.coverage.unprocessed == 3
@@ -67,6 +78,9 @@ def test_partial_publication_uses_global_draft_text_and_rejected_text_does_not_s
     assert published.finalization.complete is False
     assert getattr(published.catalog, field)[0].title == entry['title']
     assert queries.observation_history(run_id, {}).items[0].description == '本轮原图外缘可辨。'
+    final = analysis_results({'run_id':run_id}, jobs.db.db_path)
+    assert final['publication']['version_id'] == published.version_id
+    assert final['current']['revision'] == final['publication']['revision']
 
 
 @pytest.mark.parametrize('migrate_existing', [False, True])

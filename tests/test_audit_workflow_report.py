@@ -7,20 +7,51 @@ from iad_core.audit.evidence import AuditEvidence
 from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
 
 
-def save_image(jobs, run_id, sample, findings=(), *, reviews=(), source_refs=(), check_assessments=(), observations=(), analysis='已观察主图及全部局部。'):
-    jobs.session_created(run_id, sample.sample_id)
-    page = AuditEvidence(jobs).read(run_id, sample.sample_id, {'sample_id': sample.sample_id})
-    ids = [page.evidence_id]
-    call = NativeModelCallStart(call_id='call_'+uuid4().hex, started_at='2026-11-10T12:00:00+08:00', request={'fixture':'joint original and annotation input'})
-    calls = ModelCalls(jobs.db)
-    calls.start_native(run_id, call, sample_id=sample.sample_id, session_id=sample.session_id, attempt=1)
-    AuditEvidence(jobs).delivered(run_id, sample.sample_id, call.call_id, [image.image.evidence_id for image in page.images])
-    calls.finish_native(run_id, sample.sample_id, NativeModelCallEnd(call_id=call.call_id, finished_at='2026-11-10T12:00:01+08:00', elapsed_ms=1000, finish_reason='tool-calls'))
-    final = dict(execution_status='completed', state='suspect' if findings else 'normal', analysis=analysis,
-        conclusion='发现独立疑点。' if findings else '本次未发现疑点。', basis=['冻结原图。'], evidence_ids=ids, check_assessments=list(check_assessments), consistency_review=list(reviews),
-        observations=list(observations),findings=[dict(finding_id=fid,type='image_label_mismatch' if jobs.context(run_id,sample.sample_id).target.dataset_format=='folder_classification' else 'missing_annotation',description='有效覆盖需复核。',location='主体',annotation_ids=[],
-            consistency_issue_refs=list(source_refs),check_ids=[],evidence_ids=ids,normal_explanation='需排除成像影响。',limitations=[]) for fid in findings],limitations=[])
-    return AuditCommits(jobs).accept(run_id, sample.sample_id, dict(commit_key='final', final=final))
+from tests.audit_support import save_image, master_observed, publish_batch, batch_submission, report_submission
+
+
+def test_report_saves_job_specific_coverage_and_separate_consistency_analyses_with_whole_evidence(native_audit):
+    from iad_core.audit.queries import AuditQueries
+    from iad_core.audit.reports import AuditReports
+    jobs, dataset_id, upstream, role = native_audit
+    run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
+    samples = jobs.samples(run_id)
+    for sample in samples:
+        save_image(jobs, run_id, sample)
+    originals = [AuditEvidence(jobs).read(run_id, sample.sample_id, dict(sample_id=sample.sample_id)).evidence_id for sample in samples[:2]]
+    publish_batch(jobs, run_id)
+    reports = AuditReports(jobs.db)
+    reports.begin(run_id)
+    master_observed(jobs, run_id, reports.records(run_id, {}), originals)
+    references = [dict(sample_id=sample.sample_id, result_revision=1, kind='image') for sample in samples[:2]]
+    representative = dict(sample_id=samples[0].sample_id, role='representative', reason='转角邻接的完整范围。')
+    topics = [dict(title='转角邻接与低对比纹理', analysis='转角附近的纹理覆盖不能推广到未采集的背面。',
+        evidence_refs=references, representatives=[representative])]
+    analyses = [dict(issue_type=kind, analysis='本轮未保留该类疑点，不能据此认证全部标注正确。',
+        evidence_refs=references, representatives=[representative] if kind=='position_difference' else [])
+        for kind in ('category_mismatch', 'position_difference', 'extra_annotation', 'missing_annotation', 'split', 'merge')]
+    before = [jobs.sample(run_id, sample.sample_id).result.model_dump_json() for sample in samples]
+    submitted = report_submission(coverage_topics=topics, consistency_analyses=analyses)
+    with pytest.raises(ValueError, match='全部适用差异类型'):
+        reports.commit(run_id, report_submission(coverage_topics=topics, consistency_analyses=analyses[:1]))
+    with pytest.raises(ValueError, match='冻结范围'):
+        reports.commit(run_id, report_submission(coverage_topics=[dict(topics[0], evidence_refs=[
+            dict(sample_id='foreign', result_revision=1, kind='image')])], consistency_analyses=analyses))
+    with pytest.raises(ValueError, match='实际支持'):
+        reports.commit(run_id, report_submission(coverage_topics=[dict(topics[0], representatives=[
+            dict(representative, sample_id=samples[2].sample_id)])], consistency_analyses=analyses))
+    assert reports.session(run_id).state == 'RUNNING'
+    assert reports.commit(run_id, submitted).state == 'COMPLETED'
+    report = AuditQueries(jobs.db).report(run_id)
+    assert report.coverage_topics[0].title == '转角邻接与低对比纹理'
+    assert [entry.issue_type for entry in report.consistency_analyses] == [entry['issue_type'] for entry in analyses]
+    assert report.statistics.suspect_images == 0
+    assert report.statistics.issue_occurrences == 0
+    assert report.evidence_groups['coverage:0'][0].image.evidence_id == originals[0]
+    assert report.evidence_groups['consistency:position_difference'][0].image.evidence_id == originals[0]
+    assert all(image.image.is_whole_image and image.image.representation=='raw'
+        for images in report.evidence_groups.values() for image in images)
+    assert [jobs.sample(run_id, sample.sample_id).result.model_dump_json() for sample in samples] == before
 
 
 def test_observations_are_saved_without_turning_normal_images_into_findings(native_audit):
@@ -70,11 +101,15 @@ def test_report_presentation_uses_originals_and_readable_references_without_muta
     final=save_image(jobs,run_id,samples[0],['F1'])
     for sample in samples[1:]:
         save_image(jobs,run_id,sample)
+    discovery=dict(group_id='G1',kind='quality_issue',dimension='annotation_quality',status='supported',
+        title='覆盖疑点',description='现有覆盖值得复核。',visual_signature='主体可见边缘',annotation_relation='局部覆盖不确定',scope='已审范围',
+        support_refs=[dict(sample_id=samples[0].sample_id,result_revision=1,kind='finding',index=0)],
+        counter_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')],representatives=[
+            dict(sample_id=samples[0].sample_id,role='representative',reason='典型覆盖。'),
+            dict(sample_id=samples[1].sample_id,role='counter',reason='相似形态，覆盖关系不同。')])
+    publish_batch(jobs,run_id,[discovery])
     reports=AuditReports(jobs.db);reports.begin(run_id)
-    reports.groups(run_id,dict(commit_key='group',groups=[dict(group_id='G1',title='覆盖疑点',description='现有覆盖值得复核。',
-        issue_refs=[dict(sample_id=samples[0].sample_id,finding_id='F1')],representatives=[
-            dict(sample_id=samples[0].sample_id,finding_id='F1',role='representative',reason='典型覆盖。'),
-            dict(sample_id=samples[1].sample_id,role='counter',reason='相似形态，覆盖关系不同。')])]))
+    reports.commit(run_id,report_submission(discovery_ids=['G1']))
     before=jobs.sample(run_id,samples[0].sample_id).result.model_dump_json()
     presentation=AuditQueries(jobs.db).report(run_id)
     assert 'records' not in presentation.model_dump(), '汇总报告不重复附带全部逐图终稿'
@@ -145,43 +180,34 @@ def test_new_completed_final_rejects_insufficient_business_state_and_foreign_ups
     accepted=save_image(jobs,run_id,first)
     assert accepted.execution_status=='completed'
     assert accepted.consistency_review==[]
-    assert jobs.snapshot(run_id).schema_version==3
+    assert jobs.snapshot(run_id).schema_version==4
 
 
-def test_report_requires_complete_real_grouping_and_retry_invalidates_only_report(native_audit):
+def test_report_requires_real_read_versions_and_discoveries_and_retry_preserves_image_finals(native_audit):
+    from iad_core.audit.batches import AuditBatches
     from iad_core.audit.reports import AuditReports
-    jobs, dataset_id, upstream, role = native_audit
+    jobs,dataset_id,upstream,role=native_audit
     run_id=jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],consistency_job_id=upstream),agent=role)['run_id']
     samples=jobs.samples(run_id)
     save_image(jobs,run_id,samples[0],['F1','F2'])
     for sample in samples[1:]:
         jobs.failure(run_id,sample.sample_id,'本图输入失败')
-    reports=AuditReports(jobs.db)
-    reports.begin(run_id)
     original=jobs.sample(run_id,samples[0].sample_id).model_dump_json()
-    refs=[dict(sample_id=samples[0].sample_id,finding_id=fid) for fid in ['F1','F2']]
-    group=dict(group_id='G1',title='覆盖',description='有效覆盖疑点。',issue_refs=refs,
-        representatives=[dict(**refs[0],reason='已观察的清楚实例。')])
-    with pytest.raises(ValueError,match='真实'):
-        reports.groups(run_id,dict(commit_key='bad',groups=[{**group,'issue_refs':[dict(sample_id=samples[0].sample_id,finding_id='fake')]}]))
-    submission=dict(commit_key='report',scope_analysis='冻结范围。',issue_analysis='覆盖疑点。',consistency_analysis='无候选仍独立审核。',
-        knowledge_analysis='没有知识。',conclusion='完成范围内需复核。',limitations=['其余图像执行失败。'])
-    with pytest.raises(ValueError,match='覆盖'):
-        reports.commit(run_id,submission)
-    reports.groups(run_id,dict(commit_key='groups',groups=[group]))
-    reports.groups(run_id,dict(commit_key='groups',groups=[group]))
-    with pytest.raises(ValueError,match='一个主主题'):
-        reports.groups(run_id,dict(commit_key='duplicate',groups=[{**group,'group_id':'G2'}]))
-    with pytest.raises(ValueError,match='读取全部'):
-        reports.commit(run_id,submission)
-    import json
-    page=reports.records(run_id,dict(page_size=100))
-    call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-10T12:00:00+08:00',request={'messages':[
-        {'role':'tool','content':[{'type':'text','text':json.dumps(page)}]}]})
-    calls=ModelCalls(jobs.db)
-    calls.start_native(run_id,call,sample_id=None,session_id=reports.session(run_id).session_id,attempt=1)
-    reports.delivered(run_id,call)
-    calls.finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,finished_at='2026-11-10T12:00:01+08:00',elapsed_ms=1000,finish_reason='tool-calls'))
+    reports=AuditReports(jobs.db)
+    discovery=dict(group_id='G1',kind='quality_issue',dimension='annotation_quality',status='supported',title='覆盖',
+        description='有效覆盖疑点。',visual_signature='主体可见边缘',annotation_relation='覆盖不确定',scope='已审范围',
+        support_refs=[dict(sample_id=samples[0].sample_id,result_revision=1,kind='finding',index=index) for index in (0,1)],
+        representatives=[dict(sample_id=samples[0].sample_id,role='representative',reason='已观察的清楚实例。')])
+    with pytest.raises(ValueError,match='不存在'):
+        publish_batch(jobs,run_id,[{**discovery,'support_refs':[dict(sample_id=samples[0].sample_id,result_revision=1,kind='finding',index=2)]}])
+    batches=AuditBatches(jobs)
+    submission=batch_submission(jobs,run_id,[discovery],commit_key='batch')
+    published=publish_batch(jobs,run_id,[discovery],commit_key='batch')
+    assert batches.publish(run_id,submission)==published
+    reports.begin(run_id)
+    with pytest.raises(ValueError,match='真实全局发现'):
+        reports.commit(run_id,report_submission(discovery_ids=['fake']))
+    submission=report_submission(discovery_ids=['G1'],limitations=['其余图像执行失败。'])
     assert reports.commit(run_id,submission).state=='COMPLETED'
     assert reports.commit(run_id,submission).state=='COMPLETED'
     jobs.jobs.update(run_id,completion_pending=False)
@@ -190,7 +216,7 @@ def test_report_requires_complete_real_grouping_and_retry_invalidates_only_repor
     assert jobs.sample(run_id,samples[0].sample_id).model_dump_json()==original
     assert reports.session(run_id).state=='PENDING'
     assert reports.session(run_id).result is None
-    assert reports.session(run_id).generation==2
+    assert reports.session(run_id).revision==1
     assert all(sample.state=='PENDING' for sample in jobs.samples(run_id)[1:])
     with pytest.raises(ValueError,match='处理'):
         reports.begin(run_id)
@@ -269,6 +295,17 @@ def test_each_frozen_upstream_difference_gets_an_independent_quality_assessment(
     stats=AuditReports(jobs.db).statistics(run_id)
     assert stats.consistency_assessments=={assessment:1}
     assert stats.consistency_cross['MODEL_REVIEWED:MATERIAL'][final.state]==1
+    for sample in jobs.samples(run_id)[1:]:
+        jobs.failure(run_id, sample.sample_id, '本测试仅完成一张图像。')
+    publish_batch(jobs, run_id)
+    reports=AuditReports(jobs.db)
+    reports.begin(run_id)
+    analysis=dict(issue_type='image_label_mismatch',analysis='按本轮实际图像标签和独立观察核对，未完成部分不作结论。',
+        evidence_refs=[dict(sample_id=first.sample_id,result_revision=1,kind='image')],representatives=[])
+    with pytest.raises(ValueError,match='全部适用差异类型'):
+        reports.commit(run_id,report_submission(consistency_analyses=[dict(analysis,issue_type='missing_annotation')]))
+    result=reports.commit(run_id,report_submission(consistency_analyses=[analysis]))
+    assert [item.issue_type for item in result.result.consistency_analyses]==['image_label_mismatch']
 
 
 def test_creation_catalog_excludes_partial_scope_and_rejects_stale_source(native_audit):
@@ -320,17 +357,13 @@ def test_report_publication_failure_keeps_job_partial_and_can_retry_without_reau
     samples=jobs.samples(run_id)
     for index,sample in enumerate(samples):
         save_image(jobs,run_id,sample,['F1'] if index==0 else [])
+    discovery=dict(group_id='G',kind='quality_issue',dimension='annotation_quality',status='supported',title='标注遗漏',
+        description='需人工复核。',visual_signature='主体可见边缘',annotation_relation='覆盖不确定',scope='已审范围',
+        support_refs=[dict(sample_id=samples[0].sample_id,result_revision=1,kind='finding',index=0)],
+        representatives=[dict(sample_id=samples[0].sample_id,role='representative',reason='代表性原图。')])
+    publish_batch(jobs,run_id,[discovery])
     reports=AuditReports(jobs.db);reports.begin(run_id)
-    reports.groups(run_id,dict(commit_key='group',groups=[dict(group_id='G',title='标注遗漏',description='需人工复核。',
-        issue_refs=[dict(sample_id=samples[0].sample_id,finding_id='F1')],representatives=[dict(sample_id=samples[0].sample_id,finding_id='F1',reason='代表性原图。')])]))
-    page=reports.records(run_id,dict(page_size=100))
-    call=NativeModelCallStart(call_id='call_'+uuid4().hex,started_at='2026-11-10T12:00:00+08:00',request={'messages':[
-        {'role':'tool','content':[{'type':'text','text':json.dumps(page)}]}]})
-    calls=ModelCalls(jobs.db);calls.start_native(run_id,call,sample_id=None,session_id=reports.session(run_id).session_id,attempt=1)
-    reports.delivered(run_id,call);calls.finish_native(run_id,None,NativeModelCallEnd(call_id=call.call_id,
-        finished_at='2026-11-10T12:00:01+08:00',elapsed_ms=1000,finish_reason='tool-calls'))
-    reports.commit(run_id,dict(commit_key='report',scope_analysis='冻结范围。',issue_analysis='待复核疑点。',consistency_analysis='逐图核对。',
-        knowledge_analysis='零知识。',conclusion='限定范围内存在疑点。',limitations=[]))
+    reports.commit(run_id,report_submission(discovery_ids=['G']))
     media=AuditEvidence(jobs).read(run_id,samples[0].sample_id,dict(sample_id=samples[0].sample_id))
     filename=Path(media.images[0].path);original=filename.read_bytes();before=[sample.model_dump_json() for sample in jobs.samples(run_id)]
     try:
@@ -374,6 +407,12 @@ def test_audit_freezes_completed_consistency_retry_history_without_serializing_d
     assert len(samples) == 6
     assert samples[0].consistency.error_history[0].message == '视觉服务临时不可用'
     assert jobs.context(run,samples[0].sample_id).consistency.result.reason == 'NO_CANDIDATES'
+    from iad_core.audit.batches import AuditBatches
+    from iad_core.audit.reports import AuditReports
+    records=AuditBatches(jobs).context(run)['items']
+    assert records==AuditReports(jobs.db).records(run,dict(page_size=100))['items']
+    assert records[0]['consistency']['result']['reason']=='NO_CANDIDATES'
+    assert not {'error_history','errors','requests','trace_ref','diagnostics_ref','candidate_records'} & records[0]['consistency'].keys()
     page = AuditEvidence(jobs).read(run,samples[0].sample_id,dict(sample_id=samples[0].sample_id))
     assert page.images and not page.error
 

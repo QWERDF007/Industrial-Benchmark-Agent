@@ -19,7 +19,7 @@ export const nativeMediaOutput = {
   render(_args:unknown,value:unknown):ContentBlock[] {
     const page = value as NativeMediaPage;
     const images=page.images.map(({attachment,...image})=>image);
-    return [{type:'text',text:JSON.stringify({...page,images})}, ...page.images.map(image=>({type:'image' as const,attachment:image.attachment}))];
+    return [{type:'text',text:JSON.stringify({...page,images})+'\n\n'}, ...page.images.map(image=>({type:'image' as const,attachment:image.attachment}))];
   },
 };
 

@@ -4,6 +4,7 @@ from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.analysis.observation_models import AnalysisSampleObservation
+from iad_core.analysis.evidence_models import AnalysisEvidenceCandidate
 from iad_core.knowledge.models import LearnedCheck
 
 
@@ -20,14 +21,25 @@ class KnowledgeDiscovery(LearnedCheck):
     dataset_ids: list[NonBlankText] = Field(min_length=1)
 
 
-class KnowledgeBatchReport(AnalysisModel):
+class KnowledgeReportContent(AnalysisModel):
     observations: list[AnalysisSampleObservation]
     assessments: list[KnowledgeAssessment]
     discoveries: list[KnowledgeDiscovery]
     discovery_summary: NonBlankText
-    key_evidence_ids: list[NonBlankText]
     limitations: list[str] = Field(default_factory=list)
     unresolved_questions: list[str] = Field(default_factory=list)
+
+
+class KnowledgeBatchReport(KnowledgeReportContent):
+    key_evidence_ids: list[NonBlankText]
+
+
+class KnowledgeEvidenceReport(KnowledgeReportContent):
+    selected_evidence: list[AnalysisEvidenceCandidate]
+
+    @property
+    def key_evidence_ids(self) -> list[str]:
+        return [item.evidence_id for item in self.selected_evidence]
 
 
 class KnowledgeDiscoveryDecision(AnalysisModel):
@@ -53,6 +65,6 @@ class KnowledgeBatchArchive(AnalysisModel):
     wave_id: int
     session_id: str
     catalog_revision: int
-    report: KnowledgeBatchReport | None = None
+    report: KnowledgeBatchReport | KnowledgeEvidenceReport | None = None
     review_revision: int | None = None
     discovery_decisions: list[KnowledgeDiscoveryDecision] = Field(default_factory=list)

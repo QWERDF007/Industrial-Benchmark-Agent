@@ -152,20 +152,20 @@ export declare const explorationBatchReportParameters: {
                     readonly title: "Rationale";
                     readonly required: true;
                 };
-                readonly evidence_ids: {
-                    readonly type: "array";
-                    readonly items: {
-                        readonly type: "string";
-                    };
-                    readonly title: "Evidence Ids";
-                    readonly required: true;
-                };
                 readonly limitations: {
                     readonly type: "array";
                     readonly items: {
                         readonly type: "string";
                     };
                     readonly title: "Limitations";
+                    readonly required: true;
+                };
+                readonly evidence_ids: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "string";
+                    };
+                    readonly title: "Evidence Ids";
                     readonly required: true;
                 };
                 readonly candidate_id: {
@@ -184,14 +184,6 @@ export declare const explorationBatchReportParameters: {
         readonly title: "Discovery Summary";
         readonly required: true;
     };
-    readonly key_evidence_ids: {
-        readonly type: "array";
-        readonly items: {
-            readonly type: "string";
-        };
-        readonly title: "Key Evidence Ids";
-        readonly required: true;
-    };
     readonly limitations: {
         readonly type: "array";
         readonly items: {
@@ -205,6 +197,14 @@ export declare const explorationBatchReportParameters: {
             readonly type: "string";
         };
         readonly title: "Unresolved Questions";
+    };
+    readonly key_evidence_ids: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "string";
+        };
+        readonly title: "Key Evidence Ids";
+        readonly required: true;
     };
 };
 //# sourceMappingURL=exploration.parameters.generated.d.ts.map

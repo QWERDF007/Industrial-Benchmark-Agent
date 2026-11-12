@@ -14,7 +14,6 @@ export declare class AuditWorkflowScheduler implements ModelRouting {
     start(request: Record<string, unknown>): Promise<JobView>;
     private launch;
     private run;
-    private projectFinal;
     private writeReport;
     cancel(runId: string): Promise<JobView>;
     resume(runId: string): Promise<JobView>;
