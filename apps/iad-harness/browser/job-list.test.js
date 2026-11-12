@@ -41,6 +41,21 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
  await driver.wait(async()=>(await texts('tbody td'))[1]==='部分成功',3000);
  await driver.executeScript('window.jobNow+=100000');
  assert.equal((await texts('tbody td'))[5],'00:20');
+ await driver.executeScript(`window.jobNow=Date.parse('2026-11-05T15:00:00Z');window.updateJob({
+  status:'RUNNING',completed:100,finished_at:null,phase_timings:[
+   {phase:'AUDITING',started_at:'2026-11-05T12:00:00Z',finished_at:'2026-11-05T12:20:00Z'},
+   {phase:'AUDITING',started_at:'2026-11-05T12:30:00Z',finished_at:null},
+   {phase:'GENERATING_AUDIT_REPORT',started_at:'2026-11-05T14:55:00Z',finished_at:null}]})`);
+ await driver.wait(async()=>(await texts('tbody td'))[5]==='25:00',3000);
+ await driver.executeScript('window.jobNow+=3000');
+ await driver.wait(async()=>(await texts('tbody td'))[5]==='25:03',3000);
+ await driver.executeScript(`window.updateJob({status:'COMPLETED',finished_at:'2026-11-05T15:00:03Z',phase_timings:[
+  {phase:'AUDITING',started_at:'2026-11-05T12:00:00Z',finished_at:'2026-11-05T12:20:00Z'},
+  {phase:'AUDITING',started_at:'2026-11-05T12:30:00Z',finished_at:null},
+  {phase:'GENERATING_AUDIT_REPORT',started_at:'2026-11-05T14:55:00Z',finished_at:'2026-11-05T15:00:03Z'}]})`);
+ await driver.wait(async()=>(await texts('tbody td'))[1]==='已完成',3000);
+ await driver.executeScript('window.jobNow+=86400000');
+ assert.equal((await texts('tbody td'))[5],'25:03');
  await driver.executeScript('window.addJobs()');
  await driver.wait(async()=>(await driver.findElements(By.css('tbody tr'))).length===8,3000);
  await driver.executeScript("window.selectExternal('analysis-older-7')");

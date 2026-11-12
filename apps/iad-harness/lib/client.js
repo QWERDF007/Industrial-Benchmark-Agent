@@ -11515,10 +11515,19 @@ var __IadClientBundle__ = (() => {
   function formatJobTime(value) {
     return jobTimeFormat.format(new Date(value));
   }
+  function jobPhaseDurations(job, now) {
+    const timings = job.phase_timings || [];
+    return timings.flatMap((timing, index3) => {
+      const end = timing.finished_at ? Date.parse(timing.finished_at) : job.status === "RUNNING" && index3 === timings.length - 1 ? now : null;
+      return end === null ? [] : [{ phase: timing.phase, seconds: Math.max(0, (end - Date.parse(timing.started_at)) / 1e3) }];
+    });
+  }
   function formatJobElapsed(job, now = Date.now()) {
+    const phases = jobPhaseDurations(job, now);
     const end = job.finished_at ? Date.parse(job.finished_at) : job.status === "RUNNING" ? now : null;
-    if (!job.started_at || end === null) return "\u2014";
-    const seconds = Math.max(0, Math.floor((end - Date.parse(job.started_at)) / 1e3));
+    const elapsed = job.phase_timings?.length ? phases.length ? phases.reduce((sum, phase) => sum + phase.seconds, 0) : null : job.started_at && end !== null ? Math.max(0, (end - Date.parse(job.started_at)) / 1e3) : null;
+    if (elapsed === null) return "\u2014";
+    const seconds = Math.floor(elapsed);
     return Number.isFinite(seconds) ? `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}` : "\u2014";
   }
   var jobStatuses = {
@@ -11629,12 +11638,9 @@ var __IadClientBundle__ = (() => {
     const kind = job.analysis_kind || (["MODEL_AUDIT", "MODEL_AUDIT_SAMPLE"].includes(job.job_type) ? "audit" : ["DIRECTION_EXPLORATION", "EXPLORATION_BATCH"].includes(job.job_type) ? "exploration" : "knowledge");
     const workflow = workflows[kind];
     const timings = job.phase_timings || [];
+    const elapsedPhases = jobPhaseDurations(job, now);
     const stages = workflow.stages.map((stage) => {
-      const durations = timings.flatMap((timing, index3) => {
-        if (!stage.phases.includes(timing.phase)) return [];
-        const end = timing.finished_at ? Date.parse(timing.finished_at) : job.status === "RUNNING" && index3 === timings.length - 1 ? now : null;
-        return end === null ? [] : [Math.max(0, (end - Date.parse(timing.started_at)) / 1e3)];
-      });
+      const durations = elapsedPhases.filter((timing) => stage.phases.includes(timing.phase)).map((timing) => timing.seconds);
       if (!timings.length && stage.phases.includes(job.phase || "") && job.phase_started_at) {
         const end = job.finished_at ? Date.parse(job.finished_at) : job.status === "RUNNING" ? now : null;
         if (end !== null) durations.push(Math.max(0, (end - Date.parse(job.phase_started_at)) / 1e3));
