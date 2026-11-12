@@ -31,9 +31,9 @@ export const auditPurposeLabels = {
   "training_experiment": "训练实验",
   "debug": "内部调试",
   "image_evaluation": "图像级评测",
-  "bbox_evaluation": "框级评测",
-  "pixel_evaluation": "像素级评测",
-  "formal_benchmark": "正式 Benchmark"
+  "bbox_evaluation": "矩形框定位评测",
+  "pixel_evaluation": "像素区域评测",
+  "formal_benchmark": "正式评测基准"
 } as const;
 export const auditUsabilityLabels = {
   "usable": "可用",
@@ -63,6 +63,15 @@ export const auditIssueLabels = {
   "split": "拆分",
   "merge": "合并"
 } as const;
+export const auditIssueDescriptions = {
+  "image_label_mismatch": "内容相同的两张图，整图标签不同，例如一张记为OK，另一张记为NG。",
+  "category_mismatch": "同一目标在两张图中的类别记录不同。",
+  "extra_annotation": "主图有标注，对照图中同一处可见内容没有相应标注。",
+  "missing_annotation": "对照图有标注，主图中同一处可见内容没有相应标注。",
+  "position_difference": "两张图都标了同一目标，但框圈住的实际内容有明显差别，例如一侧漏掉了目标的一部分。",
+  "split": "同一组可见内容在主图中分成多个框，在对照图中用一个框圈住。",
+  "merge": "同一组可见内容在主图中用一个框圈住，在对照图中分成多个框。"
+} as const;
 export const auditIssueTypesByFormat = {
   "labelme": [
     "category_mismatch",
@@ -84,7 +93,14 @@ export const auditAssessmentLabels = {
 export const auditConsistencyLabels = {
   "NO_CANDIDATES": "无候选",
   "NO_ELIGIBLE_CANDIDATES": "无有效候选",
-  "MODEL_REVIEWED:MATERIAL": "存在标注差异",
   "MODEL_REVIEWED:EQUIVALENT": "标注一致",
+  "MODEL_REVIEWED:MATERIAL": "标注冲突",
   "MODEL_REVIEWED:UNCERTAIN": "待核实"
+} as const;
+export const auditConsistencyDescriptions = {
+  "NO_CANDIDATES": "检索没有找到可作对照的其他图像。",
+  "NO_ELIGIBLE_CANDIDATES": "找到了候选图，但内容不同，或看不清是否拍的是相同内容，因此没有进入标注比较。",
+  "MODEL_REVIEWED:EQUIVALENT": "已有内容相同的对照图，比较后，双方标注的类别、数量和覆盖关系相符。",
+  "MODEL_REVIEWED:MATERIAL": "已有内容相同的对照图，比较后发现至少一处标注不同，具体差别按下面的类型归类。",
+  "MODEL_REVIEWED:UNCERTAIN": "已有内容相同的对照图，但部分标注关系还需要复看，例如目标的边缘看不清。"
 } as const;

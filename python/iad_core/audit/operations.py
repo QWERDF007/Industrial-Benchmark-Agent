@@ -105,10 +105,6 @@ def audit_agent_resume(args, db_path):
     return AuditAgentJobs(workbench(db_path)).resume(args['run_id'])
 
 
-def audit_agent_report_regenerate(args, db_path):
-    return AuditAgentJobs(workbench(db_path)).regenerate_report(args['run_id'],args.get('prompts'))
-
-
 def audit_agent_interrupt(args, db_path):
     jobs = AuditAgentJobs(workbench(db_path))
     result = jobs.interrupt(args['run_id'])
@@ -214,7 +210,7 @@ def audit_agent_versions(args, db_path):
 AUDIT_AGENT_OPERATIONS = (audit_agent_configuration,audit_agent_start,audit_agent_snapshot,audit_agent_samples,audit_agent_sample,
     audit_agent_context,audit_agent_session_location,audit_agent_session_created,audit_agent_media,audit_agent_reference,audit_agent_crop,
     audit_agent_commit,audit_agent_model_call_start,audit_agent_model_call_end,audit_agent_failure,
-    audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,audit_agent_report_regenerate,
+    audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,
     audit_agent_prepare_inputs,audit_agent_report_begin,audit_agent_report_state,audit_agent_report_session_created,
     audit_agent_report_statistics,audit_agent_report_records,audit_agent_discovery,
     audit_agent_report_commit,audit_agent_report_evidence,audit_agent_report_failure,audit_job_prompts,

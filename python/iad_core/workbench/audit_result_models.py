@@ -5,7 +5,9 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.workbench.job_models import JobStatus
 from iad_core.audit.profile_models import AuditDatasetProfile
-from iad_core.audit.report_models import AuditStatistics, AuditReportImage, AuditDiscovery, AuditReportedCapability, AuditUsabilityAssessment, AuditCoverageTopic, AuditConsistencyAnalysis
+from iad_core.audit.report_models import AuditStatistics, AuditReportImage, AuditDiscovery, AuditReportedCapability, AuditUsabilityAssessment, AuditCoverageTopic, AuditConsistencyAnalysis, AuditReportCase, AuditCapabilityTopic
+from iad_core.audit.report_models import AuditKnowledgeAnalysis, AuditConsistencyScope
+from iad_core.audit.knowledge_models import AuditSelectedCheck
 
 AuditState = Literal['suspect', 'insufficient', 'normal', 'unprocessed', 'incomplete']
 AUDIT_STATE_LABELS: dict[AuditState, str] = {
@@ -51,6 +53,11 @@ class AuditSamplePage(AnalysisModel):
     archived: bool = False
 
 
+class AuditReportedKnowledge(AnalysisModel):
+    entry: AuditSelectedCheck
+    analysis: AuditKnowledgeAnalysis | None
+
+
 class AuditRunReport(AnalysisModel):
     run_id: str
     dataset_id: str
@@ -84,8 +91,12 @@ class AuditRunReport(AnalysisModel):
     coverage_analysis: str = ''
     coverage_topics: list[AuditCoverageTopic] = Field(default_factory=list)
     consistency_analyses: list[AuditConsistencyAnalysis] = Field(default_factory=list)
+    consistency_scopes: list[AuditConsistencyScope] = Field(default_factory=list)
+    knowledge_entries: list[AuditReportedKnowledge] = Field(default_factory=list)
     independence_analysis: str = ''
     capabilities: list[AuditReportedCapability] = Field(default_factory=list)
     usability: list[AuditUsabilityAssessment] = Field(default_factory=list)
     review_priorities: list[str] = Field(default_factory=list)
+    report_cases: list[AuditReportCase] = Field(default_factory=list)
+    capability_topics: list[AuditCapabilityTopic] = Field(default_factory=list)
     archived: bool = False

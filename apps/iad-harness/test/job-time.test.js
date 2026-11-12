@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {execFileSync} from 'node:child_process';
 import {formatJobElapsed,jobWorkflow} from '../lib/shared/job-display.js';
 
-test('completed audit duration sums recorded execution phases and excludes idle time before report regeneration',()=>{
+test('completed audit duration sums recorded execution phases and excludes idle time between execution phases',()=>{
  const job={job_type:'MODEL_AUDIT',analysis_kind:'audit',status:'COMPLETED',
   started_at:'2026-11-11T00:00:00Z',finished_at:'2026-11-11T03:00:00Z',
   phase_timings:[

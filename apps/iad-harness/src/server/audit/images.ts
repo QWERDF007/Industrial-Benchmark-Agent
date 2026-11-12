@@ -35,10 +35,10 @@ export class AuditImageAgents {
     const onDemand=this.snapshot.context_policy==='evidence-on-demand-v1';
     scope.tools.register(defineTool({name:'audit_context',description:'重读当前图的冻结材料、当批线索及定向复审原因。',parameters:{},output:workbenchJsonOutput,
       execute:(_args,execution)=>this.bridge.execute('audit_agent_context',this.identity(execution.agent?.id),execution.signal)}));
-    scope.tools.register(defineTool({name:'audit_images',description:'补看当前主图或其已登记一致性候选。首次已一次提供全部主图材料；按需选择完整原图或标注局部，主动裁窗使用audit_crop。',parameters:onDemand?auditMediaParameters:analysisMediaParameters,output:nativeMediaOutput,
+    scope.tools.register(defineTool({name:'audit_images',description:'补看当前主图、已登记一致性候选或正式定向复核引用的对照图。首次提供全部主图材料及本次复核需要的完整对照原图；其余按需读取，主动裁窗使用audit_crop。',parameters:onDemand?auditMediaParameters:analysisMediaParameters,output:nativeMediaOutput,
       execute:async(query,execution)=>this.attachments.prepare(await this.bridge.execute<RegistrationMediaPage>('audit_agent_media',
         {...this.identity(execution.agent?.id),query},execution.signal),execution.signal)}));
-    scope.tools.register(defineTool({name:'audit_crop',description:'按原图像素坐标补看当前图或登记候选的完整裁窗，仅供内部观察。',parameters:auditCropParameters,output:nativeMediaOutput,
+    scope.tools.register(defineTool({name:'audit_crop',description:'按原图像素坐标补看当前图、登记候选或正式复核对照的完整裁窗，仅供内部观察。',parameters:auditCropParameters,output:nativeMediaOutput,
       execute:async(query,execution)=>this.attachments.prepare(await this.bridge.execute<RegistrationMediaPage>('audit_agent_crop',
         {...this.identity(execution.agent?.id),query},execution.signal),execution.signal)}));
     scope.tools.register(defineTool({name:'audit_reference',description:'补看已选知识的冻结证据，默认完整原图及标注元数据，标注局部须显式请求。',parameters:onDemand?analysisEvidenceReferenceParameters:evidenceReferenceParameters,output:nativeMediaOutput,
@@ -71,7 +71,16 @@ export class AuditImageAgents {
         if(!page.images.length||page.images.length!==page.total)throw new Error('当前图像完整输入缺失');
         const content:ContentBlock[]=[{type:'text',text:JSON.stringify(context)+'\n\n'},
           ...nativeMediaOutput.render({},await this.attachments.prepare(page,signal)),
-          {type:'text',text:this.snapshot.observer_prompt!.user_prompt}];
+        ];
+        for(const comparison of new Set(context.review?.conflict_refs.map(ref=>ref.sample_id)||[])){
+          if(comparison===sample.sample_id)continue;
+          const evidence=await this.bridge.execute<RegistrationMediaPage>('audit_agent_media',{...identity,
+            query:{sample_id:comparison,...(this.snapshot.context_policy==='evidence-on-demand-v1'?{view:'whole'}:{})}},signal);
+          if(evidence.error)throw new Error(evidence.error);
+          if(!evidence.images.length||evidence.images.length!==evidence.total)throw new Error('定向复核的完整对照图像缺失');
+          content.push(...nativeMediaOutput.render({},await this.attachments.prepare(evidence,signal)));
+        }
+        content.push({type:'text',text:this.snapshot.observer_prompt!.user_prompt});
         signal.addEventListener('abort',abort,{once:true});
         if(await parent.ctx.sessionPersistence.stat(childId)){
           await this.bridge.execute('audit_agent_session_created',identity);

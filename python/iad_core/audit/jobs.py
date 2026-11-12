@@ -4,9 +4,8 @@ from uuid import NAMESPACE_URL, uuid5
 from iad_core.analysis.publications import AnalysisPublications
 from iad_core.analysis.queries import AnalysisQueries
 from iad_core.analysis.models import AnalysisCoverageSummary
-from iad_core.audit.models import (AuditAgentConfiguration, AuditAgentStart,
-    AuditKnowledge, AuditKnowledgeDirection, AuditKnowledgeScope, AuditKnowledgeSelection,
-    AuditSampleRun, AuditSelectedCheck, AuditWorkflowSnapshot)
+from iad_core.audit.models import AuditAgentConfiguration, AuditAgentStart, AuditSampleRun, AuditWorkflowSnapshot
+from iad_core.audit.knowledge_models import AuditKnowledge, AuditKnowledgeDirection, AuditKnowledgeScope, AuditKnowledgeSelection, AuditSelectedCheck
 from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.knowledge.check_reviews import KnowledgeCheckReviews
@@ -46,7 +45,7 @@ class AuditAgentJobs(AuditState):
         direction_refs = {ref for entry in entries for ref in entry.check.direction_refs}
         directions = [AuditKnowledgeDirection(**direction.model_dump(include=set(AuditKnowledgeDirection.model_fields)))
             for direction in view.selected_directions if direction.ref in direction_refs]
-        ids = dict.fromkeys(eid for entry in entries for eid in view.display_evidence_ids(entry.check))
+        ids = dict.fromkeys(eid for entry in entries for eid in entry.evidence_ids)
         evidence = {item.evidence_id: KnowledgeEvidence(sample_id=item.sample_id, image=item.image) for item in view.evidence}
         scope = AuditKnowledgeScope(dataset_ids=list(dict.fromkeys(record.dataset_id for record in view.coverage.records)),
             revision=view.revision, execution_status=view.execution_status, execution_error=view.execution_error,
@@ -149,7 +148,14 @@ class AuditAgentJobs(AuditState):
                     self.jobs.update(run_id,connection=connection,**values)
             return self.jobs.finish_external(run_id)
         reports = AuditReports(self.db)
-        self.jobs.update(run_id,completion_pending=reports.session(run_id).state!='COMPLETED')
+        from iad_core.audit.batches import AuditBatches
+        reviews = {item.sample_id:item for item in AuditBatches(self).rechecks(run_id,pending_only=False)}
+        failed_reviews = [item for item in reviews.values() if item.state=='FAILED']
+        pending = dict(completion_pending=reports.session(run_id).state!='COMPLETED' or bool(failed_reviews))
+        if failed_reviews:
+            pending['execution_error'] = {'type':'AuditRecheckError','message':'定向复核未完成：'+'；'.join(
+                item.error or item.reason for item in failed_reviews)}
+        self.jobs.update(run_id,**pending)
         try:
             return self.jobs.finish_external(run_id,persist=lambda connection,status,at:
                 reports.finalize(run_id,connection=connection,status=status,finished_at=at))
@@ -179,34 +185,20 @@ class AuditAgentJobs(AuditState):
         def persist(connection):
             connection.execute('UPDATE audit_workflow_runs SET summary_json=NULL,report_html=NULL WHERE job_id=?', (run_id,))
             connection.execute("UPDATE audit_sample_runs SET state='PENDING' WHERE job_id=? AND state!='COMPLETED'", (run_id,))
+            connection.execute("""UPDATE audit_rechecks SET state='PENDING',error=NULL WHERE job_id=?
+                AND state IN ('FAILED','RUNNING') AND rowid IN (
+                    SELECT max(rowid) FROM audit_rechecks WHERE job_id=? GROUP BY sample_id)""",(run_id,run_id))
             pending = connection.execute("SELECT COUNT(*) FROM audit_sample_runs WHERE job_id=? AND state!='COMPLETED'",(run_id,)).fetchone()[0]
+            pending_reviews = connection.execute("SELECT COUNT(*) FROM audit_rechecks WHERE job_id=? AND state='PENDING'",(run_id,)).fetchone()[0]
             connection.execute("""UPDATE audit_batches SET state='AUDITING',review_revision=NULL WHERE job_id=? AND state='COMPLETED'
                 AND EXISTS (SELECT 1 FROM audit_sample_runs a JOIN json_each(audit_batches.sample_ids_json) target ON target.value=a.sample_id
                     WHERE a.job_id=audit_batches.job_id AND a.state!='COMPLETED')""",(run_id,))
-            if pending:
+            connection.execute("""UPDATE audit_batches SET state='RECHECKING',review_revision=NULL WHERE job_id=?
+                AND number IN (SELECT batch_number FROM audit_rechecks WHERE job_id=? AND state='PENDING')""",(run_id,run_id))
+            if pending or pending_reviews:
                 connection.execute("UPDATE audit_report_runs SET state='PENDING',result_json=NULL,error=NULL WHERE job_id=?",(run_id,))
             else:
                 connection.execute("UPDATE audit_report_runs SET state='PENDING',error=NULL WHERE job_id=? AND state!='COMPLETED'",(run_id,))
         self.jobs.resume_external(run_id,persist=persist)
-        self.jobs.update(run_id,completion_pending=True,execution_error=None)
-        return self.jobs.status(run_id)
-
-    def regenerate_report(self, run_id: str, prompts: dict | None = None):
-        from iad_core.audit.report_models import AuditReportPrompts
-        from iad_core.audit.prompt_text import DEFAULT_AUDIT_REGENERATE_PROMPT
-        if self.is_archived(run_id):
-            raise ValueError('历史审计报告只保留查看和导出')
-        if any(sample.state!='COMPLETED' for sample in self.samples(run_id)):
-            raise ValueError('请先完成本次逐图审计后重新生成报告')
-        frozen=AuditReportPrompts.model_validate(prompts or {})
-        if prompts is None:
-            frozen.master_prompt.user_prompt=DEFAULT_AUDIT_REGENERATE_PROMPT
-        def persist(connection):
-            connection.execute('UPDATE audit_workflow_runs SET summary_json=NULL,report_html=NULL WHERE job_id=?',(run_id,))
-            connection.execute("UPDATE audit_report_runs SET state='PENDING',result_json=NULL,error=NULL,prompts_json=? WHERE job_id=?",
-                (frozen.model_dump_json(),run_id))
-            connection.execute("""UPDATE audit_batches SET state='AUDITING',review_revision=NULL WHERE job_id=?
-                AND number=(SELECT MAX(number) FROM audit_batches WHERE job_id=?)""",(run_id,run_id))
-        self.jobs.resume_external(run_id,persist=persist,restart_completed=True)
         self.jobs.update(run_id,completion_pending=True,execution_error=None)
         return self.jobs.status(run_id)

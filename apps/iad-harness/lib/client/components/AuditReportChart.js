@@ -1,6 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-export function AuditReportChart({ kind, title, rows, unit }) {
-    const maximum = Math.max(1, ...rows.map(row => row.value));
+export function AuditReportChart({ kind, title, rows, unit, maximum = Math.max(1, ...rows.map(row => row.value)) }) {
     const columns = { gridTemplateColumns: `repeat(${rows.length},minmax(0,1fr))` };
     return _jsxs("figure", { className: "iad-audit-chart", "data-chart": kind, children: [_jsx("figcaption", { children: title }), _jsx("div", { className: "iad-audit-chart-bars", style: columns, role: "img", "aria-label": rows.map(row => `${row.label} ${row.value} ${unit}`).join('；'), children: rows.map(row => _jsxs("div", { className: "iad-audit-chart-column", children: [_jsx("span", { className: "iad-audit-chart-value", children: row.value.toLocaleString('zh-CN') }), _jsx("span", { className: "iad-audit-chart-bar", style: { height: `${row.value / maximum * 85}%` } })] }, row.label)) }), _jsx("div", { className: "iad-audit-chart-labels", style: columns, "aria-hidden": "true", children: rows.map(row => _jsx("span", { children: row.label }, row.label)) })] });
 }

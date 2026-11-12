@@ -108,6 +108,7 @@ export const auditBatchParameters = {
                 },
                 "unresolved_question": {
                     "type": "string",
+                    "description": "需要新图像或对照才能回答的具体问题；没有则为空字符串。",
                     "title": "Unresolved Question",
                     "default": ""
                 },
@@ -220,13 +221,13 @@ export const auditBatchParameters = {
                                     "representative",
                                     "counter"
                                 ],
-                                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
+                                "description": "representative为典型证据原图；counter为用于解释判断边界的已观察对照原图。",
                                 "title": "Role",
                                 "default": "representative"
                             },
                             "reason": {
                                 "type": "string",
-                                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
+                                "description": "用日常用语指出这张原图中该看哪里、看什么。有对照关系的图将role设为counter。",
                                 "title": "Reason",
                                 "required": true
                             }
@@ -351,6 +352,7 @@ export const auditCommitParameters = {
             },
             "analysis": {
                 "type": "string",
+                "description": "只概括本图可见形态及标注覆盖、定位、实例关系。上游与知识评估分别填写对应字段。",
                 "title": "Analysis",
                 "required": true
             },
@@ -364,6 +366,7 @@ export const auditCommitParameters = {
                 "items": {
                     "type": "string"
                 },
+                "description": "支持本图判断的具体图像事实。",
                 "title": "Basis",
                 "required": true
             },
@@ -401,6 +404,7 @@ export const auditCommitParameters = {
                         },
                         "description": {
                             "type": "string",
+                            "description": "说明本图可见现象与该知识检查动作的具体对应和适用理由。",
                             "title": "Description",
                             "required": true
                         },
@@ -522,6 +526,7 @@ export const auditCommitParameters = {
                                 "split",
                                 "merge"
                             ],
+                            "description": "按可见问题分类；类别差异指有效同内容对照中同一对象的原始分组差异。",
                             "title": "Type",
                             "required": true
                         },
@@ -577,7 +582,7 @@ export const auditCommitParameters = {
                     },
                     "title": "AuditObservation"
                 },
-                "description": "有理解价值但不足以形成质量疑点的简短观察，不计入疑点，也不改变业务结论；不因缺少类别语义或假设规范而填写。",
+                "description": "记录有比较价值的可见现象，描述简短；普通观察不计入质量疑点。",
                 "title": "Observations"
             },
             "hypothesis_assessments": {
@@ -670,6 +675,7 @@ export const auditCommitParameters = {
                 "items": {
                     "type": "string"
                 },
+                "description": "画面模糊、目标截断、必要图像读取失败等实际影响本图核查的取证缺口；没有则填[]。",
                 "title": "Limitations",
                 "required": true
             }
@@ -771,21 +777,25 @@ export const auditReportParameters = {
     },
     "conclusion": {
         "type": "string",
+        "description": "概括当前用途及最重要的视觉发现；图像数、疑点数和来源状态由页面另行展示。",
         "title": "Conclusion",
         "required": true
     },
     "consistency_analysis": {
         "type": "string",
+        "description": "用一两句直白的话回答可对照图像的标注是否一致，结合程序统计与模型复核统计解释差别。具体图像细节放在对应的小节。",
         "title": "Consistency Analysis",
         "required": true
     },
     "knowledge_analysis": {
         "type": "string",
+        "description": "简述知识帮助看到了什么，可留空；各条具体应用在knowledge_analyses展开。",
         "title": "Knowledge Analysis",
         "default": ""
     },
     "coverage_analysis": {
         "type": "string",
+        "description": "概括实际可见形态、背景、结构关系及尚缺场景。",
         "title": "Coverage Analysis",
         "required": true
     },
@@ -862,21 +872,29 @@ export const auditReportParameters = {
                                     "representative",
                                     "counter"
                                 ],
-                                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
+                                "description": "representative为典型证据原图；counter为用于解释判断边界的已观察对照原图。",
                                 "title": "Role",
                                 "default": "representative"
                             },
                             "reason": {
                                 "type": "string",
-                                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
+                                "description": "用日常用语指出这张原图中该看哪里、看什么。有对照关系的图将role设为counter。",
                                 "title": "Reason",
                                 "required": true
                             }
                         },
                         "title": "AuditRepresentative"
                     },
-                    "description": "主Agent已实际观察的精选完整原图，数量按信息价值决定，不强行凑图。",
+                    "description": "精选3至8张主Agent已实际观察、能共同解释本段分析的完整原图；对照图设为counter。",
                     "title": "Representatives"
+                },
+                "related_case_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "按与本段分析的关系和重要程度关联案例，在本段就地复用其原图。",
+                    "title": "Related Case Ids"
                 },
                 "title": {
                     "type": "string",
@@ -964,21 +982,29 @@ export const auditReportParameters = {
                                     "representative",
                                     "counter"
                                 ],
-                                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
+                                "description": "representative为典型证据原图；counter为用于解释判断边界的已观察对照原图。",
                                 "title": "Role",
                                 "default": "representative"
                             },
                             "reason": {
                                 "type": "string",
-                                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
+                                "description": "用日常用语指出这张原图中该看哪里、看什么。有对照关系的图将role设为counter。",
                                 "title": "Reason",
                                 "required": true
                             }
                         },
                         "title": "AuditRepresentative"
                     },
-                    "description": "主Agent已实际观察的精选完整原图，数量按信息价值决定，不强行凑图。",
+                    "description": "精选3至8张主Agent已实际观察、能共同解释本段分析的完整原图；对照图设为counter。",
                     "title": "Representatives"
+                },
+                "related_case_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "按与本段分析的关系和重要程度关联案例，在本段就地复用其原图。",
+                    "title": "Related Case Ids"
                 },
                 "issue_type": {
                     "type": "string",
@@ -994,15 +1020,257 @@ export const auditReportParameters = {
                     "description": "沿用本数据格式的现有差异类型，每类单独分析，不合并多标少标或拆分合并。",
                     "title": "Issue Type",
                     "required": true
+                },
+                "title": {
+                    "type": "string",
+                    "title": "Title",
+                    "default": ""
+                },
+                "description": {
+                    "type": "string",
+                    "description": "简短说明该类冲突的实际可见现象。",
+                    "title": "Description",
+                    "default": ""
+                },
+                "audit_result": {
+                    "type": "string",
+                    "description": "结合当前图证说明本次保留或排除该疑点的具体理由。",
+                    "title": "Audit Result",
+                    "default": ""
                 }
             },
             "title": "AuditConsistencyAnalysis"
         },
-        "description": "本格式每个适用差异类型各一项；零疑点也如实分析，不将无候选、无有效候选、一致作为类型。",
+        "description": "按上下文applicable_issue_types的每个适用差异类型各一项；零疑点也如实分析，无候选、无有效候选、一致在范围分析中展开。",
         "title": "Consistency Analyses"
+    },
+    "consistency_scopes": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "source_status": {
+                    "type": "string",
+                    "enum": [
+                        "NO_CANDIDATES",
+                        "NO_ELIGIBLE_CANDIDATES",
+                        "MODEL_REVIEWED:EQUIVALENT",
+                        "MODEL_REVIEWED:MATERIAL",
+                        "MODEL_REVIEWED:UNCERTAIN"
+                    ],
+                    "title": "Source Status",
+                    "required": true
+                },
+                "analysis": {
+                    "type": "string",
+                    "description": "只讲这组能否找到可比较的图、相同内容的标注是否一致及具体差异；用日常语言说明。",
+                    "title": "Analysis",
+                    "required": true
+                },
+                "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
+                                "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Index"
+                            }
+                        },
+                        "title": "AuditResultReference"
+                    },
+                    "description": "每张精选原图都须关联其当前有效图级版本；通常kind为image，sample_id与representatives中的原图一致。",
+                    "title": "Evidence Refs"
+                },
+                "representatives": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "representative",
+                                    "counter"
+                                ],
+                                "description": "representative为典型证据原图；counter为用于解释判断边界的已观察对照原图。",
+                                "title": "Role",
+                                "default": "representative"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "用日常用语指出这张原图中该看哪里、看什么。有对照关系的图将role设为counter。",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "AuditRepresentative"
+                    },
+                    "description": "从该范围精选3至8张主Agent已实际查看的完整原图；用于比较的图指定counter。",
+                    "title": "Representatives"
+                }
+            },
+            "title": "AuditConsistencyScope"
+        },
+        "description": "分别解释无候选、无有效候选、标注一致等来源范围。",
+        "title": "Consistency Scopes"
+    },
+    "knowledge_analyses": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "check_id": {
+                    "type": "string",
+                    "title": "Check Id",
+                    "required": true
+                },
+                "description": {
+                    "type": "string",
+                    "description": "用自然语言概括该知识关注的可见现象和检查动作。",
+                    "title": "Description",
+                    "required": true
+                },
+                "applicability": {
+                    "type": "string",
+                    "description": "说明本次哪些可见场景适用，哪些不适用。",
+                    "title": "Applicability",
+                    "required": true
+                },
+                "analysis": {
+                    "type": "string",
+                    "description": "依据本次实际图像说明观察、对照及与知识的关系。",
+                    "title": "Analysis",
+                    "required": true
+                },
+                "audit_impact": {
+                    "type": "string",
+                    "description": "该知识帮助辨认或区分的具体可见现象及其对本次判断的影响。",
+                    "title": "Audit Impact",
+                    "required": true
+                },
+                "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
+                                "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Index"
+                            }
+                        },
+                        "title": "AuditResultReference"
+                    },
+                    "title": "Evidence Refs",
+                    "required": true
+                },
+                "representatives": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "representative",
+                                    "counter"
+                                ],
+                                "description": "representative为典型证据原图；counter为用于解释判断边界的已观察对照原图。",
+                                "title": "Role",
+                                "default": "representative"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "用日常用语指出这张原图中该看哪里、看什么。有对照关系的图将role设为counter。",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "AuditRepresentative"
+                    },
+                    "title": "Representatives"
+                }
+            },
+            "title": "AuditKnowledgeAnalysis"
+        },
+        "description": "逐项覆盖全部所选知识，说明内容、适用性、图证对照及实际作用。",
+        "title": "Knowledge Analyses"
     },
     "independence_analysis": {
         "type": "string",
+        "description": "依据真实重复和来源登记说明样本结构，以及尚缺哪些具体登记。",
         "title": "Independence Analysis",
         "required": true
     },
@@ -1045,6 +1313,7 @@ export const auditReportParameters = {
                 },
                 "reason": {
                     "type": "string",
+                    "description": "该能力实际出现的视觉困难，或尚缺的具体场景。",
                     "title": "Reason",
                     "required": true
                 },
@@ -1109,13 +1378,13 @@ export const auditReportParameters = {
                                     "representative",
                                     "counter"
                                 ],
-                                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
+                                "description": "representative为典型证据原图；counter为用于解释判断边界的已观察对照原图。",
                                 "title": "Role",
                                 "default": "representative"
                             },
                             "reason": {
                                 "type": "string",
-                                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
+                                "description": "用日常用语指出这张原图中该看哪里、看什么。有对照关系的图将role设为counter。",
                                 "title": "Reason",
                                 "required": true
                             }
@@ -1129,6 +1398,7 @@ export const auditReportParameters = {
                     "items": {
                         "type": "string"
                     },
+                    "description": "仅列该能力特有的使用条件，共同条件留在报告用途章节。",
                     "title": "Missing Conditions"
                 }
             },
@@ -1170,6 +1440,7 @@ export const auditReportParameters = {
                 },
                 "reason": {
                     "type": "string",
+                    "description": "本用途能开展的具体工作，或需先完成的具体准备，用一句话说明。",
                     "title": "Reason",
                     "required": true
                 }
@@ -1184,6 +1455,7 @@ export const auditReportParameters = {
         "items": {
             "type": "string"
         },
+        "description": "本轮真实保留疑点的复看位置和动作；没有则为空。",
         "title": "Review Priorities",
         "required": true
     },
@@ -1192,8 +1464,214 @@ export const auditReportParameters = {
         "items": {
             "type": "string"
         },
+        "description": "需补充的图像、参考标注、来源登记或划分成果及对应准备动作，同一条件集中说明一次。",
         "title": "Limitations",
         "required": true
+    },
+    "report_cases": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "case_id": {
+                    "type": "string",
+                    "title": "Case Id",
+                    "required": true
+                },
+                "title": {
+                    "type": "string",
+                    "title": "Title",
+                    "required": true
+                },
+                "observation": {
+                    "type": "string",
+                    "description": "用日常用语指出图里看哪里、看到了什么、标注圈住了什么。",
+                    "title": "Observation",
+                    "required": true
+                },
+                "comparison": {
+                    "type": "string",
+                    "description": "直接说明图中哪些地方相同或不同，以及为什么这样判断。",
+                    "title": "Comparison",
+                    "default": ""
+                },
+                "significance": {
+                    "type": "string",
+                    "description": "这些图可以用来检查模型的什么表现，或接下来具体应做什么。",
+                    "title": "Significance",
+                    "required": true
+                },
+                "evidence_refs": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "result_revision": {
+                                "type": "integer",
+                                "title": "Result Revision",
+                                "required": true
+                            },
+                            "kind": {
+                                "type": "string",
+                                "enum": [
+                                    "finding",
+                                    "observation",
+                                    "feature",
+                                    "image"
+                                ],
+                                "title": "Kind",
+                                "required": true
+                            },
+                            "index": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Index"
+                            }
+                        },
+                        "title": "AuditResultReference"
+                    },
+                    "description": "引用具体标注疑点时使用finding及其索引；普通图像比较使用observation、feature或image。",
+                    "title": "Evidence Refs",
+                    "required": true
+                },
+                "representatives": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "sample_id": {
+                                "type": "string",
+                                "title": "Sample Id",
+                                "required": true
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "representative",
+                                    "counter"
+                                ],
+                                "description": "representative为典型证据原图；counter为用于解释判断边界的已观察对照原图。",
+                                "title": "Role",
+                                "default": "representative"
+                            },
+                            "reason": {
+                                "type": "string",
+                                "description": "用日常用语指出这张原图中该看哪里、看什么。有对照关系的图将role设为counter。",
+                                "title": "Reason",
+                                "required": true
+                            }
+                        },
+                        "title": "AuditRepresentative"
+                    },
+                    "title": "Representatives",
+                    "required": true
+                }
+            },
+            "title": "AuditReportCase"
+        },
+        "description": "各分析点关联的图像依据；相同案例供多个分析点复用，页面在对应正文旁直接展示精选原图。",
+        "title": "Report Cases"
+    },
+    "capability_topics": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "title": {
+                    "type": "string",
+                    "title": "Title",
+                    "required": true
+                },
+                "summary": {
+                    "type": "string",
+                    "title": "Summary",
+                    "required": true
+                },
+                "capability_tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": [
+                            "representative_test_set",
+                            "ordinary_normal",
+                            "hard_normal",
+                            "near_ok_ng_pair",
+                            "tiny_defect",
+                            "low_contrast_defect",
+                            "structural_relation",
+                            "missing_component",
+                            "misalignment",
+                            "multi_object",
+                            "in_domain",
+                            "unseen_batch",
+                            "lighting_shift"
+                        ]
+                    },
+                    "title": "Capability Tags"
+                },
+                "points": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                            "title": {
+                                "type": "string",
+                                "title": "Title",
+                                "required": true
+                            },
+                            "observation_and_comparison": {
+                                "type": "string",
+                                "title": "Observation And Comparison",
+                                "required": true
+                            },
+                            "evaluation_value": {
+                                "type": "string",
+                                "title": "Evaluation Value",
+                                "required": true
+                            },
+                            "case_ids": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "description": "支撑本能力小点的报告案例，须有主Agent实际观察的完整原图。",
+                                "title": "Case Ids",
+                                "required": true
+                            }
+                        },
+                        "title": "AuditCapabilityPoint"
+                    },
+                    "title": "Points",
+                    "required": true
+                },
+                "missing_conditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "title": "Missing Conditions"
+                }
+            },
+            "title": "AuditCapabilityTopic"
+        },
+        "description": "由实际视觉困难形成的能力专题，每个小点引用有原图的案例；无图证项在缺口中说明。",
+        "title": "Capability Topics"
     }
 };
 export const auditReportEvidenceParameters = {
@@ -1240,35 +1718,6 @@ export const auditCropParameters = {
     }
 };
 export const auditStartParameters = {
-    "master_prompt": {
-        "type": "object",
-        "additionalProperties": false,
-        "properties": {
-            "system_prompt": {
-                "oneOf": [
-                    {
-                        "type": "string"
-                    },
-                    {
-                        "type": "null"
-                    }
-                ],
-                "title": "System Prompt",
-                "required": true
-            },
-            "user_prompt": {
-                "type": "string",
-                "title": "User Prompt",
-                "required": true
-            }
-        },
-        "title": "AnalysisRolePrompts"
-    },
-    "report_instruction": {
-        "type": "string",
-        "title": "Report Instruction",
-        "default": "全部主图已有完成、未完成或失败记录。基于当前有效图级版本、已保存全局发现、真实程序统计及实际取得的元数据和 Benchmark 成果，提交整个冻结范围的质量与可评测能力报告。\n\n先回答可用于哪些用途，再选择有证据的共性质量问题、视觉规律与判断边界。归纳视觉现象的形态、位置、尺寸、对比可见度、结构和实例覆盖；依据真实来源评价独立性与代表性。能力覆盖或候选与正式就绪分开，按探索、训练实验、内部调试、图级、框级、像素级及正式基准分别判断。没有 Gold、划分或来源则保持未评价，bbox不能充当像素 mask，疑点率不是错误率。\n\ncoverage_analysis简要概括覆盖情况；coverage_topics按本作业实际观察形成主题，分别提交具体标题、综合analysis、当前有效evidence_refs及已实际观察的精选representatives。主题和数量不预设，不照搬其他作业的微小目标、低对比或端部示例。没有图证的主题不强造。关键发现直接选择真实发现账本，不另写一套固定发现。\n\nconsistency_analysis概括一致性判断；consistency_analyses按现有差异类型分别提交综合analysis、有效evidence_refs及必要representatives。labelme采用category_mismatch、extra_annotation、missing_annotation、position_difference、split、merge；folder_classification采用image_label_mismatch。多标和少标、拆分和合并各自独立，不加入无候选、无有效候选、一致等状态主题。没有相关材料时引用可为空，明确区分未保留该类疑点和缺少判断依据，不能把零疑点说成人工确认无误。统计数字由程序计算。标题不加序号或数量，正文不按图片逐一讲解。同组证据优先放在最能说明结论的主题中，避免在多个板块反复选取。\n\n零疑点也正常提供覆盖、能力与用途分析。所有内部引用只进入结构化字段，不进入自然语言正文。\n\n报告是对整个冻结范围的综合分析，以现象、跨图规律、关键发现和总结组织正文，说明共性、差异、适用范围与判断边界，不拼接逐图详情或批次过程。\n\n正文只包含业务分析，不叙述重新汇总、版本保留、工具调用、Session或是否登记复审等执行过程。执行约束应遵守，不复述到报告中。\n\n覆盖画像的综述与各主题只分析实际观察到的视觉场景、形态变化、结构关系、可见度及代表性。不写标注数量、有框或空标注图像数量、单框或多框分布，以及框面积、宽高比、位置坐标的范围和分位数等标注统计，不用标注统计代替视觉覆盖分析。\n\n由主 Agent 根据解释结论所需的信息自主决定典型原图及必要对照的数量。每张图须补充有意义的视觉差异或证据，不为凑数量选图，不全量罗列或重复堆图，不强造反例。只选主 Agent 已实际观察的真实完整原图，保留原始人工标注，不使用局部裁剪、拼接图或模型新增标注。图像仅作为综合结论的证据，图库不附逐图图注或详细分析。"
-    },
     "submission_id": {
         "type": "string",
         "title": "Submission Id",
@@ -1311,6 +1760,35 @@ export const auditStartParameters = {
             }
         },
         "title": "AuditKnowledgeSelection"
+    },
+    "master_prompt": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+            "system_prompt": {
+                "oneOf": [
+                    {
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "title": "System Prompt",
+                "required": true
+            },
+            "user_prompt": {
+                "type": "string",
+                "title": "User Prompt",
+                "required": true
+            }
+        },
+        "title": "AnalysisRolePrompts"
+    },
+    "report_instruction": {
+        "type": "string",
+        "title": "Report Instruction",
+        "default": "综合全部有效图级结果、全局发现、程序统计、来源信息和选用的评测成果，形成面向非项目人员的质量与评测能力报告，按工具合同提交。\n\n结论只概括当前用途和主要视觉发现，数量由页面统计展示。随后回答自洽性、标注复核重点、视觉覆盖、独立性与代表性、模型能力和使用条件。\n\n自洽性开头用一两句话回答：在内容相同、可以对照的图像中，标注是否一致；程序标出的差异经过模型看图后，哪些仍然成立。两套统计由程序计算并在页面展示，按主图计数，同一张图在同一类只记一次。随后按实际类型解释程序发现和模型复核的差别，直接说两侧标注哪里不同、为何保留或排除，配3至8张相关完整原图。\n\n无候选、无有效候选、标注一致等非空范围各自说明对照图的情况和跨图比较结果，精选3至8张属于该范围的完整原图。范围由记录中的consistency.source_status确定。单张图是否漏标、圈多了或把一个目标分成几个，放在标注质量章节；形态、亮度和纹理变化放在视觉覆盖或模型能力章节。章节概述聚焦标注是否一致，具体图像细节在对应小节说明。\n\n覆盖按实际形态、方向、尺度感受、可见度、背景和结构关系形成主题。独立性说清哪些图片重复、哪些可能拍自同一件物品；缺少登记时，直接列出需要补记的物品、批次或采集来源，以及完成后可以怎样分组。\n\n能力专题从真实视觉困难形成。每个小点说明观察、跨图共性与差别、可能检验的模型表现，并引用有完整原图的案例。单图特殊现象按个例解释，尚缺的能力场景集中列出。固定标签供内部统计，正文专题按证据组织。\n\n每条所选知识分别说明检查动作、适用情况、实际图像观察与对照，以及对本次判断的作用。精选主 Agent 已查看的完整原图解释应用。标题及知识状态来自冻结条目，逐图核对数量来自程序统计。知识章节使用标题、描述、图像证据和结构化分析；知识为空时列表为空。\n\n每个分析点直接讲图里有什么、标注有没有圈对、两图哪里相同或不同，以及可以据此检查模型的什么表现。正文自成一段完整说明，相关原图通过关联字段在该处展示。每张图的说明指出应看哪里、具体形态或差别。分析和图证关联当前有效图级版本。\n\n分别评价视觉探索、训练实验、内部调试、图像级评测、矩形框定位评测、像素区域评测及正式评测基准。各项说明可开展的工作和实际条件。共同缺项集中在用途章节，各主题只补充特有条件。\n\n先写具体事实，再解释原因或下一步。一句话只讲一个要点，主语是图中的部位、已有标注或要做的检查。提交前逐段按普通读者的视角重读：读者能否指着图片找到你说的地方，能否直接知道你的判断或下一步动作；读不顺的句子用日常用语重写。整体统计由页面交代，技术明细保留在结构化记录中。\n\n报告帮助读者看懂这批图像、标注和后续工作，回答自洽性、标注质量、视觉覆盖、独立性与代表性、模型能力和数据用途六个问题。开头直接说现在能用来做什么、主要发现什么。\n\n每段围绕一个要点，通常用两三句话讲清楚：图里哪里值得看，标注或两张图有什么相同和不同，这对使用数据有什么影响。直接下有依据的判断。需要读者复看时，说清看哪个部位、要确认什么。\n\n正文使用日常动词，少用抽象名词串。说“这两张图拍的是同一处”“几个框圈住同一条边”“补充其他批次的图片”，把判断过程讲成具体的图像事实和动作。不要照搬工具输出的判定术语，或用一串限制声明代替结果。任务规则、系统状态和保存过程留在配置与记录里。\n\n标题只写主题，层级编号由页面统一添加，数量在正文统计或图表中单独展示。\n\n数量和来源状态由页面统计展示，正文解释具体事实。共同缺少的材料集中写成下一步：补哪类图片、确认哪些参考标注、登记哪些来源，再开展什么工作。各主题只补充自己特有的准备事项，不在每段重复同一条件。\n\n主 Agent 综合全部有效图级事实和发现，各小点独立说明并关联3至8张相关原图，读者在当前小节就能对照图片读懂。案例及图像编号只填关联字段，由页面在正文旁展示图片。案例保存可复用的图像依据；知识描述说清教我们看哪里、这次看到了什么。\n\n正式图证使用主 Agent 实际查看的完整原图及原始标注。局部视图用于核查，正文图库使用完整原图。每处需要图证的分析精选3至8张能够共同说明问题的原图，说明各图的现象或关键差别。有对照关系时将对照原图标为counter，界面以Tab组织当前图组和对照图组。证据不足时继续查图或收拢主题。\n\n视觉覆盖围绕形态、方向、可见度、背景、结构关系和正常变化组织。用途说清这些场景可以检查模型的什么表现，以及具体需要做的准备。"
     },
     "observer_prompt": {
         "type": "object",

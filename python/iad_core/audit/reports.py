@@ -4,7 +4,7 @@ from collections import Counter, defaultdict
 
 from iad_core.audit.models import AuditFinal, AuditSampleRun
 from iad_core.audit.report_models import (AuditCount, AuditStatistics, AuditRecordQuery,
-    AuditReportCommit, AuditReportSession, AuditDiscovery, AuditRepresentative)
+    AuditReportCommit, AuditReportSession, AuditDiscovery, AuditRepresentative, AuditConsistencyScope)
 from iad_core.audit.state import AuditState
 from iad_core.workbench.calls import ModelCalls
 
@@ -17,18 +17,24 @@ class AuditReports:
         samples = self.state.samples(run_id)
         counts, occurrences, reviews = Counter(), Counter(), Counter()
         images = defaultdict(set)
+        upstream_occurrences, upstream_images = Counter(), defaultdict(set)
+        program_images = Counter()
         datasets, cross, knowledge = defaultdict(Counter), defaultdict(Counter), defaultdict(Counter)
-        records = {record.sample.sample_id:record for record in self.state.snapshot(run_id).manifest.records}
+        snapshot = self.state.snapshot(run_id)
+        records = {record.sample.sample_id:record for record in snapshot.manifest.records}
+        from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES, ISSUE_TYPES_BY_FORMAT
+        category_types = {ISSUE_CATEGORIES[kind]:kind for kind in ISSUE_TYPES_BY_FORMAT[snapshot.dataset_profile.dataset_format]}
         for sample in samples:
             final = sample.result
             completed = sample.state == 'COMPLETED' and final is not None and final.execution_status == 'completed'
             state = final.state if completed else 'incomplete'
             counts[state] += 1
             datasets[records[sample.sample_id].sample.dataset_id][state] += 1
-            source = sample.consistency.reason
-            if source == 'MODEL_REVIEWED':
-                source += ':' + (sample.consistency.verdict or 'UNCERTAIN')
-            cross[source][state] += 1
+            cross[sample.source_status][state] += 1
+            program_images.update({category_types[category] for category in sample.consistency.original_categories if category in category_types})
+            for issue in sample.consistency.result.issues if sample.consistency.result else []:
+                upstream_occurrences[issue.type] += 1
+                upstream_images[issue.type].add(sample.sample_id)
             if not completed:
                 continue
             for finding in final.findings:
@@ -48,6 +54,9 @@ class AuditReports:
             issue_types={kind:AuditCount(image_count=len(images[kind]),occurrences=count) for kind,count in occurrences.items()},
             datasets={key:dict(value) for key,value in datasets.items()}, consistency_cross={key:dict(value) for key,value in cross.items()},
             consistency_assessments=dict(reviews),knowledge_assessments={key:dict(value) for key,value in knowledge.items()},
+            upstream_issue_types={kind:AuditCount(image_count=len(upstream_images[kind]),occurrences=count)
+                for kind,count in upstream_occurrences.items()},
+            program_issue_types=dict(program_images),
             observation_images=len(observations),observation_occurrences=sum(map(len,observations)))
 
     def matching(self, run_id: str, query: AuditRecordQuery) -> list[AuditSampleRun]:
@@ -84,8 +93,7 @@ class AuditReports:
         with self.db.connection() as connection:
             latest = connection.execute('SELECT revision,submission_json FROM audit_global_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1',(run_id,)).fetchone()
         return AuditReportSession(revision=latest[0] if latest else 0,discoveries=json.loads(latest[1])['discoveries'] if latest else [],job_id=run_id,session_id=row['session_id'],session_created=bool(row['session_created']),state=row['state'],
-            result=json.loads(row['result_json']) if row['result_json'] else None,error=row['error'],
-            prompts=json.loads(row['prompts_json']) if row['prompts_json'] else None)
+            result=json.loads(row['result_json']) if row['result_json'] else None,error=row['error'])
 
     def discovery(self, run_id: str, query: dict) -> dict:
         from iad_core.audit.discoveries import AuditDiscoveries
@@ -209,23 +217,55 @@ class AuditReports:
         if {(sample.sample_id,sample.result_revision) for sample in samples} - self.read_versions(run_id):
             raise ValueError('报告尚未实际读取全部有效图级记录')
         from iad_core.audit.report_models import AUDIT_ISSUE_TYPES_BY_FORMAT
-        if submission.consistency_analyses and {item.issue_type for item in submission.consistency_analyses} != set(
-                AUDIT_ISSUE_TYPES_BY_FORMAT[self.state.snapshot(run_id).dataset_profile.dataset_format]):
-            raise ValueError('一致性分析须分别覆盖本数据格式的全部适用差异类型')
-        for section in [*submission.capabilities,*submission.coverage_topics,*submission.consistency_analyses]:
+        snapshot = self.state.snapshot(run_id)
+        expected_types = set(AUDIT_ISSUE_TYPES_BY_FORMAT[snapshot.dataset_profile.dataset_format])
+        submitted_types = {item.issue_type for item in submission.consistency_analyses}
+        if submission.consistency_analyses and submitted_types != expected_types:
+            missing = '、'.join(sorted(expected_types-submitted_types)) or '无'
+            extra = '、'.join(sorted(submitted_types-expected_types)) or '无'
+            raise ValueError(f'一致性分析须分别覆盖本数据格式的全部适用差异类型；缺少：{missing}；不适用：{extra}')
+        statistics = self.statistics(run_id)
+        required_types={kind for kind,count in statistics.program_issue_types.items() if count}|set(statistics.upstream_issue_types)
+        if required_types-submitted_types:
+            raise ValueError('报告须解释程序或模型发现的差异类型：'+'、'.join(sorted(required_types-submitted_types)))
+        knowledge = snapshot.knowledge
+        selected_checks = {entry.check.check_id for entry in knowledge.entries} if knowledge else set()
+        if {item.check_id for item in submission.knowledge_analyses} != selected_checks:
+            raise ValueError('报告知识分析须逐项覆盖全部所选知识')
+        if any(sample.state=='COMPLETED' for sample in samples) and any(not item.representatives for item in submission.knowledge_analyses):
+            raise ValueError('知识分析须提供解释本次核对结果的完整原图')
+        for scope in submission.consistency_scopes:
+            eligible = {sample.sample_id for sample in samples if sample.source_status==scope.source_status and sample.state=='COMPLETED'}
+            minimum = min(3,len(eligible))
+            if not minimum<=len(scope.representatives)<=8:
+                raise ValueError(f'{scope.source_status}须精选{minimum}至8张对应范围的完整原图')
+            if {ref.sample_id for ref in scope.evidence_refs}-eligible:
+                raise ValueError('范围分析只能引用该范围已经完成的图像')
+        for analysis in submission.consistency_analyses:
+            if not (statistics.program_issue_types.get(analysis.issue_type) or statistics.upstream_issue_types.get(analysis.issue_type)):
+                continue
+            representatives = [*analysis.representatives,*[image for case in submission.report_cases
+                if case.case_id in analysis.related_case_ids for image in case.representatives]]
+            minimum = min(3,sum(sample.state=='COMPLETED' for sample in samples))
+            if len({image.sample_id for image in representatives}) < minimum:
+                raise ValueError(f'标注差异分析须关联至少{minimum}张完整原图')
+        for section in [*submission.capabilities,*submission.coverage_topics,*submission.consistency_analyses,*submission.report_cases,*submission.knowledge_analyses,*submission.consistency_scopes]:
             self.validate_references(run_id,section.evidence_refs,current_only=True)
             if section.representatives:
                 evidence_samples={ref.sample_id for ref in section.evidence_refs}
                 self.validate_gallery(run_id,section.representatives,
                     {'representative':evidence_samples,'counter':evidence_samples},required=True)
-        source = self.state.snapshot(run_id).dataset_profile.benchmark
+                minimum=min(3,sum(sample.state=='COMPLETED' for sample in samples))
+                if not isinstance(section,AuditConsistencyScope) and not minimum<=len(section.representatives)<=8:
+                    raise ValueError(f'每处报告图证须精选{minimum}至8张完整原图')
+        source = snapshot.dataset_profile.benchmark
         for assessment in submission.usability:
             if assessment.status!='usable' or assessment.purpose in ('exploration','training_experiment','debug'):
                 continue
             if source is None or not source.source_matches_scope or not source.leakage.is_passed or source.readiness.standard_ad.status!='READY':
-                raise ValueError('正式评测用途须有本范围真实 Gold、独立划分和已执行的就绪结果')
+                raise ValueError('正式评测需要本范围的参考标注、独立划分、泄漏检查通过记录和就绪结果')
             if assessment.purpose=='pixel_evaluation' and source.pixel_gold_images==0:
-                raise ValueError('矩形标注不能作为像素级 Gold')
+                raise ValueError('像素区域评测需要经过确认的像素边界标注')
             if assessment.purpose=='bbox_evaluation' and source.readiness.small_weak.status!='READY':
                 raise ValueError('框级评测缺少真实定位就绪证据')
         with self.db.connection() as connection:

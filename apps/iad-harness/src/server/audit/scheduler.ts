@@ -14,9 +14,6 @@ export class AuditWorkflowScheduler implements ModelRouting {
 
   async execute(operation:string,args:Record<string,any>,signal:AbortSignal|undefined,dispatch:BridgeDispatch):Promise<any> {
     if(operation==='audit_start')return this.start(args.request);
-    if(operation==='audit_report_regenerate'){
-      const job=await dispatch('audit_agent_report_regenerate',args,signal);this.launch(args.run_id);return job;
-    }
     if(operation==='audit_cancel'||operation==='audit_retry') {
       const job=await dispatch('analysis_node',{run_id:args.run_id},signal);
       if(job.request?.audit_workflow_version)return operation==='audit_cancel'?this.cancel(args.run_id):this.resume(args.run_id);

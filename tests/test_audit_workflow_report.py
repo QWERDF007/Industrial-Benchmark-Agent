@@ -10,6 +10,95 @@ from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeMod
 from tests.audit_support import save_image, master_observed, publish_batch, batch_submission, report_submission
 
 
+def test_consistency_statistics_keep_program_matches_separate_from_visual_review(native_audit, tmp_path):
+    import json
+    import httpx
+    from pathlib import Path
+    from iad_core.dataset.registry import DatasetRegistry
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+    from iad_core.consistency.agent_review import ConsistencyAgentReview
+    from iad_core.workbench.vision import VlmClient
+    from iad_core.audit.reports import AuditReports
+
+    jobs, dataset_id, _, role = native_audit
+    from iad_core.storage.repositories import SampleRepository
+    samples = [SampleRepository(jobs.db).get(dataset_id+':part-'+str(index)+'.png') for index in range(3)]
+    original = Path(samples[0].image_path).read_bytes()
+    for index, sample in enumerate(samples):
+        Path(sample.image_path).write_bytes(original)
+        Path(tmp_path/'labels'/('part-'+str(index)+'.json')).write_text(json.dumps({
+            'imageWidth':320, 'imageHeight':240, 'shapes':[{'shape_type':'rectangle', 'label':'edge',
+                'points':[[40+index*15,60],[280-index*15,180]]}]}))
+    DatasetRegistry(jobs.db).rescan(dataset_id)
+    checks = ConsistencyAgentJobs(jobs.runtime)
+    source = checks.start(dict(submission_id=str(uuid4()), dataset_ids=[dataset_id], mode='exact'))['run_id']
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count':1000, 'max_model_len':32768})
+        facts = json.loads(json.loads(request.content)['messages'][-1]['content'][1]['text'])['facts']
+        answer = {'observations':[{'candidate_id':identity, 'description':'对应边缘的主要覆盖相同。',
+            'media_ids':facts['required_image_ids'][identity]} for identity in facts['candidates']]}
+        return httpx.Response(200, json={'choices':[{'finish_reason':'stop', 'message':{'content':json.dumps(answer)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    try:
+        review = ConsistencyAgentReview(jobs.runtime, client)
+        for anchor in checks.anchors(source):
+            checks.session_created(source, anchor.anchor_id)
+            retrieved = checks.retrieve(source, anchor.anchor_id)
+            if not retrieved.candidates:
+                checks.submit_empty(source, anchor.anchor_id)
+                continue
+            state = review.verify(source, anchor.anchor_id)
+            if state.eligible_ids:
+                observed = review.observe(source, anchor.anchor_id, dict(request_id='coverage', fingerprint=state.fingerprint,
+                    candidate_ids=state.eligible_ids, question='比较实际覆盖。'))
+                for candidate in state.eligible_ids:
+                    review.assess(source, anchor.anchor_id, dict(fingerprint=state.fingerprint, observation_ids=[observed.observation_id],
+                        assessment=dict(candidate_id=candidate, verdict='EQUIVALENT', explanation='对应边缘的主要覆盖相同。')))
+                review.finalize(source, anchor.anchor_id, dict(fingerprint=state.fingerprint,
+                    assessment_ids=[record.assessment_id for record in review.assessments(source, anchor.anchor_id)]))
+            else:
+                review.finish_rules(source, anchor.anchor_id)
+    finally:
+        client.close()
+    checks.finish(source)
+    run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=source), agent=role)['run_id']
+    stats = AuditReports(jobs.db).statistics(run_id)
+    assert stats.program_issue_types == {'position_difference':3}
+    assert stats.upstream_issue_types == {}
+    assert stats.consistency_cross['MODEL_REVIEWED:EQUIVALENT'] == {'incomplete':3}
+    save_image(jobs, run_id, jobs.samples(run_id)[0], ['own-image-issue'])
+    stats = AuditReports(jobs.db).statistics(run_id)
+    assert stats.issue_types['missing_annotation'].image_count == 1
+    assert stats.program_issue_types == {'position_difference':3}
+    assert stats.upstream_issue_types == {}
+    for sample in jobs.samples(run_id)[1:]:
+        save_image(jobs, run_id, sample)
+    publish_batch(jobs, run_id)
+    reports = AuditReports(jobs.db)
+    reports.begin(run_id)
+    chosen = jobs.samples(run_id)[:3]
+    originals = [AuditEvidence(jobs).read(run_id, sample.sample_id, dict(sample_id=sample.sample_id)).evidence_id for sample in chosen]
+    master_observed(jobs, run_id, reports.records(run_id, {}), originals)
+    from iad_core.consistency.annotation_issues import ISSUE_TYPES_BY_FORMAT
+    analyses = [dict(issue_type=kind, analysis='逐图核对了对应边缘的实际覆盖。', evidence_refs=[])
+        for kind in ISSUE_TYPES_BY_FORMAT['labelme']]
+    with pytest.raises(ValueError, match='程序或模型发现的差异类型'):
+        reports.commit(run_id, report_submission())
+    with pytest.raises(ValueError, match='差异分析.*完整原图'):
+        reports.commit(run_id, report_submission(consistency_analyses=analyses))
+    position = next(item for item in analyses if item['issue_type']=='position_difference')
+    position.update(evidence_refs=[dict(sample_id=sample.sample_id, result_revision=1, kind='image') for sample in chosen],
+        representatives=[dict(sample_id=sample.sample_id, reason='比较边缘的实际覆盖。') for sample in chosen])
+    reports.commit(run_id, report_submission(consistency_analyses=analyses))
+    from iad_core.audit.queries import AuditQueries
+    report = AuditQueries(jobs.db).report(run_id)
+    assert report.statistics.program_issue_types == {'position_difference':3}
+    assert len(report.evidence_groups['consistency:position_difference']) == 3
+
+
 def test_report_saves_job_specific_coverage_and_separate_consistency_analyses_with_whole_evidence(native_audit):
     from iad_core.audit.queries import AuditQueries
     from iad_core.audit.reports import AuditReports
@@ -18,28 +107,36 @@ def test_report_saves_job_specific_coverage_and_separate_consistency_analyses_wi
     samples = jobs.samples(run_id)
     for sample in samples:
         save_image(jobs, run_id, sample)
-    originals = [AuditEvidence(jobs).read(run_id, sample.sample_id, dict(sample_id=sample.sample_id)).evidence_id for sample in samples[:2]]
+    originals = [AuditEvidence(jobs).read(run_id, sample.sample_id, dict(sample_id=sample.sample_id)).evidence_id for sample in samples[:3]]
     publish_batch(jobs, run_id)
     reports = AuditReports(jobs.db)
+    from iad_core.audit.batches import AuditBatches
+    context = AuditBatches(jobs).context(run_id)
+    assert set(context['applicable_issue_types']) == {
+        'category_mismatch', 'position_difference', 'extra_annotation', 'missing_annotation', 'split', 'merge'}
     reports.begin(run_id)
     master_observed(jobs, run_id, reports.records(run_id, {}), originals)
-    references = [dict(sample_id=sample.sample_id, result_revision=1, kind='image') for sample in samples[:2]]
+    references = [dict(sample_id=sample.sample_id, result_revision=1, kind='image') for sample in samples[:3]]
     representative = dict(sample_id=samples[0].sample_id, role='representative', reason='转角邻接的完整范围。')
+    representatives = [dict(representative,sample_id=sample.sample_id) for sample in samples[:3]]
     topics = [dict(title='转角邻接与低对比纹理', analysis='转角附近的纹理覆盖不能推广到未采集的背面。',
-        evidence_refs=references, representatives=[representative])]
+        evidence_refs=references, representatives=representatives)]
     analyses = [dict(issue_type=kind, analysis='本轮未保留该类疑点，不能据此认证全部标注正确。',
-        evidence_refs=references, representatives=[representative] if kind=='position_difference' else [])
+        evidence_refs=references, representatives=representatives if kind=='position_difference' else [])
         for kind in ('category_mismatch', 'position_difference', 'extra_annotation', 'missing_annotation', 'split', 'merge')]
     before = [jobs.sample(run_id, sample.sample_id).result.model_dump_json() for sample in samples]
     submitted = report_submission(coverage_topics=topics, consistency_analyses=analyses)
     with pytest.raises(ValueError, match='全部适用差异类型'):
         reports.commit(run_id, report_submission(coverage_topics=topics, consistency_analyses=analyses[:1]))
+    with pytest.raises(ValueError, match='不适用：image_label_mismatch'):
+        reports.commit(run_id, report_submission(consistency_analyses=[*analyses,
+            dict(issue_type='image_label_mismatch', analysis='本数据使用矩形标注。', evidence_refs=[])]))
     with pytest.raises(ValueError, match='冻结范围'):
         reports.commit(run_id, report_submission(coverage_topics=[dict(topics[0], evidence_refs=[
             dict(sample_id='foreign', result_revision=1, kind='image')])], consistency_analyses=analyses))
     with pytest.raises(ValueError, match='实际支持'):
         reports.commit(run_id, report_submission(coverage_topics=[dict(topics[0], representatives=[
-            dict(representative, sample_id=samples[2].sample_id)])], consistency_analyses=analyses))
+            dict(representative, sample_id=samples[3].sample_id)])], consistency_analyses=analyses))
     assert reports.session(run_id).state == 'RUNNING'
     assert reports.commit(run_id, submitted).state == 'COMPLETED'
     report = AuditQueries(jobs.db).report(run_id)
@@ -282,6 +379,8 @@ def test_each_frozen_upstream_difference_gets_an_independent_quality_assessment(
     first=jobs.samples(run_id)[0]
     context=jobs.context(run_id,first.sample_id)
     assert context.consistency.gates
+    from iad_core.audit.batches import AuditBatches
+    assert AuditBatches(jobs).context(run_id)['applicable_issue_types'] == ['image_label_mismatch']
     assert len(context.consistency.result.issues)==1
     issue_id=context.consistency.result.issues[0].issue_id
     with pytest.raises(ValueError,match='上游差异'):
@@ -295,13 +394,18 @@ def test_each_frozen_upstream_difference_gets_an_independent_quality_assessment(
     stats=AuditReports(jobs.db).statistics(run_id)
     assert stats.consistency_assessments=={assessment:1}
     assert stats.consistency_cross['MODEL_REVIEWED:MATERIAL'][final.state]==1
+    assert stats.upstream_issue_types['image_label_mismatch'].image_count == 2
+    assert stats.upstream_issue_types['image_label_mismatch'].occurrences == 2
+    assert stats.program_issue_types == {'image_label_mismatch':2}
     for sample in jobs.samples(run_id)[1:]:
         jobs.failure(run_id, sample.sample_id, '本测试仅完成一张图像。')
     publish_batch(jobs, run_id)
     reports=AuditReports(jobs.db)
     reports.begin(run_id)
     analysis=dict(issue_type='image_label_mismatch',analysis='按本轮实际图像标签和独立观察核对，未完成部分不作结论。',
-        evidence_refs=[dict(sample_id=first.sample_id,result_revision=1,kind='image')],representatives=[])
+        evidence_refs=[dict(sample_id=first.sample_id,result_revision=1,kind='image')],
+        representatives=[dict(sample_id=first.sample_id,reason='核对同内容图像的整图标签。')])
+    master_observed(jobs, run_id, reports.records(run_id, {}), [page.evidence_id])
     with pytest.raises(ValueError,match='全部适用差异类型'):
         reports.commit(run_id,report_submission(consistency_analyses=[dict(analysis,issue_type='missing_annotation')]))
     result=reports.commit(run_id,report_submission(consistency_analyses=[analysis]))

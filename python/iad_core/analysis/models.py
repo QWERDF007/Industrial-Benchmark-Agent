@@ -399,18 +399,6 @@ class AnalysisPublication(AnalysisModel):
     inherited_reviews: dict[str, KnowledgeCheckReview] = Field(default_factory=dict)
     delegations: list[ExplorationBatchArchive | KnowledgeBatchArchive] = Field(default_factory=list)
 
-    def display_evidence_ids(self, entry: AnalysisDirection | AnalysisKnowledgeCheck,
-                             evidence_role: Literal['support', 'counter'] | None = None) -> list[str]:
-        if entry.key_evidence is not None:
-            return [item.evidence_id for item in entry.key_evidence
-                if evidence_role is None or ('counter' if item.role == 'counter' else 'support') == evidence_role]
-        if self.finalization is not None:
-            return []
-        support_ids = entry.evidence_ids if isinstance(entry, AnalysisDirection) else entry.support_evidence_ids
-        return (support_ids if evidence_role == 'support' else entry.counter_evidence_ids
-            if evidence_role == 'counter' else [*support_ids, *entry.counter_evidence_ids])
-
-
 class AnalysisEvidenceView(AnalysisModel):
     evidence_id: str
     sample_id: str

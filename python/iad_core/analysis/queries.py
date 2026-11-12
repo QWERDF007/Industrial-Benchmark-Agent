@@ -13,6 +13,7 @@ from iad_core.knowledge.check_reviews import KnowledgeCheckReviews
 from iad_core.knowledge.display_evidence import KnowledgeDisplayEvidence
 from iad_core.knowledge.instructions import ExploredDirectionSource
 from iad_core.workbench.analysis_sources import AnalysisSourceRoles
+from iad_core.workbench.analysis_manifest import AnalysisRegistration
 from iad_core.knowledge.models import (KnowledgeCheckPage, KnowledgeCheckSummary,
     KnowledgeCriterion, KnowledgeEvidence, KnowledgeEvidencePage, KnowledgeVersion)
 
@@ -151,12 +152,15 @@ class AnalysisQueries:
             raise LookupError('该发布版本不存在指定观察证据')
         return {'path': EvidenceImages(self.db.db_path).path(image), 'media_type': image.media_type}
 
+    def registrations(self, version_id: str) -> list[AnalysisRegistration]:
+        publication = self.publications.get(version_id)
+        with self.db.connection() as connection:
+            row = connection.execute('SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?', (publication.job_id,)).fetchone()
+        return AnalysisWorkflowSnapshot.model_validate_json(row[0]).manifest.records
+
     def sample_evidence(self, version_id: str, sample_id: str) -> AnalysisSampleEvidence:
         view = self.view(version_id)
-        with self.db.connection() as connection:
-            row = connection.execute('SELECT snapshot_json FROM analysis_workflow_runs WHERE job_id=?', (view.job_id,)).fetchone()
-        snapshot = AnalysisWorkflowSnapshot.model_validate_json(row[0])
-        record = next((record for record in snapshot.manifest.records if record.sample.sample_id == sample_id),None)
+        record = next((record for record in self.registrations(version_id) if record.sample.sample_id == sample_id),None)
         if record is None:
             raise LookupError('该图像不属于所选发布版本')
         return AnalysisSampleEvidence(version_id=version_id,module=view.module,registration=record,

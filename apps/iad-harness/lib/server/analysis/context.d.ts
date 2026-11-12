@@ -3,13 +3,13 @@ export declare class AnalysisPromptContext {
     readonly onDemand: boolean;
     constructor(snapshot: AnalysisWorkflowSnapshot);
     catalog(catalog: AnalysisCatalog): {
-        summary: import("../../shared/domain.generated.js").Summary4;
+        summary: import("../../shared/domain.generated.js").Summary6;
         limitations: import("../../shared/domain.generated.js").Limitations30;
         unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
         directions: {
             change_reason: import("../../shared/domain.generated.js").ChangeReason1;
             key_evidence: import("../../shared/domain.generated.js").KeyEvidence1;
-            title: import("../../shared/domain.generated.js").Title17;
+            title: import("../../shared/domain.generated.js").Title24;
             instruction: import("../../shared/domain.generated.js").Instruction11;
             applies_to: import("../../shared/domain.generated.js").AppliesTo1;
             rationale: import("../../shared/domain.generated.js").Rationale1;
@@ -73,13 +73,13 @@ export declare class AnalysisPromptContext {
     context<T extends AnalysisAgentContext>(context: T): T | (Omit<T, "accepted_observations" | "completed_sample_ids" | "failed_sample_ids" | "media_progress"> & {
         context_policy: string;
         catalog: {
-            summary: import("../../shared/domain.generated.js").Summary4;
+            summary: import("../../shared/domain.generated.js").Summary6;
             limitations: import("../../shared/domain.generated.js").Limitations30;
             unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
             directions: {
                 change_reason: import("../../shared/domain.generated.js").ChangeReason1;
                 key_evidence: import("../../shared/domain.generated.js").KeyEvidence1;
-                title: import("../../shared/domain.generated.js").Title17;
+                title: import("../../shared/domain.generated.js").Title24;
                 instruction: import("../../shared/domain.generated.js").Instruction11;
                 applies_to: import("../../shared/domain.generated.js").AppliesTo1;
                 rationale: import("../../shared/domain.generated.js").Rationale1;
@@ -165,13 +165,13 @@ export declare class AnalysisPromptContext {
             report: import("../../shared/domain.generated.js").Report;
             reviewed: import("../../shared/domain.generated.js").Reviewed;
             catalog: {
-                summary: import("../../shared/domain.generated.js").Summary4;
+                summary: import("../../shared/domain.generated.js").Summary6;
                 limitations: import("../../shared/domain.generated.js").Limitations30;
                 unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
                 directions: {
                     change_reason: import("../../shared/domain.generated.js").ChangeReason1;
                     key_evidence: import("../../shared/domain.generated.js").KeyEvidence1;
-                    title: import("../../shared/domain.generated.js").Title17;
+                    title: import("../../shared/domain.generated.js").Title24;
                     instruction: import("../../shared/domain.generated.js").Instruction11;
                     applies_to: import("../../shared/domain.generated.js").AppliesTo1;
                     rationale: import("../../shared/domain.generated.js").Rationale1;
@@ -248,7 +248,7 @@ export declare class AnalysisPromptContext {
         coverage: import("../../shared/domain.generated.js").AnalysisCoverageSummary;
         entries: import("../../shared/domain.generated.js").Entries2;
         directions: import("../../shared/domain.generated.js").Directions14;
-        summary: import("../../shared/domain.generated.js").Summary11;
+        summary: import("../../shared/domain.generated.js").Summary13;
         limitations: import("../../shared/domain.generated.js").Limitations55;
         unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions15;
         selected_directions: {
@@ -272,13 +272,13 @@ export declare class AnalysisPromptContext {
     }>(context: T): T | (Omit<T, "accepted_observations" | "completed_sample_ids" | "failed_sample_ids" | "media_progress"> & {
         context_policy: string;
         catalog: {
-            summary: import("../../shared/domain.generated.js").Summary4;
+            summary: import("../../shared/domain.generated.js").Summary6;
             limitations: import("../../shared/domain.generated.js").Limitations30;
             unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
             directions: {
                 change_reason: import("../../shared/domain.generated.js").ChangeReason1;
                 key_evidence: import("../../shared/domain.generated.js").KeyEvidence1;
-                title: import("../../shared/domain.generated.js").Title17;
+                title: import("../../shared/domain.generated.js").Title24;
                 instruction: import("../../shared/domain.generated.js").Instruction11;
                 applies_to: import("../../shared/domain.generated.js").AppliesTo1;
                 rationale: import("../../shared/domain.generated.js").Rationale1;
@@ -351,13 +351,13 @@ export declare class AnalysisPromptContext {
             source_error: import("../../shared/domain.generated.js").SourceError;
         }[];
         observation_catalog?: {
-            summary: import("../../shared/domain.generated.js").Summary4;
+            summary: import("../../shared/domain.generated.js").Summary6;
             limitations: import("../../shared/domain.generated.js").Limitations30;
             unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
             directions: {
                 change_reason: import("../../shared/domain.generated.js").ChangeReason1;
                 key_evidence: import("../../shared/domain.generated.js").KeyEvidence1;
-                title: import("../../shared/domain.generated.js").Title17;
+                title: import("../../shared/domain.generated.js").Title24;
                 instruction: import("../../shared/domain.generated.js").Instruction11;
                 applies_to: import("../../shared/domain.generated.js").AppliesTo1;
                 rationale: import("../../shared/domain.generated.js").Rationale1;

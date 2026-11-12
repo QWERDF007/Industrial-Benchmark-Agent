@@ -111,6 +111,8 @@ class AuditQueries:
         selected = set(final.discovery_ids) if final else {item.group_id for item in session.discoveries if item.status!='withdrawn'}
         discoveries = [item for item in session.discoveries if item.group_id in selected]
         from iad_core.audit.report_models import AuditReportedCapability
+        from iad_core.workbench.audit_result_models import AuditReportedKnowledge
+        knowledge_analyses = {item.check_id:item for item in final.knowledge_analyses} if final else {}
         capabilities=[]
         tracks={'hard_normal':'open_hard_normal','tiny_defect':'small_weak','structural_relation':'global_logical'}
         source=snapshot.dataset_profile.benchmark
@@ -132,6 +134,10 @@ class AuditQueries:
             consistency_analysis=final.consistency_analysis if final else '',knowledge_analysis=final.knowledge_analysis if final else '',
             coverage_analysis=final.coverage_analysis if final else '',independence_analysis=final.independence_analysis if final else '',
             coverage_topics=final.coverage_topics if final else [], consistency_analyses=final.consistency_analyses if final else [],
+            report_cases=final.report_cases if final else [], capability_topics=final.capability_topics if final else [],
+            consistency_scopes=final.consistency_scopes if final else [],
+            knowledge_entries=[AuditReportedKnowledge(entry=entry,analysis=knowledge_analyses.get(entry.check.check_id))
+                for entry in snapshot.knowledge.entries] if snapshot.knowledge else [],
             capabilities=capabilities,usability=final.usability if final else [],review_priorities=final.review_priorities if final else [])
 
     def export(self, run_id: str) -> dict[str, str]:

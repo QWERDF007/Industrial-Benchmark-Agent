@@ -229,8 +229,6 @@ export function createIadHttpHandler(bridge: PythonBridge) {
         run_id: decodeURIComponent(modelCall[1]), call_id: decodeURIComponent(modelCall[2]),
       });
       if (pathname === "/api/iad/audit/jobs" && method === "GET") return await call("audit_list", query);
-      const auditRegenerate=pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/report\/regenerate$/);
-      if(auditRegenerate&&method==='POST')return await call('audit_report_regenerate',{...body,run_id:decodeURIComponent(auditRegenerate[1])});
       const auditReportSession=pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/report-session\.jsonl$/);
       if(auditReportSession&&method==='GET'){
         const output=await bridge.execute<{filename:string;jsonl:string}>('audit_agent_report_session_export',{run_id:decodeURIComponent(auditReportSession[1])});

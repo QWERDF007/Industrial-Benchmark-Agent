@@ -89,7 +89,7 @@ def test_omitting_prior_support_does_not_reduce_a_claims_independent_sources(obs
     assert set(item.image.evidence_id for item in details.items) == set(whole_ids)
     assert details.check.support_count == 4
     assert set(details.support_evidence_ids) == set(whole_ids)
-    assert queries.view(published.version_id).display_evidence_ids(revised, 'support') == [whole_ids[0]]
+    assert [item.evidence_id for item in revised.key_evidence] == [whole_ids[0]]
 
 
 def test_counterexample_resolution_keeps_observation_and_revision_history(observed_claim):

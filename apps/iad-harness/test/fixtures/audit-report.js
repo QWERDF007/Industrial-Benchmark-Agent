@@ -1,3 +1,5 @@
+import {randomUUID} from 'node:crypto';
+
 export function auditMessages(body) {
   const values=body.messages.flatMap((message,index)=>{
     const parts=typeof message.content==='string'?[{type:'text',text:message.content}]:message.content||[];
@@ -51,7 +53,22 @@ export function auditReportTool(context,outputs,{includeCounter=false}={}) {
     }
     return {name:'audit_batch_commit',arguments:submission};
   }
-  return {name:'audit_report_commit',arguments:{commit_key:'report-'+context.revision,discovery_ids:context.discoveries.filter(item=>item.status!=='withdrawn').map(item=>item.group_id),
+  const records=outputs.find(output=>output?.kind==='audit_records')?.items;
+  if(!records)return {name:'audit_records',arguments:{page:1,page_size:100}};
+  const completed=records.filter(item=>item.final?.execution_status==='completed');
+  const scopes=Object.keys(context.statistics.consistency_cross).map(source_status=>({source_status,
+    items:completed.filter(item=>item.consistency.source_status===source_status).slice(0,3)}));
+  const selected=new Map([...scopes.flatMap(scope=>scope.items),...(context.knowledge?completed.slice(0,3):[])].map(item=>[item.sample_id,item]));
+  for(const item of selected.values())if(!outputs.some(output=>output?.sample_id===item.sample_id&&output?.images?.length))
+    return {name:'audit_report_evidence',arguments:{sample_id:item.sample_id,evidence_id:item.final.evidence_ids[0]}};
+  const references=items=>items.map(item=>({sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'}));
+  const representatives=items=>items.map(item=>({sample_id:item.sample_id,reason:'外缘与邻近区域可共同核对。'}));
+  return {name:'audit_report_commit',arguments:{commit_key:'report-'+randomUUID(),discovery_ids:context.discoveries.filter(item=>item.status!=='withdrawn').map(item=>item.group_id),
+    consistency_scopes:scopes.map(scope=>({source_status:scope.source_status,analysis:'按实际对照范围解释图像与标注关系。',
+      evidence_refs:references(scope.items),representatives:representatives(scope.items)})),
+    knowledge_analyses:(context.knowledge?.entries||[]).map(entry=>({check_id:entry.check.check_id,
+      description:'比较可见外缘的连续关系。',applicability:'外缘可辨时适用。',analysis:'结合完整原图与相邻外缘比较。',audit_impact:'提供局部复核线索。',
+      evidence_refs:references(completed.slice(0,3)),representatives:representatives(completed.slice(0,3))})),
     consistency_analysis:'逐项核对上游差异，候选不作为真值。',knowledge_analysis:context.knowledge?'所选知识按适用性核对。':'',
     conclusion:'完成范围可用于视觉探索，已保存的独立疑点需人工复核。',coverage_analysis:'覆盖主体边缘和原始标注，未采集场景未评价。',
     independence_analysis:'独立物理件、批次与序列仅依据真实元数据评价。',capabilities:[],usability:

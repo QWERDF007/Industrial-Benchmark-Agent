@@ -14,13 +14,15 @@ class AuditEvidence:
         self.images = RegistrationImages(self.db.db_path)
 
     def prepare(self, run_id: str, target_id: str, sample_id: str) -> PreparedRegistration:
+        record = self.jobs.record(run_id,target_id,sample_id)
         with self.db.connection() as connection:
             row = connection.execute('SELECT media_json FROM audit_sample_media WHERE job_id=? AND target_id=? AND media_key=?',
                 (run_id, target_id, 'sample:'+sample_id)).fetchone()
         if row:
             return PreparedRegistration.model_validate_json(row[0])
-        record = self.jobs.record(run_id,target_id,sample_id)
-        media = self.images.prepare(record, None, raw_annotations=True)
+        in_scope = any(item.sample.sample_id == sample_id for item in self.jobs.snapshot(run_id).manifest.records)
+        media = (self.prepare(run_id,sample_id,sample_id) if target_id != sample_id and in_scope
+            else self.images.prepare(record, None, raw_annotations=True))
         with self.db.connection() as connection:
             connection.execute('INSERT INTO audit_sample_media(job_id,target_id,media_key,sample_id,media_json) VALUES(?,?,?,?,?)',
                 (run_id, target_id, 'sample:'+sample_id, sample_id, media.model_dump_json()))

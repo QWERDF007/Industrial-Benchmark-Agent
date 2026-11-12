@@ -25,8 +25,8 @@ export class AuditMasterAgent {
     const identity={run_id:runId};
     const state=await this.bridge.execute<AuditReportSession>('audit_agent_report_state',identity);
     if(state.state==='COMPLETED')return;
-    const master=state.prompts?.master_prompt||snapshot.master_prompt;
-    const reportInstruction=state.prompts?.report_instruction||snapshot.report_instruction;
+    const master=snapshot.master_prompt;
+    const reportInstruction=snapshot.report_instruction;
     const location=await this.bridge.execute<ImageSessionLocation>('audit_agent_session_location',{session_id:state.session_id});
     const {profile,native_profile}=snapshot.agent;
     if(!profile?.model_id||!native_profile)throw new Error('审计缺少冻结的原生模型');

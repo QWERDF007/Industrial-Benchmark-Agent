@@ -44,13 +44,13 @@ test('mutual candidates keep marked, omitted and insufficient judgments in two a
       const candidate=context.consistency.evidence[0].candidate_id;
       assert.notEqual(candidate,context.sample_id);
       assert.ok(pages.length>=1&&pages.every(page=>!page.error));
+      const actual=body.messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(part=>part.type==='image_url');
+      assert.deepEqual(actual.map(part=>createHash('sha256').update(Buffer.from(part.image_url.url.split(',')[1],'base64')).digest('hex')).sort(),
+        pages.at(-1).images.map(item=>item.image.sha256).sort(),'当前请求只携带新读取的图像，已观察的主图不重复发送');
       let call;
       if(pages.length===1)call={name:'audit_images',arguments:{sample_id:candidate}};
       else {
         assert.equal(pages[0].sample_id,context.sample_id);assert.equal(pages[1].sample_id,candidate);
-        const images=pages.flatMap(page=>page.images);
-        const actual=body.messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(part=>part.type==='image_url');
-        assert.deepEqual(actual.map(part=>createHash('sha256').update(Buffer.from(part.image_url.url.split(',')[1],'base64')).digest('hex')).sort(),images.map(item=>item.image.sha256).sort());
         const marked=context.sample_id.endsWith(':A.png');
         assert.equal(context.target.annotations.length,marked?1:0);
         assert.equal(pages[1].images[0].model_context.annotations.length,marked?0:1);

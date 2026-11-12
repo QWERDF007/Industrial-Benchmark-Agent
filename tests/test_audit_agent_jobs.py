@@ -64,7 +64,8 @@ def test_audit_accepts_only_the_current_images_real_delivered_evidence_and_retai
     assert jobs.jobs.status(run_id)['completed'] == 1
 
 
-def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counter_evidence(native_audit):
+@pytest.mark.parametrize('context_role', ['context', 'allowed_variation'])
+def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counter_evidence(native_audit, context_role):
     from iad_core.analysis.jobs import AnalysisAgentJobs
     from iad_core.analysis.commits import AnalysisCommits
     from iad_core.analysis.evidence import AnalysisEvidence
@@ -76,7 +77,7 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
     from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
     jobs, dataset_id, consistency_job_id, role = native_audit
     ModuleSettings(jobs.db).save({'module':'knowledge','expected_revision':0,
-        'settings':{'model':{'provider_id':'swift-30003','model_id':'fixture'},'batch_size':4}})
+        'settings':{'model':{'provider_id':'swift-30003','model_id':'fixture'},'batch_size':5}})
     mining = AnalysisAgentJobs(jobs.runtime)
     direction = default_directions()[0].model_dump(mode='json')
     unselected_direction = {**default_directions()[1].model_dump(mode='json'),
@@ -98,12 +99,15 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
         support_evidence_ids=[pages[0].images[0].image.evidence_id,pages[2].images[0].image.evidence_id],
         counter_evidence_ids=[pages[1].images[0].image.evidence_id],
         key_evidence=[dict(evidence_id=pages[0].images[0].image.evidence_id,role='support',reason='复核主体外缘。'),
-            dict(evidence_id=pages[1].images[0].image.evidence_id,role='counter',reason='复核外缘矛盾。')],
+            dict(evidence_id=pages[1].images[0].image.evidence_id,role='counter',reason='复核外缘矛盾。'),
+            dict(evidence_id=pages[3].images[0].image.evidence_id,role=context_role,reason='比较允许的外缘变化。')],
         direction_refs=[context.selected_directions[0].ref],dataset_ids=[dataset_id])]
     checks.append({**checks[0],'check_id':'C2','title':'未选条目哨兵','criterion':'未选条目的观点不得进入审计。',
-        'status':'provisional','support_evidence_ids':[pages[3].images[0].image.evidence_id],
+        'status':'provisional','support_evidence_ids':[pages[4].images[0].image.evidence_id],
         'counter_evidence_ids':[],'key_evidence':None,'direction_refs':[context.selected_directions[1].ref]})
     AnalysisCommits(mining).accept(run_id,dict(commit_key='first',base_revision=0,round_id=1,
+        arguments=[dict(entry_id='C1',evidence_id=pages[3].images[0].image.evidence_id,
+            role=context_role,reason='比较允许的外缘变化。')],
         observations=[dict(sample_id=page.sample_id,dataset_id=dataset_id,description='可见观察。',
             evidence_ids=[item.image.evidence_id for item in page.images],directions=[dict(
                 direction_ref=selected.ref,status='applicable',reason='可观察轮廓。') for selected in context.selected_directions]) for page in pages],
@@ -114,6 +118,9 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
         expected_revision=0,status='rejected',note='人工认为证据尚不成立。'))
     catalog = AuditSources(jobs.db).catalog([dataset_id])
     source = next(item for item in catalog.knowledge_jobs if item.version_id == publication_id)
+    assert source.job_id == run_id
+    assert 'name' not in source.model_dump()
+    assert mining.snapshot(run_id).mining_prompt.configuration.objective == '核对轮廓。'
     assert source.publication_status == 'partial'
     assert [(item.check_id,item.status,item.review.status) for item in source.entries] == [('C1','conflicted','rejected'),('C2','provisional','pending')]
     assert consistency_job_id in {item.job_id for item in catalog.consistency_jobs}
@@ -124,8 +131,8 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
     assert '未选' not in selected.model_dump_json()
     assert not {'summary','limitations','unresolved_questions'} & selected.model_dump().keys()
     assert selected.source_scope.dataset_ids == [dataset_id]
-    assert selected.source_scope.coverage.completed == 4
-    assert selected.source_scope.coverage.unprocessed == 2
+    assert selected.source_scope.coverage.completed == 5
+    assert selected.source_scope.coverage.unprocessed == 1
     assert selected.source_scope.execution_status == 'CANCELLED'
     assert selected.source_scope.finalization_complete is False
     assert [item.ref for item in selected.directions] == [context.selected_directions[0].ref]
@@ -137,31 +144,32 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
     assert selected.entries[0].check.allowed_variations == ['视角差异']
     assert selected.entries[0].check.limitations == ['仅两个独立来源']
     assert selected.entries[0].check.independent_source_count == 2
-    assert [item.image.evidence_id for item in selected.evidence] == [item['evidence_id'] for item in checks[0]['key_evidence']]
+    assert {item.image.evidence_id for item in selected.evidence} == {
+        pages[index].images[0].image.evidence_id for index in range(4)}
     from iad_core.analysis.queries import AnalysisQueries
     from iad_core.knowledge.models import KnowledgeDetailQuery
     from iad_core.audit.models import AuditWorkflowSnapshot
     view = AnalysisQueries(jobs.db).view(publication_id)
-    unpublished_keys = AnalysisQueries(jobs.db).details(KnowledgeDetailQuery(version_id=publication_id,
+    support_details = AnalysisQueries(jobs.db).details(KnowledgeDetailQuery(version_id=publication_id,
         section='checks',check_id='C2'))
-    assert unpublished_keys.total == 0
-    assert unpublished_keys.check.support_count == 1
+    assert support_details.total == 1
+    assert support_details.items[0].sample_id == pages[4].sample_id
+    assert support_details.check.support_count == 1
     assert jobs.snapshot(audit['run_id']).schema_version == 4
     reviews.submit(KnowledgeCheckReviewSubmission(submission_id=uuid4(),version_id=publication_id,check_id='C1',
         expected_revision=1,status='confirmed',note='之后的核实不改写旧作业。'))
     assert jobs.context(audit['run_id'],first.sample_id).knowledge == selected
     evidence = AuditEvidence(jobs)
-    counter = evidence.reference(audit['run_id'],first.sample_id,checks[0]['counter_evidence_ids'][0])
-    assert counter.images[0].image == pages[1].images[0].image
+    for index in (1, 2, 3):
+        reference = evidence.reference(audit['run_id'],first.sample_id,pages[index].images[0].image.evidence_id)
+        assert reference.images[0].image == pages[index].images[0].image
     crop = evidence.crop(audit['run_id'],first.sample_id,{'sample_id':first.sample_id,'bbox':[1,2,11,12]})
     assert crop.images[0].image.crop_bbox == [1,2,11,12]
     assert crop.images[0].image.sent_size == [10,10]
     with pytest.raises(ValueError,match='已选知识'):
         evidence.reference(audit['run_id'],first.sample_id,'foreign-evidence')
     with pytest.raises(ValueError,match='已选知识'):
-        evidence.reference(audit['run_id'],first.sample_id,pages[2].images[0].image.evidence_id)
-    with pytest.raises(ValueError,match='已选知识'):
-        evidence.reference(audit['run_id'],first.sample_id,pages[3].images[0].image.evidence_id)
+        evidence.reference(audit['run_id'],first.sample_id,pages[4].images[0].image.evidence_id)
 
     from iad_core.entry import knowledge_check_remove, knowledge_versions, knowledge_details, knowledge_get
     removal = dict(version_id=publication_id,request=dict(submission_id=str(uuid4()),check_id='C2'))

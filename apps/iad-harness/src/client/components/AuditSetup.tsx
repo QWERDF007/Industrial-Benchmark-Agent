@@ -73,10 +73,10 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
   return <div className="audit-create-page" id="audit-create-view" aria-busy={busy}>
     <section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>知识挖掘</h2></header>
       <div id="audit-create-knowledge-jobs">{knowledgeJobs.length?<>
-        <div className="audit-source-table"><table className="audit-table"><colgroup><col style={{width:64}}/><col style={{width:'35%'}}/><col style={{width:'12%'}}/><col style={{width:'11%'}}/><col style={{width:'21%'}}/><col/></colgroup><thead><tr><th>选择</th><th>作业名称</th><th>状态</th><th>判据数</th><th>提交时间</th><th>耗时</th></tr></thead>
+        <div className="audit-source-table"><table className="audit-table"><colgroup><col style={{width:64}}/><col style={{width:'35%'}}/><col style={{width:'12%'}}/><col style={{width:'11%'}}/><col style={{width:'21%'}}/><col/></colgroup><thead><tr><th>选择</th><th>作业 ID</th><th>状态</th><th>判据数</th><th>提交时间</th><th>耗时</th></tr></thead>
           <tbody>{knowledgeJobs.slice((knowledgePage-1)*6,knowledgePage*6).map(job=><tr key={job.version_id} data-version-id={job.version_id} aria-selected={job.version_id===versionId}
-            onClick={()=>!busy&&selectKnowledge(job)}><td><input type="radio" name="audit-knowledge-source" aria-label={`选择${job.name}`} checked={job.version_id===versionId} disabled={busy}
-              onChange={()=>selectKnowledge(job)} /></td><td>{job.name}</td><td><span className="audit-status done">{job.publication_status==='partial'?'部分成果':'已完成'}</span></td>
+            onClick={()=>!busy&&selectKnowledge(job)}><td><input type="radio" name="audit-knowledge-source" aria-label={`选择知识作业 ${job.job_id}`} checked={job.version_id===versionId} disabled={busy}
+              onChange={()=>selectKnowledge(job)} /></td><td title={job.job_id}>{job.job_id}</td><td><span className="audit-status done">{job.publication_status==='partial'?'部分成果':'已完成'}</span></td>
             <td>{job.entries.length}</td><td>{new Date(job.submitted_at).toLocaleString('zh-CN',{hour12:false})}</td><td>{sourceDuration(job)}</td></tr>)}</tbody></table></div>
         <Pagination total={knowledgeJobs.length} page={knowledgePage} size={6} label="知识挖掘来源" hideSinglePage onPage={setKnowledgePage} />
       </>:<p className="iad-result-empty" role="status">{catalog.loading?'正在读取来源作业…':'当前没有已发布的挖掘知识'}</p>}</div>
@@ -126,7 +126,7 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
     <section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>确认并启动</h2></header>
       <div className="audit-create-confirm"><dl className="audit-create-facts" id="audit-create-summary" aria-live="polite">
         <div><dt>审计范围</dt><dd>{datasets.map(dataset=>dataset.name).join('、') || '未选择'}</dd></div>
-        <div><dt>知识挖掘</dt><dd>{chosen?.name || '未选择'}</dd></div>
+        <div><dt>知识挖掘</dt><dd>{chosen?.job_id || '未选择'}</dd></div>
         <div><dt>知识条目</dt><dd>{selectedEntries.length} 条</dd></div>
         <div><dt>数据一致性</dt><dd>{selectedConsistency?1:0} 个已完成作业</dd></div>
       </dl><div className="audit-create-actions"><Button id="audit-create-cancel" disabled={busy} onClick={onCancel}>取消</Button>

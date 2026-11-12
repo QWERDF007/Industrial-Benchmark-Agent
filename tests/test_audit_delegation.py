@@ -157,6 +157,10 @@ def test_targeted_recheck_preserves_the_previous_final_and_counts_only_the_activ
     samples=jobs.samples(run_id)
     original=save_image(jobs,run_id,samples[0])
     save_image(jobs,run_id,samples[1])
+    evidence = AuditEvidence(jobs)
+    comparison = evidence.read(run_id, samples[1].sample_id, dict(sample_id=samples[1].sample_id))
+    with pytest.raises(ValueError, match='图像不属于'):
+        evidence.read(run_id, samples[0].sample_id, dict(sample_id=samples[1].sample_id))
     master_observed(jobs,run_id,batches.context(run_id))
     batches.publish(run_id,dict(commit_key='request-review',batch_number=1,base_revision=0,discoveries=[],review_requests=[dict(
         sample_id=samples[0].sample_id,result_revision=1,reason='两图的标注关系解释直接冲突，复核当前主图。',
@@ -165,6 +169,17 @@ def test_targeted_recheck_preserves_the_previous_final_and_counts_only_the_activ
     assert len(pending)==1
     assert batches.begin(run_id).number==1
     assert jobs.context(run_id,samples[0].sample_id).review.reason.startswith('两图')
+    from pathlib import Path
+    from PIL import Image
+    source = Path(jobs.record(run_id, samples[1].sample_id, samples[1].sample_id).sample.image_path)
+    original_bytes = source.read_bytes()
+    try:
+        Image.new('RGB', (40, 40), 'red').save(source)
+        assert evidence.read(run_id, samples[0].sample_id, dict(sample_id=samples[1].sample_id)) == comparison
+    finally:
+        source.write_bytes(original_bytes)
+    with pytest.raises(ValueError, match='图像不属于'):
+        evidence.read(run_id, samples[0].sample_id, dict(sample_id=samples[2].sample_id))
     save_image(jobs,run_id,samples[0],['missing'],commit_key='reviewed-final')
     active=jobs.sample(run_id,samples[0].sample_id)
     assert active.result_revision==2 and active.result.state=='suspect'
@@ -175,6 +190,10 @@ def test_targeted_recheck_preserves_the_previous_final_and_counts_only_the_activ
     master_observed(jobs,run_id,batches.context(run_id))
     batches.publish(run_id,dict(commit_key='review-complete',batch_number=1,base_revision=1,discoveries=[]))
     assert batches.begin(run_id).number==2
+    assert evidence.read(run_id, samples[0].sample_id, dict(sample_id=samples[1].sample_id)) == comparison
+    from iad_core.audit.queries import AuditQueries
+    detail=AuditQueries(jobs.db).sample(run_id,samples[0].sample_id)
+    assert any(item.sample_id==samples[1].sample_id and item.source for item in detail.evidence)
 
 
 def test_incomplete_recheck_keeps_the_previous_effective_final(native_audit):
@@ -202,6 +221,44 @@ def test_incomplete_recheck_keeps_the_previous_effective_final(native_audit):
     assert len(batches.history(run_id,samples[0].sample_id))==1
     statistics=AuditReports(jobs.db).statistics(run_id)
     assert (statistics.completed_images,statistics.suspect_images,statistics.issue_occurrences)==(2,1,1)
+    publish_batch(jobs,run_id,review_requests=[dict(sample_id=samples[0].sample_id,result_revision=1,
+        reason='同一处对照仍需核对。',conflict_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')])])
+    jobs.session_created(run_id,samples[0].sample_id)
+    jobs.failure(run_id,samples[0].sample_id,'对照读取失败')
+    publish_batch(jobs,run_id)
+    jobs.cancel(run_id)
+    jobs.resume(run_id)
+    reviews=batches.rechecks(run_id,pending_only=False)
+    assert [review.state for review in reviews]==['FAILED','PENDING']
+    assert batches.begin(run_id).number==1
+    assert jobs.sample(run_id,samples[0].sample_id).result==original
+    assert AuditEvidence(jobs).read(run_id,samples[0].sample_id,dict(sample_id=samples[1].sample_id)).images
+
+
+def test_failed_recheck_leaves_a_completed_image_scope_retryable(native_audit):
+    from iad_core.audit.batches import AuditBatches
+    jobs,dataset_id,upstream,role=native_audit
+    run_id=jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],consistency_job_id=upstream),agent=role)['run_id']
+    samples=jobs.samples(run_id)
+    for sample in samples:
+        save_image(jobs,run_id,sample)
+    originals=[jobs.sample(run_id,sample.sample_id).result.model_dump_json() for sample in samples]
+    publish_batch(jobs,run_id,review_requests=[dict(sample_id=samples[0].sample_id,result_revision=1,
+        reason='需要完整原图对照。',conflict_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')])])
+    jobs.session_created(run_id,samples[0].sample_id)
+    jobs.failure(run_id,samples[0].sample_id,'对照读取失败')
+    publish_batch(jobs,run_id)
+    reports=AuditReports(jobs.db);reports.begin(run_id)
+    master_observed(jobs,run_id,reports.records(run_id,{}))
+    reports.commit(run_id,report_submission())
+    status=jobs.finish(run_id)
+    assert status['status']=='PARTIAL'
+    assert status['completed']==len(samples)
+    assert status['execution_error']['type']=='AuditRecheckError'
+    jobs.resume(run_id)
+    assert AuditBatches(jobs).rechecks(run_id)[0].state=='PENDING'
+    assert reports.session(run_id).state=='PENDING'
+    assert [jobs.sample(run_id,sample.sample_id).result.model_dump_json() for sample in samples]==originals
 
 
 def test_zero_issue_report_still_contains_coverage_capabilities_and_purpose_assessments(native_audit):
@@ -251,7 +308,7 @@ def test_formal_report_needs_typical_support_images_and_real_readiness(native_au
             dict(sample_id=samples[1].sample_id,role='representative',reason='误把反例用作典型支持。')]})],final=True)
     usage=report_submission()['usability']
     usage[3]['status']='usable'
-    with pytest.raises(ValueError,match='真实 Gold'):
+    with pytest.raises(ValueError,match='参考标注'):
         reports.commit(run_id,report_submission(usability=usage))
 
 
@@ -303,46 +360,6 @@ def test_model_selects_gallery_size_for_discoveries_and_capabilities(native_audi
         assert len(gallery)==typical_count+counter_count
         assert all(item.image.is_whole_image and item.image.representation=='raw' for item in gallery)
 
-
-def test_regenerating_report_reuses_frozen_images_and_refines_the_global_discoveries(native_audit):
-    from iad_core.audit.batches import AuditBatches
-    from iad_core.audit.operations import audit_job_prompts
-    from iad_core.audit.queries import AuditQueries
-    jobs,dataset_id,upstream,role=native_audit
-    run_id=jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],consistency_job_id=upstream),agent=role)['run_id']
-    for sample in jobs.samples(run_id):
-        save_image(jobs,run_id,sample)
-    publish_batch(jobs,run_id)
-    reports=AuditReports(jobs.db);reports.begin(run_id)
-    reports.commit(run_id,report_submission())
-    assert jobs.finish(run_id)['status']=='COMPLETED'
-    frozen=jobs.snapshot(run_id)
-    shown_prompts=audit_job_prompts(dict(run_id=run_id),jobs.db.db_path)
-    originals=[sample.model_dump_json() for sample in jobs.samples(run_id)]
-    prompts=dict(master_prompt=dict(system_prompt='跨全量归纳现象与规律。',user_prompt='综合修订发现账本。'),report_instruction='按综合发现生成报告。')
-    resumed=jobs.regenerate_report(run_id,prompts)
-    assert resumed['status']=='RUNNING' and resumed['completed']==6
-    assert jobs.snapshot(run_id)==frozen
-    assert reports.session(run_id).prompts.model_dump()==prompts
-    assert audit_job_prompts(dict(run_id=run_id),jobs.db.db_path)==shown_prompts
-    assert [sample.model_dump_json() for sample in jobs.samples(run_id)]==originals
-    assert AuditBatches(jobs).begin(run_id).number==1
-    samples=jobs.samples(run_id)
-    discovery=dict(group_id='shape',kind='visual_pattern',dimension='visual_coverage',status='supported',title='主体与背景的共性轮廓',
-        description='冻结范围中可见规则主体和背景边界，变化主要来自位置关系。',visual_signature='规则轮廓',annotation_relation='未形成覆盖矛盾。',scope='本次已完成范围',
-        support_refs=[dict(sample_id=sample.sample_id,result_revision=1,kind='image') for sample in samples],
-        representatives=[dict(sample_id=sample.sample_id,role='representative',reason='呈现不同位置的主体轮廓。') for sample in samples])
-    publish_batch(jobs,run_id,[discovery])
-    reports.begin(run_id)
-    reports.commit(run_id,report_submission(commit_key='regenerated',discovery_ids=['shape'],conclusion='共同轮廓支持视觉探索。'))
-    assert jobs.finish(run_id)['status']=='COMPLETED'
-    report=AuditQueries(jobs.db).report(run_id)
-    assert report.conclusion=='共同轮廓支持视觉探索。'
-    assert report.discoveries[0].title=='主体与背景的共性轮廓'
-    assert len(report.evidence_groups['shape'])==6
-    assert [sample.model_dump_json() for sample in jobs.samples(run_id)]==originals
-    assert jobs.snapshot(run_id)==frozen
-    assert audit_job_prompts(dict(run_id=run_id),jobs.db.db_path)==shown_prompts
 
 
 def test_later_batch_receives_the_effective_revision_of_an_earlier_image_recheck(native_audit):

@@ -133,6 +133,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
   min-height: 0 !important;
   overflow-y: auto !important;
   overscroll-behavior: contain !important;
+  scrollbar-gutter: stable;
 }
 
 .detail-scroll{display:block;flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:22px 28px 28px!important}

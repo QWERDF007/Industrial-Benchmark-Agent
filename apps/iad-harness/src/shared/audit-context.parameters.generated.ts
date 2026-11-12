@@ -89,6 +89,7 @@ export const auditBatchDeltaParameters = {
         },
         "unresolved_question": {
           "type": "string",
+          "description": "需要新图像或对照才能回答的具体问题；没有则为空字符串。",
           "title": "Unresolved Question",
           "default": ""
         },
@@ -213,13 +214,13 @@ export const auditBatchDeltaParameters = {
                   "representative",
                   "counter"
                 ],
-                "description": "representative为典型证据原图；counter为已观察的判断边界对照原图，不代表人工确认的正常真值。",
+                "description": "representative为典型证据原图；counter为用于解释判断边界的已观察对照原图。",
                 "title": "Role",
                 "default": "representative"
               },
               "reason": {
                 "type": "string",
-                "description": "用一句话说明该原图对发现或规律的证据作用，不写逐图详情分析。",
+                "description": "用日常用语指出这张原图中该看哪里、看什么。有对照关系的图将role设为counter。",
                 "title": "Reason",
                 "required": true
               }
@@ -388,6 +389,7 @@ export const auditEvidenceCommitParameters = {
       },
       "analysis": {
         "type": "string",
+        "description": "只概括本图可见形态及标注覆盖、定位、实例关系。上游与知识评估分别填写对应字段。",
         "title": "Analysis",
         "required": true
       },
@@ -401,6 +403,7 @@ export const auditEvidenceCommitParameters = {
         "items": {
           "type": "string"
         },
+        "description": "支持本图判断的具体图像事实。",
         "title": "Basis",
         "required": true
       },
@@ -438,6 +441,7 @@ export const auditEvidenceCommitParameters = {
             },
             "description": {
               "type": "string",
+              "description": "说明本图可见现象与该知识检查动作的具体对应和适用理由。",
               "title": "Description",
               "required": true
             },
@@ -559,6 +563,7 @@ export const auditEvidenceCommitParameters = {
                 "split",
                 "merge"
               ],
+              "description": "按可见问题分类；类别差异指有效同内容对照中同一对象的原始分组差异。",
               "title": "Type",
               "required": true
             },
@@ -614,7 +619,7 @@ export const auditEvidenceCommitParameters = {
           },
           "title": "AuditObservation"
         },
-        "description": "有理解价值但不足以形成质量疑点的简短观察，不计入疑点，也不改变业务结论；不因缺少类别语义或假设规范而填写。",
+        "description": "记录有比较价值的可见现象，描述简短；普通观察不计入质量疑点。",
         "title": "Observations"
       },
       "hypothesis_assessments": {
@@ -729,6 +734,7 @@ export const auditEvidenceCommitParameters = {
         "items": {
           "type": "string"
         },
+        "description": "画面模糊、目标截断、必要图像读取失败等实际影响本图核查的取证缺口；没有则填[]。",
         "title": "Limitations",
         "required": true
       }

@@ -37,8 +37,11 @@ export async function verifyAuditPage(base,_consistencyJobId,auditJobId,{withKno
   await fs.mkdir(output,{recursive:true});
   const verifyGallery=async()=>{
     await element('[data-audit-discovery]');
-    assert.equal((await driver.findElements(By.css('#audit-report .iad-audit-gallery .iad-thumbnail-card'))).length,withKnowledge?2:1);
-    assert.equal((await driver.findElements(By.css('.iad-audit-gallery [role="tab"],.iad-audit-gallery .iad-thumbnail-caption'))).length,0);
+    assert.equal((await driver.findElements(By.css('#audit-report .iad-audit-gallery .iad-thumbnail-card'))).length,withKnowledge?9:3);
+    assert.equal((await driver.findElements(By.css('[data-audit-knowledge]'))).length,withKnowledge?2:0);
+    assert.equal((await driver.findElements(By.css('#audit-report table:not([data-consistency-definitions]),#audit-report a[href^="#audit-"]'))).length,0);
+    if(withKnowledge)assert.equal((await driver.findElements(By.css('[data-audit-knowledge] h4'))).length,10);
+    assert.equal((await driver.findElements(By.css('.iad-audit-gallery .iad-thumbnail-caption'))).length,0);
     await driver.wait(()=>driver.executeScript('return [...document.querySelectorAll("#audit-report img")].every(image=>image.complete&&image.naturalWidth===40)'),10000);
     await click('#audit-report .iad-audit-gallery .iad-thumbnail-card');await element('#annotation-toggle');await click('#annotation-toggle');await click('#full-close');
     assert.ok(!(await(await element('#audit-report')).getText()).includes(auditJobId));
@@ -51,7 +54,16 @@ export async function verifyAuditPage(base,_consistencyJobId,auditJobId,{withKno
     const references=await driver.findElements(By.css('[data-audit-section="references"] .iad-thumbnail-card'));
     assert.equal(references.length>0,withKnowledge);
     assert.equal(await driver.executeScript('return document.querySelector(".dc-compare-photo").getBoundingClientRect().height>=300'),true);
-    for(const reference of references){await reference.click();await element('#full-close');await click('#full-close');}
+    await click('[aria-label="放大主图"]');
+    assert.equal(await(await element('#full-file-name')).getText(),'1.png');
+    assert.equal(await(await element('.full-image-world img')).getAttribute('alt'),'1.png');
+    await click('#full-close');
+    for(const reference of references){
+      await reference.click();
+      assert.equal(await(await element('#full-file-name')).getText(),'0.png');
+      assert.equal(await(await element('.full-image-world img')).getAttribute('alt'),'0.png');
+      await click('#full-close');
+    }
     await fs.writeFile(path.join(output,'audit-'+withKnowledge+'-detail.png'),await driver.takeScreenshot(),'base64');
     await click('[aria-label="关闭图像审计详情"]');
     await click('button[role="tab"][id$="reports"]');await verifyGallery();

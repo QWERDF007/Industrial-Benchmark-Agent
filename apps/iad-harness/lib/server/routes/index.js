@@ -306,9 +306,6 @@ export function createIadHttpHandler(bridge) {
                 });
             if (pathname === "/api/iad/audit/jobs" && method === "GET")
                 return await call("audit_list", query);
-            const auditRegenerate = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/report\/regenerate$/);
-            if (auditRegenerate && method === 'POST')
-                return await call('audit_report_regenerate', { ...body, run_id: decodeURIComponent(auditRegenerate[1]) });
             const auditReportSession = pathname.match(/^\/api\/iad\/audit\/jobs\/([^/]+)\/report-session\.jsonl$/);
             if (auditReportSession && method === 'GET') {
                 const output = await bridge.execute('audit_agent_report_session_export', { run_id: decodeURIComponent(auditReportSession[1]) });

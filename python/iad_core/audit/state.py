@@ -66,7 +66,10 @@ class AuditState:
 
     def record(self, run_id: str, target_id: str, sample_id: str) -> AnalysisRegistration:
         sample = self.sample(run_id, target_id)
-        if sample_id == target_id:
+        from iad_core.audit.batches import AuditBatches
+        if sample_id == target_id or any(ref.sample_id == sample_id
+                for review in AuditBatches(self).rechecks(run_id,pending_only=False)
+                if review.sample_id == target_id for ref in review.conflict_refs):
             return next(record for record in self.snapshot(run_id).manifest.records if record.sample.sample_id == sample_id)
         references = [ref for ref in [*sample.consistency.evidence,*sample.consistency.captured_evidence] if ref.candidate_id == sample_id]
         if not references:

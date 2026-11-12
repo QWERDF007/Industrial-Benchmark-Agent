@@ -27,8 +27,6 @@ def initialize_audit_schema(connection: Connection):
         session_id TEXT NOT NULL UNIQUE, session_created INTEGER NOT NULL DEFAULT 0,
         state TEXT NOT NULL DEFAULT 'PENDING',
         result_json TEXT, error TEXT)""")
-    if 'prompts_json' not in {row[1] for row in connection.execute('PRAGMA table_info(audit_report_runs)')}:
-        connection.execute('ALTER TABLE audit_report_runs ADD COLUMN prompts_json TEXT')
     connection.execute("""CREATE TABLE IF NOT EXISTS audit_report_commits (
         job_id TEXT NOT NULL REFERENCES audit_report_runs(job_id) ON DELETE CASCADE,
         commit_key TEXT NOT NULL, submission_json TEXT NOT NULL,

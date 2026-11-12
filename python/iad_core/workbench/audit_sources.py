@@ -16,7 +16,6 @@ class AuditKnowledgeSource(AnalysisModel):
     job_id: str
     dataset_id: str
     version_id: str
-    name: str
     submitted_at: str
     started_at: str | None
     finished_at: str | None
@@ -76,9 +75,8 @@ class AuditSources:
                     view = queries.view(version_id)
                     if not view.catalog.checks:
                         continue
-                    name = job.mining_prompt.configuration.objective.split('\n')[0]
                     knowledge.append(AuditKnowledgeSource(**metadata,dataset_id=version.dataset_id,version_id=version_id,
-                        name=name,entries=queries.check_summaries(view),
+                        entries=queries.check_summaries(view),
                         publication_status='complete' if view.coverage.completed == view.coverage.total else 'partial'))
             elif job.status != 'COMPLETED':
                 continue

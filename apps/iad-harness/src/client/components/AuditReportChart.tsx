@@ -1,9 +1,8 @@
 import React from 'react';
 
-export function AuditReportChart({kind,title,rows,unit}:{
-  kind:'outcomes'|'issues';title:string;rows:readonly {label:string;value:number}[];unit:string;
+export function AuditReportChart({kind,title,rows,unit,maximum=Math.max(1,...rows.map(row=>row.value))}:{
+  kind:'outcomes'|'issues'|'consistency'|'program-conflicts'|'model-conflicts';title:string;rows:readonly {label:string;value:number}[];unit:string;maximum?:number;
 }) {
-  const maximum=Math.max(1,...rows.map(row=>row.value));
   const columns={gridTemplateColumns:`repeat(${rows.length},minmax(0,1fr))`};
   return <figure className="iad-audit-chart" data-chart={kind}>
     <figcaption>{title}</figcaption>

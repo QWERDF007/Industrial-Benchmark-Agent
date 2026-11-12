@@ -7,13 +7,15 @@ from pydantic import BaseModel
 
 from iad_core.audit.report_models import AuditReportImage
 from iad_core.dataset.registry import DatasetRegistry
+from iad_core.workbench.audit_result_models import AuditRunReport
 
 ModelT = TypeVar('ModelT',bound=BaseModel)
 
 class AuditNarrative:
     TEXT_FIELDS = frozenset({'analysis','conclusion','basis','limitations','description','location',
         'normal_explanation','reason','consistency_analysis',
-        'knowledge_analysis','coverage_analysis','independence_analysis','review_priorities','visual_signature','annotation_relation','scope','key_difference','unresolved_question','next_batch_focus','missing_conditions','title'})
+        'knowledge_analysis','coverage_analysis','independence_analysis','review_priorities','visual_signature','annotation_relation','scope','key_difference','unresolved_question','next_batch_focus','missing_conditions','title',
+        'observation','comparison','significance','summary','observation_and_comparison','evaluation_value','applicability','audit_impact','audit_result'})
 
     def __init__(self, state, run_id):
         snapshot = state.snapshot(run_id)
@@ -70,7 +72,7 @@ class AuditNarrative:
             if isinstance(value,list):
                 return [walk(item,field) for item in value]
             if isinstance(value,dict):
-                return {key:item if key in {'source','image','statistics','dataset_names','knowledge_titles'} else walk(item,key) for key,item in value.items()}
+                return {key:item if key in {'source','image','statistics','dataset_names','knowledge_titles','entry'} else walk(item,key) for key,item in value.items()}
             return value
         return type(model).model_validate(walk(model.model_dump(exclude_computed_fields=True)))
 
@@ -79,16 +81,42 @@ class AuditPresentation:
     def __init__(self, queries):
         self.queries = queries
 
+    def knowledge_evidence(self, report: AuditRunReport) -> AuditRunReport:
+        knowledge = self.queries.state.snapshot(report.run_id).knowledge
+        if knowledge is None or all('knowledge-source:'+entry.check.check_id in report.evidence_groups for entry in knowledge.entries):
+            return report
+        from iad_core.analysis.queries import AnalysisQueries
+        from iad_core.knowledge.display_evidence import KnowledgeDisplayEvidence
+        display = KnowledgeDisplayEvidence(knowledge.evidence)
+        records = {record.sample.sample_id:record for record in AnalysisQueries(self.queries.db).registrations(knowledge.selection.version_id)}
+        groups = dict(report.evidence_groups)
+        for entry in knowledge.entries:
+            check = entry.check
+            counters = {item.image.evidence_id for item in display.images(check.counter_evidence_ids)}
+            reasons = {item.evidence_id:item.reason for item in check.key_evidence or []}
+            selected = display.images([*(item.evidence_id for item in check.key_evidence or []),*entry.evidence_ids])[:8]
+            groups['knowledge-source:'+check.check_id] = [AuditReportImage(sample_id=item.sample_id,
+                role='counter' if item.image.evidence_id in counters else 'representative',caption='知识图像证据',
+                reason=reasons.get(item.image.evidence_id,check.criterion),image=item.image,source=records[item.sample_id])
+                for item in selected]
+        return report.model_copy(update={'evidence_groups':groups})
+
     def report(self, run_id):
         from iad_core.audit.evidence import AuditEvidence
         report = self.queries.report_data(run_id)
         narrative = AuditNarrative(self.queries.state,run_id)
         evidence = AuditEvidence(self.queries.state)
         groups = {}
-        evidence_sets=[(item.group_id,item.representatives) for item in report.discoveries]
-        evidence_sets.extend(('capability:'+item.tag,item.representatives) for item in report.capabilities)
-        evidence_sets.extend((f'coverage:{index}',item.representatives) for index,item in enumerate(report.coverage_topics))
-        evidence_sets.extend(('consistency:'+item.issue_type,item.representatives) for item in report.consistency_analyses)
+        evidence_sets=[('case:'+item.case_id,item.representatives) for item in report.report_cases]
+        if not report.report_cases:
+            evidence_sets.extend((item.group_id,item.representatives) for item in report.discoveries)
+        if not report.capability_topics:
+            evidence_sets.extend(('capability:'+item.tag,item.representatives) for item in report.capabilities)
+        evidence_sets.extend((f'coverage:{index}',item.representatives) for index,item in enumerate(report.coverage_topics) if not item.related_case_ids)
+        evidence_sets.extend(('consistency:'+item.issue_type,item.representatives) for item in report.consistency_analyses if not item.related_case_ids)
+        evidence_sets.extend(('knowledge:'+item.entry.check.check_id,item.analysis.representatives)
+            for item in report.knowledge_entries if item.analysis)
+        evidence_sets.extend(('scope:'+item.source_status,item.representatives) for item in report.consistency_scopes)
         for group_id,representatives in evidence_sets:
             images, counts = [], Counter()
             for reference in representatives:
@@ -102,5 +130,5 @@ class AuditPresentation:
                     reason=narrative.text(reference.reason),image=image.image,
                     source=self.queries.state.record(run_id,reference.sample_id,reference.sample_id)))
             groups[group_id] = images
-        return narrative.project(report.model_copy(update={'dataset_names':narrative.dataset_names,
-            'knowledge_titles':narrative.knowledge_titles,'evidence_groups':groups}))
+        return self.knowledge_evidence(narrative.project(report.model_copy(update={'dataset_names':narrative.dataset_names,
+            'knowledge_titles':narrative.knowledge_titles,'evidence_groups':groups})))

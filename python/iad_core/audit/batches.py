@@ -69,6 +69,7 @@ class AuditBatches:
 
     def context(self, run_id: str) -> dict:
         from iad_core.audit.master_models import AuditMasterContext, AuditMasterRecord
+        from iad_core.consistency.annotation_issues import ISSUE_TYPES_BY_FORMAT
         batch = self.begin(run_id)
         reports = AuditReports(self.db)
         session = reports.session(run_id)
@@ -83,6 +84,7 @@ class AuditBatches:
                 if not on_demand or batch and item.batch_number == batch.number],
             context_policy=snapshot.context_policy,
             dataset_profile=snapshot.dataset_profile.model_dump(mode='json'),
+            applicable_issue_types=ISSUE_TYPES_BY_FORMAT[snapshot.dataset_profile.dataset_format],
             statistics=reports.statistics(run_id).model_dump(mode='json'),knowledge=snapshot.knowledge)).model_dump(mode='json',
                 exclude_computed_fields=True, exclude=set() if on_demand else {'context_policy'})
 

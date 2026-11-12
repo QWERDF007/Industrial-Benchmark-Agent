@@ -29,9 +29,9 @@ test('native audit publishes fixed batch clues through one master and independen
       const latest=values.filter(item=>item.role==='user'&&(item.value.target||item.value.kind==='audit_records')).at(-1);
       const context=latest?.value;
       assert.ok(context,'实际请求必须包含当前角色的完整材料');
-      const attemptKey=context.target?.sample.sample_id||`${context.phase}:${context.batch?.number}:${context.revision}`;
+      const attemptKey=context.target?.sample.sample_id||`${context.job_id}:${context.phase}:${context.batch?.number}:${context.revision}:${JSON.stringify(body.messages.filter(message=>message.role==='user').at(-1)?.content)}`;
       attempts.set(attemptKey,(attempts.get(attemptKey)||0)+1);
-      if(attempts.get(attemptKey)>3){
+      if(attempts.get(attemptKey)>(context.phase==='report'?5:3)){
         res.writeHead(200,{'Content-Type':'text/event-stream'});
         res.end('data: '+JSON.stringify({choices:[{index:0,delta:{content:'当前工具提交未被接纳。'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');return;
       }
@@ -76,19 +76,39 @@ test('native audit publishes fixed batch clues through one master and independen
           references.add(key);
         }
       }else{
+        assert.equal(values.filter(item=>item.role==='user'&&item.value.phase==='report').length,1,
+          '报告请求只包含当前报告任务，不重放旧稿');
+        assert.ok(values.some(item=>item.role==='user'&&item.value.phase==='review'),'报告沿用正常主Agent联合分析上下文');
         if(!context.revision){res.writeHead(503);res.end('没有执行跨批联合分析');return;}
         const records=outputs.find(output=>output?.kind==='audit_records')?.items;
         if(!records)tool={name:'audit_records',arguments:{page:1,page_size:100}};
-        else tool={name:'audit_report_commit',arguments:{commit_key:'report-'+context.revision,discovery_ids:['pattern'],conclusion:'可用于视觉探索和内部调试。',
+        else {
+          const representatives=records.filter(item=>item.final?.execution_status==='completed').slice(0,3)
+            .map(item=>({sample_id:item.sample_id,role:'representative',reason:'查看主体轮廓与邻近背景。'}));
+          const unread=representatives.find(reference=>!outputs.some(output=>output?.sample_id===reference.sample_id&&output?.images?.length));
+          if(unread){respondFixtureTools(res,[{name:'audit_report_evidence',arguments:{sample_id:unread.sample_id,
+            evidence_id:records.find(item=>item.sample_id===unread.sample_id).final.evidence_ids[0]}}],{protocol:'openai-completions',model:'native-audit'});return;}
+          const evidence_refs=records.filter(item=>representatives.some(image=>image.sample_id===item.sample_id))
+            .map(item=>({sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'}));
+          tool={name:'audit_report_commit',arguments:{commit_key:'report-'+randomUUID(),discovery_ids:['pattern'],conclusion:'可用于视觉探索和内部调试。',
+          consistency_scopes:[{source_status:'NO_CANDIDATES',analysis:'没有找到可比较标注的另一张图。',evidence_refs,representatives}],
           consistency_analysis:'上游无候选的图像也已独立审计。',knowledge_analysis:'',coverage_analysis:'覆盖规则轮廓及多框标注。',
           coverage_topics:[{title:'规则轮廓与多框覆盖',analysis:'实际轮廓保持规则，框数变化不自动证明实例组织错误。',
-            evidence_refs:records.filter(item=>item.final?.execution_status==='completed').map(item=>({sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'})),representatives:[]}],
+            evidence_refs:records.filter(item=>item.final?.execution_status==='completed').map(item=>({sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'})),representatives:[],related_case_ids:['outline']}],
           consistency_analyses:auditIssueTypesByFormat[context.dataset_profile.dataset_format].map(issue_type=>({
             issue_type,analysis:'本轮没有保留该类质量疑点，缺少跨图候选不能证明标注无误。',evidence_refs:[],representatives:[]})),
           independence_analysis:'缺少可确认的物理件、批次和序列身份。',capabilities:[],usability:
             ['exploration','training_experiment','debug','image_evaluation','bbox_evaluation','pixel_evaluation','formal_benchmark'].map(purpose=>({
               purpose,status:['exploration','training_experiment','debug'].includes(purpose)?'candidate':'not_evaluated',
-              reason:'仅依据实际原图、原标注和已有检查评价用途。'})),review_priorities:[],limitations:[]}};
+              reason:'仅依据实际原图、原标注和已有检查评价用途。'})),review_priorities:[],limitations:[],
+          report_cases:[{case_id:'outline',title:'不同图像中的规则轮廓',
+            observation:'两张完整原图都有规则矩形轮廓。',comparison:'主体与背景关系相近。',significance:'可比较相似轮廓下的标注关系。',evidence_refs,representatives},
+            {case_id:'background',title:'轮廓与背景的分界',observation:'主体边缘旁有规则背景。',
+              comparison:'两张图中的背景较均匀。',significance:'可研究模型是否在背景处误报。',evidence_refs,representatives}],
+          capability_topics:[{title:'主体边缘与背景区分',summary:'规则轮廓与邻近背景同时可见。',capability_tags:['structural_relation'],
+            points:[{title:'轮廓的连续定位',observation_and_comparison:'相似轮廓保留了主体与背景关系。',
+              evaluation_value:'可检验模型能否连续定位主体边缘。',case_ids:['outline','background']}],missing_conditions:['需要经确认的参考标注。']}]}};
+        }
       }
       respondFixtureTools(res,[tool],{protocol:'openai-completions',model:'native-audit'});
     }catch(error){res.writeHead(500);res.end(JSON.stringify({error:{message:error.stack}}));}
@@ -116,11 +136,16 @@ test('native audit publishes fixed batch clues through one master and independen
   }
   const parent=await runtime.bridge.execute('audit_agent_report_state',{run_id:job.run_id});
   const masterSession=await runtime.host.read(parent.session_id);
-  assert.equal(masterSession.events.filter(event=>event.type==='image/offload').length,Math.ceil(count/8));
+  assert.equal(masterSession.events.filter(event=>event.type==='image/offload').length,Math.ceil(count/8)+3);
   assert.equal(parent.revision,Math.ceil(count/8));assert.equal(parent.discoveries[0].status,'disputed');
   const report=await runtime.bridge.execute('audit_job_report',{run_id:job.run_id});
   assert.equal(report.statistics.issue_occurrences,0);assert.equal(report.usability.length,7);
   assert.equal(report.coverage_topics[0]?.title,'规则轮廓与多框覆盖');
+  assert.equal(report.report_cases.length,2);
+  assert.deepEqual(report.capability_topics[0].points[0].case_ids,['outline','background']);
+  assert.equal(report.evidence_groups['case:outline'].length,3);
+  assert.equal(report.evidence_groups['case:background'].length,3);
+  assert.ok(!('pattern' in report.evidence_groups)&&!('coverage:0' in report.evidence_groups));
   assert.deepEqual(report.consistency_analyses.map(item=>item.issue_type),
     ['category_mismatch','extra_annotation','missing_annotation','position_difference','split','merge']);
   for(const item of Object.values(report.evidence_groups).flat()){
@@ -136,17 +161,16 @@ test('native audit publishes fixed batch clues through one master and independen
   const childrenBefore=wire.filter(body=>auditMessages(body).context?.target).length;
   const frozenChildren=await Promise.all(samples.map(sample=>runtime.host.exportJsonl(sample.session_id)));
   const frozenSnapshot=await runtime.bridge.execute('audit_agent_snapshot',{run_id:job.run_id});
-  const prompts={master_prompt:{system_prompt:'跨图归纳现象和规律。',user_prompt:'重新整理全部发现和代表原图。'},report_instruction:'生成综合报告，不拼接逐图详情。'};
-  const resumed=await runtime.bridge.execute('audit_report_regenerate',{run_id:job.run_id,prompts});
-  assert.equal(resumed.status,'RUNNING');await runtime.scheduler.whenIdle();
-  const regenerated=await runtime.bridge.execute('audit_status',{run_id:job.run_id});
-  assert.equal(regenerated.status,'COMPLETED',JSON.stringify(regenerated.execution_error));
-  assert.equal(wire.filter(body=>auditMessages(body).context?.target).length,childrenBefore,'报告重生成不重跑子 Agent');
+  const masterBefore=await runtime.host.exportJsonl(parent.session_id);
+  const callsBefore=wire.length;
+  const completed=await runtime.scheduler.resume(job.run_id);
+  await runtime.scheduler.whenIdle();
+  assert.equal(completed.status,'COMPLETED');
+  assert.equal(wire.length,callsBefore,'已完成作业不重复调用模型');
+  assert.equal(wire.filter(body=>auditMessages(body).context?.target).length,childrenBefore);
   assert.deepEqual(await runtime.bridge.execute('audit_agent_snapshot',{run_id:job.run_id}),frozenSnapshot);
   assert.deepEqual(await Promise.all(samples.map(sample=>runtime.host.exportJsonl(sample.session_id))),frozenChildren);
-  const updated=await runtime.bridge.execute('audit_agent_report_state',{run_id:job.run_id});
-  assert.equal(updated.session_id,parent.session_id);assert.equal(updated.revision,parent.revision+1);
-  assert.deepEqual(updated.prompts,prompts);
+  assert.equal(await runtime.host.exportJsonl(parent.session_id),masterBefore,'已完成图级审计和报告保留原记录');
 });
 
 test('a later batch rechecks an earlier child and a retry only observes the failed image',{timeout:60000},async t=>{
@@ -165,10 +189,15 @@ test('a later batch rechecks an earlier child and a retry only observes the fail
         if(context.sample_id.endsWith('000.png'))earlier=context.sample_id;
         const evidence=pages[0].evidence_id;
         if(context.review){assert.equal(context.prior_result.state,'normal');assert.ok(context.review.reason.includes('后批'));
-          assert.equal(context.review.result_revision,1);}
+          assert.equal(context.review.result_revision,1);
+          const comparisons=pages.filter(page=>page.sample_id!==context.sample_id);
+          assert.deepEqual(comparisons.map(page=>page.sample_id),context.review.conflict_refs.map(ref=>ref.sample_id));
+          assert.ok(comparisons.every(page=>page.images.length===1&&
+            page.images[0].image.crop_bbox.join(',')===[0,0,...page.images[0].image.original_size].join(',')));
+        }
         tool={name:'audit_commit',arguments:{commit_key:context.review?'reviewed-final':'initial-final',final:{
           execution_status:'completed',state:'normal',analysis:context.review?'复核后仍未形成覆盖矛盾。':'本图未形成独立标注矛盾。',
-          conclusion:'当前可见范围未发现疑点。',basis:[],evidence_ids:[evidence],findings:[],observations:[],
+          conclusion:'当前可见范围未发现疑点。',basis:[],evidence_ids:context.review?[...new Set(pages.map(page=>page.evidence_id))]:[evidence],findings:[],observations:[],
           visual_features:[],hypothesis_assessments:[],consistency_review:[],check_assessments:[],limitations:[]}}};
       }else if(context.phase==='review'&&context.batch.number===2&&context.revision===1){
         tool={name:'audit_batch_commit',arguments:{commit_key:'request-earlier',batch_number:2,base_revision:1,discoveries:[],review_requests:[{
@@ -195,6 +224,7 @@ test('a later batch rechecks an earlier child and a retry only observes the fail
   const partial=await runtime.bridge.execute('audit_status',{run_id:job.run_id});
   assert.equal(partial.status,'PARTIAL',JSON.stringify({partial,errors}));
   assert.equal(partial.completed,2);assert.equal(partial.failed,1);
+  assert.deepEqual(errors,[]);
   const history=await runtime.bridge.execute('audit_agent_versions',{run_id:job.run_id,sample_id:earlier});
   assert.deepEqual(history.versions.map(item=>item.revision),[1,2]);
   await runtime.scheduler.resume(job.run_id);await runtime.scheduler.whenIdle();
