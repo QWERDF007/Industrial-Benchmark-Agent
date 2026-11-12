@@ -306,6 +306,7 @@ def test_model_selects_gallery_size_for_discoveries_and_capabilities(native_audi
 
 def test_regenerating_report_reuses_frozen_images_and_refines_the_global_discoveries(native_audit):
     from iad_core.audit.batches import AuditBatches
+    from iad_core.audit.operations import audit_job_prompts
     from iad_core.audit.queries import AuditQueries
     jobs,dataset_id,upstream,role=native_audit
     run_id=jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],consistency_job_id=upstream),agent=role)['run_id']
@@ -316,12 +317,14 @@ def test_regenerating_report_reuses_frozen_images_and_refines_the_global_discove
     reports.commit(run_id,report_submission())
     assert jobs.finish(run_id)['status']=='COMPLETED'
     frozen=jobs.snapshot(run_id)
+    shown_prompts=audit_job_prompts(dict(run_id=run_id),jobs.db.db_path)
     originals=[sample.model_dump_json() for sample in jobs.samples(run_id)]
     prompts=dict(master_prompt=dict(system_prompt='跨全量归纳现象与规律。',user_prompt='综合修订发现账本。'),report_instruction='按综合发现生成报告。')
     resumed=jobs.regenerate_report(run_id,prompts)
     assert resumed['status']=='RUNNING' and resumed['completed']==6
     assert jobs.snapshot(run_id)==frozen
     assert reports.session(run_id).prompts.model_dump()==prompts
+    assert audit_job_prompts(dict(run_id=run_id),jobs.db.db_path)==shown_prompts
     assert [sample.model_dump_json() for sample in jobs.samples(run_id)]==originals
     assert AuditBatches(jobs).begin(run_id).number==1
     samples=jobs.samples(run_id)
@@ -339,6 +342,7 @@ def test_regenerating_report_reuses_frozen_images_and_refines_the_global_discove
     assert len(report.evidence_groups['shape'])==6
     assert [sample.model_dump_json() for sample in jobs.samples(run_id)]==originals
     assert jobs.snapshot(run_id)==frozen
+    assert audit_job_prompts(dict(run_id=run_id),jobs.db.db_path)==shown_prompts
 
 
 def test_later_batch_receives_the_effective_revision_of_an_earlier_image_recheck(native_audit):

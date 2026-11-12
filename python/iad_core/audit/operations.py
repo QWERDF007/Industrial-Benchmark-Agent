@@ -179,12 +179,10 @@ def audit_job_prompts(args, db_path):
         return dict(sections=[dict(title=title,text=snapshot.get(key) or '') for key,title in (
             ('system_prompt','图级系统提示词'),('instruction','图级用户提示词'),('report_instruction','报告用户提示词'))])
     snapshot=state.snapshot(args['run_id'])
-    prompts=AuditReports(state.db).session(args['run_id']).prompts
-    master=prompts.master_prompt if prompts else snapshot.master_prompt
     return dict(sections=[dict(title=title,text=text or '') for title,text in (
-        ('主 Agent 系统提示词',master.system_prompt),('主 Agent 用户提示词',master.user_prompt),
+        ('主 Agent 系统提示词',snapshot.master_prompt.system_prompt),('主 Agent 用户提示词',snapshot.master_prompt.user_prompt),
         ('子 Agent 系统提示词',snapshot.observer_prompt.system_prompt),('子 Agent 用户提示词',snapshot.observer_prompt.user_prompt),
-        ('报告用户提示词',prompts.report_instruction if prompts else snapshot.report_instruction))])
+        ('报告用户提示词',snapshot.report_instruction))])
 
 
 def audit_agent_batch(args, db_path):
