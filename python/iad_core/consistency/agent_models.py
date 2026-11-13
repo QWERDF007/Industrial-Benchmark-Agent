@@ -89,14 +89,14 @@ class ConsistencyCheckSnapshot(AnalysisModel):
     pixel_profile: Literal['raw-decoded-v1'] = 'raw-decoded-v1'
     model_call_logging: Literal['native-v1'] | None = None
     phase_logging: Literal['timeline-v1'] | None = None
-    review_pipeline: Literal['identity-v4', 'identity-v5', 'identity-v7'] | None = None
+    review_pipeline: Literal['identity-v4', 'identity-v5', 'identity-v7', 'identity-v8'] | None = None
     task_type: ConsistencyTaskType | None = None
     prompts: dict[str, NonBlankText] = Field(default_factory=dict)
     dataset_formats: dict[str, Literal['labelme', 'folder_classification']] = Field(default_factory=dict)
 
 
 class NoCandidateResult(IdentityResultFields):
-    schema_version: Literal[1, '4.0', '5.0', '7.0'] = 1
+    schema_version: Literal[1, '4.0', '5.0', '7.0', '8.0'] = 1
     verdict: Literal['EQUIVALENT'] = 'EQUIVALENT'
     reason: Literal['NO_CANDIDATES'] = 'NO_CANDIDATES'
     conclusion: Literal['通过（无候选）'] = '通过（无候选）'
@@ -105,13 +105,13 @@ class NoCandidateResult(IdentityResultFields):
 
 
 class NoEligibleResult(NoCandidateResult):
-    schema_version: Literal['4.0', '5.0', '7.0'] = '7.0'
+    schema_version: Literal['4.0', '5.0', '7.0', '8.0'] = '8.0'
     reason: Literal['NO_ELIGIBLE_CANDIDATES'] = 'NO_ELIGIBLE_CANDIDATES'
     conclusion: Literal['通过（无有效候选）'] = '通过（无有效候选）'
 
 
 class ModelReviewedResult(GroupAnalysisDraft, IdentityResultFields):
-    schema_version: Literal[1, '4.0', '5.0', '7.0'] = 1
+    schema_version: Literal[1, '4.0', '5.0', '7.0', '8.0'] = 1
     reason: Literal['MODEL_REVIEWED'] = 'MODEL_REVIEWED'
     fingerprint: Digest
     observation_ids: dict[Identifier, list[Identifier]]

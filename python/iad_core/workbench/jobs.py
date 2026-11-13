@@ -477,6 +477,15 @@ class JobRunner:
     def status(self, run_id: str, job_types: Optional[Sequence[JobKind]] = None) -> dict:
         return self.snapshot(run_id, job_types).model_dump()
 
+    def context(self, run_id: str) -> JobContext:
+        with self.lock, self.db.connection() as connection:
+            row = connection.execute("SELECT job_type,payload_json FROM job_runs WHERE job_id=? AND status='RUNNING'",
+                (run_id,)).fetchone()
+            if row is None or row['job_type'] not in self.job_types:
+                raise InterruptedError('作业已停止')
+            payload = json.loads(row['payload_json'])
+            return JobContext(self, run_id, {**payload.get('request', {}), **payload}, self.cancelled[run_id])
+
     def snapshot(self, run_id: str, job_types: Optional[Sequence[JobKind]] = None) -> JobSnapshot:
         with self.lock:
             return self.snapshots.snapshot(run_id,job_types or self.job_types)

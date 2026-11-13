@@ -127,7 +127,7 @@ def test_review_gate_non_required_candidates_do_not_block(tmp_path):
         Image.new('RGB', (10, 10), (index * 20, 30, 50)).save(path)
         sample.image_path = str(path)
     sample_repo.upsert_batch(samples)
-    with db.connection() as connection:
+    with db.connection(temporary=True) as connection:
         scan = PixelScan(connection)
         for sample in samples:
             path = Path(sample.image_path)

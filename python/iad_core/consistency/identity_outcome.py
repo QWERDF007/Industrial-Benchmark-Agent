@@ -21,7 +21,7 @@ class IdentityOutcome:
             result = 'needs_review'
         else:
             reason = 'all_eligible_consistent'
-        return dict(schema_version='7.0', execution_status='completed', result=result, pass_reason=reason,
+        return dict(schema_version='8.0', execution_status='completed', result=result, pass_reason=reason,
             candidate_stats=stats, candidate_gate_ids=[gate.gate_id for gate in self.state.gates])
 
     def statistics(self, assessments):

@@ -10,6 +10,7 @@ from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.models import ConsistencyRetrievalSettings, ImageRetrieve
 from iad_core.consistency.policy import AnnotationPolicy
+from iad_core.consistency.identity_prompts import IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION, identity_prompt_defaults, task_prompt_defaults
 from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.feature.profiles import ImageEncoders
@@ -47,7 +48,6 @@ class ConsistencyAgentJobs:
         if not scopes.subjects.samples:
             raise ValueError('未选择可检查的图片')
         registry = DatasetRegistry(self.db)
-        from iad_core.consistency.identity_prompts import identity_prompt_defaults, task_prompt_defaults, IDENTITY_PROMPT_VERSION
         from iad_core.consistency.task_types import TASK_TYPES_BY_FORMAT
         dataset_ids = sorted(set(scopes.subjects.dataset_ids + scopes.corpus.dataset_ids))
         formats = {dataset_id: registry.get(dataset_id).dataset.format for dataset_id in dataset_ids}
@@ -68,7 +68,7 @@ class ConsistencyAgentJobs:
                 include=set(AnnotationPolicy.model_fields))) for dataset_id in dataset_ids},
             instruction=submitted.instruction or prompts['user'],
             system_prompt=submitted.system_prompt or prompts['system'],
-            review_pipeline='identity-v7', task_type=task_type,
+            review_pipeline=IDENTITY_PIPELINE, task_type=task_type,
             prompts=submitted.identity_prompts.model_dump() if submitted.identity_prompts is not None else identity_prompt_defaults(),
             prompt_version=IDENTITY_PROMPT_VERSION)
         sample_ids = [sample.sample_id for sample in scopes.subjects.samples]
@@ -102,9 +102,10 @@ class ConsistencyAgentJobs:
         return self.results.anchor(run_id, anchor_id)
 
     def attempt(self, run_id: str, anchor_id: str, attempt: int) -> ConsistencyAnchorRun:
-        from iad_core.consistency.identity_prompts import IDENTITY_PROMPT_VERSION
-        snapshot = self.snapshot(run_id)
-        if snapshot.review_pipeline != 'identity-v7' or snapshot.prompt_version != IDENTITY_PROMPT_VERSION:
+        with self.db.connection() as connection:
+            version = connection.execute("""SELECT json_extract(payload_json,'$.request.consistency_check.review_pipeline'),
+                json_extract(payload_json,'$.request.consistency_check.prompt_version') FROM job_runs WHERE job_id=?""", (run_id,)).fetchone()
+        if version is None or tuple(version) != (IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION):
             raise ValueError('历史一致性作业只读保留，请新建检查')
         anchor = self.anchor(run_id, anchor_id)
         if anchor.attempt != attempt:
@@ -120,9 +121,8 @@ class ConsistencyAgentJobs:
         return AnalysisJobViews(self.db).view(run_id)
 
     def resume(self, run_id: str) -> dict:
-        from iad_core.consistency.identity_prompts import IDENTITY_PROMPT_VERSION
         snapshot = self.snapshot(run_id)
-        if snapshot.review_pipeline != 'identity-v7' or snapshot.prompt_version != IDENTITY_PROMPT_VERSION:
+        if snapshot.review_pipeline != IDENTITY_PIPELINE or snapshot.prompt_version != IDENTITY_PROMPT_VERSION:
             raise ValueError('历史一致性作业只读保留，请新建检查以执行图像内容验证')
 
         def persist(connection: Connection):
@@ -211,7 +211,8 @@ class ConsistencyAgentJobs:
                     (run_id, anchor_id)).fetchone()
             if request_id and saved_request['submission_request_id'] == request_id and saved_request['submission_sha256'] != request_sha256:
                 raise ValueError('终稿请求ID已用于不同内容')
-            if self.snapshot(run_id).review_pipeline == 'identity-v7':
+            snapshot = self.snapshot(run_id)
+            if snapshot.review_pipeline == IDENTITY_PIPELINE:
                 from iad_core.consistency.identity import CandidateIdentity
                 from iad_core.consistency.identity_outcome import IdentityOutcome
                 from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
@@ -224,7 +225,7 @@ class ConsistencyAgentJobs:
                         record.submission.assessment.candidate_id: record.submission.assessment for record in records}:
                     raise ValueError('终稿必须来自已保存的最新候选评估，不能绕过评估写入')
                 result = result.model_copy(update={**IdentityOutcome(CandidateIdentity(self.runtime).read(run_id, anchor_id)).assemble(result.assessments),
-                    'task_type': self.snapshot(run_id).task_type, 'candidate_record_ids': active_records,
+                    'task_type': snapshot.task_type, 'candidate_record_ids': active_records,
                     'issues': AnnotationEvaluation.aggregate(records)})
 
             anchor = self.attempt(run_id, anchor_id, attempt)
@@ -234,7 +235,7 @@ class ConsistencyAgentJobs:
                 return anchor.result
 
             def persist(connection: Connection):
-                if self.snapshot(run_id).review_pipeline == 'identity-v7':
+                if snapshot.review_pipeline == IDENTITY_PIPELINE:
                     latest = [record.record_id for record in CandidateRecords.history(connection, run_id, anchor_id) if record.active]
                     if latest != result.candidate_record_ids:
                         raise ValueError('提交期间候选版本已变化，请重新读取当前评估')
@@ -249,16 +250,20 @@ class ConsistencyAgentJobs:
 
     def fail(self, run_id: str, anchor_id: str, message: str, code: str | None = None, *, attempt: int = 1,
              source_run_id: str | None = None, source_phase: str | None = None) -> ConsistencyAnchorRun:
-        anchor = self.attempt(run_id, anchor_id, attempt)
-        def persist(connection: Connection):
-            changed = connection.execute("UPDATE consistency_anchor_runs SET state='FAILED',phase='FAILED' WHERE job_id=? AND anchor_id=? AND attempt=?",
-                (run_id, anchor_id, attempt))
-            if not changed.rowcount:
-                raise ValueError('过期的主图审核 attempt')
+        with self.jobs.lock:
+            anchor = self.attempt(run_id, anchor_id, attempt)
+            if anchor.state not in ('PENDING', 'RUNNING'):
+                return anchor
 
-        self.jobs.record(run_id, anchor_id, JobExecutionError(message, source_run_id=source_run_id or run_id,
-            source_phase=source_phase or anchor.phase, code=code), persist=persist)
-        return self.anchor(run_id, anchor_id)
+            def persist(connection: Connection):
+                changed = connection.execute("UPDATE consistency_anchor_runs SET state='FAILED',phase='FAILED' WHERE job_id=? AND anchor_id=? AND attempt=?",
+                    (run_id, anchor_id, attempt))
+                if not changed.rowcount:
+                    raise ValueError('过期的主图审核 attempt')
+
+            self.jobs.record(run_id, anchor_id, JobExecutionError(message, source_run_id=source_run_id or run_id,
+                source_phase=source_phase or anchor.phase, code=code), persist=persist)
+            return self.anchor(run_id, anchor_id)
 
     def trace_event(self, run_id: str, anchor_id: str) -> AnchorTraceEvent:
         anchor = self.anchor(run_id, anchor_id)

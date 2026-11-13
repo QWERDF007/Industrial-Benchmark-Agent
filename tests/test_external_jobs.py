@@ -1,6 +1,30 @@
 from iad_core.workbench.jobs import JobRunner
 
 
+def test_execution_context_uses_current_progress_and_cancellation_without_diagnostics(dataset):
+    import pytest
+
+    database, _, config = dataset
+    runner = JobRunner(database, ('ANALYSIS_WORKFLOW',))
+    try:
+        sample_id = config.dataset.id + ':dent.png'
+        run = runner.start('ANALYSIS_WORKFLOW', config.task.task_id,
+            {'dataset_id': config.dataset.id, 'sample_ids': [sample_id]}, None, '等待宿主执行')['run_id']
+        runner.update(run, phase='VERIFYING_CONTENT')
+        context = runner.context(run)
+        assert context.payload['phase'] == 'VERIFYING_CONTENT'
+        assert context.payload['sample_ids'] == [sample_id]
+        assert 'model_calls' not in context.payload
+        context.checkpoint()
+        context.record(sample_id)
+        assert context.payload['completed'] == 1
+        runner.cancel(run, ('ANALYSIS_WORKFLOW',))
+        with pytest.raises(InterruptedError):
+            context.checkpoint()
+    finally:
+        runner.close()
+
+
 def test_external_executor_uses_the_existing_job_progress_and_completion(dataset):
     database, _, config = dataset
     runner = JobRunner(database, ('ANALYSIS_WORKFLOW',))

@@ -47,23 +47,6 @@ def consistency_agent_session_location(args, db_path):
     return ConsistencyAgentResults(Database(db_path)).session_location(args['session_id']).model_dump(mode='json')
 
 
-def consistency_agent_model_call_start(args, db_path):
-    from iad_core.workbench.calls import ModelCalls, NativeModelCallStart
-    runtime = workbench(db_path)
-    checks = ConsistencyAgentJobs(runtime)
-    anchor = checks.attempt(args['run_id'], args['anchor_id'], args['attempt'])
-    checks.phase(args['run_id'], args['anchor_id'], 'AGENT_REVIEWING')
-    ModelCalls(runtime.db).start_native(args['run_id'], NativeModelCallStart.model_validate(args['request']),
-        sample_id=anchor.anchor_id, session_id=anchor.session_id, attempt=anchor.attempt)
-    return {}
-
-
-def consistency_agent_model_call_end(args, db_path):
-    from iad_core.workbench.calls import ModelCalls, NativeModelCallEnd
-    ModelCalls(Database(db_path)).finish_native(args['run_id'], args['anchor_id'], NativeModelCallEnd.model_validate(args['result']))
-    return {}
-
-
 def consistency_agent_detail(args, db_path):
     return ConsistencyAgentResults(Database(db_path)).detail(args['run_id'], args['anchor_id']).model_dump(mode='json')
 
@@ -195,28 +178,6 @@ def consistency_agent_verify(args, db_path):
         return ConsistencyWorkflow(review.runtime, review.client).prepare(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1))
 
 
-def consistency_agent_capacity(args, db_path):
-    from iad_core.workbench.calls import ModelCalls
-    from iad_core.workbench.model_settings import ModelExecution
-    from iad_core.workbench.vision import VlmClient
-    runtime = workbench(db_path)
-    checks = ConsistencyAgentJobs(runtime)
-    checks.attempt(args['run_id'], args['anchor_id'], args['attempt'])
-    execution = ModelExecution.model_validate(args['_model_execution'])
-    frozen = checks.snapshot(args['run_id']).roles.agent
-    if frozen.profile != execution.profile:
-        raise ValueError('Agent 容量计量必须使用作业冻结的角色配置')
-    if args['body']['model'] != execution.profile.model_id:
-        raise ValueError('Agent 容量计量模型与冻结角色不一致')
-    client = VlmClient(profile=execution.profile, api_key=execution.api_key.get_secret_value() if execution.api_key else None)
-    try:
-        with ModelCalls(runtime.db).bind(args['run_id'], role='agent', sample_id=args['anchor_id']):
-            return client.token_budget(args['body'], execution.profile.max_output_tokens,
-                'ConsistencyAgent').model_dump(mode='json')
-    finally:
-        client.close()
-
-
 def consistency_agent_observe(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     with _visual_review(args, db_path) as review:
@@ -231,3 +192,26 @@ def consistency_agent_assess(args, db_path):
 def consistency_agent_submit(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     return ConsistencyWorkflow(workbench(db_path)).submit(args['run_id'], args['anchor_id'], args['submission'], attempt=args.get('attempt', 1))
+
+
+def consistency_agent_pair_tasks(args, db_path):
+    from iad_core.consistency.pair_reviews import ConsistencyPairReviews
+    return {'tasks': [task.model_dump(mode='json') for task in ConsistencyPairReviews(workbench(db_path)).plan(args['run_id'])]}
+
+
+def consistency_agent_pair_review(args, db_path):
+    from iad_core.consistency.pair_reviews import ConsistencyPairReviews
+    with _visual_review(args, db_path) as review:
+        receipt = ConsistencyPairReviews(review.runtime, review.client).review(args['run_id'], args['pair_key'])
+        return receipt.model_dump(mode='json') if receipt is not None else None
+
+
+def consistency_agent_audit(args, db_path):
+    from iad_core.consistency.workflow import ConsistencyWorkflow
+    with _visual_review(args, db_path) as review:
+        return ConsistencyWorkflow(review.runtime, review.client).audit(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1))
+
+
+def consistency_agent_finalize(args, db_path):
+    from iad_core.consistency.workflow import ConsistencyWorkflow
+    return ConsistencyWorkflow(workbench(db_path)).finish(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)).model_dump(mode='json')

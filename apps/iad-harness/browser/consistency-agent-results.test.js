@@ -128,7 +128,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     await driver.wait(async()=>(await driver.findElements(By.css('[data-dc="identity-analysis"]'))).length===3,5000);
     const identityText=await (await element('.dc-model-panel')).getText();
     assert.equal((await driver.findElements(By.css('.dc-model-panel h4'))).length,0);
-    assert.match(identityText,/实际原图颜色不同。/);
+    assert.match(identityText,/两图主体颜色不同。/);
     assert.match(identityText,/内容不同/);
     assert.doesNotMatch(identityText,/未进行标注审核|暂无已保存|尚无已保存/);
     assert.doesNotMatch(identityText,/暂无已保存的整组分析/);
@@ -174,7 +174,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
       await driver.wait(async () => await (await element('[data-dc="zoom-candidate"]')).getAttribute('title') === name + '.png', 5000);
       assert.deepEqual(await Promise.all(['.dc-fact-panel', '.dc-model-panel', '.dc-conclusion-panel'].map(async selector =>
         (await element(selector)).getText())), groupTexts);
-      assert.match(await (await element('.dc-model-panel')).getText(), /主图有1个标注/);
+      assert.match(await (await element('.dc-model-panel')).getText(), /主图有1个框/);
     }
     const retrieved = await element('[data-kind="similar"] [data-dc="retrieved-candidate"]');
     const retrievedName = await retrieved.getAttribute('title');

@@ -14,12 +14,12 @@ from iad_core.workbench.vision import VlmClient
 
 
 def identity_response(context, relation, reason):
-    finding = {'relation': relation, 'reason': reason, 'main_description': '主图真实局部细节。',
+    finding = {'relation': relation, 'main_description': '主图真实局部细节。',
         'candidate_description': '候选真实局部细节。'}
-    return {'overview': finding if context['scope'] == 'joint' else None,
-        'windows': [{**{key:window[key] for key in ('window_index','region_pair_id','main_media_id','candidate_media_id')}, **finding}
-            for window in context['windows']],
-        'media_ids': context['required_image_ids'], 'limitations': []}
+    return {'overview': finding, 'summary': reason,
+        'regions': {window['ref']: finding for window in context['windows']} | {
+            window['ref']: {'observation': '实际局部无法可靠对应。'} for window in context['unmapped_regions']},
+        'limitations': []}
 
 
 @pytest.fixture
@@ -290,9 +290,11 @@ def test_identity_rejects_one_different_local_window_despite_matching_overview(s
         assert context['scope']=='joint' and context['windows']
         sent.append(context)
         answer=identity_response(context,'transformed_same_content','整图轮廓和局部纹理对应。')
-        for finding,window in zip(answer['windows'],context['windows']):
+        for window in context['windows']:
             if window['main_window']==[8,8,32,32]:
-                finding.update(relation='content_different',reason='局部新增黑点。')
+                answer['regions'][window['ref']] = {**answer['regions'][window['ref']],
+                    'relation':'content_different','candidate_description':'对应位置新增黑点。'}
+                answer['summary'] = '局部新增黑点。'
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
@@ -346,7 +348,7 @@ def test_identity_cannot_qualify_when_model_omits_a_local_window(similar_job):
         context = json.loads(message['content'][1]['text'])
         decision = identity_response(context, 'transformed_same_content', '外观相似。')
         if context['scope'] == 'joint':
-            decision['windows'] = decision['windows'][:-1]
+            decision['regions'].pop(context['windows'][-1]['ref'])
             generated.append(decision)
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(decision)}}]})
 

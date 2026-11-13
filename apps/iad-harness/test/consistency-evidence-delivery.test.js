@@ -3,93 +3,60 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {createConsistencyAgentHost} from './fixtures/consistency-agent-host.js';
 
-test('visual tool delivers every candidate fact with the observation before assessment', {timeout: 30000}, async () => {
-  const fixture = await createConsistencyAgentHost({candidateCount: 6});
-  try {
-    const anchorId = fixture.datasetId + ':A.png';
-    const job = await fixture.scheduler.start({submission_id: randomUUID(), dataset_ids: [fixture.datasetId],
-      mode: 'exact', max_exact_candidates: 6, subjects: {kind: 'samples', sample_ids: [anchorId]}});
-    await fixture.scheduler.whenIdle();
-    const detail = await fixture.bridge.execute('consistency_agent_detail', {run_id: job.run_id, anchor_id: anchorId});
-    assert.equal(detail.state, 'COMPLETED', JSON.stringify(detail.errors));
-    const {events} = await fixture.host.read(detail.session_id);
-    const reads = events.filter(event => event.type === 'tool/call' && event.data.name === 'anchor_context');
-    assert.equal(reads.length, 1, 'Facts delivered with observation must not require per-candidate reads');
-    const observe = events.find(event => event.type === 'tool/call' && event.data.name === 'anchor_observe');
-    const result = events.find(event => event.type === 'tool/result' && event.data.message.toolCallId === observe.data.callId);
-    const delivered = JSON.parse(result.data.message.content[0].text);
-    assert.equal(delivered.observations?.length, 6,
-      'A successful visual call must deliver the actual facts of all six candidates, not just an observation receipt');
-    for (const observation of delivered.observations) {
-      assert.equal(observation.result.observations[0].candidate_id, observation.candidate_id);
-      assert.equal(Object.keys(observation.facts.sources).length, 2);
-    }
-    const requests = fixture.wires.filter(body => body.test_role === 'agent');
-    for (const event of events.filter(event => event.type === 'assistant/message')) {
-      for (const call of event.data.message.content.filter(block => block.type === 'tool-call' && block.name === 'anchor_assess')) {
-        const id = JSON.parse(call.arguments).assessment.candidate_id;
-        const facts = requests[event.data.step - 1].messages.filter(message => message.role === 'tool' && message.content.startsWith('{'))
-          .flatMap(message => JSON.parse(message.content).observations || []);
-        assert.ok(facts.some(item => item.candidate_id === id), 'Actual model input must contain the candidate facts before its assessment');
-      }
-    }
-  } finally {await fixture.close();}
+test('each direct annotation decision retains all actual image and source facts',{timeout:30000},async()=>{
+ const fixture=await createConsistencyAgentHost({candidateCount:6});
+ try{
+  const job=await fixture.scheduler.start({submission_id:randomUUID(),dataset_ids:[fixture.datasetId],mode:'exact',
+   max_exact_candidates:6,subjects:{kind:'samples',sample_ids:[fixture.sampleIds.A]}});
+  await fixture.scheduler.whenIdle();
+  const detail=await fixture.bridge.execute('consistency_agent_detail',{run_id:job.run_id,anchor_id:fixture.sampleIds.A});
+  assert.equal(detail.state,'COMPLETED',JSON.stringify(detail.errors));
+  assert.equal(fixture.wires.length,1);assert.equal(detail.observations.length,1);
+  const observed=detail.observations[0];assert.equal(Object.keys(observed.request.facts.sources).length,7);
+  assert.equal(observed.result.observations.length,6);
+  for(const finding of observed.result.observations){
+   assert.equal(finding.assessment.candidate_id,finding.candidate_id);
+   assert.deepEqual([...finding.media_ids].sort(),[...observed.request.facts.required_image_ids[finding.candidate_id]].sort());
+  }
+  const transcript=await fixture.host.read(detail.session_id);
+  assert.equal(transcript.events.filter(event=>event.type==='assistant/attempt').length,0);
+  assert.equal(transcript.events.filter(event=>event.type==='iad/consistency').at(-1).data.value.result.reason,'MODEL_REVIEWED');
+ }finally{await fixture.close();}
 });
 
-test('a frozen page cannot reuse its request id for half its candidates and recovers before visual generation', {timeout: 30000}, async () => {
-  const fixture = await createConsistencyAgentHost({candidateCount: 6, splitFirstPage: true});
-  try {
-    const anchorId = fixture.datasetId + ':A.png';
-    const job = await fixture.scheduler.start({submission_id: randomUUID(), dataset_ids: [fixture.datasetId], mode: 'exact',
-      max_exact_candidates: 6, subjects: {kind: 'samples', sample_ids: [anchorId]}});
-    await fixture.scheduler.whenIdle();
-    const detail = await fixture.bridge.execute('consistency_agent_detail', {run_id: job.run_id, anchor_id: anchorId});
-    assert.equal(detail.state, 'COMPLETED', JSON.stringify(detail.errors));
-    assert.equal(fixture.wires.filter(body => body.test_role === 'vision').length, 1);
-    assert.equal(detail.observations[0].request.candidate_ids.length, 6);
-    const {events} = await fixture.host.read(detail.session_id);
-    const errors = events.filter(event => event.type === 'tool/result' && event.data.message.isError);
-    assert.equal(errors.length, 1);
-    assert.match(JSON.stringify(errors[0]), /冻结页request_id/);
-  } finally {await fixture.close();}
+test('a frozen visual request id cannot be reused for a smaller candidate group',{timeout:30000},async()=>{
+ const fixture=await createConsistencyAgentHost({candidateCount:6});
+ try{
+  const job=await fixture.scheduler.start({submission_id:randomUUID(),dataset_ids:[fixture.datasetId],mode:'exact',
+   max_exact_candidates:6,subjects:{kind:'samples',sample_ids:[fixture.sampleIds.A]}});
+  await fixture.scheduler.whenIdle();
+  const detail=await fixture.bridge.execute('consistency_agent_detail',{run_id:job.run_id,anchor_id:fixture.sampleIds.A});
+  const context=await fixture.bridge.execute('consistency_agent_context',{run_id:job.run_id,anchor_id:fixture.sampleIds.A,attempt:detail.attempt,query:{}});
+  const page=context.anchor.visual_plan.pages[0],snapshot=await fixture.bridge.execute('consistency_agent_snapshot',{run_id:job.run_id});
+  const before=fixture.wires.length;
+  await assert.rejects(fixture.bridge.execute('consistency_agent_observe',{run_id:job.run_id,anchor_id:fixture.sampleIds.A,
+   attempt:detail.attempt,request:{...page,phase:'audit',candidate_ids:page.candidate_ids.slice(0,3),
+    gate_revisions:Object.fromEntries(page.candidate_ids.slice(0,3).map(id=>[id,page.gate_revisions[id]]))},
+   _model_execution:await fixture.native.credentialsFor(snapshot.roles.vision.profile)}),/冻结页request_id/);
+  assert.equal(fixture.wires.length,before);
+ }finally{await fixture.close();}
 });
 
-
-test('one selected model preserves separate editable system and user prompts for Agent and visual requests', {timeout: 30000}, async () => {
-  const fixture = await createConsistencyAgentHost();
-  try {
-    const instruction = '直接比较主图相对参考图的标注。\n自定义要求：类别、数量与位置均如实说明。';
-    const system_prompt = '你是标注一致性审核员，只依据本场实际图像与原始标注判断。';
-    const anchorId = fixture.datasetId + ':A.png';
-    const job = await fixture.scheduler.start({submission_id: randomUUID(), dataset_ids: [fixture.datasetId],
-      mode: 'exact', instruction, system_prompt, subjects: {kind: 'samples', sample_ids: [anchorId]}});
-    await fixture.scheduler.whenIdle();
-    const snapshot = await fixture.bridge.execute('consistency_agent_snapshot', {run_id: job.run_id});
-    assert.equal(snapshot.instruction, instruction);
-    assert.equal(snapshot.system_prompt, system_prompt);
-    assert.equal(Object.hasOwn(snapshot, 'agent_instruction'), false);
-    assert.equal(Object.hasOwn(snapshot, 'visual_instruction'), false);
-    assert.equal(Object.hasOwn(snapshot, 'agent_model'), false);
-    assert.equal(snapshot.roles.agent.profile.model_id, snapshot.roles.vision.profile.model_id);
-    for (const wire of fixture.wires) {
-      assert.equal(wire.model, snapshot.model.model_id);
-      if (wire.test_role === 'agent') {
-        assert.deepEqual(wire.messages.filter(message => message.role === 'system').map(message => message.content), [system_prompt]);
-        assert.ok(wire.messages.some(message => message.role === 'user' && message.content.endsWith(instruction)));
-      } else {
-        assert.deepEqual(wire.messages[0], {role: 'system', content: [{type: 'text', text: system_prompt}]});
-        const user = wire.messages.find(message => message.role === 'user');
-        assert.equal(user.content[0].text, instruction);
-        const facts = JSON.parse(user.content[1].text).facts;
-        for (const source of Object.values(facts.sources)) assert.equal(Object.hasOwn(source, 'policy'), false);
-        for (const evidence of facts.evidence) {
-          assert.equal(Object.hasOwn(evidence, 'annotation_applicability'), false);
-          assert.equal(Object.hasOwn(evidence.verification, 'registration'), false);
-        }
-      }
-    }
-    const detail = await fixture.bridge.execute('consistency_agent_detail', {run_id: job.run_id, anchor_id: anchorId});
-    assert.equal(detail.state, 'COMPLETED');
-    assert.equal(detail.result.overall.text, '多类别');
-  } finally {await fixture.close();}
+test('the selected visual model receives the editable system and user prompts unchanged',{timeout:30000},async()=>{
+ const fixture=await createConsistencyAgentHost();
+ try{
+  const instruction='比较两图的原始框、类别与覆盖。',system_prompt='依据实际图像写清具体差别。';
+  const job=await fixture.scheduler.start({submission_id:randomUUID(),dataset_ids:[fixture.datasetId],mode:'exact',
+   instruction,system_prompt,subjects:{kind:'samples',sample_ids:[fixture.sampleIds.A]}});
+  await fixture.scheduler.whenIdle();
+  const snapshot=await fixture.bridge.execute('consistency_agent_snapshot',{run_id:job.run_id});
+  assert.equal(snapshot.instruction,instruction);assert.equal(snapshot.system_prompt,system_prompt);
+  assert.equal(snapshot.roles.agent.profile,null);
+  for(const body of fixture.wires){
+   assert.equal(body.test_role,'vision');assert.equal(body.model,snapshot.model.model_id);
+   assert.equal(body.messages.find(message=>message.role==='system').content[0].text,system_prompt);
+   assert.equal(body.messages.find(message=>message.role==='user').content[0].text,instruction);
+  }
+  assert.equal((await fixture.bridge.execute('consistency_agent_anchor',{run_id:job.run_id,anchor_id:fixture.sampleIds.A})).result.overall.text,'多类别');
+ }finally{await fixture.close();}
 });

@@ -6,6 +6,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.agent_review_models import AnchorAssessmentRecord, AnchorAssessmentSubmission, AnchorObservation, AnchorVisualStart
 from iad_core.consistency.identity_models import CandidateIdentityRecord
 from iad_core.consistency.candidate_selection import AnchorCandidates
+from iad_core.consistency.identity_prompts import IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION
 
 
 class CandidatePhaseRecord(AnalysisModel):
@@ -25,7 +26,7 @@ class CandidateRecords:
     def enabled(connection, run_id):
         row = connection.execute("SELECT json_extract(payload_json,'$.request.consistency_check.review_pipeline') FROM job_runs WHERE job_id=?",
             (run_id,)).fetchone()
-        return row is not None and row[0] in ('identity-v5', 'identity-v7')
+        return row is not None and row[0] in ('identity-v5', 'identity-v7', 'identity-v8')
 
     @staticmethod
     def gates(connection, run_id, anchor_id):
@@ -69,7 +70,9 @@ class CandidateRecords:
     def append(cls, connection, run_id, anchor_id, candidate_id, phase, expected_revision, request_id, record):
         if not connection.in_transaction:
             connection.execute('BEGIN IMMEDIATE')
-        if connection.execute("SELECT json_extract(payload_json,'$.request.consistency_check.review_pipeline') FROM job_runs WHERE job_id=?", (run_id,)).fetchone()[0] != 'identity-v7':
+        version = connection.execute("""SELECT json_extract(payload_json,'$.request.consistency_check.review_pipeline'),
+            json_extract(payload_json,'$.request.consistency_check.prompt_version') FROM job_runs WHERE job_id=?""", (run_id,)).fetchone()
+        if version is None or tuple(version) != (IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION):
             raise ValueError('历史一致性作业只读保留')
         raw = record.model_dump(mode='json', exclude={'revision', 'gate_id', 'gate_status'} if phase == 'gate' else set())
         digest = hashlib.sha256(json.dumps([candidate_id, phase, expected_revision, raw], sort_keys=True, ensure_ascii=False).encode()).hexdigest()

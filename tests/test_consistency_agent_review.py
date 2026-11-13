@@ -14,6 +14,8 @@ from iad_core.consistency.agent_context import AnchorAgentContext
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
+from tests.consistency_responses import annotation_response
+from tests.test_consistency_identity import identity_response
 
 
 def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_its_request(dataset):
@@ -36,20 +38,23 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         facts = json.loads(content[1]['text'])['facts']
         expected_ids = {group['evidence_id'] for group in groups}
         assert len(expected_ids) == 2
-        assert {group['sample_id'] for group in groups} == {config.dataset.id + ':dent.png', config.dataset.id + ':scratch.png'}
+        assert {group['sample_id'] for group in groups} == {'main', 'c0'}
         assert all('annotations' in group for group in groups)
         assert all('evidence_id' not in item for item in media)
         assert media and any(item['role'] == 'roi' for item in media)
-        assert set(facts['required_image_ids'][config.dataset.id + ':scratch.png']) == expected_ids
+        assert set(facts['required_image_ids']['c0']) == expected_ids
         assert all('evidence_id' not in view for source in facts['sources'].values() for view in source['visual_inputs'])
         for part in content:
             if part['type'] == 'image_url':
                 with Image.open(io.BytesIO(base64.b64decode(part['image_url']['url'].split(',')[1]))) as pixels:
                     assert pixels.convert('RGB').getpixel((0, 0)) == (0, 0, 255)
-        answer = {'observations': [{'candidate_id': config.dataset.id + ':scratch.png',
-            'description': '两侧原始像素相同，主图和参考图的类别名称不同',
-            'media_ids': sorted(expected_ids) if response_ids is None else response_ids,
-            'limitations': ['仅核对标注一致性，不裁决哪侧标注正确']}]}
+        answer = annotation_response(facts, '两侧原始像素相同，主图和参考图的类别名称不同',
+            limitations=['仅核对标注一致性，不裁决哪侧标注正确'])
+        answer['reviews']['c0'].update(verdict='MATERIAL', issues=[{'type': 'category_mismatch',
+            'main_annotation_ids': ['main_a0'], 'candidate_annotation_ids': ['c0_a0'],
+            'description': '同一对象的原始类别不同。'}])
+        if response_ids is not None:
+            answer['reviews']['c0']['media_ids'] = response_ids
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
             'message': {'content': json.dumps(answer)}}]})
 
@@ -70,6 +75,11 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         assert observed.request.anchor_id == anchor_id
         assert observed.request.candidate_ids == request['candidate_ids']
         assert observed.request.media
+        decision = observed.result.observations[0].assessment
+        assert decision.verdict == 'MATERIAL'
+        assert decision.issues[0].main_annotation_ids == [anchor_id + ':ann_0']
+        assert decision.issues[0].candidate_annotation_ids == [request['candidate_ids'][0] + ':ann_0']
+        assert set(decision.issues[0].media_ids) == set(observed.result.observations[0].media_ids)
         focused = AnchorAgentContext(runtime).read(job_id, anchor_id,
             {'candidate_id': request['candidate_ids'][0]}, attempt=1)
         verification = focused['observations'][0]['facts']['evidence'][0]['verification']
@@ -93,7 +103,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         roots = observed.result.observations[0].media_ids
         crop_id = next(image.evidence_id for image in observed.request.media if image.role == 'roi')
         for response_ids in ([roots[0]], [roots[0], crop_id], [*roots, 'foreign-image'], [*roots, roots[0]]):
-            with pytest.raises(ModelOutputError, match='visual_image_references'):
+            with pytest.raises(ModelOutputError, match='extra_forbidden'):
                 review.observe(job_id, anchor_id, {**request, 'request_id': str(uuid4())})
             assert review.observations(job_id, anchor_id) == [observed]
         response_ids = None
@@ -243,13 +253,9 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
                 'reason': '真实内容不同。' if case == 'different_object' else '关键局部不能确认。',
                 'main_description': '主图实际表面状态。', 'candidate_description': '候选实际表面状态。'}
             context = json.loads(content[1]['text'])
-            answer = {'overview': finding if context['scope'] == 'joint' else None,
-                'windows': [{**{key:window[key] for key in ('window_index','region_pair_id','main_media_id','candidate_media_id')}, **finding} for window in context['windows']],
-                'media_ids': media, 'limitations': []}
+            answer = identity_response(context, finding['relation'], finding['reason'])
         else:
-            answer = {'observations': [{'candidate_id': reference_id,
-                'description': '局部对象可比，框的位置不同，但没有可靠配准' if case == 'unregistered_position' else '两侧表面实际状态不同',
-                'media_ids': media, 'limitations': []}]}
+            answer = annotation_response(json.loads(content[1]['text'])['facts'], '两侧表面实际状态不同。')
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
@@ -297,7 +303,7 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
         runtime.close()
 
 
-def test_invalid_visual_output_does_not_append_hidden_repair_instructions(dataset):
+def test_invalid_visual_output_has_bounded_schema_correction(dataset):
     from iad_core.consistency.agent_review import ConsistencyAgentReview
     from iad_core.workbench.completion import ModelOutputError
 
@@ -323,7 +329,7 @@ def test_invalid_visual_output_does_not_append_hidden_repair_instructions(datase
         with pytest.raises(ModelOutputError):
             ConsistencyAgentReview(runtime, client).observe(run, anchor, {'request_id': str(uuid4()),
                 'fingerprint': selected.fingerprint, 'candidate_ids': [selected.candidates[0].sample_id], 'question': instruction})
-        assert len(sent) == 1
+        assert len(sent) == 2
         assert [message['role'] for message in sent[0]['messages']] == ['system','user']
         assert next(message for message in sent[0]['messages'] if message['role']=='user')['content'][0]['text'] == instruction
         context = json.loads(sent[0]['messages'][-1]['content'][1]['text'])

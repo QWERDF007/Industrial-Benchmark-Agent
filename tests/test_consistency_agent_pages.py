@@ -11,6 +11,7 @@ from iad_core.storage.database import Database
 from iad_core.workbench.model_profile import ModelProfile
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
+from tests.consistency_responses import annotation_response
 
 
 @pytest.mark.parametrize('budget', ['images', 'context', 'bytes'])
@@ -44,9 +45,7 @@ def test_thirty_candidates_are_planned_with_real_media_budgets_and_resume_comple
             assert sum(item['type'] == 'image_url' for item in content) <= profile.max_visual_inputs
         if profile.max_request_bytes:
             assert len(request.content) <= profile.max_request_bytes
-        answer = {'observations': [{'candidate_id': identity, 'description': '两侧均为有效空标注，图像已实际读取',
-            'media_ids': [group['evidence_id'] for group in groups if group['sample_id'] in (facts['anchor']['sample_id'], identity)], 'limitations': []}
-            for identity in facts['candidates']]}
+        answer = annotation_response(facts, '两侧均为空标注，原图内容相同。')
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)), profile=profile)

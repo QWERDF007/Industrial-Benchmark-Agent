@@ -46,15 +46,12 @@ test('the assembled native host admits exact zero-candidate checks without model
     assert.equal(node.request.consistency_check.roles.agent.profile, null);
     assert.equal(node.request.consistency_check.roles.vision.profile, null);
     assert.equal(fixture.calls.length, 0, '实际提供商未收到目录探测、tokenize 或生成请求');
-    const settings = await (await fetch(base + '/models')).json();
-    await post('/models', {expected_revision: settings.revision, selection: {provider_id: 'first-service', model_id: 'first-model', limits: {capacity_mode: 'vllm_tokenize'}}});
     await post('/settings/modules/consistency', {expected_revision: 0, settings: {mode: 'exact',
       model: {provider_id: 'second-service', model_id: 'second-model'}}});
     const configured = await post('/analysis/start', {submission_id: randomUUID(), analysis_kind: 'consistency', dataset_ids: [dataset.dataset_id], mode: 'exact'});
     const frozen = await (await fetch(base + '/consistency/checks/' + configured.run_id + '/config')).json();
-    assert.ok(frozen.roles.agent.profile, JSON.stringify(frozen.roles.agent));
+    assert.equal(frozen.roles.agent.profile,null);
     assert.ok(frozen.roles.vision.profile, JSON.stringify(frozen.roles.vision));
-    assert.equal(frozen.roles.agent.profile.model_id, 'second-model');
     assert.equal(frozen.roles.vision.profile.model_id, 'second-model');
     assert.equal(fixture.calls.length, 0);
   } finally {

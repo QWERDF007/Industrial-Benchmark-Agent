@@ -56,14 +56,18 @@ export function auditReportTool(context,outputs,{includeCounter=false}={}) {
   const records=outputs.find(output=>output?.kind==='audit_records')?.items;
   if(!records)return {name:'audit_records',arguments:{page:1,page_size:100}};
   const completed=records.filter(item=>item.final?.execution_status==='completed');
+  const hasIssues=Object.keys(context.statistics.upstream_issue_types).length>0||Object.values(context.statistics.program_issue_types).some(Boolean);
   const scopes=Object.keys(context.statistics.consistency_cross).map(source_status=>({source_status,
     items:completed.filter(item=>item.consistency.source_status===source_status).slice(0,3)}));
-  const selected=new Map([...scopes.flatMap(scope=>scope.items),...(context.knowledge?completed.slice(0,3):[])].map(item=>[item.sample_id,item]));
+  const selected=new Map([...scopes.flatMap(scope=>scope.items),...(context.knowledge||hasIssues?completed.slice(0,3):[])].map(item=>[item.sample_id,item]));
   for(const item of selected.values())if(!outputs.some(output=>output?.sample_id===item.sample_id&&output?.images?.length))
     return {name:'audit_report_evidence',arguments:{sample_id:item.sample_id,evidence_id:item.final.evidence_ids[0]}};
   const references=items=>items.map(item=>({sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'}));
   const representatives=items=>items.map(item=>({sample_id:item.sample_id,reason:'外缘与邻近区域可共同核对。'}));
   return {name:'audit_report_commit',arguments:{commit_key:'report-'+randomUUID(),discovery_ids:context.discoveries.filter(item=>item.status!=='withdrawn').map(item=>item.group_id),
+    consistency_analyses:hasIssues?context.applicable_issue_types.map(issue_type=>({issue_type,
+      analysis:'结合双方原图和逐图结果，说明这类标注差异是否成立。',
+      evidence_refs:references(completed.slice(0,3)),representatives:representatives(completed.slice(0,3))})):[],
     consistency_scopes:scopes.map(scope=>({source_status:scope.source_status,analysis:'按实际对照范围解释图像与标注关系。',
       evidence_refs:references(scope.items),representatives:representatives(scope.items)})),
     knowledge_analyses:(context.knowledge?.entries||[]).map(entry=>({check_id:entry.check.check_id,

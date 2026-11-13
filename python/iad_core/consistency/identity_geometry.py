@@ -27,14 +27,24 @@ class ImageCorrespondence:
         if any(value is None for value in descriptors):
             return cls(None, Registration(**{'status': 'unregistered', 'reason': '可定位的局部特征不足，不能证明几何对应。'}))
         matches = cv2.BFMatcher().knnMatch(descriptors[1], descriptors[0], k=2)
-        good = [pair[0] for pair in matches if len(pair) == 2 and pair[0].distance < .75 * pair[1].distance]
-        if len(good) < 8:
+        accepted = [pair[0] for pair in matches if len(pair) == 2 and pair[0].distance < .75 * pair[1].distance]
+        good, main_locations, candidate_locations = [], set(), set()
+        for match in sorted(accepted, key=lambda item: item.distance):
+            main_point = keypoints[0][match.trainIdx].pt
+            candidate_point = keypoints[1][match.queryIdx].pt
+            if main_point in main_locations or candidate_point in candidate_locations:
+                continue
+            good.append(match)
+            main_locations.add(main_point)
+            candidate_locations.add(candidate_point)
+        if len(good) < 3:
             return cls(None, Registration(**{'status': 'unregistered', 'reason': '可信局部匹配不足。', 'matches': len(good)}))
         candidate = np.float64([keypoints[1][match.queryIdx].pt for match in good])
         main = np.float64([keypoints[0][match.trainIdx].pt for match in good])
-        matrix, inliers = cv2.findHomography(candidate, main, cv2.RANSAC, 3.)
-        if matrix is None or inliers is None or int(inliers.sum()) < 8:
+        affine, inliers = cv2.estimateAffinePartial2D(candidate, main, method=cv2.RANSAC, ransacReprojThreshold=3.)
+        if affine is None or inliers is None or int(inliers.sum()) < 3:
             return cls(None, Registration(**{'status': 'unregistered', 'reason': '未获得足够一致的几何对应。', 'matches': len(good)}))
+        matrix = np.vstack((affine, [0., 0., 1.]))
         matrix = scales[0] @ matrix @ np.linalg.inv(scales[1])
         matrix /= matrix[2, 2]
         if not np.isfinite(matrix).all() or abs(np.linalg.det(matrix)) < 1e-9:
@@ -56,6 +66,17 @@ class ImageCorrespondence:
             'reprojection_error_px': float(np.quantile(errors,.95)),
             'reason': '配准与残差仅是视觉线索，不证明真实缺陷相同。'}))
 
+    def inverted(self) -> 'ImageCorrespondence':
+        if self.matrix is None:
+            raise ValueError('没有可信几何映射，不能反向映射')
+        matrix = np.linalg.inv(self.matrix)
+        matrix /= matrix[2, 2]
+        error = self.facts.reprojection_error_px
+        return type(self)(matrix, self.facts.model_copy(update={
+            'candidate_to_main': tuple(tuple(float(value) for value in row) for row in matrix),
+            'main_visible_fraction': None, 'mean_absolute_residual': None,
+            'reprojection_error_px': None if error is None else float(error * np.linalg.norm(matrix[:2, :2], ord=2))}))
+
     def map_bounds(self, box, source_size, target_size, *, to_main=False):
         if self.matrix is None:
             raise ValueError('没有可信几何映射，不能生成对侧局部')
@@ -70,7 +91,7 @@ class ImageCorrespondence:
         if self.matrix is None:
             raise ValueError('没有可信几何映射，不能映射标注坐标')
         x1, y1, x2, y2 = box
-        matrix = self.matrix if to_main else np.linalg.inv(self.matrix)
+        matrix = self.matrix if to_main else self.inverted().matrix
         points = cv2.perspectiveTransform(np.float64([[[x1, y1], [x2, y1], [x2, y2], [x1, y2]]]), matrix)[0]
         if not np.isfinite(points).all():
             raise ValueError('几何映射在当前对象区域不可用')

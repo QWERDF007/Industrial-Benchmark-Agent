@@ -54,7 +54,7 @@ def test_business_results_export_every_frozen_anchor_in_order_with_real_terminal
         assert indexed[identities[2]]['verdict'] is None
         detail = results.detail(job_id, identities[0])
         exported_outcome = detail.outcome.model_dump(mode='json')
-        assert indexed[identities[0]]['schema_version'] == '7.0'
+        assert indexed[identities[0]]['schema_version'] == '8.0'
         assert indexed[identities[0]]['task_type'] == 'bbox_defect'
         assert indexed[identities[0]]['candidate_record_ids'] == []
         assert all(indexed[identities[0]][key] == value for key, value in exported_outcome.items())

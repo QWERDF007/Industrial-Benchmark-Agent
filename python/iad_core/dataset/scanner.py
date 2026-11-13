@@ -61,7 +61,7 @@ def scan_dataset(
         with os.scandir(root):
             pass
     db = Database(db_path)
-    with FileLock(str(Path(db_path).resolve()) + '.pixels.lock'), db.connection() as conn:
+    with FileLock(str(Path(db_path).resolve()) + '.pixels.lock'), db.connection(temporary=True) as conn:
         snapshot = ScanSnapshot(conn, config, force_pixels=force_pixels, pixel_cache_bytes=pixel_cache_bytes)
 
         # 2. Get adapter

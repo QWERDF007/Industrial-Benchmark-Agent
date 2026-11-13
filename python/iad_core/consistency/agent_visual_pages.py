@@ -8,7 +8,6 @@ from iad_core.consistency.agent_review_models import AnchorVisualPlan, AnchorVis
 from iad_core.consistency.agent_visual_inputs import AnchorVisualInput
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.workbench.calls import ModelCalls
-from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import ModelCapacityError, VlmClient
 
 if TYPE_CHECKING:
@@ -22,7 +21,7 @@ class AnchorVisualPages:
 
     def plan(self, run_id: str, anchor_id: str, *, attempt: int = 1) -> AnchorVisualPlan:
         anchor = self.checks.attempt(run_id, anchor_id, attempt)
-        context = JobContext(self.runtime.jobs, run_id, self.runtime.jobs.status(run_id), self.runtime.jobs.cancelled[run_id])
+        context = self.runtime.jobs.context(run_id)
         context.checkpoint()
         if anchor.candidates is None or not anchor.candidates.candidates:
             raise ValueError('视觉分页要求本场已冻结的非空候选清单')

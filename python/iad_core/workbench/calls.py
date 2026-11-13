@@ -133,8 +133,12 @@ class ModelCalls:
         repository, run_id, checkpoint, state_run_id, role, request_id, sample_id = binding
         with repository.db.connection() as conn:
             payload = json.loads(conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (state_run_id,)).fetchone()[0])
+            anchor = conn.execute('SELECT phase,session_id,attempt FROM consistency_anchor_runs WHERE job_id=? AND anchor_id=?',
+                (state_run_id, sample_id)).fetchone() if sample_id is not None else None
             summary = ModelCallSummary(call_id='call_' + uuid.uuid4().hex, run_id=run_id, operation=operation,
-                schema_name=schema_name, phase=payload.get('phase'), sample_id=sample_id if sample_id is not None else payload.get('current_sample_id'),
+                schema_name=schema_name, phase=anchor['phase'] if anchor is not None else payload.get('phase'),
+                session_id=anchor['session_id'] if anchor is not None else None, attempt=anchor['attempt'] if anchor is not None else None,
+                sample_id=sample_id if sample_id is not None else payload.get('current_sample_id'),
                 role=role, request_id=request_id,
                 started_at=datetime.now(timezone.utc).isoformat())
             conn.execute('INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)',

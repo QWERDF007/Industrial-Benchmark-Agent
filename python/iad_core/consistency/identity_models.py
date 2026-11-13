@@ -7,7 +7,7 @@ from iad_core.consistency.models import Digest, Identifier
 from iad_core.consistency.annotation_issues import MainAnnotationIssue
 from iad_core.duplicate.verification_models import Registration
 from iad_core.consistency.task_types import ConsistencyTaskType
-from iad_core.consistency.identity_regions import IdentityRegionPair, IdentityRegionCheck
+from iad_core.consistency.identity_regions import IdentityRegionPair, IdentityRegionCheck, UnmappedRegionCheck
 
 
 ContentRelation = Literal['pixel_identical', 'transformed_same_content', 'content_different', 'unverified']
@@ -27,9 +27,12 @@ class CandidateIdentityRecord(AnalysisModel):
     error_code: str | None = None
     gate_status: Literal['eligible', 'rejected', 'unverified'] | None = None
     source: Literal['program', 'vision'] | None = None
+    pair_key: Identifier | None = None
+    observation_call_ids: list[Identifier] = Field(default_factory=list)
     region_pairs: list[IdentityRegionPair] = Field(default_factory=list)
     required_region_pair_ids: list[str] = Field(default_factory=list)
     region_checks: list[IdentityRegionCheck] = Field(default_factory=list)
+    unmapped_region_checks: list[UnmappedRegionCheck] = Field(default_factory=list)
     overview_relation: Literal['same', 'different', 'unverified'] | None = None
 
     @model_validator(mode='after')

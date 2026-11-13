@@ -14,6 +14,9 @@ import {message, request} from '../api.js';
 import {useModuleSettings} from '../useModuleSettings.js';
 import {getDatasetGroupId} from '../dataset-hierarchy.js';
 import {KnowledgeConfirmation, type KnowledgeConfirmationState} from './KnowledgeConfirmation.js';
+import {Pagination} from './Pagination.js';
+
+const DIRECTION_PAGE_SIZE = 8;
 
 interface PresetItem {id:string;directionId:string;name:string;text:string;origin:MiningDirection['origin'];source:MiningDirection['source']}
 
@@ -35,6 +38,8 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   const [setupExplored, setSetupExplored] = useState<Set<string>>(new Set());
   const [setupEdits, setSetupEdits] = useState<Record<string, { name: string; text: string }>>({});
   const [setupTab, setSetupTab] = useState<"preset" | "explore">('preset');
+  const [presetPage, setPresetPage] = useState(1);
+  const [exploredPage, setExploredPage] = useState(1);
   const [setupPrompt, setSetupPrompt] = useState("");
   const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.knowledge);
   const [setupPromptDirty, setSetupPromptDirty] = useState(false);
@@ -75,6 +80,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
   useEffect(() => {
     const controller = new AbortController();
     setDirectionsError('');setDirectionsLoading(true);
+    setExploredPage(1);
     const ids:string[] = JSON.parse(subsetIds);
     request<PublishedDirectionCatalog>(`/analysis/directions?${new URLSearchParams({dataset_ids:JSON.stringify(ids)})}`,undefined,undefined,controller.signal)
       .then(({directions}) => {
@@ -88,6 +94,8 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
     return () => controller.abort();
   }, [subsetIds]);
   const kbExploredDirs = exploredDirections;
+  const currentPresetPage = Math.min(presetPage, Math.max(1, Math.ceil(presetDirections.length / DIRECTION_PAGE_SIZE)));
+  const currentExploredPage = Math.min(exploredPage, Math.max(1, Math.ceil(kbExploredDirs.length / DIRECTION_PAGE_SIZE)));
 
   const getDirInfo = useCallback(<T extends PresetItem>(item: T, dirKind: "preset" | "explore") => {
     const edit = setupEdits[`${dirKind}:${item.id}`];
@@ -259,7 +267,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
                         </tr>
                       </thead>
                       <tbody id="general-directions">
-                        {presetDirections.map(p => {
+                        {presetDirections.slice((currentPresetPage - 1) * DIRECTION_PAGE_SIZE, currentPresetPage * DIRECTION_PAGE_SIZE).map(p => {
                           const info = getDirInfo(p, "preset");
                           const checked = setupGeneral.has(p.id);
                           return (
@@ -295,6 +303,8 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
                       </tbody>
                     </table>
                   </div>
+                  <Pagination total={presetDirections.length} page={currentPresetPage} size={DIRECTION_PAGE_SIZE}
+                    unit="项" label="通用预设方向" hideSinglePage onPage={setPresetPage} />
                 </div>
 
                 {/* Explored Directions Table */}
@@ -316,7 +326,7 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
                       </thead>
                       <tbody id="explored-directions">
                         {kbExploredDirs.length ? (
-                          kbExploredDirs.map(e => {
+                          kbExploredDirs.slice((currentExploredPage - 1) * DIRECTION_PAGE_SIZE, currentExploredPage * DIRECTION_PAGE_SIZE).map(e => {
                             const info = getDirInfo(e, "explore");
                             const checked = setupExplored.has(e.id);
                             return (
@@ -359,6 +369,8 @@ export function KnowledgeMiningCreate({dataset, datasets, groups, selectedParent
                       </tbody>
                     </table>
                   </div>
+                  <Pagination total={kbExploredDirs.length} page={currentExploredPage} size={DIRECTION_PAGE_SIZE}
+                    unit="项" label="方向探索" hideSinglePage onPage={setExploredPage} />
                 </div>
               </section>
 

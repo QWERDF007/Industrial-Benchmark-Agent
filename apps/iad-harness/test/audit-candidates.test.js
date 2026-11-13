@@ -19,7 +19,8 @@ import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {resolvePythonPath} from '../lib/server/python-bridge/index.js';
 
 test('mutual candidates keep marked, omitted and insufficient judgments in two audits with distinct frozen upstream jobs',{timeout:60000},async t=>{
-  let bridge,host,scheduler,plugin,server;const errors=[],wire=[];
+  let bridge,host,scheduler,plugin,server;const errors=[],wire=[],emitted=[];
+  const providerFailure=Promise.withResolvers();providerFailure.promise.catch(()=>{});
   let expectedConsistencyRun,insufficient=false;
   const upstream=await createConsistencyAgentHost({modelRouting:{execute:(operation,args,signal,dispatch)=>
     scheduler?scheduler.execute(operation,args,signal,dispatch):dispatch(operation,args,signal)}});
@@ -29,7 +30,14 @@ test('mutual candidates keep marked, omitted and insufficient judgments in two a
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
       wire.push(body);
       const {context,outputs,pages}=auditMessages(body);
-      if(context?.phase){respondFixtureTools(res,[auditReportTool(context,outputs)]);return;}
+      const toolErrors=body.messages.filter(message=>message.role==='tool'&&typeof message.content==='string'&&message.content.startsWith('Error:'));
+      assert.deepEqual(toolErrors,[]);
+      if(context?.phase){
+        const {samples}=await bridge.execute('audit_agent_samples',{run_id:context.job_id});
+        const failed=samples.filter(sample=>sample.state==='FAILED'&&!sample.result);
+        if(failed.length)assert.fail(JSON.stringify((await bridge.execute('audit_status',{run_id:context.job_id})).errors));
+        const call=auditReportTool(context,outputs);emitted.push(call);respondFixtureTools(res,[call]);return;
+      }
       if(outputs.some(value=>value?.execution_status==='incomplete')){
         res.writeHead(200,{'Content-Type':'text/event-stream'});
         res.end('data: '+JSON.stringify({choices:[{index:0,delta:{role:'assistant',content:'必要观察未完成，已保存线索。'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');return;
@@ -62,10 +70,11 @@ test('mutual candidates keep marked, omitted and insufficient judgments in two a
           check_assessments:[],limitations:['对照图不是人工真值。',...(insufficient&&!marked?['当前细节无法消解标注范围的不确定性。']:[])],findings:marked||insufficient?[]:[{finding_id:'missing-scratch',type:'missing_annotation',annotation_ids:[],consistency_issue_refs:context.consistency.result.issues.map(issue=>issue.issue_id),description:'本图划痕没有对应标注。',
             location:'主体中央划痕',check_ids:[],evidence_ids:ids,normal_explanation:'需排除反光导致的外观变化。',limitations:['需要人工复核。']}]}}};
       }
+      emitted.push(call);
       res.writeHead(200,{'Content-Type':'text/event-stream'});
       res.write('data: '+JSON.stringify({choices:[{index:0,delta:{role:'assistant',tool_calls:[{index:0,id:randomUUID(),type:'function',function:{name:call.name,arguments:JSON.stringify(call.arguments)}}]},finish_reason:null}]})+'\n\n');
       res.write('data: '+JSON.stringify({choices:[{index:0,delta:{},finish_reason:'tool_calls'}],usage:{prompt_tokens:500,completion_tokens:100,total_tokens:600}})+'\n\n');res.end('data: [DONE]\n\n');
-    } catch(error){errors.push(String(error));res.writeHead(500);res.end(JSON.stringify({error:{message:String(error)}}));}
+    } catch(error){errors.push(String(error));providerFailure.reject(error);res.writeHead(500);res.end(JSON.stringify({error:{message:String(error)}}));}
   });
   await new Promise(resolve=>provider.listen(0,'127.0.0.1',resolve));
   t.after(async()=>{await scheduler?.dispose();await host?.dispose();await plugin?.dispose();if(server)await new Promise(resolve=>server.close(resolve));
@@ -104,7 +113,7 @@ for filename in (Path(sys.argv[1])/'images').glob('*.png'):
     assert.equal(response.status,422);assert.equal(wire.length,0);
   }
   const response=await fetch(base+'/audit/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({submission_id:randomUUID(),subset_ids:[upstream.datasetId],consistency_job_id:check.run_id})});
-  assert.equal(response.status,200,await response.clone().text());const job=await response.json();await scheduler.whenIdle();
+  assert.equal(response.status,200,await response.clone().text());const job=await response.json();await Promise.race([scheduler.whenIdle(),providerFailure.promise]);
   const status=await(await fetch(base+'/audit/status/'+job.run_id)).json();assert.equal(status.status,'COMPLETED',JSON.stringify(status));
   const page=await(await fetch(base+'/audit/jobs/'+job.run_id+'/samples')).json();assert.deepEqual(page.distribution,{suspect:1,normal:1,incomplete:0});
   for(const item of page.items){
@@ -113,13 +122,14 @@ for filename in (Path(sys.argv[1])/'images').glob('*.png'):
     assert.equal(detail.consistency.job_id,check.run_id);
     assert.equal(new Set(detail.evidence.map(item=>item.sample_id)).size,2);
   }
-  assert.equal(wire.length,7);assert.deepEqual(errors,[]);
+  assert.equal(emitted.filter(call=>call.name==='audit_commit').length,2);
+  assert.equal(emitted.filter(call=>call.name==='audit_report_commit').length,1);assert.deepEqual(errors,[]);
   const html=await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text();assert.ok(html.includes('覆盖范围需复核'));
   const firstReport=await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json();
   insufficient=true;expectedConsistencyRun=laterCheck.run_id;
   const secondResponse=await fetch(base+'/audit/start',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
     submission_id:randomUUID(),subset_ids:[upstream.datasetId],consistency_job_id:laterCheck.run_id})});
-  assert.equal(secondResponse.status,200,await secondResponse.clone().text());const second=await secondResponse.json();await scheduler.whenIdle();
+  assert.equal(secondResponse.status,200,await secondResponse.clone().text());const second=await secondResponse.json();await Promise.race([scheduler.whenIdle(),providerFailure.promise]);
   const secondStatus=await(await fetch(base+'/audit/status/'+second.run_id)).json();
   assert.equal(secondStatus.status,'PARTIAL');assert.equal(secondStatus.completed,1);assert.equal(secondStatus.failed,1);
   const secondPage=await(await fetch(base+'/audit/jobs/'+second.run_id+'/samples')).json();
@@ -149,5 +159,6 @@ for filename in (Path(sys.argv[1])/'images').glob('*.png'):
   }
   assert.equal(await(await fetch(base+'/audit/jobs/'+job.run_id+'/export')).text(),html);
   assert.deepEqual(await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json(),firstReport);
-  assert.equal(wire.length,14);assert.deepEqual(errors,[]);assert.deepEqual(upstream.errors,[]);
+  assert.equal(emitted.filter(call=>call.name==='audit_commit').length,4);
+  assert.equal(emitted.filter(call=>call.name==='audit_report_commit').length,2);assert.deepEqual(errors,[]);assert.deepEqual(upstream.errors,[]);
 });

@@ -34,11 +34,11 @@ class ConsistencyAgentResults:
 
     def session_location(self, session_id: str) -> ImageSessionLocation:
         with self.db.connection() as connection:
-            row = connection.execute('''SELECT a.job_id,a.anchor_id,j.payload_json FROM consistency_anchor_runs a
+            row = connection.execute('''SELECT a.job_id,a.anchor_id,json_extract(j.payload_json,'$.submitted_at') submitted_at FROM consistency_anchor_runs a
                 JOIN job_runs j ON j.job_id=a.job_id WHERE a.session_id=?''', (session_id,)).fetchone()
             if row is None:
                 raise LookupError('主图审核会话不存在')
-            return ImageSessionLocation(job_id=row['job_id'], submitted_at=json.loads(row['payload_json'])['submitted_at'],
+            return ImageSessionLocation(job_id=row['job_id'], submitted_at=row['submitted_at'],
                 image_name=PurePosixPath(row['anchor_id'].split(':', 1)[1]).name,
                 image_id=sample_uuid(row['anchor_id']))
 
@@ -66,8 +66,12 @@ class ConsistencyAgentResults:
         return anchor
 
     def snapshot(self, run_id: str) -> ConsistencyCheckSnapshot:
-        with self._read(run_id) as (_, _, _, snapshot):
-            return snapshot
+        with self.db.connection() as connection:
+            row = connection.execute("""SELECT json_extract(payload_json,'$.request.consistency_check') FROM job_runs
+                WHERE job_id=? AND job_type='ANALYSIS_WORKFLOW'""", (run_id,)).fetchone()
+        if row is None or row[0] is None:
+            raise LookupError('主图审核作业不存在')
+        return ConsistencyCheckSnapshot.model_validate_json(row[0])
 
     def media(self, run_id: str, anchor_id: str, media_id: str) -> dict:
         from iad_core.evidence.images import EvidenceImages
@@ -79,17 +83,19 @@ class ConsistencyAgentResults:
         raise LookupError('当前主图没有该实际观察媒体')
 
     def anchors(self, run_id: str) -> list[ConsistencyAnchorRun]:
-        with self._read(run_id) as (connection, status, _, _):
-            return [self._anchor(row, status) for row in connection.execute(
-                'SELECT * FROM consistency_anchor_runs WHERE job_id=? ORDER BY ordinal', (run_id,))]
+        with self.db.connection() as connection:
+            return [self._anchor(row, row['job_status']) for row in connection.execute('''SELECT a.*,j.status job_status
+                FROM consistency_anchor_runs a JOIN job_runs j ON j.job_id=a.job_id
+                WHERE a.job_id=? ORDER BY a.ordinal''', (run_id,))]
 
     def anchor(self, run_id: str, anchor_id: str) -> ConsistencyAnchorRun:
-        with self._read(run_id) as (connection, status, _, _):
-            row = connection.execute('SELECT * FROM consistency_anchor_runs WHERE job_id=? AND anchor_id=?',
+        with self.db.connection() as connection:
+            row = connection.execute('''SELECT a.*,j.status job_status FROM consistency_anchor_runs a
+                JOIN job_runs j ON j.job_id=a.job_id WHERE a.job_id=? AND a.anchor_id=?''',
                 (run_id, anchor_id)).fetchone()
             if row is None:
                 raise LookupError('主图不属于当前作业')
-            return self._anchor(row, status)
+            return self._anchor(row, row['job_status'])
 
     @staticmethod
     def references(run_id: str, anchor_id: str) -> str:
@@ -100,7 +106,7 @@ class ConsistencyAgentResults:
         original = set()
         geometry_checks = []
         identity = None
-        if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7') and anchor.candidates is not None:
+        if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8') and anchor.candidates is not None:
             identity = CandidateIdentityRecords.read(connection, anchor.job_id, anchor.anchor_id, anchor.candidates)
         if row['group_json']:
             group = FrozenAnalysisGroup.model_validate_json(row['group_json'])
@@ -122,9 +128,9 @@ class ConsistencyAgentResults:
         categories = ([ConflictCategory(result.overall.text)] if reviewed and verdict == 'MATERIAL' else [])
         errors = [error for error in payload['errors'] if error['sample_id'] == anchor.anchor_id]
         outcome = result.model_dump(include=set(IdentityResultFields.model_fields)) if result else {}
-        if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7') and result is None:
+        if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8') and result is None:
             outcome = {'execution_status': 'failed' if anchor.state == 'FAILED' else 'partial', 'result': 'incomplete'}
-            if snapshot.review_pipeline in ('identity-v5', 'identity-v7'):
+            if snapshot.review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8'):
                 outcome['task_type'] = snapshot.task_type
             if identity:
                 from iad_core.consistency.identity_outcome import IdentityOutcome
@@ -141,7 +147,7 @@ class ConsistencyAgentResults:
             program_conclusion = str(original_categories[0]) if original_categories else AnnotationObservation.conclusion_for([],
                 dataset_format == 'folder_classification' or bool(geometry_checks) and all(geometry_checks))
         return AnchorResultSummary(job_id=anchor.job_id, anchor_id=anchor.anchor_id, session_id=anchor.session_id,
-            outcome=IdentityResultFields.model_validate(outcome) if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7') else None,
+            outcome=IdentityResultFields.model_validate(outcome) if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8') else None,
             dataset_format=dataset_format, program_conclusion=program_conclusion,
             state=anchor.state, phase=anchor.phase, attempt=anchor.attempt,
             **snapshot.retrieval.model_dump(), selected_exact=anchor.candidates.exact.selected if anchor.candidates else None,
@@ -175,7 +181,7 @@ class ConsistencyAgentResults:
             captured = AnchorEvidenceRecords.list(connection, run_id, anchor_id)
             requests = connection.execute('''SELECT request_json,observation_json FROM consistency_visual_requests
                 WHERE job_id=? AND anchor_id=? ORDER BY rowid''', (run_id, anchor_id)).fetchall()
-            if snapshot.review_pipeline in ('identity-v5', 'identity-v7'):
+            if snapshot.review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8'):
                 gates = {gate.candidate_id: gate for gate in identity.gates} if identity else {}
                 requests = [request for request in requests if CandidateRecords.observation_current(gates,
                     AnchorVisualRequest.model_validate_json(request['request_json']))]
@@ -226,10 +232,10 @@ class ConsistencyAgentResults:
                 summary = self._summary(connection, row, status, payload, snapshot)
                 record = summary.model_dump(mode='json', exclude={'outcome'})
                 if summary.outcome:
-                    excluded = {} if snapshot.review_pipeline in ('identity-v5', 'identity-v7') else {
+                    excluded = {} if snapshot.review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8') else {
                         'task_type': True, 'candidate_record_ids': True,
                         'issues': {'__all__': {'evidence': {'__all__': {'same_main_object_as'}}}}}
-                    record.update(schema_version={'identity-v7':'7.0','identity-v5':'5.0','identity-v4':'4.0'}[snapshot.review_pipeline],
+                    record.update(schema_version={'identity-v8':'8.0','identity-v7':'7.0','identity-v5':'5.0','identity-v4':'4.0'}[snapshot.review_pipeline],
                         **summary.outcome.model_dump(mode='json', exclude=excluded))
                     record['candidate_assessment_ids'] = [item.assessment_id for item in AnchorAssessments.list(connection, run_id, row['anchor_id'])]
                     record['errors'] = [error for error in payload['errors'] if error['sample_id'] == row['anchor_id']]
@@ -261,7 +267,7 @@ class ConsistencyAgentResults:
                 if not summary.original_conclusion:
                     continue
                 group = FrozenAnalysisGroup.model_validate_json(row['group_json'])
-                if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7'):
+                if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8'):
                     identity = CandidateIdentityRecords.read(connection, run_id, summary.anchor_id, self._anchor(row, status).candidates)
                     group.members = [member for member in group.members if member.image.sample_id in identity.eligible_ids]
                 evidence = [FrozenEvidence.model_validate_json(connection.execute(
@@ -288,7 +294,7 @@ class ConsistencyAgentResults:
             if row['group_json'] is None:
                 raise LookupError('主图尚未生成比较证据')
             group = FrozenAnalysisGroup.model_validate_json(row['group_json'])
-            if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7'):
+            if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8'):
                 identity = CandidateIdentityRecords.read(connection, run_id, anchor_id, self._anchor(row, status).candidates)
                 group.members = [member for member in group.members if member.image.sample_id in identity.eligible_ids]
             return GalleryMemberPage(query_id=run_id, group_id=anchor_id, anchor=group.anchor, items=group.members, total=len(group.members))

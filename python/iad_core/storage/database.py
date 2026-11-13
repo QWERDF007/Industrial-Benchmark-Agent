@@ -3,17 +3,23 @@ import sqlite3
 import shutil
 import tempfile
 import threading
-from contextlib import contextmanager
+from functools import partial
+from weakref import finalize
+from contextlib import contextmanager, closing
 from pathlib import Path
+from typing import cast
+from collections.abc import Iterator
 
 from filelock import FileLock
+from sqlalchemy.pool import QueuePool, PoolProxiedConnection
 
 from iad_core.storage.schema import initialize_schema
 from iad_core.storage.call_payloads import CallPayloads
+from iad_core.storage.schema_revision import SchemaRevision
 
 
 class Database:
-    """SQLite connections with schema initialization once per file and schema revision."""
+    """Pooled SQLite operations and isolated temporary schemas."""
     _schema_lock = threading.RLock()
     _schema_revisions: dict[Path, tuple[int, int, int]] = {}
 
@@ -21,6 +27,8 @@ class Database:
         self.db_path = db_path
         self.call_payloads = CallPayloads(db_path)
         os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
+        self._pool: QueuePool | None = QueuePool(partial(self._connect, db_path))
+        self._release_pool = finalize(self, self._pool.dispose)
         canonical = Path(db_path).resolve()
         with self._schema_lock, self.connection() as conn:
             file = canonical.stat()
@@ -28,33 +36,51 @@ class Database:
             revision = (*identity, conn.execute('PRAGMA schema_version').fetchone()[0])
             if self._schema_revisions.get(canonical) != revision:
                 with FileLock(str(canonical) + '.schema.lock'):
-                    conn.execute("PRAGMA journal_mode = WAL")
-                    self.init_schema()
+                    if not SchemaRevision.current(conn):
+                        conn.execute("PRAGMA journal_mode = WAL")
+                        self.init_schema()
                     self.call_payloads.recover(conn)
                 self._schema_revisions[canonical] = (*identity, conn.execute('PRAGMA schema_version').fetchone()[0])
             self.call_payloads.collect(conn)
 
-    def get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        conn.execute("PRAGMA synchronous = NORMAL")
-        conn.execute("PRAGMA secure_delete = FAST")
-        conn.execute("PRAGMA foreign_keys = ON")
+    @staticmethod
+    def _connect(db_path: str) -> sqlite3.Connection:
+        conn = sqlite3.connect(db_path, check_same_thread=False)
+        try:
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA synchronous = NORMAL")
+            conn.execute("PRAGMA secure_delete = FAST")
+            conn.execute("PRAGMA foreign_keys = ON")
+        except BaseException:
+            conn.close()
+            raise
         return conn
 
+    def get_connection(self) -> PoolProxiedConnection:
+        if self._pool is None:
+            raise RuntimeError('数据库已关闭')
+        return self._pool.connect()
+
+    def close(self) -> None:
+        self._release_pool()
+        self._pool = None
+
     @contextmanager
-    def connection(self):
-        conn = self.get_connection()
-        try:
-            yield conn
-            conn.commit()
-            if conn.total_changes:
-                self.call_payloads.collect(conn)
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+    def connection(self, *, temporary: bool = False) -> Iterator[sqlite3.Connection]:
+        with closing(self.get_connection()) as lease:
+            conn = self._connect(self.db_path) if temporary else cast(sqlite3.Connection, lease.driver_connection)
+            changes = conn.total_changes
+            try:
+                yield conn
+                conn.commit()
+                if conn.total_changes != changes:
+                    self.call_payloads.collect(conn)
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                if temporary:
+                    conn.close()
 
     def init_schema(self):
         with self.connection() as conn:
@@ -62,6 +88,8 @@ class Database:
         if externalized_calls:
             with self.connection() as conn:
                 conn.execute('VACUUM')
+        with self.connection() as conn:
+            SchemaRevision.save(conn)
 
     def backup(self, destination: str) -> None:
         target = Path(destination).resolve()

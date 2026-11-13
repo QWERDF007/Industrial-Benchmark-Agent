@@ -7,7 +7,7 @@ import {createInterface} from 'node:readline';
 import {setTimeout as delay} from 'node:timers/promises';
 import {createConsistencyAgentHost} from './fixtures/consistency-agent-host.js';
 
-test('shared preparation can outlive a control RPC deadline without failing the native check', {timeout: 30000}, async () => {
+test('shared preparation can outlive a control RPC deadline without failing the check', {timeout: 30000}, async () => {
   const fixture = await createConsistencyAgentHost({indexMode: 'cached'});
   const execute = fixture.bridge.execute.bind(fixture.bridge);
   fixture.bridge.execute = async (operation, ...args) => {
@@ -28,10 +28,16 @@ test('shared preparation can outlive a control RPC deadline without failing the 
     const [line] = await once(lines, 'line');assert.equal(line, 'LOCKED');lines.close();
     const job = await fixture.scheduler.start({submission_id: randomUUID(), mode: 'combined', dataset_ids: [fixture.datasetId],
       subjects: {kind: 'samples', sample_ids: [fixture.datasetId + ':A.png']}});
-    await delay(2300);
-    const waiting = await fixture.bridge.execute('analysis_status', {run_id: job.run_id});
+    let waiting;
+    for (const deadline = performance.now()+15000; performance.now()<deadline;) {
+      waiting = await fixture.bridge.execute('analysis_status', {run_id: job.run_id});
+      if (waiting.phase === 'PREPARING_SHARED_INDEX' || waiting.status !== 'RUNNING') break;
+      await delay(50);
+    }
     assert.equal(waiting.status, 'RUNNING', JSON.stringify(waiting.errors));
     assert.equal(waiting.phase, 'PREPARING_SHARED_INDEX');
+    await delay(2300);
+    assert.equal((await fixture.bridge.execute('analysis_status', {run_id: job.run_id})).phase, 'PREPARING_SHARED_INDEX');
     assert.equal(fixture.wires.length, 0, 'Review cannot start while the shared feature preparation is blocked');
     worker.stdin.end();await exited;
     await fixture.scheduler.whenIdle();

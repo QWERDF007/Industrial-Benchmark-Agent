@@ -133,18 +133,15 @@ const post = async (route, body) => {const response = await fetch(base + route, 
 try {
   while (!log.includes('dsh web: http') && host.exitCode === null && host.signalCode === null) await delay(100);
   assert.ok(log.includes('dsh web: http'), 'The isolated host did not start');
-  const dataset = await post('/datasets/import', {format: 'labelme', name: '真实双角色受控验收', image_dir: path.join(root, 'images'),
+  const dataset = await post('/datasets/import', {format: 'labelme', name: '程序视觉受控验收', image_dir: path.join(root, 'images'),
     annotation_dir: path.join(root, 'labels'), annotation_policy: fixture ? fixture.annotation_policy
       : {annotation_coverage: 'EXHAUSTIVE', policy_id: 'controlled-same-pixel'}});
   const parameters = {temperature: 0.1, chat_template_kwargs: {enable_thinking: false}};
-  const settings = await read('/models');
-  await post('/models', {expected_revision: settings.revision, selection: {provider_id: 'live-verification', model_id: model.id,
-    limits: {capacity_mode: 'vllm_tokenize', max_output_tokens: 4096, request_parameters: parameters,
-      ...scenario.visual_limits}}});
   const module = await read('/settings/modules/consistency');
   await post('/settings/modules/consistency', {expected_revision: module.revision, settings: {mode: 'exact',
     model: {provider_id: 'live-verification', model_id: model.id},
-    agent_limits: {max_output_tokens: 4096, request_parameters: parameters}, ...scenario.retrieval}});
+    vision_limits: {capacity_mode:'vllm_tokenize',max_output_tokens:4096,request_parameters:parameters,
+      ...scenario.visual_limits}, ...scenario.retrieval}});
   const started = await post('/analysis/start', {analysis_kind: 'consistency', submission_id: randomUUID(), dataset_ids: [dataset.dataset_id],
     subjects: {kind: 'samples', sample_ids: subjects.map(name => dataset.dataset_id + ':' + name + '.png')}});
   runId = started.run_id;

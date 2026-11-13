@@ -120,10 +120,13 @@ def test_strict_gallery_keeps_one_anchor_and_does_not_borrow_a_different_pairs_e
     queries=[]
     connect=db.connection
     @contextmanager
-    def traced_connection():
-        with connect() as connection:
+    def traced_connection(**options):
+        with connect(**options) as connection:
             connection.set_trace_callback(queries.append)
-            yield connection
+            try:
+                yield connection
+            finally:
+                connection.set_trace_callback(None)
     with monkeypatch.context() as patch:
         patch.setattr(db,'connection',traced_connection)
         members = gallery.members(GalleryMemberQuery(query_id=snapshot.query_id, kind='groups', group_id=group.group_id))

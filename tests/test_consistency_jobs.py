@@ -77,7 +77,7 @@ def test_invalid_annotations_do_not_report_a_missing_image_index(dataset):
     db, registry, config = dataset
     label = Path(config.annotations.root) / 'dent.json'
     value = json.loads(label.read_text())
-    value['shapes'][0]['points'] = [[-1, 10], [30, 30]]
+    value['shapes'][0]['points'] = [[10, 10], [10, 30]]
     label.write_text(json.dumps(value))
     registry.rescan(config.dataset.id)
     runtime = WorkbenchRuntime(db)

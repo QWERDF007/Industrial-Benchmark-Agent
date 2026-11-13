@@ -35,7 +35,7 @@ def test_gate_retains_actual_paired_media_and_all_required_regions(similar_job):
     for gate in state.gates:
         assert gate.source == 'vision'
         assert gate.required_region_pair_ids
-        assert set(gate.required_region_pair_ids) <= delivered
+        assert {'r' + str(index) for index in range(len(gate.required_region_pair_ids))} <= delivered
         assert {check.region_pair_id for check in gate.region_checks} == set(gate.required_region_pair_ids)
         assert all(check.visual_relation == 'same' for check in gate.region_checks)
         media = {view.evidence_id for view in gate.media}
@@ -148,10 +148,10 @@ def test_visual_gate_dispute_invalidates_previous_audit_immediately(similar_job)
         if 'facts' not in context:
             answer=identity_response(context,'transformed_same_content','实际局部初次对应。')
         else:
-            facts=context['facts'];answer={'observations':[{'candidate_id':identity,'description':'当前观察。',
-                'media_ids':facts['required_image_ids'][identity],
-                **({'gate_dispute':{'reason':'局部新发现无法解释的内容差异。','region_pair_ids':[]}} if dispute else {})}
-                for identity in facts['candidates']]}
+            facts=context['facts'];answer={'reviews':{identity:{
+                'verdict':'GATE_DISPUTE' if dispute else 'EQUIVALENT',
+                'explanation':'局部新发现无法解释的内容差异。' if dispute else '当前观察一致。',
+                'issues':[],'limitations':[],'disputed_regions':[]} for identity in facts['candidates']}}
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})
     client=VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
     try:
@@ -182,8 +182,8 @@ def test_position_coverage_is_required_for_new_reviews_but_not_historical_reader
             return httpx.Response(200, json={'count':1000,'max_model_len':32768})
         context=json.loads(json.loads(request.content)['messages'][-1]['content'][1]['text'])
         answer=(identity_response(context,'transformed_same_content','实际成对内容相同。') if 'facts' not in context else
-            {'observations':[{'candidate_id':identity,'description':'已观察真实缺陷覆盖。',
-                'media_ids':context['facts']['required_image_ids'][identity]} for identity in context['facts']['candidates']]})
+            {'reviews':{identity:{'verdict':'EQUIVALENT','explanation':'已观察真实缺陷覆盖。',
+                'issues':[],'limitations':[],'disputed_regions':[]} for identity in context['facts']['candidates']}})
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})
 
     client=VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
@@ -267,8 +267,7 @@ def test_gate_sends_originals_annotations_and_every_roi_together_even_when_overv
                 np.testing.assert_array_equal(np.asarray(pictures[2+index*2+side_index]),np.asarray(pictures[side_index])[y1:y2,x1:x2])
             assert window['source_annotations']
         answer=identity_response(context,'transformed_same_content','实际局部完整对应。')
-        answer['overview']={**answer['windows'][0]}
-        for key in ('window_index','region_pair_id','main_media_id','candidate_media_id'):answer['overview'].pop(key)
+        answer['overview']={**answer['regions'][context['windows'][0]['ref']]}
         answer['overview']['relation']=overview_relation
         generated.append(context)
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})

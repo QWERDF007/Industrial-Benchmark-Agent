@@ -11,8 +11,8 @@ from iad_core.consistency.agent_visual_pages import AnchorVisualPages
 from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.group_analysis_validation import GroupAnalysisValidation
 from iad_core.workbench.calls import ModelCalls
-from iad_core.workbench.jobs import JobContext
 from iad_core.workbench.vision import VlmClient
+from iad_core.consistency.errors import GateReviewRequired
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -64,7 +64,9 @@ class ConsistencyAgentReview:
     def plan(self, run_id: str, anchor_id: str, *, attempt: int = 1) -> AnchorVisualPlan:
         if self.client is None:
             raise ValueError('视觉分页需要冻结的视觉模型客户端')
-        self.verify(run_id, anchor_id, attempt=attempt)
+        from iad_core.consistency.identity import CandidateIdentity
+        if not CandidateIdentity(self.runtime).prepare(run_id, anchor_id, attempt=attempt).completed:
+            raise GateReviewRequired()
         return AnchorVisualPages(self.runtime, self.client).plan(run_id, anchor_id, attempt=attempt)
 
     def observe(self, run_id: str, anchor_id: str, request: dict | AnchorVisualStart, *, attempt: int = 1) -> AnchorObservation:
@@ -73,7 +75,10 @@ class ConsistencyAgentReview:
             raise ValueError('审核仅使用原图和标注区域，不支持额外观察窗口')
         if self.client is None:
             raise ValueError('视觉观察需要冻结的视觉模型客户端')
-        state = self.verify(run_id, anchor_id, attempt=attempt)
+        from iad_core.consistency.identity import CandidateIdentity
+        state = CandidateIdentity(self.runtime).prepare(run_id, anchor_id, attempt=attempt)
+        if not state.completed:
+            raise GateReviewRequired()
         if not set(request.candidate_ids) <= set(state.eligible_ids):
             raise ValueError('未通过图像内容验证的候选不能进入标注观察')
         revisions = {gate.candidate_id: gate.revision for gate in state.gates if gate.candidate_id in request.candidate_ids}
@@ -98,7 +103,7 @@ class ConsistencyAgentReview:
                 raise ValueError('视觉请求ID已用于不同输入。' + VISUAL_REQUEST_ID_RULE)
             if saved['observation_json'] is not None:
                 return AnchorObservation.model_validate_json(saved['observation_json'])
-        context = JobContext(self.runtime.jobs, run_id, self.runtime.jobs.status(run_id), self.runtime.jobs.cancelled[run_id])
+        context = self.runtime.jobs.context(run_id)
         context.checkpoint()
         self.checks.phase(run_id, anchor_id, 'OBSERVING_ANCHOR')
         inputs = AnchorVisualInput.prepare(self.runtime, run_id, anchor_id, request, context.checkpoint)
@@ -110,7 +115,7 @@ class ConsistencyAgentReview:
                 request_id=request.request_id, sample_id=anchor_id):
             plan = inputs.plan(self.client)
             context.checkpoint()
-            result = self.client.generate_once(plan)
+            result = inputs.normalize(self.client.generate(plan))
         context.checkpoint()
         observed = AnchorObservation(observation_id='observation_' + uuid4().hex, request=inputs.request,
             result=AnchorVisualResult.model_validate(result.model_dump()))
@@ -125,6 +130,10 @@ class ConsistencyAgentReview:
         for finding in observed.result.observations:
             if finding.gate_dispute is not None:
                 from iad_core.consistency.identity import CandidateIdentity
+                current = next(gate for gate in CandidateIdentity(self.runtime).read(run_id, anchor_id).gates
+                    if gate.candidate_id == finding.candidate_id)
+                if current.revision != revisions[finding.candidate_id]:
+                    continue
                 CandidateIdentity(self.runtime).recheck(run_id, anchor_id, finding.candidate_id,
                     expected_revision=revisions[finding.candidate_id],
                     request_id='audit-dispute-' + request.request_id + '-' + finding.candidate_id, attempt=attempt)
@@ -139,7 +148,7 @@ class ConsistencyAgentReview:
         from iad_core.consistency.identity import CandidateIdentity
         from iad_core.consistency.candidate_records import CandidateRecords
         gates = {gate.candidate_id: gate for gate in CandidateIdentity(self.runtime).read(run_id, anchor_id).gates}
-        versioned = self.checks.snapshot(run_id).review_pipeline in ('identity-v5', 'identity-v7')
+        versioned = self.checks.snapshot(run_id).review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8')
         return [item for row in rows if (item := AnchorObservation.model_validate_json(row[0]))
             and (not versioned or CandidateRecords.observation_current(gates, item.request))]
 
@@ -159,7 +168,7 @@ class ConsistencyAgentReview:
             raise ValueError('候选不属于本场冻结清单')
         gate = next(gate for gate in CandidateIdentity(self.runtime).read(run_id, anchor_id).gates if gate.candidate_id == identity)
         if expected_revision is not None and expected_revision != gate.revision:
-            raise ValueError('审核提交引用了过期的资格版本')
+            raise GateReviewRequired()
         submission = AnchorAssessmentSubmission(**{**submission.model_dump(),
             'gate_revision': gate.revision,
             'assessment': submission.assessment.as_assessment(),
@@ -176,6 +185,12 @@ class ConsistencyAgentReview:
         identity = submission.assessment.candidate_id
         with self.runtime.jobs.lock:
             anchor = self.checks.attempt(run_id, anchor_id, attempt)
+            if submission.gate_revision:
+                from iad_core.consistency.identity import CandidateIdentity
+                gate = next(gate for gate in CandidateIdentity(self.runtime).read(run_id, anchor_id).gates
+                    if gate.candidate_id == identity)
+                if gate.revision != submission.gate_revision or gate.gate_status != 'eligible':
+                    raise GateReviewRequired()
             existing = next((item for item in self.assessments(run_id, anchor_id)
                 if item.submission.assessment.candidate_id == identity), None)
             if existing is not None and existing.submission == submission and request_id is None:

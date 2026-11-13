@@ -79,7 +79,7 @@ class ResultSnapshots:
         def available_blob(sha256: str,byte_count: int) -> bool:
             try:images.path(EvidenceBlob(sha256=sha256,byte_count=byte_count));return True
             except ConsistencyError:return False
-        with self.db.connection() as connection:
+        with self.db.connection(temporary=True) as connection:
             connection.execute('PRAGMA temp_store=FILE')
             connection.create_function('annotation_difference_types', 1, AnnotationComparison.json_difference_types, deterministic=True)
             connection.execute('CREATE TEMP TABLE selected_items(position INTEGER PRIMARY KEY,evidence_id TEXT,facts_state TEXT,source_states_json TEXT,evidence_available INTEGER)')

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Literal, Self
 
 from pydantic import ConfigDict, Field, model_validator
@@ -54,6 +56,7 @@ class CandidateVisualObservation(AnalysisModel):
     media_ids: list[Identifier] = Field(min_length=1,
         description='主图与当前候选的两个原图evidence_id；原始标注和全部裁剪视图随原图分组，不单独引用裁图。')
     limitations: list[NonBlankText] = Field(default_factory=list)
+    assessment: AnchorAssessmentDecision | None = None
     gate_dispute: GateDispute | None = Field(default=None,
         description='发现两侧实际内容不同或资格依据不足时报告争议；不能继续提交标注差异。')
 
@@ -134,3 +137,6 @@ class AnchorReviewSubmission(AnalysisModel):
     request_id: Identifier | None = None
     fingerprint: Digest = Field(description='当前冻结清单指纹。')
     assessment_ids: list[CandidateLimit] = Field(description='恰好包含当前有效候选的最新评估回执；零有效候选时为空。')
+
+
+CandidateVisualObservation.model_rebuild()

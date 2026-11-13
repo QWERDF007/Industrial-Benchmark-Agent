@@ -1,5 +1,3 @@
-import json
-
 from iad_core.consistency.agent_context import AnchorAgentContext
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_review import ConsistencyAgentReview
@@ -9,23 +7,14 @@ from iad_core.consistency.identity_models import CandidateIdentityRecord
 from iad_core.consistency.workflow_models import (AnomalyWorkflowAssess, AnomalyWorkflowObserve, BboxWorkflowAssess,
     BboxWorkflowObserve, WorkflowContextQuery, WorkflowSubmit)
 from iad_core.storage.models import sample_uuid
+from iad_core.consistency.references import ReferenceAliases
+from iad_core.consistency.errors import GateReviewRequired
 
 
-class WorkflowImages:
+class WorkflowImages(ReferenceAliases):
     def __init__(self, anchor):
-        self.public = {identity: sample_uuid(identity) for identity in
-            [anchor.anchor_id, *[candidate.sample_id for candidate in anchor.candidates.candidates]]}
-        self.internal = {public: internal for internal, public in self.public.items()}
-
-    def translate(self, value, *, internal=False):
-        identities = self.internal if internal else self.public
-        if isinstance(value, str):
-            return identities.get(value, value)
-        if isinstance(value, list):
-            return [self.translate(item, internal=internal) for item in value]
-        if isinstance(value, dict):
-            return {identities.get(key, key): self.translate(item, internal=internal) for key, item in value.items()}
-        return value
+        super().__init__({identity: sample_uuid(identity) for identity in
+            [anchor.anchor_id, *[candidate.sample_id for candidate in anchor.candidates.candidates]]})
 
     def candidate(self, identity):
         if identity not in self.internal:
@@ -39,6 +28,47 @@ class ConsistencyWorkflow:
         self.checks = ConsistencyAgentJobs(runtime)
         self.review = ConsistencyAgentReview(runtime, client)
         self.identity = CandidateIdentity(runtime, client)
+
+    def audit(self, run_id, anchor_id, *, attempt=1):
+        try:
+            anchor = self.checks.attempt(run_id, anchor_id, attempt)
+            if anchor.result is not None:
+                return {'ready': True}
+            state = self.identity.read(run_id, anchor_id)
+            if not state.completed:
+                return {'ready': False}
+            if self.review.finish_rules(run_id, anchor_id, attempt=attempt) is not None:
+                return {'ready': True}
+            plan = self.review.plan(run_id, anchor_id, attempt=attempt)
+            for page in plan.pages:
+                assessed = {record.submission.assessment.candidate_id for record in self.review.assessments(run_id, anchor_id)}
+                if set(page.candidate_ids) <= assessed:
+                    continue
+                observation = self.review.observe(run_id, anchor_id, page, attempt=attempt)
+                if not self.identity.read(run_id, anchor_id).completed:
+                    return {'ready': False}
+                for finding in observation.result.observations:
+                    if finding.assessment is None:
+                        raise ValueError('视觉审核缺少结构化标注判断')
+                    if finding.candidate_id in assessed:
+                        continue
+                    self.review.assess(run_id, anchor_id, {'fingerprint': page.fingerprint,
+                        'observation_ids': [observation.observation_id], 'assessment': finding.assessment.model_dump()},
+                        attempt=attempt, expected_revision=page.gate_revisions[finding.candidate_id],
+                        request_id='assess-' + page.request_id + '-' + finding.candidate_id)
+            return {'ready': True}
+        except GateReviewRequired:
+            return {'ready': False}
+
+    def finish(self, run_id, anchor_id, *, attempt=1):
+        anchor = self.checks.attempt(run_id, anchor_id, attempt)
+        if anchor.result is not None:
+            return anchor.result
+        if result := self.review.finish_rules(run_id, anchor_id, attempt=attempt):
+            return result
+        records = self.review.assessments(run_id, anchor_id)
+        return self.review.finalize(run_id, anchor_id, {'fingerprint': anchor.candidates.fingerprint,
+            'assessment_ids': [record.assessment_id for record in records]}, attempt=attempt)
 
     def prepare(self, run_id, anchor_id, *, attempt=1):
         anchor = self.checks.attempt(run_id, anchor_id, attempt)

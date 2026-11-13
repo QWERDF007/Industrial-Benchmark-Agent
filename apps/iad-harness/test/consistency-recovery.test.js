@@ -24,7 +24,7 @@ test('a process killed after the real business commit resumes only the missing n
     const committed = await first.message;root = committed.root;
     assert.equal(committed.detail.state, 'COMPLETED');assert.equal(committed.detail.trace_state, 'OPEN');
     assert.equal(committed.detail.result.reason, 'MODEL_REVIEWED');
-    assert.ok(committed.calls.some(call => call.role === 'agent' && call.operation === 'generate'));
+    assert.ok(!committed.calls.some(call => call.role === 'agent' && call.operation === 'generate'));
     assert.ok(committed.calls.some(call => call.role === 'vision' && call.operation === 'generate'));
     const exited = once(first.child, 'exit');first.child.kill('SIGKILL');
     assert.deepEqual(await exited, [null, 'SIGKILL']);
@@ -46,7 +46,7 @@ test('a process killed after the real business commit resumes only the missing n
     const events = restore.finish().events;
     const completed = events.filter(event => event.type === 'iad/consistency' && event.data.summary === '主图终稿已提交');
     assert.equal(completed.length, 1);assert.ok(completed[0].data.record_id);
-    assert.equal(events.filter(event => event.type === 'tool/call' && event.data.name === 'anchor_submit').length, 1);
+    assert.equal(events.filter(event => event.type === 'tool/call').length, 0);
   } finally {
     for (const child of children) if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
     if (root) await fs.rm(root, {recursive: true, force: true});

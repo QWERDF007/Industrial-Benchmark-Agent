@@ -32,9 +32,10 @@ from iad_core.consistency.agent_operations import (consistency_agent_start, cons
     consistency_agent_trace_event, consistency_agent_trace_status, consistency_agent_cancel, consistency_agent_resume,
     consistency_agent_interrupt, consistency_agent_detail, consistency_agent_results, consistency_agent_report,
     consistency_agent_export, consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
-    consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis, consistency_agent_plan, consistency_agent_capacity,
-    consistency_agent_model_call_start, consistency_agent_model_call_end, consistency_agent_diagnostics, consistency_agent_prepare,
-    consistency_agent_session_location, consistency_agent_media)
+    consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis, consistency_agent_plan,
+    consistency_agent_diagnostics, consistency_agent_prepare,
+    consistency_agent_session_location, consistency_agent_media,
+    consistency_agent_pair_tasks, consistency_agent_pair_review, consistency_agent_audit, consistency_agent_finalize)
 from iad_core.exploration.operations import (direction_exploration_evidence, direction_exploration_remove_direction,
     direction_exploration_presets, direction_exploration_preset_save)
 
@@ -448,6 +449,7 @@ def model_call_get(args, db_path):
 
 OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_start, consistency_agent_snapshot, consistency_agent_anchors, consistency_agent_anchor,
+    consistency_agent_pair_tasks, consistency_agent_pair_review, consistency_agent_audit, consistency_agent_finalize,
     consistency_agent_session_created, consistency_agent_retrieve, consistency_agent_submit_empty,
     consistency_agent_failure, consistency_agent_finish,
     consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit,
@@ -458,8 +460,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_detail, consistency_agent_results, consistency_agent_report, consistency_agent_export,
     consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
     consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis,
-    consistency_agent_plan, consistency_agent_capacity,
-    consistency_agent_model_call_start, consistency_agent_model_call_end,
+    consistency_agent_plan,
     consistency_agent_diagnostics,
     consistency_agent_prepare,
     consistency_agent_session_location,
@@ -558,7 +559,7 @@ def main():
         dispatch_request(json.loads(sys.argv[1]))
         return
     try:
-        with ThreadPoolExecutor(max_workers=4) as executor:
+        with ThreadPoolExecutor(max_workers=4) as executor, ThreadPoolExecutor(max_workers=1) as controls:
             for line in sys.stdin:
                 if not line.strip():
                     continue
@@ -566,7 +567,8 @@ def main():
                     request = json.loads(line)
                     if not isinstance(request, dict):
                         raise ValueError("Expected a JSON object")
-                    executor.submit(dispatch_request, request, DEFAULT_DB_PATH, query_only)
+                    target = controls if request.get('operation') in {'consistency_agent_cancel', 'consistency_agent_interrupt'} else executor
+                    target.submit(dispatch_request, request, DEFAULT_DB_PATH, query_only)
                 except (ValueError, TypeError) as error:
                     emit({"event": "error", "request_id": "decode", "error": {"code": "JSON_DECODE_ERROR", "message": str(error)}})
     finally:

@@ -2,12 +2,13 @@ import hashlib
 import json
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, create_model, field_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.consistency.identity_inputs import IdentityInputs
-from iad_core.consistency.identity_regions import IdentityRegionCheck
+from iad_core.consistency.identity_regions import IdentityRegionCheck, UnmappedRegionCheck
+from iad_core.consistency.references import ReferenceAliases
 from iad_core.evidence.images import EvidenceImages, PreparedImage, PreparedImageBundle
 from iad_core.evidence.retained import RetainedImages
 from iad_core.storage.models import sample_uuid
@@ -15,28 +16,34 @@ from iad_core.workbench.calls import ModelCalls
 
 
 class IdentityFinding(AnalysisModel):
-    main_description: NonBlankText
-    candidate_description: NonBlankText
+    main_description: NonBlankText = Field(description='一句话写出主图此处决定性的可见细节。')
+    candidate_description: NonBlankText = Field(description='一句话写候选对应细节；相同时简短说明相同，不复述主图。')
     relation: Literal['transformed_same_content', 'content_different', 'unverified']
-    reason: NonBlankText
 
 
-class IdentityWindowFinding(IdentityFinding):
-    window_index: int = Field(ge=0)
-    region_pair_id: str
-    main_media_id: str
-    candidate_media_id: str
+class UnmappedFinding(AnalysisModel):
+    observation: NonBlankText = Field(description='只描述实际提供的局部及无法对应的原因。')
 
 
 class IdentityDecision(AnalysisModel):
     overview: IdentityFinding
-    windows: list[IdentityWindowFinding] = Field(default_factory=list)
-    media_ids: list[str] = Field(min_length=2, max_length=2)
-    limitations: list[NonBlankText] = Field(default_factory=list)
+    summary: NonBlankText = Field(description='两侧共用的一两句判断，以“两图”或“一侧、另一侧”说明差别，不使用主图、候选或左右图称呼。')
+    limitations: list[NonBlankText] = Field(default_factory=list,
+        description='两侧共用的具体限制，不使用主图、候选或左右图称呼。')
+
+    @field_validator('summary', 'limitations')
+    @classmethod
+    def shared_perspective(cls, value):
+        texts = [value] if isinstance(value, str) else value
+        if any(side in text for text in texts for side in ('主图', '候选', '左图', '右图')):
+            raise repairable_output_error('identity_shared_perspective',
+                '共用说明须用“两图”或“一侧、另一侧”，不能使用主图、候选、左图或右图称呼；保留具体视觉事实。')
+        return value
 
     @property
     def findings(self):
-        return [self.overview, *self.windows]
+        return [self.overview, *[getattr(self.regions, name) for name in type(self.regions).model_fields
+            if isinstance(getattr(self.regions, name), IdentityFinding)]]
 
     @property
     def relation(self):
@@ -46,7 +53,7 @@ class IdentityDecision(AnalysisModel):
 
     @property
     def reason(self):
-        return '\n'.join(dict.fromkeys(finding.reason for finding in self.findings))
+        return self.summary
 
 
 class IdentityInspection:
@@ -63,7 +70,7 @@ class IdentityInspection:
         required = [root.evidence.evidence_id for root in roots]
         annotation_ids = {annotation.annotation_id: 'ann_' + hashlib.sha256(annotation.annotation_id.encode()).hexdigest()
             for source in sources for annotation in source.annotations.annotations}
-        regions = [{'window_index': index, 'region_pair_id': pair.region_pair_id, 'mapping': pair.mapping,
+        regions = [{'window_index': index, 'ref': 'r' + str(index), 'region_pair_id': pair.region_pair_id, 'mapping': pair.mapping,
             'source_annotations': [{**origin.model_dump(mode='json'), 'annotation_id': annotation_ids[origin.annotation_id]}
                 for origin in pair.source_annotations],
             'main_window': pair.main_window, 'candidate_window': pair.candidate_window,
@@ -91,24 +98,18 @@ class IdentityInspection:
                         {'side': ('main', 'candidate')[side], 'window_index': index, 'region_pair_id': pair.region_pair_id,
                             'original_size': [samples[side].width, samples[side].height]},
                         (PreparedImage(media, images.path(media)),)))
-        expected_indices = [region['window_index'] for region in context['windows']]
-
-        @model_validator(mode='after')
-        def validate_decision(value):
-            if len(set(value.media_ids)) != 2 or set(value.media_ids) != set(required):
-                raise repairable_output_error('identity_media', '必须引用本次实际发送的两侧原图身份各一次。')
-            if sorted(finding.window_index for finding in value.windows) != expected_indices:
-                raise repairable_output_error('identity_windows', '必须在同一回答中报告全部实际成对局部的观察，不得因整图已发现不同而遗漏局部。')
-            for finding in value.windows:
-                pair = frozen.region_pairs[finding.window_index]
-                if (finding.region_pair_id != pair.region_pair_id or finding.main_media_id != pair.main_media.evidence_id
-                        or finding.candidate_media_id != pair.candidate_media.evidence_id):
-                    raise repairable_output_error('identity_region_media', '必须引用当前区域对及实际送达的双侧局部媒体。')
-            if value.relation == 'transformed_same_content' and frozen.geometry.candidate_to_main is None:
-                raise repairable_output_error('identity_geometry', '没有可信几何映射，不得声称变换后同内容；证据不足时返回unverified。')
-            return value
-
-        response_type = type('IdentityDecision', (IdentityDecision,), {'validate_decision': validate_decision})
+        references = ReferenceAliases({
+            **dict(zip(required, ('main_image', 'candidate_image'))),
+            **{identity: 'a' + str(index) for index, identity in enumerate(annotation_ids.values())},
+            **{pair.region_pair_id: 'r' + str(index) for index, pair in enumerate(frozen.region_pairs)},
+            **{media.evidence_id: 'r' + str(index) + '_' + side for index, pair in enumerate(frozen.region_pairs)
+                for side, media in (('main', pair.main_media), ('candidate', pair.candidate_media)) if media is not None}})
+        wire_bundles = [PreparedImageBundle(references.public[bundle.evidence_id],
+            references.translate(bundle.context), bundle.images) for bundle in bundles]
+        region_type = create_model('IdentityRegions', __base__=AnalysisModel, **{
+            'r' + str(index): (IdentityFinding if pair.mapping == 'registered' else UnmappedFinding, ...)
+            for index, pair in enumerate(frozen.region_pairs)})
+        response_type = create_model('IdentityDecision', __base__=IdentityDecision, regions=(region_type, ...))
         fingerprint = hashlib.sha256(json.dumps([prompts, context,
             [view.evidence.model_dump(mode='json') for bundle in bundles for view in bundle.images]], sort_keys=True).encode()).hexdigest()
         checkpoint()
@@ -123,8 +124,8 @@ class IdentityInspection:
         else:
             with ModelCalls(self.runtime.db).bind(run_id, checkpoint, role='vision',
                     request_id='identity-' + candidate_id + '-' + str(revision) + '-' + request_id, sample_id=anchor_id):
-                plan = self.client.plan(response_type, prompts['gate_user'], bundles, self.client.resolve_model(),
-                    context=context, system_prompt=prompts['gate_system'])
+                plan = self.client.plan(response_type, prompts['gate_user'], wire_bundles, self.client.resolve_model(),
+                    context=references.translate(context), system_prompt=prompts['gate_system'])
                 decision = self.client.generate(plan)
             checkpoint()
             with self.runtime.db.connection() as connection:
@@ -135,15 +136,28 @@ class IdentityInspection:
                 decision = response_type.model_validate_json(connection.execute('''SELECT record_json FROM consistency_gate_observations
                     WHERE job_id=? AND anchor_id=? AND candidate_id=? AND gate_revision=? AND request_id=? AND page_index=0''',
                     (run_id, anchor_id, candidate_id, revision, request_id)).fetchone()[0])
-        relation = ('unverified' if decision.relation != 'content_different' and context['unmapped_regions'] else decision.relation)
+        relation = ('unverified' if decision.relation != 'content_different' and (
+            context['unmapped_regions'] or frozen.geometry.candidate_to_main is None) else decision.relation)
+        with self.runtime.db.connection() as connection:
+            call_ids = [row[0] for row in connection.execute('''SELECT call_id FROM model_calls WHERE run_id=?
+                AND json_extract(summary_json,'$.request_id')=? AND json_extract(summary_json,'$.operation')='generate'
+                AND json_extract(summary_json,'$.error') IS NULL ORDER BY rowid''',
+                (run_id, 'identity-' + candidate_id + '-' + str(revision) + '-' + request_id))]
         visual_relations = {'transformed_same_content': 'same', 'content_different': 'different', 'unverified': 'unverified'}
         return {'relation': relation, 'reason': decision.reason,
             'limitations': list(dict.fromkeys([*decision.limitations,
                 *[pair.limitation for pair in frozen.region_pairs if pair.limitation]])),
-            'geometry': frozen.geometry, 'media': list({view.evidence.evidence_id: view.evidence
+            'observation_call_ids': call_ids, 'geometry': frozen.geometry, 'media': list({view.evidence.evidence_id: view.evidence
                 for bundle in bundles for view in bundle.images}.values()), 'source': 'vision',
             'region_pairs': frozen.region_pairs,
             'required_region_pair_ids': [pair.region_pair_id for pair in frozen.region_pairs],
             'overview_relation': visual_relations[decision.overview.relation],
-            'region_checks': [IdentityRegionCheck(**finding.model_dump(exclude={'window_index', 'relation'}),
-                visual_relation=visual_relations[finding.relation]) for finding in decision.windows]}
+            'region_checks': [IdentityRegionCheck(region_pair_id=pair.region_pair_id,
+                main_media_id=pair.main_media.evidence_id, candidate_media_id=pair.candidate_media.evidence_id,
+                **(finding := getattr(decision.regions, 'r' + str(index))).model_dump(exclude={'relation'}),
+                visual_relation=visual_relations[finding.relation])
+                for index, pair in enumerate(frozen.region_pairs) if pair.mapping == 'registered'],
+            'unmapped_region_checks': [UnmappedRegionCheck(region_pair_id=pair.region_pair_id,
+                media_ids=[media.evidence_id for media in (pair.main_media, pair.candidate_media) if media is not None],
+                observation=getattr(decision.regions, 'r' + str(index)).observation)
+                for index, pair in enumerate(frozen.region_pairs) if pair.mapping != 'registered']}

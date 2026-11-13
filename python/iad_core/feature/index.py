@@ -1,7 +1,6 @@
 import hashlib
 import json
 import os
-import sqlite3
 import threading
 import time
 import uuid
@@ -96,7 +95,7 @@ class CorpusIndexes:
         self.repository=FeatureRepository(db)
         self._mutex=threading.RLock()
         self._condition=threading.Condition(self._mutex)
-        self._probe=sqlite3.connect(db.db_path,check_same_thread=False)
+        self._probe=db.get_connection()
         self._entries=OrderedDict()
         self._reserved_keys=set()
         self._retired=set()

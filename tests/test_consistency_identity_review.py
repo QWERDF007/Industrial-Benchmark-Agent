@@ -9,6 +9,7 @@ from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_review import ConsistencyAgentReview
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
+from tests.consistency_responses import annotation_response
 
 
 @pytest.mark.parametrize('points,crop', [
@@ -52,9 +53,8 @@ def test_bbox_observation_sends_original_pixels_and_only_complete_annotation_cro
             assert all(view['representation']=='raw' for view in source['visual_inputs'])
         candidate = next(iter(facts['candidates']))
         sent.append(content)
-        return httpx.Response(200, json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps({
-            'observations':[{'candidate_id':candidate,'description':'按原始像素核对完整原图和标注局部。',
-                'media_ids':facts['required_image_ids'][candidate],'limitations':[]}]})}}]})
+        return httpx.Response(200, json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(
+            annotation_response(facts, '按原始像素核对完整原图和标注局部。'))}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
     try:
@@ -99,7 +99,7 @@ def test_imported_directory_labels_are_compared_without_model_calls(tmp_path, ma
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         snapshot = checks.snapshot(run_id)
         assert snapshot.task_type == 'anomaly_detection'
-        assert 'OK/NG' in snapshot.system_prompt
+        assert '图像级标签' in snapshot.system_prompt
         assert not any(term in snapshot.system_prompt + snapshot.instruction for term in ('矩形', '拆分', '框'))
         checks.session_created(run_id, anchor)
         checks.retrieve(run_id, anchor)
@@ -135,9 +135,8 @@ def test_bbox_review_retains_multiple_independent_issues_with_real_ids(dataset):
         parts = json.loads(request.content)['messages'][-1]['content']
         facts = json.loads(parts[1]['text'])['facts']
         identity = next(iter(facts['candidates']))
-        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps({
-            'observations': [{'candidate_id': identity, 'description': '同一对象的类别与覆盖范围不同。',
-                'media_ids': facts['required_image_ids'][identity], 'limitations': []}]})}}]})
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(
+            annotation_response(facts, '同一对象的类别与覆盖范围不同。'))}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
     try:

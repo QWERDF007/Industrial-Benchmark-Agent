@@ -135,6 +135,11 @@ class CallPayloads:
     def recover(self, connection: Connection) -> None:
         if not self.root.exists():
             return
+        with self.reading():
+            owners = {hashlib.sha256(row[0].encode()).hexdigest()
+                for row in connection.execute('SELECT job_id FROM job_runs')}
+            if not any(directory.is_dir() and directory.name not in owners for directory in self.root.iterdir()):
+                return
         connection.execute('BEGIN IMMEDIATE')
         with self.reading():
             owners = {hashlib.sha256(row[0].encode()).hexdigest()

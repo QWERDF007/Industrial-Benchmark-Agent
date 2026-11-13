@@ -90,6 +90,7 @@ print(json.dumps(dict(datasets=datasets,groups=[group])))
     await click(`button[data-edit-id="preset:${first.direction_id}"]`);
     await fill('#kb-dir-edit-name','本场边缘方向');await fill('#kb-dir-edit-text','观察本场原始边缘。');await click('#kb-dir-save');
     await driver.wait(async()=>(await(await element('#prompt-text')).getAttribute('value')).includes('观察本场原始边缘。'),10000);
+    const defaultSystem=await(await element('#prompt-text-system')).getAttribute('value');
     const system='本场系统规则：只用实际观察的证据。',user='本场用户要求：比较边缘，保留相反证据。';
     await fill('#prompt-text-system',system);await fill('#prompt-text',user);
     await click(`#general-directions input[data-dir-id="preset:${second.direction_id}"]`);
@@ -104,7 +105,8 @@ print(json.dumps(dict(datasets=datasets,groups=[group])))
     await driver.wait(async()=>(await(await element('#prompt-text')).getAttribute('value')).includes('本场边缘方向'),10000);
     const composed=await(await element('#prompt-text')).getAttribute('value');
     assert.ok(composed.includes(second.title)&&composed.includes('第二子集'));
-    assert.equal(await(await element('#prompt-text-system')).getAttribute('value'),system);
+    assert.equal(await(await element('#prompt-text-system')).getAttribute('value'),defaultSystem);
+    await fill('#prompt-text-system',system);
     await fill('#prompt-text',user);
     const output=path.join(workspace,'runs/verification/analysis-native-pages');
     await fs.mkdir(output,{recursive:true});

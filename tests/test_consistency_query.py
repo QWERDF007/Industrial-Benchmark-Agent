@@ -127,10 +127,13 @@ def test_batch_report_uses_indexed_membership_without_correlated_history_scans(d
         connect = db.connection
 
         @contextmanager
-        def traced_connection():
-            with connect() as connection:
+        def traced_connection(**options):
+            with connect(**options) as connection:
                 connection.set_trace_callback(queries.append)
-                yield connection
+                try:
+                    yield connection
+                finally:
+                    connection.set_trace_callback(None)
 
         with monkeypatch.context() as patch:
             patch.setattr(db, 'connection', traced_connection)

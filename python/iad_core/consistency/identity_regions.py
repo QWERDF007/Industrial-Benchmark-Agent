@@ -30,4 +30,10 @@ class IdentityRegionCheck(AnalysisModel):
     visual_relation: Literal['same', 'different', 'unverified']
     main_description: NonBlankText
     candidate_description: NonBlankText
-    reason: NonBlankText
+    reason: NonBlankText | None = None
+
+
+class UnmappedRegionCheck(AnalysisModel):
+    region_pair_id: Identifier
+    media_ids: list[Identifier] = Field(min_length=1)
+    observation: NonBlankText

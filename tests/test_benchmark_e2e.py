@@ -81,9 +81,9 @@ def test_benchmark_e2e_synthetic(tmp_path):
     conn.commit()
     conn.close()
     db = Database(db_path)
-    with db.connection() as connection:
+    with db.connection(temporary=True) as connection:
         scan = PixelScan(connection)
-        for row in connection.execute('SELECT sample_id,image_path FROM samples WHERE task_id=?', (task_id,)):
+        for row in connection.execute('SELECT sample_id,image_path FROM main.samples WHERE task_id=?', (task_id,)):
             path = image_root / (row['sample_id'] + '.png')
             scan.stage(row['sample_id'], str(path), hashlib.sha256(path.read_bytes()).hexdigest())
         scan.publish('ds_synth')

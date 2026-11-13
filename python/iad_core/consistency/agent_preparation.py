@@ -4,7 +4,6 @@ from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.job_models import ConsistencyBatch
 from iad_core.workbench.job_models import ChildJobError
-from iad_core.workbench.jobs import JobContext
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -19,7 +18,7 @@ class ConsistencyAgentPreparation:
         snapshot = self.checks.snapshot(run_id)
         if snapshot.retrieval.mode == 'exact':
             return None
-        context = JobContext(self.runtime.jobs, run_id, self.runtime.jobs.status(run_id), self.runtime.jobs.cancelled[run_id])
+        context = self.runtime.jobs.context(run_id)
         context.checkpoint()
         if context.payload.get('phase') != 'PREPARING_SHARED_INDEX':
             context.update(phase='PREPARING_SHARED_INDEX')

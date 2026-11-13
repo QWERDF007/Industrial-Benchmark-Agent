@@ -10,6 +10,7 @@ from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 from tests.test_consistency_identity import similar_job, identity_response
+from tests.consistency_responses import annotation_response
 
 
 def test_task_and_complete_prompts_are_frozen_without_rewriting_user_text(dataset):
@@ -21,8 +22,8 @@ def test_task_and_complete_prompts_are_frozen_without_rewriting_user_text(datase
         run_id = checks.start({**request, 'submission_id': str(uuid4())})['run_id']
         frozen = checks.snapshot(run_id)
         assert frozen.task_type == 'bbox_defect'
-        assert frozen.review_pipeline == 'identity-v7'
-        assert '候选' in frozen.system_prompt and '六类' in frozen.instruction
+        assert frozen.review_pipeline == 'identity-v8'
+        assert '候选' in frozen.system_prompt and '六类' in frozen.system_prompt
         assert '当前候选已通过' not in frozen.system_prompt
         assert 'OK/NG' not in frozen.system_prompt + frozen.instruction
         custom = {'system_prompt': '自定义系统原文\n保留完整内容。', 'instruction': '自定义用户原文。'}
@@ -49,9 +50,7 @@ def test_recheck_invalidates_old_audit_and_replays_only_matching_requests(simila
         if 'facts' not in context:
             answer = identity_response(context, relation, '按当前实际像素重新核对。')
         else:
-            answer = {'observations': [{'candidate_id': identity, 'description': '当前局部没有充分标注对应证据。',
-                'media_ids': context['facts']['required_image_ids'][identity], 'limitations': ['局部无法确认。']}
-                for identity in context['facts']['candidates']]}
+            answer = annotation_response(context['facts'], '当前局部没有充分标注对应证据。', limitations=['局部无法确认。'])
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
@@ -181,9 +180,8 @@ def test_missing_object_merges_only_with_observed_correspondence(dataset, confir
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
         facts = json.loads(json.loads(request.content)['messages'][-1]['content'][1]['text'])['facts']
-        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps({
-            'observations': [{'candidate_id': identity, 'description': '主图对应的同一实际对象没有标注。',
-                'media_ids': facts['required_image_ids'][identity]} for identity in facts['candidates']]})}}]})
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(
+            annotation_response(facts, '主图对应的同一实际对象没有标注。'))}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
     try:

@@ -61,13 +61,20 @@ class IdentityInputs:
                     main_media=images.capture(samples[0], 'roi', 'annotation', list(main), full_resolution=True).evidence if main else None,
                     candidate_media=images.capture(samples[1], 'roi', 'annotation', list(candidate), full_resolution=True).evidence if candidate else None)
         plan = IdentityInputPlan(geometry=geometry.facts, region_pairs=list(pairs.values()))
+        return self.save(run_id, anchor_id, candidate_id, sources, prompts, plan)
+
+    def save(self, run_id, anchor_id, candidate_id, sources, prompts, plan):
+        fingerprint = hashlib.sha256(json.dumps([prompts, [source.model_dump(mode='json') for source in sources]],
+            sort_keys=True).encode()).hexdigest()
         with self.db.connection() as connection:
             connection.execute('''INSERT INTO consistency_identity_inputs(job_id,anchor_id,candidate_id,fingerprint,plan_json)
                 VALUES(?,?,?,?,?) ON CONFLICT(job_id,anchor_id,candidate_id) DO NOTHING''',
                 (run_id, anchor_id, candidate_id, fingerprint, plan.model_dump_json()))
-            saved = connection.execute('''SELECT plan_json FROM consistency_identity_inputs
+            saved = connection.execute('''SELECT fingerprint,plan_json FROM consistency_identity_inputs
                 WHERE job_id=? AND anchor_id=? AND candidate_id=?''', (run_id, anchor_id, candidate_id)).fetchone()
-        return IdentityInputPlan.model_validate_json(saved[0])
+        if saved['fingerprint'] != fingerprint or IdentityInputPlan.model_validate_json(saved['plan_json']) != plan:
+            raise ValueError('图像对观察与已冻结的来源或区域不一致')
+        return plan
 
     def validate_record(self, run_id, anchor_id, record):
         if record.execution_status != 'completed' or record.relation == 'pixel_identical':
@@ -85,6 +92,9 @@ class IdentityInputs:
         if {check.region_pair_id for check in record.region_checks} != {
                 pair.region_pair_id for pair in plan.region_pairs if pair.mapping == 'registered'}:
             raise ValueError('联合身份验证必须完整保存全部已送达成对局部的观察，整图不同也不能省略')
+        if {check.region_pair_id for check in record.unmapped_region_checks} != {
+                pair.region_pair_id for pair in plan.region_pairs if pair.mapping != 'registered'}:
+            raise ValueError('必须保存全部未配对区域的实际观察')
         pairs = {pair.region_pair_id: pair for pair in plan.region_pairs}
         media = {view.evidence_id for view in record.media}
         for check in record.region_checks:
@@ -93,3 +103,8 @@ class IdentityInputs:
                     or check.main_media_id != pair.main_media.evidence_id or check.candidate_media_id != pair.candidate_media.evidence_id
                     or not {check.main_media_id, check.candidate_media_id} <= media):
                 raise ValueError('区域判断必须引用当前可靠配对的实际双侧媒体')
+        for check in record.unmapped_region_checks:
+            pair = pairs[check.region_pair_id]
+            expected = {view.evidence_id for view in (pair.main_media, pair.candidate_media) if view is not None}
+            if len(check.media_ids) != len(expected) or set(check.media_ids) != expected or not expected <= media:
+                raise ValueError('未配对区域只能引用实际提供的局部')

@@ -2,6 +2,12 @@ from sqlite3 import Connection
 
 
 def init_content_index_schema(connection: Connection) -> None:
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_pair_reviews (
+        job_id TEXT NOT NULL REFERENCES job_runs(job_id) ON DELETE CASCADE,
+        pair_key TEXT NOT NULL,input_fingerprint TEXT NOT NULL,
+        task_json TEXT NOT NULL CHECK(json_valid(task_json)),
+        result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),
+        PRIMARY KEY(job_id,pair_key))''')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_candidate_records (
         id INTEGER PRIMARY KEY AUTOINCREMENT,job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,
         phase TEXT NOT NULL CHECK(phase IN ('gate','audit')),revision INTEGER NOT NULL CHECK(revision>0),

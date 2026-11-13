@@ -1,4 +1,8 @@
 import sqlite3
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import pytest
 from iad_core.storage.database import Database
@@ -35,6 +39,68 @@ def test_opening_initialized_database_does_not_compete_with_an_active_writer(tmp
         writer.execute('BEGIN IMMEDIATE')
         reader = Database(path)
         assert TaskRepository(reader).get('not-created') is None
+
+
+def test_a_cold_query_process_opens_initialized_database_without_a_write_lock(tmp_path):
+    path = str(tmp_path / 'cold-query.db')
+    database = Database(path)
+    with database.connection() as writer:
+        writer.execute('BEGIN IMMEDIATE')
+        query = subprocess.run([sys.executable, '-c',
+            'from iad_core.storage.database import Database;'
+            'from iad_core.storage.repositories import TaskRepository;'
+            'import sys;print(TaskRepository(Database(sys.argv[1])).get("not-created"))', path],
+            capture_output=True, text=True, timeout=3, check=True)
+        assert query.stdout.strip() == 'None'
+
+
+def test_short_connections_retain_wal_and_committed_rows_between_operations(tmp_path):
+    path = tmp_path / 'journal.db'
+    database = Database(str(path))
+    with database.connection() as connection:
+        connection.execute('CREATE TABLE connection_values(value INTEGER)')
+        connection.execute('INSERT INTO connection_values VALUES(7)')
+    journal = Path(str(path) + '-wal')
+    assert journal.exists(), 'Closing a short operation must not repeatedly checkpoint and remove WAL'
+    identity = journal.stat().st_ino
+    for _ in range(10):
+        with database.connection() as connection:
+            assert connection.execute('SELECT value FROM connection_values').fetchone()[0] == 7
+        assert journal.stat().st_ino == identity
+    database.close()
+    assert not journal.exists(), 'Releasing the database must finish the journal lifecycle'
+    with sqlite3.connect(path) as connection:
+        assert connection.execute('SELECT value FROM connection_values').fetchone()[0] == 7
+
+
+def test_short_read_and_write_connections_share_the_same_wal_without_cleanup_races(tmp_path):
+    database = Database(str(tmp_path / 'connection-churn.db'))
+    with database.connection() as connection:
+        connection.execute('CREATE TABLE connection_values(id INTEGER PRIMARY KEY,value BLOB NOT NULL)')
+
+    def access(worker):
+        for index in range(150):
+            with database.connection() as connection:
+                if worker == 0:
+                    connection.execute('INSERT INTO connection_values VALUES(?,?)', (index, b'x' * 32768))
+                else:
+                    connection.execute('SELECT COUNT(*) FROM connection_values').fetchone()
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        list(executor.map(access, range(4)))
+    with database.connection() as connection:
+        assert connection.execute('SELECT COUNT(*) FROM connection_values').fetchone()[0] == 150
+
+
+def test_temporary_connection_state_does_not_shadow_the_next_operation(tmp_path):
+    database = Database(str(tmp_path / 'temporary-state.db'))
+    with database.connection(temporary=True) as connection:
+        connection.execute('CREATE TEMP TABLE samples(sample_id TEXT)')
+        connection.execute("INSERT INTO samples VALUES('temporary-only')")
+        assert connection.execute('SELECT sample_id FROM samples').fetchone()[0] == 'temporary-only'
+    with database.connection() as connection:
+        assert connection.execute('SELECT COUNT(*) FROM samples').fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM sqlite_temp_master WHERE name='samples'").fetchone()[0] == 0
 
 
 def test_schema_changes_are_reconciled_when_reopening_database(tmp_path):

@@ -3,13 +3,12 @@ from typing import TYPE_CHECKING
 from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.candidate_records import CandidateRecords
-from iad_core.consistency.errors import ConsistencyError
+from iad_core.consistency.errors import ConsistencyError, GateReviewRequired
 from iad_core.consistency.identity_models import AnchorIdentityState, CandidateIdentityRecord
 from iad_core.consistency.identity_repository import CandidateIdentityRecords
 from iad_core.duplicate.pixels import PixelContent
 from iad_core.evidence.retained import RetainedImages
 from iad_core.evidence.images import EvidenceImages
-from iad_core.workbench.jobs import JobContext
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -31,7 +30,7 @@ class CandidateIdentity:
         state = self.read(run_id, anchor_id)
         if state.completed:
             return state
-        context = JobContext(self.runtime.jobs, run_id, self.runtime.jobs.status(run_id), self.runtime.jobs.cancelled[run_id])
+        context = self.runtime.jobs.context(run_id)
         group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, anchor_id, checkpoint=context.checkpoint)
         retained = RetainedImages(self.db)
         current = {gate.candidate_id: gate for gate in state.gates}
@@ -63,7 +62,7 @@ class CandidateIdentity:
             raise ValueError('候选资格版本已变化')
         if self.client is None:
             raise ValueError('非完全一致的候选需要冻结的视觉模型。')
-        context = JobContext(self.runtime.jobs, run_id, self.runtime.jobs.status(run_id), self.runtime.jobs.cancelled[run_id])
+        context = self.runtime.jobs.context(run_id)
         group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, anchor_id, checkpoint=context.checkpoint)
         member = next((item for item in group.members if item.image.sample_id == candidate_id), None)
         if member is None:
@@ -99,11 +98,15 @@ class CandidateIdentity:
 
     def recheck(self, run_id, anchor_id, candidate_id, *, expected_revision, request_id, attempt=1):
         state = self.read(run_id, anchor_id)
+        previous = next((gate for gate in state.gates if gate.candidate_id == candidate_id), None)
+        if previous is not None and previous.pair_key:
+            from iad_core.consistency.pair_reviews import ConsistencyPairReviews
+            return ConsistencyPairReviews(self.runtime).invalidate(run_id, anchor_id, candidate_id,
+                expected_revision=expected_revision, request_id=request_id, attempt=attempt)
         record = CandidateIdentityRecord(gate_id='pending', candidate_id=candidate_id, fingerprint=state.fingerprint,
             execution_status='pending', relation=None, reason='审核中发现身份疑点，重新核对实际图像内容。')
         with self.runtime.jobs.lock, self.db.connection() as connection:
             self.checks.attempt(run_id, anchor_id, attempt)
-            previous = next((gate for gate in state.gates if gate.candidate_id == candidate_id), None)
             if previous is not None and previous.relation == 'pixel_identical':
                 raise ValueError('不能撤销由冻结像素直接证明的同内容资格')
             saved = CandidateRecords.append(connection, run_id, anchor_id, candidate_id, 'gate', expected_revision, request_id, record)
@@ -129,7 +132,7 @@ class CandidateIdentity:
     def review_group(self, run_id: str, anchor_id: str):
         state = self.read(run_id, anchor_id)
         if not state.completed:
-            raise ValueError('必须先完成全部候选的图像身份与内容验证')
+            raise GateReviewRequired()
         group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, anchor_id, checkpoint=lambda: None)
         selected = group.model_copy(update={'members': [member for member in group.members if member.image.sample_id in state.eligible_ids]})
         task_type = self.checks.snapshot(run_id).task_type

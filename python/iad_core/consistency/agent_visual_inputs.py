@@ -11,6 +11,8 @@ from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.identity_geometry import ImageCorrespondence
 from iad_core.consistency.position import PositionComparison
 from iad_core.consistency.agent_review_models import AnchorVisualRequest, AnchorVisualResult, AnchorVisualStart
+from iad_core.consistency.evidence_models import FrozenEvidence
+from iad_core.consistency.identity_models import CandidateIdentityRecord
 from iad_core.consistency.group_analysis_inputs import GroupAnalysisInputs
 from iad_core.evidence.images import PreparedImageBundle
 from iad_core.workbench.vision import GenerationRequest, VlmClient
@@ -27,6 +29,8 @@ class AnchorVisualInput:
     images: list[PreparedImageBundle]
     response_type: type[AnchorVisualResult]
     system_prompt: str | None
+    evidence: dict[str, FrozenEvidence]
+    gates: dict[str, CandidateIdentityRecord]
 
     @classmethod
     def prepare(cls, runtime: 'WorkbenchRuntime', run_id: str, anchor_id: str, request: AnchorVisualStart, checkpoint) -> 'AnchorVisualInput':
@@ -40,7 +44,9 @@ class AnchorVisualInput:
             candidate['identity'] = {'relation': gate.relation,
                 'geometry': gate.geometry.model_dump(mode='json', exclude_none=True) if gate.geometry else None}
             candidate['gate'] = {'status':'eligible', 'revision':gate.revision,
-                'verified_region_pair_ids':[check.region_pair_id for check in gate.region_checks if check.visual_relation == 'same']}
+                'verified_region_pair_ids':[check.region_pair_id for check in gate.region_checks if check.visual_relation == 'same'],
+                'regions':[pair.model_dump(mode='json', include={'region_pair_id','source_annotations','main_window','candidate_window'})
+                    for pair in gate.region_pairs]}
             matrix = np.eye(3) if gate.relation == 'pixel_identical' else np.asarray(gate.geometry.candidate_to_main)
             mapping = ImageCorrespondence(matrix, gate.geometry)
             source = next(source for source in prepared.facts['sources'].values() if source['sample_id'] == identity)
@@ -110,8 +116,14 @@ class AnchorVisualInput:
             return result
 
         response_type = type('AnchorVisualResult', (AnchorVisualResult,), {'validate_observations': validate_observations})
-        return cls(captured, prompt, context, bundles, response_type, snapshot.system_prompt)
+        evidence = {identity: runtime.consistency_service.evidence(candidate['comparison']['evidence_id'])
+            for identity, candidate in prepared.facts['candidates'].items()}
+        return cls(captured, prompt, context, bundles, response_type, snapshot.system_prompt, evidence, gates)
 
     def plan(self, client: VlmClient) -> GenerationRequest[AnchorVisualResult]:
-        return client.plan(self.response_type, self.prompt, self.images, client.resolve_model(), context=self.context,
-            system_prompt=self.system_prompt)
+        from iad_core.consistency.annotation_inspection import AnnotationInspection
+        return AnnotationInspection(self).plan(client)
+
+    def normalize(self, response) -> AnchorVisualResult:
+        from iad_core.consistency.annotation_inspection import AnnotationInspection
+        return AnnotationInspection(self).normalize(response)

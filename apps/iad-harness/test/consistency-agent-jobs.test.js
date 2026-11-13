@@ -182,7 +182,7 @@ test('HTTP consistency checks require a stable submission id', {timeout: 30000},
   }
 });
 
-test('HTTP checks admit both review roles only after a 0.943 candidate meets the frozen threshold', {timeout: 45000}, async () => {
+test('HTTP checks compare content only after a 0.943 candidate meets the frozen threshold', {timeout: 45000}, async () => {
   const fixture = await createConsistencyAgentHost({indexMode: 'cached'});
   const server = http.createServer(createIadHttpHandler(fixture.bridge));
   try {
@@ -223,16 +223,18 @@ for name,values in [('A',(1,0)),('B',(.943,np.sqrt(1-.943**2)))]:
       assert.equal(snapshot.retrieval.min_similarity, mode === 'exact' ? null : minimum);
       snapshots.push({run_id: run.run_id, snapshot});
       const page = await read('/consistency/checks/' + run.run_id + '/anchors');assert.equal(page.total, 2);
+      let requests=0;
       for (const row of page.items) {
         const detail = await read(row.result_ref.replace('/api/iad', ''));
-        assert.equal(detail.result.reason, admitted ? 'MODEL_REVIEWED' : 'NO_CANDIDATES');
+        assert.equal(detail.result.reason, admitted ? 'NO_ELIGIBLE_CANDIDATES' : 'NO_CANDIDATES');
         assert.equal(detail.candidates.exact.selected, 0);
         assert.equal(detail.candidates.similar.selected, admitted ? 1 : 0);
         const diagnostics = await read(detail.diagnostics_ref.replace('/api/iad', ''));
-        assert.equal(diagnostics.roles.vision.generation_requests, admitted ? 1 : 0);
-        assert.equal(diagnostics.roles.agent.generation_requests > 0, admitted);
+        requests+=diagnostics.roles.vision.generation_requests;
+        assert.equal(diagnostics.roles.agent.generation_requests, 0);
         if (admitted) assert.ok(detail.candidates.candidates[0].score > .942 && detail.candidates.candidates[0].score < .944);
       }
+      assert.equal(requests,admitted?1:0,'A shared comparison has one actual provider request across both anchors');
       if (!admitted) {assert.deepEqual(fixture.wires, []);assert.deepEqual(fixture.tokenizations, []);}
     }
     for (const run of snapshots) assert.deepEqual(await read('/consistency/checks/' + run.run_id + '/config'), run.snapshot);

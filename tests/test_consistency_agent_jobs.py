@@ -6,11 +6,30 @@ from iad_core.workbench.module_settings import ModuleSettings
 from iad_core.workbench.runtime import WorkbenchRuntime
 
 
+def test_a_late_failure_after_cancellation_preserves_the_stopped_anchor(dataset):
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+
+    database, _, config = dataset
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id]})['run_id']
+        anchor = checks.anchors(run)[0]
+        checks.session_created(run, anchor.anchor_id)
+        checks.cancel(run)
+        stopped = checks.anchor(run, anchor.anchor_id)
+        assert checks.fail(run, anchor.anchor_id, '迟到的提供商异常', attempt=anchor.attempt) == stopped
+        assert runtime.jobs.status(run)['failed'] == 0
+    finally:
+        runtime.close()
+
+
 def test_check_freezes_validated_concurrency_independently_of_later_settings(dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
     database, _, config = dataset
     modules = ModuleSettings(database)
+    audit_before = modules.read('audit')
     assert modules.read('consistency').settings.concurrency == 1
     configured = modules.save({'module': 'consistency', 'expected_revision': 0,
         'settings': {'concurrency': 3}})
@@ -26,7 +45,7 @@ def test_check_freezes_validated_concurrency_independently_of_later_settings(dat
         assert checks.snapshot(started['run_id']).concurrency == 3
         modules.save({'module': 'consistency', 'expected_revision': 1, 'settings': {'concurrency': 2}})
         assert checks.snapshot(started['run_id']).concurrency == 3
-        assert modules.read('audit').settings.concurrency == 1
+        assert modules.read('audit') == audit_before
     finally:
         runtime.close()
 

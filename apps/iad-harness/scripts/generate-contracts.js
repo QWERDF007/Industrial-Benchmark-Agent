@@ -79,6 +79,7 @@ from iad_core.contracts import ArtifactRef
 from iad_core.consistency.temporary_images import TemporaryImageRef, TemporaryImageLimits
 from iad_core.consistency.policy import AnnotationPolicy
 from iad_core.consistency.agent_models import AnchorTraceEvent, ConsistencyAgentStart, ConsistencyCheckSnapshot, ConsistencyAnchorRun, ConsistencyCheckConfiguration, ConsistencyCheckReference, ConsistencyAnchorReference, ConsistencyCheckResultsQuery
+from iad_core.consistency.pair_reviews import PairReviewTask, PairReviewReceipt
 from iad_core.consistency.agent_review_models import AnchorVisualStart, AnchorObservation, AnchorObservationReceipt, AnchorContextQuery, AnchorAssessmentInput, AnchorReviewSubmission
 from iad_core.consistency.agent_result_models import AnchorResultDetail, AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport, AnchorDiagnostics, AnchorCandidatePage, AnchorImagePage
 from iad_core.consistency.workflow_models import WorkflowContextQuery, AnomalyWorkflowObserve, BboxWorkflowObserve, AnomalyWorkflowAssess, BboxWorkflowAssess, WorkflowSubmit
@@ -112,7 +113,7 @@ models.extend([ConsistencyBatch,ConsistencyBatchReference,ConsistencyBatchRetry,
 models.extend([GroupQuery,GroupMemberQuery,StrictGroupPage,GroupMemberPage,GalleryReference,GalleryQuery,GalleryMemberQuery,GalleryPage,GalleryMemberPage,GroupAnalysisView])
 models.extend([EmbeddingProfile, ImageEncoderConfig, ImageEncoderSettings, ImageEncoderEdit, ImageProfileCreate])
 models.extend([ModuleSettingsSnapshot, ModuleSettingsEdit, ModuleModelReference, ModuleSettingsValues, ConsistencySettingsValues])
-models.extend([ConsistencyAgentStart, ConsistencyCheckSnapshot, ConsistencyAnchorRun, ConsistencyCheckConfiguration, AnchorTraceEvent, ConsistencyCheckReference, ConsistencyAnchorReference, ConsistencyCheckResultsQuery])
+models.extend([ConsistencyAgentStart, ConsistencyCheckSnapshot, ConsistencyAnchorRun, ConsistencyCheckConfiguration, AnchorTraceEvent, ConsistencyCheckReference, ConsistencyAnchorReference, ConsistencyCheckResultsQuery, PairReviewTask, PairReviewReceipt])
 models.extend([AnchorVisualStart, AnchorObservation, AnchorContextQuery, AnchorAssessmentInput, AnchorReviewSubmission])
 models.extend([AnchorResultDetail, AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport])
 models.extend([NativeModelCallStart, NativeModelCallEnd])

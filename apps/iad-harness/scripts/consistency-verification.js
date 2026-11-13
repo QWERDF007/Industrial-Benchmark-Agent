@@ -49,16 +49,20 @@ export async function auditCapacity(directory) {
     const limits = snapshot.roles[role].profile;
     const generated = calls.filter(call => call.role === role && call.operation === 'generate');
     const measurements = generated.map(call => {
+      assert.ok(limits,'Actual generation has no frozen model profile');
       const body = JSON.parse(call.request_body), usage = call.usage;
-      const input = usage ? role === 'agent' ? usage.totalTokens - usage.outputTokens : usage.prompt_tokens : null;
-      const output = usage ? role === 'agent' ? usage.outputTokens : usage.completion_tokens : null;
+      const output = usage ? usage.output_tokens ?? usage.completion_tokens ?? usage.outputTokens : null;
+      const input = usage ? usage.input_tokens ?? usage.prompt_tokens ??
+        (Number.isInteger(usage.totalTokens)&&Number.isInteger(output)?usage.totalTokens-output:null) : null;
+      const requested = body.maxTokens ?? body.max_output_tokens ?? body.max_completion_tokens ?? body.max_tokens ?? null;
       const bytes = Buffer.byteLength(JSON.stringify(body));
       const checks = [
         ['provider-usage', Boolean(usage)],
-        ['requested-output', (role === 'agent' ? body.maxTokens : body.max_tokens) === limits.max_output_tokens],
+        ...(limits.max_output_tokens!==null?[['requested-output',Number.isInteger(requested)&&requested>0&&requested<=limits.max_output_tokens]]:[]),
         ...(usage ? [
-          ['frozen-context-reserve', Number.isInteger(input) && input > 0 && input + limits.max_output_tokens <= limits.context_tokens],
-          ['output-tokens', Number.isInteger(output) && output >= 0 && output <= limits.max_output_tokens],
+          ['frozen-context-reserve', Number.isInteger(input) && input > 0 &&
+            (limits.context_tokens===null || input + (requested ?? output) <= limits.context_tokens)],
+          ['output-tokens', Number.isInteger(output) && output >= 0 && (limits.max_output_tokens===null || output <= limits.max_output_tokens)],
         ] : []),
         ...(role === 'vision' && limits.max_request_bytes ? [['request-bytes', bytes <= limits.max_request_bytes]] : []),
       ];
@@ -83,8 +87,9 @@ export async function auditCapacity(directory) {
 
 export async function verifyRecordedScenario(root) {
   const read = async name => JSON.parse(await fs.readFile(path.join(root, name), 'utf8'));
-  const [status, results, diagnostics, businessReport, scenario] = await Promise.all(
-    ['status.json', 'results.json', 'diagnostics.json', 'report.json', 'scenario.json'].map(read));
+  const [status, results, diagnostics, businessReport, scenario, snapshot] = await Promise.all(
+    ['status.json', 'results.json', 'diagnostics.json', 'report.json', 'scenario.json', 'config.json'].map(read));
+  const program = snapshot.review_pipeline === 'identity-v8';
   const subjects = Object.keys(scenario.expected), values = {scenario: scenario.name}, traces = [];
   for (const detail of results) {
     const name = detail.anchor_id.split(':').at(-1);
@@ -111,14 +116,19 @@ export async function verifyRecordedScenario(root) {
     assert.equal(detail.verdict, scenario.verdict);
     assert.deepEqual(Object.fromEntries(detail.result.assessments.map(item => [path.parse(item.candidate_id.split(':').at(-1)).name, item.conclusion])), expected);
     assert.equal(detail.result.assessments.length, Object.keys(expected).length);
-    assert.equal(detail.observations.length > 0, reviewed);
+    assert.equal(detail.observations.length > 0, reviewed && snapshot.task_type!=='anomaly_detection');
     assert.equal(detail.candidates.candidates.length, Object.keys(expected).length);
     if (values.scenario === 'scale') assert.ok(detail.visual_plan.pages.length > 1, 'The real capacity planner must paginate thirty candidates');
     const trace = traces.find(item => item.anchor_id === detail.anchor_id);
     const diagnostic = diagnostics.find(item => item.anchor_id === detail.anchor_id);
     if (reviewed) {
-      for (const tool of ['anchor_context', 'anchor_observe', 'anchor_assess', 'anchor_submit']) assert.ok(trace.tools.includes(tool));
-      for (const role of ['agent', 'vision']) assert.ok(diagnostic.roles[role].generation_requests > 0);
+      if(program){
+        assert.deepEqual(trace.tools,[]);assert.equal(diagnostic.roles.agent.requests,0);
+        if(snapshot.task_type==='bbox_defect')assert.ok(diagnostic.roles.vision.generation_requests>0);
+      }else{
+        for (const tool of ['anchor_context', 'anchor_observe', 'anchor_assess', 'anchor_submit']) assert.ok(trace.tools.includes(tool));
+        for (const role of ['agent', 'vision']) assert.ok(diagnostic.roles[role].generation_requests > 0);
+      }
     } else {
       assert.deepEqual(trace.tools, []);
       assert.deepEqual(detail.candidates.candidates, []);
@@ -130,8 +140,9 @@ export async function verifyRecordedScenario(root) {
   assert.equal(new Set(results.map(item => item.session_id)).size, subjects.length);
   assert.equal(businessReport.no_candidates, Object.values(scenario.expected).filter(expected => Object.keys(expected).length === 0).length);
   assert.equal(businessReport.original_conflicts, scenario.original_conflicts);
-  assert.ok(status.model_calls.some(item => item.role === 'agent' && item.source === 'native_llm'));
-  assert.ok(status.model_calls.some(item => item.role === 'vision' && item.operation === 'generate'));
+  if(program)assert.ok(status.model_calls.every(item=>item.role==='vision'));
+  else assert.ok(status.model_calls.some(item => item.role === 'agent' && item.source === 'native_llm'));
+  if(results.some(detail=>detail.observations.length))assert.ok(status.model_calls.some(item => item.role === 'vision' && item.operation === 'generate'));
   const capacity = await auditCapacity(root);
   const toolErrors = traces.reduce((sum, item) => sum + item.errors.length, 0);
   const fixturePath = path.join(root, 'fixture.json');

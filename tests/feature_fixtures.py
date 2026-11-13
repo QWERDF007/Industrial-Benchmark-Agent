@@ -81,7 +81,7 @@ def index_test_samples(db):
     with db.connection() as connection:
         datasets=[row[0] for row in connection.execute('SELECT DISTINCT dataset_id FROM samples')]
     for dataset_id in datasets:
-        with db.connection() as connection:
+        with db.connection(temporary=True) as connection:
             scan=PixelScan(connection)
             for row in connection.execute('SELECT sample_id,image_path FROM main.samples WHERE dataset_id=?',(dataset_id,)):
                 scan.stage(row['sample_id'],row['image_path'],hashlib.sha256(Path(row['image_path']).read_bytes()).hexdigest())

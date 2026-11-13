@@ -13,6 +13,8 @@ import { message, request } from '../api.js';
 import { useModuleSettings } from '../useModuleSettings.js';
 import { getDatasetGroupId } from '../dataset-hierarchy.js';
 import { KnowledgeConfirmation } from './KnowledgeConfirmation.js';
+import { Pagination } from './Pagination.js';
+const DIRECTION_PAGE_SIZE = 8;
 export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParentId, selectedChildIds, onClose, onStarted }) {
     const parentGroups = groups.filter(group => group.group_id !== 'single');
     const configuration = useModuleSettings('knowledge');
@@ -29,6 +31,8 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
     const [setupExplored, setSetupExplored] = useState(new Set());
     const [setupEdits, setSetupEdits] = useState({});
     const [setupTab, setSetupTab] = useState('preset');
+    const [presetPage, setPresetPage] = useState(1);
+    const [exploredPage, setExploredPage] = useState(1);
     const [setupPrompt, setSetupPrompt] = useState("");
     const [systemPrompt, setSystemPrompt] = useState(promptDefaults.system.knowledge);
     const [setupPromptDirty, setSetupPromptDirty] = useState(false);
@@ -71,6 +75,7 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
         const controller = new AbortController();
         setDirectionsError('');
         setDirectionsLoading(true);
+        setExploredPage(1);
         const ids = JSON.parse(subsetIds);
         request(`/analysis/directions?${new URLSearchParams({ dataset_ids: JSON.stringify(ids) })}`, undefined, undefined, controller.signal)
             .then(({ directions }) => {
@@ -88,6 +93,8 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
         return () => controller.abort();
     }, [subsetIds]);
     const kbExploredDirs = exploredDirections;
+    const currentPresetPage = Math.min(presetPage, Math.max(1, Math.ceil(presetDirections.length / DIRECTION_PAGE_SIZE)));
+    const currentExploredPage = Math.min(exploredPage, Math.max(1, Math.ceil(kbExploredDirs.length / DIRECTION_PAGE_SIZE)));
     const getDirInfo = useCallback((item, dirKind) => {
         const edit = setupEdits[`${dirKind}:${item.id}`];
         return edit ? { ...item, ...edit } : item;
@@ -237,39 +244,39 @@ export function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParen
                                 }), disabled: submitting || directionsLoading || presetsLoading || !!started.current, groupId: "kb-setup-dataset", childId: "kb-setup-child-trigger", childMenuId: "kb-setup-child-menu" }), _jsxs("section", { className: "exp-panel kb-setup-directions", "aria-labelledby": "kb-direction-heading", children: [_jsx("h2", { id: "kb-direction-heading", children: "\u9009\u62E9\u6316\u6398\u65B9\u5411" }), _jsx(TabBar, { label: "\u6316\u6398\u65B9\u5411\u7C7B\u578B", value: setupTab, onChange: setSetupTab, items: [
                                             { id: 'preset', label: '通用预设方向', buttonProps: { id: 'kb-tab-preset', 'aria-controls': 'kb-preset-panel', 'data-kb-tab': 'preset' } },
                                             { id: 'explore', label: '方向探索', buttonProps: { id: 'kb-tab-explore', 'aria-controls': 'kb-explore-panel', 'data-kb-tab': 'explore' } },
-                                        ] }), _jsx("div", { id: "kb-preset-panel", role: "tabpanel", "aria-labelledby": "kb-tab-preset", className: setupTab !== "preset" ? "hide" : "", children: _jsx("div", { className: "kb-direction-table-wrap", children: _jsxs("table", { className: "kb-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { className: "kb-dir-check", children: _jsx("span", { className: "sr-only", children: "\u9009\u62E9" }) }), _jsx("th", { className: "kb-dir-title", children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { id: "general-directions", children: presetDirections.map(p => {
-                                                            const info = getDirInfo(p, "preset");
-                                                            const checked = setupGeneral.has(p.id);
-                                                            return (_jsxs("tr", { children: [_jsx("td", { className: "kb-dir-check", children: _jsx("input", { type: "checkbox", "data-dir-kind": "preset", "data-dir-id": p.id, "aria-label": `选择${info.name}`, checked: checked, onChange: e => {
-                                                                                const next = new Set(setupGeneral);
-                                                                                if (e.target.checked)
-                                                                                    next.add(p.id);
-                                                                                else
-                                                                                    next.delete(p.id);
-                                                                                setSetupGeneral(next);
-                                                                            } }) }), _jsx("td", { children: info.name }), _jsx("td", { children: info.text }), _jsx("td", { className: "kb-dir-action", children: _jsx(IconButton, { icon: "edit", type: "button", "data-edit-kind": "preset", "data-edit-id": p.id, label: `编辑方向 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
-                                                                                setEditingDir({ kind: "preset", id: p.id });
-                                                                                setEditingName(info.name);
-                                                                                setEditingText(info.text);
-                                                                                setDirEditError("");
-                                                                            } }) })] }, p.id));
-                                                        }) })] }) }) }), _jsx("div", { id: "kb-explore-panel", role: "tabpanel", "aria-labelledby": "kb-tab-explore", className: setupTab !== "explore" ? "hide" : "", children: _jsx("div", { className: "kb-direction-table-wrap", children: _jsxs("table", { className: "kb-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { className: "kb-dir-check", children: _jsx("span", { className: "sr-only", children: "\u9009\u62E9" }) }), _jsx("th", { className: "kb-dir-title", children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { id: "explored-directions", children: kbExploredDirs.length ? (kbExploredDirs.map(e => {
-                                                            const info = getDirInfo(e, "explore");
-                                                            const checked = setupExplored.has(e.id);
-                                                            return (_jsxs("tr", { children: [_jsx("td", { className: "kb-dir-check", children: _jsx("input", { type: "checkbox", "data-dir-kind": "explore", "data-dir-id": e.id, "aria-label": `选择${info.name}`, checked: checked, onChange: ev => {
-                                                                                const next = new Set(setupExplored);
-                                                                                if (ev.target.checked)
-                                                                                    next.add(e.id);
-                                                                                else
-                                                                                    next.delete(e.id);
-                                                                                setSetupExplored(next);
-                                                                            } }) }), _jsx("td", { children: info.name }), _jsx("td", { children: info.text }), _jsx("td", { className: "kb-dir-action", children: _jsx(IconButton, { icon: "edit", type: "button", "data-edit-kind": "explore", "data-edit-id": e.id, label: `编辑方向 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
-                                                                                setEditingDir({ kind: "explore", id: e.id });
-                                                                                setEditingName(info.name);
-                                                                                setEditingText(info.text);
-                                                                                setDirEditError("");
-                                                                            } }) })] }, e.id));
-                                                        })) : (_jsx("tr", { children: _jsx("td", { colSpan: 4, className: "kb-directions-empty", children: "\u6240\u9009\u5B50\u6570\u636E\u96C6\u6682\u65E0\u65B9\u5411\u63A2\u7D22\u7ED3\u679C\u3002" }) })) })] }) }) })] }), _jsxs("section", { className: "exp-panel kb-setup-prompt", "aria-labelledby": "kb-prompt-title", children: [_jsxs("div", { className: "kb-prompt-header", children: [_jsx("h2", { id: "kb-prompt-title", children: "\u63D0\u793A\u8BCD" }), _jsx(Button, { type: "button", id: "compose-prompt", onClick: handleRestorePrompt, children: "\u6062\u590D\u81EA\u52A8\u751F\u6210" })] }), _jsx(AgentPromptEditors, { id: "prompt-text", agentLabel: "\u4E3B Agent", system: systemPrompt, user: setupPrompt, onSystemChange: setSystemPrompt, onUserChange: text => {
+                                        ] }), _jsxs("div", { id: "kb-preset-panel", role: "tabpanel", "aria-labelledby": "kb-tab-preset", className: setupTab !== "preset" ? "hide" : "", children: [_jsx("div", { className: "kb-direction-table-wrap", children: _jsxs("table", { className: "kb-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { className: "kb-dir-check", children: _jsx("span", { className: "sr-only", children: "\u9009\u62E9" }) }), _jsx("th", { className: "kb-dir-title", children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { id: "general-directions", children: presetDirections.slice((currentPresetPage - 1) * DIRECTION_PAGE_SIZE, currentPresetPage * DIRECTION_PAGE_SIZE).map(p => {
+                                                                const info = getDirInfo(p, "preset");
+                                                                const checked = setupGeneral.has(p.id);
+                                                                return (_jsxs("tr", { children: [_jsx("td", { className: "kb-dir-check", children: _jsx("input", { type: "checkbox", "data-dir-kind": "preset", "data-dir-id": p.id, "aria-label": `选择${info.name}`, checked: checked, onChange: e => {
+                                                                                    const next = new Set(setupGeneral);
+                                                                                    if (e.target.checked)
+                                                                                        next.add(p.id);
+                                                                                    else
+                                                                                        next.delete(p.id);
+                                                                                    setSetupGeneral(next);
+                                                                                } }) }), _jsx("td", { children: info.name }), _jsx("td", { children: info.text }), _jsx("td", { className: "kb-dir-action", children: _jsx(IconButton, { icon: "edit", type: "button", "data-edit-kind": "preset", "data-edit-id": p.id, label: `编辑方向 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
+                                                                                    setEditingDir({ kind: "preset", id: p.id });
+                                                                                    setEditingName(info.name);
+                                                                                    setEditingText(info.text);
+                                                                                    setDirEditError("");
+                                                                                } }) })] }, p.id));
+                                                            }) })] }) }), _jsx(Pagination, { total: presetDirections.length, page: currentPresetPage, size: DIRECTION_PAGE_SIZE, unit: "\u9879", label: "\u901A\u7528\u9884\u8BBE\u65B9\u5411", hideSinglePage: true, onPage: setPresetPage })] }), _jsxs("div", { id: "kb-explore-panel", role: "tabpanel", "aria-labelledby": "kb-tab-explore", className: setupTab !== "explore" ? "hide" : "", children: [_jsx("div", { className: "kb-direction-table-wrap", children: _jsxs("table", { className: "kb-direction-table", children: [_jsx("thead", { children: _jsxs("tr", { children: [_jsx("th", { className: "kb-dir-check", children: _jsx("span", { className: "sr-only", children: "\u9009\u62E9" }) }), _jsx("th", { className: "kb-dir-title", children: "\u65B9\u5411" }), _jsx("th", { children: "\u63CF\u8FF0" }), _jsx("th", { className: "kb-dir-action", children: "\u64CD\u4F5C" })] }) }), _jsx("tbody", { id: "explored-directions", children: kbExploredDirs.length ? (kbExploredDirs.slice((currentExploredPage - 1) * DIRECTION_PAGE_SIZE, currentExploredPage * DIRECTION_PAGE_SIZE).map(e => {
+                                                                const info = getDirInfo(e, "explore");
+                                                                const checked = setupExplored.has(e.id);
+                                                                return (_jsxs("tr", { children: [_jsx("td", { className: "kb-dir-check", children: _jsx("input", { type: "checkbox", "data-dir-kind": "explore", "data-dir-id": e.id, "aria-label": `选择${info.name}`, checked: checked, onChange: ev => {
+                                                                                    const next = new Set(setupExplored);
+                                                                                    if (ev.target.checked)
+                                                                                        next.add(e.id);
+                                                                                    else
+                                                                                        next.delete(e.id);
+                                                                                    setSetupExplored(next);
+                                                                                } }) }), _jsx("td", { children: info.name }), _jsx("td", { children: info.text }), _jsx("td", { className: "kb-dir-action", children: _jsx(IconButton, { icon: "edit", type: "button", "data-edit-kind": "explore", "data-edit-id": e.id, label: `编辑方向 ${info.name}`, title: "\u7F16\u8F91\u65B9\u5411", onClick: () => {
+                                                                                    setEditingDir({ kind: "explore", id: e.id });
+                                                                                    setEditingName(info.name);
+                                                                                    setEditingText(info.text);
+                                                                                    setDirEditError("");
+                                                                                } }) })] }, e.id));
+                                                            })) : (_jsx("tr", { children: _jsx("td", { colSpan: 4, className: "kb-directions-empty", children: "\u6240\u9009\u5B50\u6570\u636E\u96C6\u6682\u65E0\u65B9\u5411\u63A2\u7D22\u7ED3\u679C\u3002" }) })) })] }) }), _jsx(Pagination, { total: kbExploredDirs.length, page: currentExploredPage, size: DIRECTION_PAGE_SIZE, unit: "\u9879", label: "\u65B9\u5411\u63A2\u7D22", hideSinglePage: true, onPage: setExploredPage })] })] }), _jsxs("section", { className: "exp-panel kb-setup-prompt", "aria-labelledby": "kb-prompt-title", children: [_jsxs("div", { className: "kb-prompt-header", children: [_jsx("h2", { id: "kb-prompt-title", children: "\u63D0\u793A\u8BCD" }), _jsx(Button, { type: "button", id: "compose-prompt", onClick: handleRestorePrompt, children: "\u6062\u590D\u81EA\u52A8\u751F\u6210" })] }), _jsx(AgentPromptEditors, { id: "prompt-text", agentLabel: "\u4E3B Agent", system: systemPrompt, user: setupPrompt, onSystemChange: setSystemPrompt, onUserChange: text => {
                                             setSetupPrompt(text);
                                             setSetupPromptDirty(true);
                                         }, disabled: submitting, children: _jsx(AgentPromptEditors, { id: "kb-observer-prompt", agentLabel: "\u5B50 Agent", system: observerSystemPrompt, user: observerUserPrompt, onSystemChange: setObserverSystemPrompt, onUserChange: text => { setObserverUserPrompt(text); setObserverPromptDirty(true); }, disabled: submitting }) }), _jsx("div", { className: "kb-prompt-note", id: "prompt-note", "aria-live": "polite", children: setupPromptDirty ? "已手动修改，方向调整后保持当前内容。" : "" })] })] }), _jsxs("section", { className: "exp-panel kb-setup-confirm", "aria-labelledby": "kb-confirm-title", children: [_jsx("div", { className: "exp-panel-title", children: _jsx("h2", { id: "kb-confirm-title", children: "\u786E\u8BA4\u5E76\u542F\u52A8" }) }), _jsxs("div", { className: "exp-brief", id: "kb-run-summary", "aria-live": "polite", children: [_jsxs("span", { children: ["\u5B50\u6570\u636E\u96C6 ", setupSubsets.size, " \u4E2A"] }), _jsxs("span", { children: ["\u6316\u6398\u65B9\u5411 ", allSelectedDirItems.length, " \u9879"] }), _jsx("span", { children: "\u8303\u56F4 \u5168\u90E8\u767B\u8BB0\u56FE\u50CF" }), _jsxs("label", { children: ["\u6BCF\u6279\u56FE\u50CF\u6570 ", _jsx("input", { className: "f", "aria-label": "\u6BCF\u6279\u6316\u6398\u56FE\u50CF\u6570", type: "number", min: "1", max: "200", value: batchSize ?? '', disabled: submitting || !!started.current || configuration.loading, "aria-describedby": "kb-run-check", onChange: e => setBatchSize(Number(e.target.value)), onBlur: () => { if (batchSize !== null && Number.isInteger(batchSize) && batchSize >= 1 && batchSize <= 200 && batchSize !== configuredBatch)
