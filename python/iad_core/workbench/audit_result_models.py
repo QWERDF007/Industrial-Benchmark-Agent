@@ -5,6 +5,7 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.workbench.job_models import JobStatus
 from iad_core.audit.profile_models import AuditDatasetProfile
+from iad_core.audit.distribution_models import AuditDataDistribution
 from iad_core.audit.report_models import AuditStatistics, AuditReportImage, AuditDiscovery, AuditReportedCapability, AuditUsabilityAssessment, AuditCoverageTopic, AuditConsistencyAnalysis, AuditReportCase, AuditCapabilityTopic
 from iad_core.audit.report_models import AuditKnowledgeAnalysis, AuditConsistencyScope
 from iad_core.audit.knowledge_models import AuditSelectedCheck
@@ -88,6 +89,7 @@ class AuditRunReport(AnalysisModel):
     evidence_groups: dict[str,list[AuditReportImage]] = Field(default_factory=dict)
     discoveries: list[AuditDiscovery] = Field(default_factory=list)
     dataset_profile: AuditDatasetProfile | None = None
+    data_distribution: AuditDataDistribution | None = None
     coverage_analysis: str = ''
     coverage_topics: list[AuditCoverageTopic] = Field(default_factory=list)
     consistency_analyses: list[AuditConsistencyAnalysis] = Field(default_factory=list)

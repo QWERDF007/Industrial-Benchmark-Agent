@@ -1,0 +1,1 @@
+{"version":3,"file":"distribution.parameters.generated.d.ts","sourceRoot":"","sources":["../../src/shared/distribution.parameters.generated.ts"],"names":[],"mappings":"AACA,eAAO,MAAM,2BAA2B;aACtC,UAAY;iBACV,KAAO;qBAEH,IAAM,EAAE,QAAQ;;qBAGhB,IAAM,EAAE,MAAM;;iBAGlB,KAAO,EAAE,YAAY;;aAEvB,QAAU;iBACR,KAAO;qBAEH,IAAM,EAAE,QAAQ;;qBAGhB,IAAM,EAAE,MAAM;;iBAGlB,KAAO,EAAE,UAAU;;CAEb,CAAC"}

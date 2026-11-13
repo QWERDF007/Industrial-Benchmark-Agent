@@ -3,10 +3,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
-import numpy as np
-
-from iad_core.audit.profile_models import (AuditBenchmarkSource, AuditDatasetProfile, AuditGeometryProfile,
-    AuditMetadataCoverage, AuditQuantiles)
+from iad_core.audit.distribution import AuditDistributions
+from iad_core.audit.profile_models import AuditBenchmarkSource, AuditDatasetProfile, AuditMetadataCoverage
 from iad_core.benchmark.readiness import evaluate_track_readiness
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.duplicate.pair_repository import PairObservations
@@ -38,26 +36,7 @@ class AuditDatasetProfiles:
             distribution = Counter(values)
             metadata[name] = AuditMetadataCoverage(covered_images=len(values),
                 distinct_count=len(distribution) if distribution else None,distribution=dict(distribution))
-        geometry = None
-        if records[0].dataset_format == 'labelme':
-            measures = {key:[] for key in ('relative_area','relative_width','relative_height','aspect_ratio','center_x','center_y')}
-            instance_counts = Counter()
-            annotated_images = 0
-            for record in records:
-                boxes = [annotation.bbox for annotation in record.annotations if annotation.bbox and annotation.geometry_status=='VALID']
-                instance_counts[str(len(boxes))] += 1
-                annotated_images += bool(boxes)
-                for x0,y0,x1,y1 in boxes:
-                    width,height = x1-x0,y1-y0
-                    values = dict(relative_area=width*height/(record.sample.width*record.sample.height),
-                        relative_width=width/record.sample.width,relative_height=height/record.sample.height,
-                        aspect_ratio=width/height,center_x=(x0+x1)/(2*record.sample.width),center_y=(y0+y1)/(2*record.sample.height))
-                    for key,value in values.items():
-                        measures[key].append(value)
-            quantiles = {key:AuditQuantiles(**dict(zip(AuditQuantiles.model_fields,np.quantile(values,[0,.25,.5,.75,1]).tolist())))
-                if values else None for key,values in measures.items()}
-            geometry = AuditGeometryProfile(box_count=len(measures['relative_area']),annotated_images=annotated_images,
-                instance_distribution=dict(instance_counts),**quantiles)
+        geometry = AuditDistributions(manifest).geometry()
         groups = ContentRelations(self.db).groups(list(ids))
         covered = {identity for group in groups for identity in group.sample_ids} >= ids
         duplicates = [ids.intersection(group.sample_ids) for group in groups if len(ids.intersection(group.sample_ids))>1]

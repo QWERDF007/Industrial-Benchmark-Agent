@@ -104,7 +104,7 @@ def test_knowledge_chapter_preserves_selected_entries_and_uses_real_counts_and_o
         assert 'knowledge-source:K1' not in AuditQueries(jobs.db).report(run_id).evidence_groups
 
 
-def test_completed_report_keeps_its_frozen_artifact_without_reauditing(native_audit):
+def test_completed_report_renders_current_charts_from_frozen_results_without_reauditing(native_audit):
     import json
     jobs, dataset_id, upstream, role = native_audit
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
@@ -121,10 +121,14 @@ def test_completed_report_keeps_its_frozen_artifact_without_reauditing(native_au
         connection.execute('UPDATE audit_workflow_runs SET report_html=? WHERE job_id=?', ('<p>旧展示</p>', run_id))
         calls = connection.execute('SELECT count(*) FROM model_calls WHERE run_id=?', (run_id,)).fetchone()[0]
     reports.finalize(run_id)
-    assert AuditQueries(jobs.db).export(run_id)['html'] == '<p>旧展示</p>'
+    exported = AuditQueries(jobs.db).export(run_id)['html']
+    payload = json.loads(exported.split('<script id="audit-report-data" type="application/json">')[1].split('</script>')[0])
+    assert payload['report']['conclusion'] == json.loads(summary)['conclusion']
+    assert payload['report']['data_distribution']['slices'][0]['image_count'] == 6
     with jobs.db.connection() as connection:
         assert json.loads(connection.execute('SELECT summary_json FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()[0]) == json.loads(summary)
         assert connection.execute('SELECT count(*) FROM model_calls WHERE run_id=?', (run_id,)).fetchone()[0] == calls
+        assert connection.execute('SELECT report_html FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()[0] == '<p>旧展示</p>'
     assert [sample.model_dump_json() for sample in jobs.samples(run_id)] == before
 
 

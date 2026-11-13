@@ -12,7 +12,6 @@ import numpy as np
 
 from iad_core.consistency.models import ImageRetrieve
 from iad_core.consistency.scopes import ConsistencyScopes
-from iad_core.feature.flat_index import cpu_library
 from iad_core.evaluation.resource_models import ResourceChecks
 from iad_core.feature.profiles import ImageEncoderConfig
 from iad_core.storage.database import Database
@@ -31,7 +30,6 @@ def measure_resource_index(prepared: dict, output: Path, *, queries: int = 30, c
         raise ValueError('Existing resource measurements are retained; choose a fresh run')
     config = ImageEncoderConfig.model_validate(prepared['config'])
     db = Database(prepared['baseline_db'])
-    cpu_library()
     baseline_rss = int(Path('/proc/self/statm').read_text().split()[1]) * os.sysconf('SC_PAGE_SIZE')
     reports = {}
     with closing(WorkbenchRuntime(db)) as runtime:
@@ -43,10 +41,10 @@ def measure_resource_index(prepared: dict, output: Path, *, queries: int = 30, c
             if scope.sample_count != len(subjects):
                 raise ValueError('Resource corpus changed after preparation')
             started = time.perf_counter()
-            info = runtime.indexes.prepare(scope, config.profile.profile_id)
+            info = runtime.indexes.prepare(scope, config.profile.profile_id, device=config.index_device)
             cold_index_seconds = time.perf_counter() - started
             started = time.perf_counter()
-            repeated = runtime.indexes.prepare(scope, config.profile.profile_id)
+            repeated = runtime.indexes.prepare(scope, config.profile.profile_id, device=config.index_device)
             hot_index_seconds = time.perf_counter() - started
             if info.generation != repeated.generation:
                 raise ValueError('Unchanged resource index rebuilt unexpectedly')
@@ -56,7 +54,7 @@ def measure_resource_index(prepared: dict, output: Path, *, queries: int = 30, c
                 dtype=config.profile.storage_dtype).astype(np.float32).reshape(1, -1) for identity in query_ids]
             vector_measurements, cold_times, hot_times, verified_counts = [], [], [], []
             cache_advice = 'POSIX_FADV_DONTNEED after per-file fsync; advisory'
-            with runtime.indexes.acquire(scope, config.profile.profile_id) as index:
+            with runtime.indexes.acquire(scope, config.profile.profile_id, device=config.index_device) as index:
                 for identity, vector in zip(query_ids, vectors):
                     started = time.perf_counter()
                     index.search(vector, top_k=candidates + 1)
@@ -118,7 +116,7 @@ def measure_resource_index(prepared: dict, output: Path, *, queries: int = 30, c
             'resources': {'baseline_rss_bytes': baseline_rss, 'process_peak_rss_bytes': peak_rss,
                 'additional_rss_upper_bound_bytes': max(0, peak_rss - baseline_rss), 'peak_method': 'kernel ru_maxrss in a separate model-free process',
                 'decode_workers': config.decode_workers, 'decode_memory_mb': config.decode_memory_mb,
-                'faiss_threads': runtime.indexes.limits.cpu_threads, 'query_concurrency': 1},
+                'index_device': config.index_device, 'index_storage_dtype': info.storage_dtype, 'query_concurrency': 1},
             'gates': gates.model_dump(), 'measured_checks_passed': gates.passed, 'publication_ready': False}
     report['storage'] = {'database_bytes': sum(path.stat().st_size for path in output.glob('baseline.db*') if path.is_file()),
         'evidence_bytes': sum(path.stat().st_size for path in (output / 'evidence').rglob('*') if path.is_file())}

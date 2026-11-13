@@ -39,6 +39,9 @@ test('shared preparation can outlive a control RPC deadline without failing the 
     await delay(2300);
     assert.equal((await fixture.bridge.execute('analysis_status', {run_id: job.run_id})).phase, 'PREPARING_SHARED_INDEX');
     assert.equal(fixture.wires.length, 0, 'Review cannot start while the shared feature preparation is blocked');
+    const {anchors}=await fixture.bridge.execute('consistency_agent_anchors',{run_id:job.run_id});
+    assert.ok(anchors.every(anchor=>!anchor.session_created));
+    for(const anchor of anchors)assert.equal(await fixture.host.exists(anchor.session_id),false);
     worker.stdin.end();await exited;
     await fixture.scheduler.whenIdle();
     const final = await fixture.bridge.execute('analysis_status', {run_id: job.run_id});

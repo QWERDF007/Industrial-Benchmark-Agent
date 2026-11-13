@@ -35,7 +35,7 @@ def write_resource_report(output: Path) -> dict:
     lines += ['', f'扫描 {preparation["scan"]:.2f} 秒，首次编码 {preparation["encoding"]:.2f} 秒；'
         f'{prepared["throughput"]["encoded_images_per_second"]:.2f} 图/秒、{prepared["throughput"]["encoded_megapixels_per_second"]:.2f} MPixel/秒。', '',
         f'模型外进程附加 RSS 上界：{resources["additional_rss_upper_bound_bytes"] / 1024**2:.2f} MiB。'
-        f'解码 {resources["decode_workers"]} 线程、{resources["decode_memory_mb"]} MiB 预算，FAISS {resources["faiss_threads"]} 线程。', '',
+        f'解码 {resources["decode_workers"]} 线程、{resources["decode_memory_mb"]} MiB 预算，FAISS GPU {resources["index_device"]}、{resources["index_storage_dtype"]} 存储。', '',
         '冷缓存采用逐文件 POSIX_FADV_DONTNEED 建议；系统缓存是否完全清除没有强制保证。测量原始数组、容量及进程口径见 [resources.json](resources.json)。', '',
         '## 增量与停止', '']
     if incremental:

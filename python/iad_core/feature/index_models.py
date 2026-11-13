@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Literal
 
 from pydantic import ConfigDict, Field
 
@@ -13,7 +14,6 @@ class IndexLimits(AnalysisModel):
     max_entries: int = Field(default=8,ge=1)
     query_batch_size: int = Field(default=128,ge=1,le=256)
     max_neighbors: int = Field(default=256,ge=1,le=1024)
-    cpu_threads: int = Field(default=2,ge=1,le=2)
 
 
 class CorpusIndexInfo(AnalysisModel):
@@ -30,6 +30,9 @@ class CorpusIndexInfo(AnalysisModel):
     resident_bytes: int
     coverage: CoverageCount
     index_path: str
+    backend: Literal['faiss-gpu-flat'] = 'faiss-gpu-flat'
+    device: int = Field(default=0, ge=0)
+    storage_dtype: Literal['float16'] = 'float16'
 
 
 class IndexStats(AnalysisModel):

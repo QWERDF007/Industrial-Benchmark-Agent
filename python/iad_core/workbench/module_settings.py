@@ -107,7 +107,8 @@ class ModuleSettings:
         return ModuleSettingsSnapshot(module=edit.module, revision=revision + 1, settings=values)
 
     def consistency_request(self, request: dict) -> dict:
-        defaults = self.read('consistency').settings.model_dump(include={'mode', 'min_similarity'})
+        settings = self.read('consistency').settings
+        defaults = {**settings.model_dump(include={'mode', 'min_similarity'}), 'top_k': settings.max_similar_candidates}
         return {**defaults, **request}
 
 

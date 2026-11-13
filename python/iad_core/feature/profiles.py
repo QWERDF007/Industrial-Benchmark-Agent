@@ -1,41 +1,21 @@
 import hashlib
 import json
 from contextlib import nullcontext
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Optional
 
-from pydantic import ConfigDict, Field, FiniteFloat, model_validator
+from pydantic import ConfigDict, Field, FiniteFloat, TypeAdapter, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.storage.database import Database
 from iad_core.feature.local_dino import LocalDinoSnapshot
 from iad_core.feature.base import EmbeddingPrecision
+from iad_core.feature.backbones import BACKBONES, DinoInputSize, DinoModelId, ImageModelId
 
 
-@dataclass(frozen=True)
-class Backbone:
-    backend: str
-    processor: str
-    input_size: int
-    pooling: str
-    dim: int
-    resize_size: int
-    resize_mode: str
-    crop: str
-    interpolation: str
-    local_snapshot: bool = False
-
-
-BACKBONES = {
-    'dinov2_vitb14_reg': Backbone('torch_hub', 'dinov2_imagenet_eval', 224, 'x_norm_clstoken', 768,256,'shorter_side','center','bicubic'),
-    'dinov3_vitb16': Backbone('torch_hub', 'dinov3_lvd_eval', 256, 'x_norm_clstoken', 768,256,'stretch','none','bilinear',True),
-    'sscd_disc_mixup': Backbone('torchscript', 'sscd_skew320', 320, 'serialized_global', 512,320,'stretch','none','bilinear'),
-}
 IMAGENET_MEAN=(.485,.456,.406)
 IMAGENET_STD=(.229,.224,.225)
-ImageModelId = Literal['dinov2_vitb14_reg', 'dinov3_vitb16', 'sscd_disc_mixup']
 
 
 def source_fingerprint(root: Path) -> str:
@@ -117,7 +97,9 @@ class EmbeddingProfile(AnalysisModel):
 
     @classmethod
     def create(cls, model_id: str, weights_ref: str, source_ref: Optional[str] = None,
-               storage_dtype: EmbeddingPrecision = 'float32') -> 'EmbeddingProfile':
+               storage_dtype: EmbeddingPrecision = 'float32', input_size: int | None = None) -> 'EmbeddingProfile':
+        if input_size is not None:
+            input_size = TypeAdapter(DinoInputSize).validate_python(input_size)
         if model_id not in BACKBONES:
             raise ConsistencyError('ENCODER_UNAVAILABLE', 'Unsupported image backbone: ' + model_id)
         backbone = BACKBONES[model_id]
@@ -130,7 +112,7 @@ class EmbeddingProfile(AnalysisModel):
             root=weights if weights.is_dir() else weights.parent
             if not weights.is_dir() and weights.name!='model.safetensors':
                 raise ConsistencyError('ENCODER_UNAVAILABLE','Local snapshot weights must be named model.safetensors')
-            local=LocalDinoSnapshot.read(root)
+            local=LocalDinoSnapshot.read(root,DinoModelId(model_id))
             weights=root/'model.safetensors'
         source = Path(source_ref).expanduser().resolve() if source_ref else None
         payload = dict(backend=backbone.backend,model_id=model_id,weights_ref=str(weights),
@@ -142,9 +124,12 @@ class EmbeddingProfile(AnalysisModel):
             storage_dtype=storage_dtype,color_conversion='rgb_alpha_white_uint16_div257',orientation='raw',
             artifacts_sha256=None,runtime_version=None)
         if local:
+            size=input_size if input_size is not None else local.input_size
             payload.update(backend='transformers',processor='dinov3_hf_eval',pooling='pooler_output',
-                input_size=local.input_size,resize_size=local.input_size,
+                input_size=size,resize_size=size,
                 artifacts_sha256=local.artifacts_sha256,runtime_version=local.runtime_version)
+        elif input_size is not None and input_size!=backbone.input_size:
+            raise ValueError('Custom input size requires a local DINOv3 snapshot')
         profile_id = 'embedding_' + hashlib.sha256(json.dumps(payload,sort_keys=True).encode()).hexdigest()
         return cls(profile_id=profile_id,**payload)
 
@@ -154,9 +139,8 @@ class EmbeddingProfile(AnalysisModel):
         if self.source_ref and source_fingerprint(Path(self.source_ref))!=self.source_sha256:
             raise ConsistencyError('ENCODER_UNAVAILABLE','Model source changed; create a new profile')
         if self.backend=='transformers':
-            snapshot=LocalDinoSnapshot.read(Path(self.weights_ref).parent)
-            if (snapshot.artifacts_sha256!=self.artifacts_sha256 or snapshot.runtime_version!=self.runtime_version
-                or snapshot.input_size!=self.input_size):
+            snapshot=LocalDinoSnapshot.read(Path(self.weights_ref).parent,DinoModelId(self.model_id))
+            if snapshot.artifacts_sha256!=self.artifacts_sha256 or snapshot.runtime_version!=self.runtime_version:
                 raise ConsistencyError('ENCODER_UNAVAILABLE','Local model artifacts or runtime changed; create a new profile')
 
 
@@ -167,6 +151,10 @@ class ImageResources(AnalysisModel):
     compute_dtype: EmbeddingPrecision = 'float32'
     decode_workers: int = Field(default=2,ge=1,le=8,strict=True)
     decode_memory_mb: int = Field(default=512,ge=1,le=1024,strict=True)
+
+    @property
+    def index_device(self) -> int:
+        return int(self.device.removeprefix('cuda:')) if self.device.startswith('cuda:') else 0
 
     @model_validator(mode='after')
     def cpu_precision(self):

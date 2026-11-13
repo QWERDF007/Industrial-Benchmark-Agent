@@ -15,8 +15,8 @@ import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {fileURLToPath} from 'node:url';
 import {createAuditAgentHost} from './fixtures/audit-agent-host.js';
 
-for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,failReportOnce=false,correctKnowledgeOnce=false} of [{withKnowledge:false,failReportOnce:true},{withKnowledge:false},{withKnowledge:true},{withKnowledge:false,protocol:'openai-responses'},
-  ...['openai-completions','openai-responses'].map(protocol=>({withKnowledge:false,protocol,optionalOutput:true})),{withKnowledge:false,correctKnowledgeOnce:true}])test(`${withKnowledge?'selected weak knowledge and counter evidence':'zero knowledge'} with no consistency candidates audits every image in independent native Sessions${protocol==='openai-responses'?' with Responses reasoning':''}${optionalOutput?' without a configured output limit':''}${failReportOnce?' and a report-only retry':''}${correctKnowledgeOnce?' correcting an invented knowledge ID from tool feedback':''}`, {timeout:process.env.IAD_AUDIT_BROWSER==='1'?120000:60000}, async t=>{
+for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,failReportOnce=false,correctKnowledgeOnce=false,withDistribution=false} of [{withKnowledge:false,withDistribution:true},{withKnowledge:false,failReportOnce:true},{withKnowledge:false},{withKnowledge:true},{withKnowledge:false,protocol:'openai-responses'},
+  ...['openai-completions','openai-responses'].map(protocol=>({withKnowledge:false,protocol,optionalOutput:true})),{withKnowledge:false,correctKnowledgeOnce:true}])test(`${withDistribution?'frozen dataset distribution: ':''}${withKnowledge?'selected weak knowledge and counter evidence':'zero knowledge'} with no consistency candidates audits every image in independent native Sessions${protocol==='openai-responses'?' with Responses reasoning':''}${optionalOutput?' without a configured output limit':''}${failReportOnce?' and a report-only retry':''}${correctKnowledgeOnce?' correcting an invented knowledge ID from tool feedback':''}`, {timeout:process.env.IAD_AUDIT_BROWSER==='1'?120000:60000}, async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-native-'));
   const workspace=findWorkspaceRoot(), database=path.join(root,'audit.db'), wire=[], errors=[];
   let runtime,bridge,host,ctx,scheduler,server,reportFailed=false;
@@ -31,7 +31,7 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
       const {context,outputs,pages}=auditMessages(body);
       if(context?.phase){
         if(context.phase==='report'&&failReportOnce&&!reportFailed){reportFailed=true;res.writeHead(503);res.end(JSON.stringify({error:{message:'报告模型临时不可用'}}));return;}
-        respondFixtureTools(res,[auditReportTool(context,outputs,{includeCounter:withKnowledge})],{protocol,model:'native-audit'});return;
+        respondFixtureTools(res,[auditReportTool(context,outputs,{includeCounter:withKnowledge,includeDistribution:withDistribution})],{protocol,model:'native-audit'});return;
       }
       if(withKnowledge) {
         assert.deepEqual(context.knowledge.entries.map(entry=>[entry.check.check_id,entry.check.status,entry.review.status]),
@@ -154,6 +154,11 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
   }
   const report=await(await fetch(base+'/audit/jobs/'+job.run_id+'/report')).json();assert.equal(report.suspect_samples,1);assert.equal(report.statistics.issue_occurrences,3);assert.equal(report.discoveries[0].affected_image_count,withKnowledge?2:1);assert.equal(report.evidence_groups.G1.length,withKnowledge?2:1);
   const callsBeforeReport=wire.length;
+  if(withDistribution){
+    const aggregates=wire.flatMap(body=>auditMessages(body).outputs).find(output=>Array.isArray(output?.classes)&&output?.image_count!==undefined);
+    assert.equal(aggregates.image_count,2);assert.equal(aggregates.box_count,4);
+    assert.deepEqual(aggregates,report.data_distribution.slices[0]);
+  }
   const reportRead=await ctx.tools.execute({name:'model_audit_report',arguments:{run_id:job.run_id},
     callId:'read-current-audit-report',signal:new AbortController().signal});
   assert.equal(reportRead.isError,false,JSON.stringify(reportRead));

@@ -6,6 +6,7 @@ import {defineTool} from '@deepseek-ai/dsh-tools';
 import type {AuditBatch,AuditMasterContext,AuditReportSession,AuditSampleRun,AuditWorkflowSnapshot,ImageSessionLocation,RegistrationMediaPage} from '../../shared/domain.generated.js';
 import {auditBatchParameters,auditRecordParameters,auditReportParameters,auditReportEvidenceParameters} from '../../shared/audit.parameters.generated.js';
 import {auditBatchDeltaParameters,auditDiscoveryParameters} from '../../shared/audit-context.parameters.generated.js';
+import {auditDistributionParameters} from '../../shared/distribution.parameters.generated.js';
 import type {PythonBridge} from '../python-bridge/index.js';
 import type {NativeProviders} from '../models/providers.js';
 import {JobSessionHost} from '../sessions/host.js';
@@ -15,7 +16,7 @@ import {workbenchJsonOutput} from '../tool-output.js';
 import {auditSessionPath} from './session-path.js';
 import {AuditImageAgents} from './images.js';
 
-const masterTools=['audit_statistics','audit_records','audit_report_evidence','audit_batch_commit','audit_report_commit'];
+const masterTools=['audit_statistics','audit_distribution','audit_records','audit_report_evidence','audit_batch_commit','audit_report_commit'];
 
 export class AuditMasterAgent {
   constructor(private readonly bridge:PythonBridge,private readonly host:JobSessionHost,
@@ -75,6 +76,9 @@ export class AuditMasterAgent {
           text:({agent})=>(agent?.id===state.session_id?master:snapshot.observer_prompt)!.system_prompt||''});
         scope.tools.register(defineTool({name:'audit_statistics',description:'读取按有效图级版本计算的覆盖、疑点、观察、一致性交叉和知识作用统计。',parameters:{},output:workbenchJsonOutput,
           execute:(_args,execution)=>this.bridge.execute('audit_agent_report_statistics',identity,execution.signal)}));
+        scope.tools.register(defineTool({name:'audit_distribution',description:'读取程序从冻结原图尺寸和原始标注计算的类别图数、框数、几何分布、分位数、密度和来源分布。可按子数据集和类别筛选，数字直接采用工具结果。',
+          parameters:auditDistributionParameters,output:workbenchJsonOutput,
+          execute:(query,execution)=>this.bridge.execute('audit_agent_distribution',{...identity,query},execution.signal)}));
         scope.tools.register(defineTool({name:'audit_records',description:'分页读取冻结范围的有效图级结果及上游记录，压缩后可重读。',parameters:auditRecordParameters,output:workbenchJsonOutput,
           execute:(query,execution)=>this.bridge.execute('audit_agent_report_records',{...identity,query},execution.signal)}));
         if(onDemand)scope.tools.register(defineTool({name:'audit_discovery',description:'分页读取指定发现的完整业务正文、正式精选和支持或反例引用。修改主张或范围前读齐旧引用，逐项明确保留、移除或迁移角色；图级详情通过audit_records读取。',

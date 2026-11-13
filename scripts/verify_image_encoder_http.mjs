@@ -5,8 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 import {PythonBridge,createIadHttpHandler} from '../apps/iad-harness/lib/server/index.js';
 
-const [profilesPath,outputPath,device]=process.argv.slice(2);
-if (!profilesPath || !outputPath || !device) throw new Error('Usage: node scripts/verify_image_encoder_http.mjs <profiles.json> <output.json> <device>');
+const [configurationsPath,outputPath]=process.argv.slice(2);
+if (!configurationsPath || !outputPath) throw new Error('Usage: node scripts/verify_image_encoder_http.mjs <configurations.json> <output.json>');
 const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-real-image-http-'));
 const bridge=new PythonBridge({dbPath:path.join(root,'test.db')});
 const server=http.createServer(createIadHttpHandler(bridge));
@@ -19,16 +19,16 @@ async function post(endpoint,body) {
 const results=[];
 try {
   let revision=0;
-  for(const input of JSON.parse(await fs.readFile(profilesPath,'utf8'))) {
-    const profile=await post('/images/profiles',input);
-    const saved=await post('/images/settings',{expected_revision:revision,selection:{profile,device,batch_size:2,gpu_memory_mb:12288,compute_dtype:'float32'}});
+  for(const input of JSON.parse(await fs.readFile(configurationsPath,'utf8'))) {
+    const saved=await post('/images/settings',{...input,expected_revision:revision});
     revision=saved.revision;
+    const profile=saved.selection.profile;
     const checked=await post('/images/settings/check',{});
     assert.equal(checked.profile_id,profile.profile_id);assert.equal(checked.dim,profile.dim);
     assert.ok(Math.abs(checked.norm-1)<.001);
-    results.push({...checked,chat_selection:null});console.log(JSON.stringify(checked));
+    results.push(checked);console.log(JSON.stringify(checked));
   }
-  await fs.writeFile(outputPath,JSON.stringify({device,results},null,2)+'\n');
+  await fs.writeFile(outputPath,JSON.stringify({results},null,2)+'\n');
 } finally {
   await new Promise(resolve=>server.close(resolve));bridge.destroy();await fs.rm(root,{recursive:true,force:true});
 }

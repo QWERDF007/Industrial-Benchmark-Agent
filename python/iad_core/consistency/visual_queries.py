@@ -34,7 +34,8 @@ class VisualQueries:
         queries = [VisualQuery() for _ in requests]
         try:
             profile_id = ImageEncoders(self.db).profile(requests[0].profile_id).profile_id
-            info = self.runtime.indexes.prepare(scope, profile_id)
+            device = config.index_device if config is not None else None
+            info = self.runtime.indexes.prepare(scope, profile_id, device=device)
             keys, vectors, positions = {}, [], []
             for request, query in zip(requests, queries):
                 if checkpoint:
@@ -55,12 +56,12 @@ class VisualQueries:
             if positions:
                 if checkpoint:
                     checkpoint()
-                with self.runtime.indexes.acquire(scope, profile_id) as index:
+                with self.runtime.indexes.acquire(scope, profile_id, device=device) as index:
                     if not index.info.vector_count and scope.sample_count:
                         raise ConsistencyError('INDEX_NOT_READY', 'Corpus vectors are not ready for this profile')
                     selection=requests[0]
                     hits = index.search(np.concatenate(vectors),
-                        top_k=selection.top_k+1 if selection.top_k is not None else None,min_similarity=selection.min_similarity)
+                        top_k=selection.top_k+1,min_similarity=selection.min_similarity)
                     members = {hit.group_id: index.members(hit.group_id) for row in hits for hit in row}
                     for query, position in positions:
                         query.info, query.hits, query.members = index.info, hits[position], members

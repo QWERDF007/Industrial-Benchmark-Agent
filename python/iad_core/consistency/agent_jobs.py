@@ -153,9 +153,17 @@ class ConsistencyAgentJobs:
                 WHERE job_id=? AND state IN ('PENDING','RUNNING') AND result_json IS NULL""", (run_id,))
         return AnalysisJobViews(self.db).view(run_id)
 
-    def session_created(self, run_id: str, anchor_id: str) -> ConsistencyAnchorRun:
-        self.jobs.update(run_id, phase='CREATING_ANCHOR_SESSIONS')
-        with self.db.connection() as connection:
+    def session_created(self, run_id: str, anchor_id: str, *, attempt: int = 1) -> ConsistencyAnchorRun:
+        with self.jobs.lock, self.db.connection() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            current = connection.execute('''SELECT j.status,a.state,a.attempt FROM consistency_anchor_runs a
+                JOIN job_runs j ON j.job_id=a.job_id WHERE a.job_id=? AND a.anchor_id=?''', (run_id, anchor_id)).fetchone()
+            if current is None:
+                raise LookupError('主图不属于当前作业')
+            if current['status'] != 'RUNNING' or current['state'] not in ('PENDING', 'RUNNING'):
+                raise InterruptedError('作业已停止')
+            if current['attempt'] != attempt:
+                raise ValueError('过期的主图审核 attempt')
             connection.execute('''UPDATE consistency_anchor_runs SET session_created=1,state='RUNNING',phase='RETRIEVING'
                 WHERE job_id=? AND anchor_id=? AND session_created=0''', (run_id, anchor_id))
         return self.anchor(run_id, anchor_id)
@@ -184,7 +192,7 @@ class ConsistencyAgentJobs:
                 raise ConsistencyError('PROFILE_NOT_CONFIGURED', '作业未配置整图编码器')
             settings = ConsistencyRetrievalSettings.model_validate(values)
             request = ImageRetrieve(query={'kind': 'sample', 'sample_id': anchor_id},
-                corpus_scope=snapshot.scopes.corpus.selector, mode='combined', top_k=None,
+                corpus_scope=snapshot.scopes.corpus.selector, mode='combined', top_k=settings.max_similar_candidates,
                 min_similarity=settings.min_similarity, profile_id=snapshot.image_encoder.profile.profile_id)
         retrieved = self.runtime.consistency_service.retrieve_full(request, frozen_scope=snapshot.scopes.corpus,
             encoder=snapshot.image_encoder)

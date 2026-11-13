@@ -44,7 +44,7 @@ def test_anchor_candidates_count_samples_and_exclude_all_exact_overflow(tmp_path
         scope = ConsistencyScopes(database).resolve({'kind': 'datasets', 'dataset_ids': [config.dataset.id]})
         anchor = config.dataset.id + ':anchor.png'
         request = ImageRetrieve(query={'kind': 'sample', 'sample_id': anchor}, corpus_scope=scope.selector,
-            mode='combined', profile_id=encoder.profile.profile_id, top_k=None, min_similarity=.98)
+            mode='combined', profile_id=encoder.profile.profile_id, top_k=10, min_similarity=.98)
         retrieved = ConsistencyService(database, runtime=runtime).retrieve_full(request, frozen_scope=scope)
         selected = AnchorCandidates.select(retrieved, ConsistencyRetrievalSettings())
         assert selected.anchor_id == anchor
@@ -126,7 +126,7 @@ def test_combined_retrieval_without_vectors_cannot_be_selected_as_an_empty_succe
         retrieved = ConsistencyService(database, runtime=runtime).retrieve_full(ImageRetrieve(
             query={'kind': 'sample', 'sample_id': config.dataset.id + ':normal.png'},
             corpus_scope={'kind': 'datasets', 'dataset_ids': [config.dataset.id]},
-            mode='combined', top_k=None, min_similarity=.98))
+            mode='combined', top_k=10, min_similarity=.98))
         assert retrieved.visual.status != 'READY'
         with pytest.raises(ConsistencyError) as failure:
             AnchorCandidates.select(retrieved, ConsistencyRetrievalSettings())

@@ -98,12 +98,13 @@ def test_consistency_defaults_preserve_explicit_request_and_freeze_values(tmp_pa
     from iad_core.storage.database import Database
     store = ModuleSettings(Database(str(tmp_path / 'modules.db')))
     store.save({'module': 'consistency', 'expected_revision': 0,
-        'settings': {'mode': 'exact', 'min_similarity': .97}})
+        'settings': {'mode': 'exact', 'min_similarity': .97,'max_similar_candidates':7}})
     request = {'analysis_kind': 'consistency', 'dataset_ids': ['a']}
     frozen = store.consistency_request(request)
     assert request == {'analysis_kind': 'consistency', 'dataset_ids': ['a']}
     assert frozen['mode'] == 'exact' and frozen['min_similarity'] == .97
-    assert store.consistency_request({'mode': 'combined', 'min_similarity': .96}) == {'mode': 'combined', 'min_similarity': .96}
+    assert frozen['top_k']==7
+    assert store.consistency_request({'mode': 'combined', 'min_similarity': .96,'top_k':3}) == {'mode': 'combined', 'min_similarity': .96,'top_k':3}
     store.save({'module': 'consistency', 'expected_revision': 1, 'settings': {'mode': 'combined', 'min_similarity': .99}})
     assert frozen['mode'] == 'exact' and frozen['min_similarity'] == .97
 
@@ -143,6 +144,7 @@ def test_consistency_roles_and_candidate_limits_persist_without_leaking_into_ret
     request = store.consistency_request({'subjects': {'kind': 'all_registered'}, 'request_id': 'retrieval'})
     parsed = ConsistencyStart.model_validate(request)
     assert parsed.min_similarity == .90
+    assert parsed.top_k==7
     assert not {'agent_model', 'model', 'max_exact_candidates', 'max_similar_candidates'} & request.keys()
 
 
@@ -207,6 +209,7 @@ def test_old_model_settings_are_migrated_to_one_selection_without_changing_histo
         conn.execute("INSERT INTO workbench_module_settings VALUES('consistency',3,?)", (json.dumps({
             'model': {'provider_id': 'vision', 'model_id': 'observer'},
             'agent_model': {'provider_id': 'agent', 'model_id': 'planner'}, 'min_similarity': .98}),))
+        conn.execute('DELETE FROM schema_revision')
     Database._schema_revisions.clear()
     reopened = Database(path)
     settings = ModuleSettings(reopened).read('consistency')

@@ -7,6 +7,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from iad_core.consistency.errors import ConsistencyError
+from iad_core.feature.backbones import DINO_MODELS, DinoModelId
 
 
 @dataclass(frozen=True)
@@ -17,7 +18,7 @@ class LocalDinoSnapshot:
     runtime_version: str
 
     @classmethod
-    def read(cls, root: Path) -> 'LocalDinoSnapshot':
+    def read(cls, root: Path, model_id: DinoModelId = DinoModelId.BASE) -> 'LocalDinoSnapshot':
         try:
             digest=hashlib.sha256()
             documents={}
@@ -26,11 +27,12 @@ class LocalDinoSnapshot:
                 digest.update(name.encode()+b'\0'+data)
                 documents[name]=json.loads(data)
             config=documents['config.json']
-            expected={'model_type':'dinov3_vit','hidden_size':768,'num_hidden_layers':12,
-                'num_attention_heads':12,'intermediate_size':3072,'patch_size':16,
+            spec=DINO_MODELS[model_id]
+            expected={'model_type':'dinov3_vit','hidden_size':spec.dim,'num_hidden_layers':spec.layers,
+                'num_attention_heads':spec.heads,'intermediate_size':spec.intermediate_size,'patch_size':spec.patch_size,
                 'num_register_tokens':4,'num_channels':3}
-            if any(config.get(key)!=value for key,value in expected.items()) or config.get('use_gated_mlp',False):
-                raise ValueError('Local DINOv3 backbone must be ViT-B/16 with four register tokens')
+            if any(config.get(key)!=value for key,value in expected.items()) or config.get('use_gated_mlp',False)!=spec.gated:
+                raise ValueError(f'Local DINOv3 backbone must be {spec.label} with four register tokens')
             processor=documents['preprocessor_config.json']
             expected_processor={'image_processor_type':'DINOv3ViTImageProcessorFast',
                 'do_resize':True,'do_rescale':True,'do_normalize':True,'resample':2,

@@ -143,6 +143,13 @@ def audit_agent_report_statistics(args, db_path):
     return AuditReports(Database(db_path)).statistics(args['run_id']).model_dump(mode='json')
 
 
+def audit_agent_distribution(args, db_path):
+    from iad_core.audit.distribution import AuditDistributions
+    from iad_core.audit.distribution_models import AuditDistributionQuery
+    return AuditDistributions.for_run(Database(db_path), args['run_id']).view(
+        AuditDistributionQuery.model_validate(args.get('query', {}))).model_dump(mode='json')
+
+
 def audit_agent_report_records(args, db_path):
     return AuditReports(Database(db_path)).records(args['run_id'],args['query'])
 
@@ -212,6 +219,6 @@ AUDIT_AGENT_OPERATIONS = (audit_agent_configuration,audit_agent_start,audit_agen
     audit_agent_commit,audit_agent_model_call_start,audit_agent_model_call_end,audit_agent_failure,
     audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,
     audit_agent_prepare_inputs,audit_agent_report_begin,audit_agent_report_state,audit_agent_report_session_created,
-    audit_agent_report_statistics,audit_agent_report_records,audit_agent_discovery,
+    audit_agent_report_statistics,audit_agent_distribution,audit_agent_report_records,audit_agent_discovery,
     audit_agent_report_commit,audit_agent_report_evidence,audit_agent_report_failure,audit_job_prompts,
     audit_agent_batch,audit_agent_batch_context,audit_agent_batch_commit,audit_agent_rechecks,audit_agent_versions)

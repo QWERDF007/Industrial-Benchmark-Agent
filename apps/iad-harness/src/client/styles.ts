@@ -24,9 +24,12 @@ import {tabStyles} from './styles/tabs.js';
 
 import {selectStyles} from './styles/selects.js';
 import {layoutStyles} from './styles/layout.js';
+import {chartStyles} from './styles/charts.js';
+import {tableStyles} from './styles/tables.js';
 
 export const workbenchStyles = themeStyles
   + layoutStyles
+  + tableStyles
   + modelsStyles
   + explorationStyles
   + baseStyles
@@ -50,4 +53,5 @@ export const workbenchStyles = themeStyles
   + reportStyles
   + pageHeadingStyles
   + sectionHeadingStyles
+  + chartStyles
 ;

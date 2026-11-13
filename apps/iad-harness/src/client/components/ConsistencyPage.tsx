@@ -351,7 +351,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
         additionalSections={promptJob.consistency_identity_prompts?identityPromptFields.map(({name,label})=>({
           title:label,text:promptJob.consistency_identity_prompts![name]})):[]} onClose={()=>setPromptJob(null)} />}
 
-      {!!statsModalJobId && <ConsistencyStatisticsDialog items={jobConflicts} onFilter={handleStatClick}
+      {!!statsModalJobId && <ConsistencyStatisticsDialog statistics={conflictQuery.data?.statistics} onFilter={handleStatClick}
         loading={conflictsLoading} error={conflictQuery.error?.message}
         onClose={()=>setStatsModalJobId('')} />}
 

@@ -69,7 +69,8 @@ def test_verification_resource_process_uses_cached_vectors_without_importing_the
     assert report['no_encoder_import'] is True and report['publication_ready'] is False
     assert report['main']['index']['vector_count'] == 8
     assert report['main']['verified_member_counts'] == [2, 2, 2, 2]
-    assert report['main']['storage']['vector_bytes'] == 24576
+    assert report['main']['storage']['vector_bytes'] == 12288
+    assert report['main']['index']['backend']=='faiss-gpu-flat'
     assert report['main']['storage']['mapping_bytes'] > 0
     import numpy as np
     for partition, count in [('main', 8), ('stress', 3)]:

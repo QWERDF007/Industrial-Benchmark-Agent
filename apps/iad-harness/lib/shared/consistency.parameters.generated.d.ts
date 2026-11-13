@@ -239,6 +239,10 @@ export declare const consistencyStartParameters: {
         readonly type: "number";
         readonly title: "Min Similarity";
     };
+    readonly top_k: {
+        readonly type: "integer";
+        readonly title: "Top K";
+    };
     readonly profile_id: {
         readonly oneOf: readonly [{
             readonly type: "string";
@@ -360,11 +364,7 @@ export declare const imageRetrieveParameters: {
         readonly title: "Profile Id";
     };
     readonly top_k: {
-        readonly oneOf: readonly [{
-            readonly type: "integer";
-        }, {
-            readonly type: "null";
-        }];
+        readonly type: "integer";
         readonly title: "Top K";
         readonly default: 50;
     };

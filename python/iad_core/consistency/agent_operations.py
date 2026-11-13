@@ -109,7 +109,8 @@ def consistency_agent_export(args, db_path):
 
 
 def consistency_agent_session_created(args, db_path):
-    return ConsistencyAgentJobs(workbench(db_path)).session_created(args['run_id'], args['anchor_id']).model_dump(mode='json')
+    return ConsistencyAgentJobs(workbench(db_path)).session_created(
+        args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)).model_dump(mode='json')
 
 
 def consistency_agent_retrieve(args, db_path):

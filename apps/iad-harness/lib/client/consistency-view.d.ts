@@ -1,4 +1,4 @@
-import type { AnchorImageItem, ConsistencyAnchorRun, GalleryItem, GalleryMember, GalleryReference } from '../shared/domain.generated.js';
+import type { AnchorImageItem, ConsistencyAnchorRun, GalleryItem, GalleryMember, GalleryReference, GalleryStatistics } from '../shared/domain.generated.js';
 import { modelConclusionLabels } from '../shared/consistency.parameters.generated.js';
 export declare const consistencyImageGroups: {
     readonly NO_CANDIDATES: '无候选';
@@ -48,11 +48,14 @@ export declare class ConsistencyView {
     static load(batchId: string, signal: AbortSignal): Promise<{
         queryId: string;
         items: ConflictCardItem[];
+        statistics: GalleryStatistics;
     }>;
     static loadCheck(runId: string, signal: AbortSignal): Promise<{
         queryId: string;
         items: ConflictCardItem[];
+        statistics: GalleryStatistics;
     }>;
+    static statistics(runId: string, signal: AbortSignal): Promise<GalleryStatistics>;
     static loadImages(runId: string, signal: AbortSignal): Promise<ConsistencyComparisonItem[]>;
     private static cards;
     static imageCards(runId: string, items: AnchorImageItem[]): ConsistencyComparisonItem[];

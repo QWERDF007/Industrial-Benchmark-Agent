@@ -43,7 +43,7 @@ export function MultiSelect({id, menuId, label, options, selected, onToggle, dis
       <span>{values.size ? `已选 ${values.size} 个${label}` : `请选择${label}`}</span><ChevronIcon size={16} />
     </button>
     <div ref={element => {panel.current = element; refs.setFloating(element);}} id={panelId}
-      className="iad-select-popover" style={{...floatingStyles,visibility:open && !isPositioned ? 'hidden' : undefined}} role="group" aria-label={`${label}选择`}>
+      className="iad-select-popover" style={{...floatingStyles,visibility:open && isPositioned ? 'visible' : 'hidden'}} role="group" aria-label={`${label}选择`}>
       {options.length ? options.map(option => <label key={option.value} className="iad-select-option">
         <input type="checkbox" value={option.value} checked={values.has(option.value)} disabled={disabled} onChange={() => onToggle(option.value)} />
         <span>{option.label}</span>

@@ -4,6 +4,25 @@ import {randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {createConsistencyAgentHost} from './fixtures/consistency-agent-host.js';
 
+test('the first retrieval starts without creating sessions for queued images', {timeout:30000}, async()=>{
+  const entered=Promise.withResolvers(),release=Promise.withResolvers();
+  const fixture=await createConsistencyAgentHost({candidateCount:4,modelRouting:{execute:async(operation,args,signal,dispatch)=>{
+    if(operation==='consistency_agent_retrieve'){entered.resolve();await release.promise;}
+    return dispatch(operation,args,signal);
+  }}});
+  try {
+    const job=await fixture.scheduler.start({submission_id:randomUUID(),dataset_ids:[fixture.datasetId],mode:'exact'});
+    await Promise.race([entered.promise,delay(10000).then(()=>{throw new Error('The first image did not enter retrieval');})]);
+    const {anchors}=await fixture.bridge.execute('consistency_agent_anchors',{run_id:job.run_id});
+    assert.equal(anchors.filter(anchor=>anchor.session_created).length,1);
+    for(const anchor of anchors) assert.equal(await fixture.host.exists(anchor.session_id),anchor.session_created);
+    release.resolve();await fixture.scheduler.whenIdle();
+    const status=await fixture.bridge.execute('analysis_status',{run_id:job.run_id});
+    assert.equal(status.status,'COMPLETED',JSON.stringify(status.errors));
+    assert.equal(status.completed,5);assert.equal(status.failed,0);
+  } finally {release.resolve();await fixture.close();}
+});
+
 test('program workflow saves real visual decisions without model calls for orchestration', {timeout:30000}, async()=>{
   const fixture=await createConsistencyAgentHost();
   try {

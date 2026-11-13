@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 from iad_core.audit.models import AuditMediaView, NativeAuditSampleDetail
 from iad_core.audit.state import AuditState
+from iad_core.audit.distribution import AuditDistributions
 from iad_core.evidence.images import EvidenceImages
 from iad_core.evidence.registrations import PreparedRegistration
 from iad_core.workbench.audit_result_models import AuditSampleItem, AuditSamplePage, AuditSampleQuery, AuditRunReport
@@ -96,7 +97,9 @@ class AuditQueries:
             summary=json.loads(row[0])
             return AuditRunReport.model_validate({**{key:value for key,value in summary.items() if key in AuditRunReport.model_fields},'archived':True})
         if row[0]:
-            return AuditRunReport.model_validate_json(row[0])
+            report = AuditRunReport.model_validate_json(row[0])
+            return report if report.data_distribution is not None else report.model_copy(update={
+                'data_distribution': AuditDistributions.for_run(self.db, run_id).catalog()})
         from iad_core.audit.presentation import AuditPresentation
         return AuditPresentation(self).report(run_id)
 
@@ -130,6 +133,7 @@ class AuditQueries:
             finished_at=job.finished_at,generated_at=datetime.now(timezone.utc).isoformat(),
             conclusion=final.conclusion if final else '',limitations=final.limitations if final else [session.error] if session.error else [],
             statistics=statistics,export_ready=False,discoveries=discoveries,dataset_profile=snapshot.dataset_profile,
+            data_distribution=AuditDistributions(snapshot.manifest).catalog(),
             consistency_job_id=snapshot.consistency_job_id,report_state=session.state,report_session_id=session.session_id if session.session_created else None,
             consistency_analysis=final.consistency_analysis if final else '',knowledge_analysis=final.knowledge_analysis if final else '',
             coverage_analysis=final.coverage_analysis if final else '',independence_analysis=final.independence_analysis if final else '',
@@ -145,4 +149,7 @@ class AuditQueries:
             row = connection.execute('SELECT report_html FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
         if row is None or row[0] is None:
             raise ValueError('本作业报告尚未生成')
-        return dict(filename=f'audit-{run_id}.html',html=row[0])
+        if self.state.is_archived(run_id):
+            return dict(filename=f'audit-{run_id}.html',html=row[0])
+        from iad_core.workbench.audit_html import AuditHtmlReport
+        return AuditHtmlReport(self).render(run_id)

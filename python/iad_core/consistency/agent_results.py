@@ -19,6 +19,7 @@ from iad_core.consistency.evidence_models import FrozenEvidence
 from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.group_review import ConsistencyGroupReview
 from iad_core.consistency.gallery import GalleryItem, GalleryPage, GalleryMemberPage
+from iad_core.consistency.gallery_statistics import GalleryStatistics
 from iad_core.consistency.group_analysis_models import GroupAnalysisDraft, GroupAnalysisView
 from iad_core.storage.database import Database
 from iad_core.storage.models import sample_uuid
@@ -282,7 +283,7 @@ class ConsistencyAgentResults:
                     model_state=summary.verdict or ('RUNNING' if summary.state == 'RUNNING' else 'FAILED' if summary.state == 'FAILED' else 'NOT_ANALYZED'),
                     model_conclusion=summary.model_conclusion, annotation_conclusion=summary.original_conclusion,
                     review_state=reviews.get((summary.anchor_id, ConsistencyGroupReview.fingerprint(row)), 'pending')))
-        return GalleryPage(query_id=run_id, kind='conflicts', filters=[], model_filters=[],
+        return GalleryPage(query_id=run_id, kind='conflicts', filters=[], model_filters=[], statistics=GalleryStatistics.capture(items),
             items=items[(page - 1) * page_size:page * page_size], total=len(items))
 
     def members(self, run_id: str, anchor_id: str) -> GalleryMemberPage:

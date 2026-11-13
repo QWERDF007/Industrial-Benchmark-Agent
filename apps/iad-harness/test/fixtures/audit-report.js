@@ -15,7 +15,7 @@ export function auditMessages(body) {
     pages:values.map(item=>item.value).filter(value=>Array.isArray(value?.images))};
 }
 
-export function auditReportTool(context,outputs,{includeCounter=false}={}) {
+export function auditReportTool(context,outputs,{includeCounter=false,includeDistribution=false}={}) {
   if(context.phase==='review'){
     const refs=context.items.flatMap(item=>item.final?.execution_status==='completed'?item.final.findings.map((_,index)=>({
       sample_id:item.sample_id,result_revision:item.result_revision,kind:'finding',index})):[]);
@@ -53,6 +53,8 @@ export function auditReportTool(context,outputs,{includeCounter=false}={}) {
     }
     return {name:'audit_batch_commit',arguments:submission};
   }
+  if(includeDistribution&&!outputs.some(output=>Array.isArray(output?.classes)&&output?.image_count!==undefined))
+    return {name:'audit_distribution',arguments:{}};
   const records=outputs.find(output=>output?.kind==='audit_records')?.items;
   if(!records)return {name:'audit_records',arguments:{page:1,page_size:100}};
   const completed=records.filter(item=>item.final?.execution_status==='completed');

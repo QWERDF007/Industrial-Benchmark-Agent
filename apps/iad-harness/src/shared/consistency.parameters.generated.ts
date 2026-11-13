@@ -357,6 +357,10 @@ export const consistencyStartParameters = {
     "type": "number",
     "title": "Min Similarity"
   },
+  "top_k": {
+    "type": "integer",
+    "title": "Top K"
+  },
   "profile_id": {
     "oneOf": [
       {
@@ -508,14 +512,7 @@ export const imageRetrieveParameters = {
     "title": "Profile Id"
   },
   "top_k": {
-    "oneOf": [
-      {
-        "type": "integer"
-      },
-      {
-        "type": "null"
-      }
-    ],
+    "type": "integer",
     "title": "Top K",
     "default": 50
   },

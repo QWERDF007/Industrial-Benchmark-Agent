@@ -33,7 +33,7 @@ class ConsistencyWorker:
         context.update(phase='COMPARING')
         requests=[ImageRetrieve(query={'kind':'sample','sample_id':sample_id},
             corpus_scope=plan.scopes.corpus.selector,mode=plan.request.mode,
-            top_k=None,min_similarity=plan.request.min_similarity,
+            top_k=plan.request.top_k,min_similarity=plan.request.min_similarity,
             profile_id=plan.encoder.profile.profile_id if plan.encoder else None) for sample_id in context.payload['sample_ids']]
         for outcome in service.retrieve_many(requests,frozen_scope=plan.scopes.corpus,
                 checkpoint=context.checkpoint,encoder=plan.encoder,prepare_query=False,
@@ -81,7 +81,7 @@ class ConsistencyWorker:
             if offset+len(chunk)==len(sample_ids) and step==[item for item in plan.steps if item.kind=='IMAGE_INDEX'][-1]:
                 context.update(phase='INDEXING')
                 try:
-                    with self.runtime.indexes.acquire(plan.scopes.corpus,encoder.profile.profile_id):pass
+                    with self.runtime.indexes.acquire(plan.scopes.corpus,encoder.profile.profile_id,device=encoder.index_device):pass
                 except ConsistencyError as error:failure=error
             outcomes={sample.sample_id:sample for sample in prepared.samples} if prepared else {}
             for sample_id in chunk:

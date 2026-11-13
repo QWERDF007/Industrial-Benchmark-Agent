@@ -37,21 +37,38 @@ def retrieval_vectors(dataset, tmp_path):
     close_workbenches()
 
 
-@pytest.mark.parametrize(('minimum','expected'),[(.95,{'scratch'}),(.8,{'scratch','normal'})])
+def test_gpu_top_k_and_threshold_keep_exact_candidates_and_allow_an_empty_similar_branch(retrieval_vectors):
+    from iad_core.consistency.service import ConsistencyService
+
+    db, _, config, profile = retrieval_vectors
+    service = ConsistencyService(db)
+    query = {'kind': 'sample', 'sample_id': config.dataset.id + ':dent.png'}
+    result = service.retrieve_full(ImageRetrieve(query=query, mode='combined', profile_id=profile.profile_id,
+        top_k=1, min_similarity=.75))
+    assert result.retrieval_completeness == 'TOP_K' and result.visual_k == 1
+    assert [member.sample_id for group in result.visual.groups for member in group.members] == [config.dataset.id + ':normal.png']
+    assert [member.sample_id for group in result.exact.groups for member in group.members] == [config.dataset.id + ':scratch.png']
+    empty = service.retrieve_full(ImageRetrieve(query=query, mode='combined', profile_id=profile.profile_id,
+        top_k=1, min_similarity=.99))
+    assert empty.visual.status == 'READY' and empty.visual.groups == []
+    assert empty.exact.member_count == 1
+
+
+@pytest.mark.parametrize(('minimum','expected'),[(.95,{'scratch'}),(.79,{'scratch','normal'})])
 def test_similarity_retrieval_filters_by_score_and_preserves_exact_matches(retrieval_vectors,minimum,expected):
     from iad_core.consistency.service import ConsistencyService
 
     db,_,config,profile=retrieval_vectors
     result=ConsistencyService(db).retrieve_full(ImageRetrieve(query={'kind':'sample','sample_id':config.dataset.id+':dent.png'},
-        mode='combined',profile_id=profile.profile_id,top_k=None,min_similarity=minimum))
-    assert result.retrieval_completeness=='SIMILARITY_THRESHOLD'
-    assert result.min_similarity==minimum and result.visual_k is None
+        mode='combined',profile_id=profile.profile_id,top_k=10,min_similarity=minimum))
+    assert result.retrieval_completeness=='TOP_K'
+    assert result.min_similarity==minimum and result.visual_k==10
     assert {member.sample_id.rsplit(':',1)[1].removesuffix('.png') for branch in (result.exact,result.visual)
         for group in branch.groups for member in group.members}==expected
     assert {member.sample_id for group in result.exact.groups for member in group.members}=={config.dataset.id+':scratch.png'}
 
 
-def test_similarity_retrieval_keeps_all_qualifying_groups_beyond_fifty(retrieval_vectors,tmp_path):
+def test_similarity_retrieval_caps_qualifying_groups_at_top_k(retrieval_vectors,tmp_path):
     from iad_core.consistency.service import ConsistencyService
 
     db,registry,config,profile=retrieval_vectors
@@ -67,9 +84,10 @@ def test_similarity_retrieval_keeps_all_qualifying_groups_beyond_fifty(retrieval
             dim=profile.dim,dtype='float32',embedding_blob=vector.tobytes()))
     result=ConsistencyService(db).retrieve_full(ImageRetrieve(query={'kind':'sample','sample_id':config.dataset.id+':dent.png'},
         corpus_scope={'kind':'datasets','dataset_ids':[corpus.dataset.id]},mode='visual',profile_id=profile.profile_id,
-        top_k=None,min_similarity=.95))
-    assert result.visual.group_count==result.visual.member_count==70
-    assert {member.sample_id for group in result.visual.groups for member in group.members}=={
+        top_k=50,min_similarity=.95))
+    assert result.retrieval_completeness=='TOP_K' and result.visual_k==50
+    assert result.visual.group_count==result.visual.member_count==50
+    assert {member.sample_id for group in result.visual.groups for member in group.members} <= {
         corpus.dataset.id+f':{index:03}.png' for index in range(70)}
 
 
@@ -94,7 +112,7 @@ def test_consistency_jobs_freeze_the_default_similarity_and_exclude_lower_scores
         from iad_core.consistency.reports import ConsistencyReports
         from iad_core.consistency.result_models import ConsistencyQuery
         report=ConsistencyReports(db).report(ConsistencyQuery(selection={'kind':'batch','batch_id':batch.batch_id}))
-        assert report.page.retrieval_completeness=='SIMILARITY_THRESHOLD'
+        assert report.page.retrieval_completeness=='TOP_K'
         assert report.page.min_similarity==.95
     finally:
         runtime.close()
@@ -167,18 +185,19 @@ def test_visual_groups_reuse_cached_vectors_and_combined_deduplicates_branch_hit
         'sample_id': config.dataset.id + ':dent.png'}, mode=mode, profile_id=profile.profile_id, top_k=2))
     assert result.profile_id == profile.profile_id
     assert result.visual.status == 'READY' and result.visual.corpus_coverage.completed == 4
-    assert result.group_count == result.member_count == 2
+    expected_count=3 if mode=='combined' else 2
+    assert result.group_count == result.member_count == expected_count
     assert result.retrieval_completeness == 'TOP_K'
     members = [member for branch in [result.exact, result.visual] for group in branch.groups for member in group.members]
-    assert {member.sample_id for member in members} == {config.dataset.id + ':scratch.png', config.dataset.id + ':normal.png'}
+    expected_names={'scratch','normal','normal2'} if mode=='combined' else {'scratch','normal'}
+    assert {member.sample_id for member in members} == {config.dataset.id+':'+name+'.png' for name in expected_names}
     assert next(member for member in members if member.sample_id.endswith(':scratch.png')).relation == 'EXACT'
     assert next(member for member in members if member.sample_id.endswith(':normal.png')).relation == 'VISUAL_REFERENCE'
     if mode == 'combined':
-        assert result.exact.group_count == 1 and result.visual.group_count == 1
+        assert result.exact.group_count == 1 and result.visual.group_count == 2
         origins = result.exact.groups[0].origins
-        assert [origin.branch for origin in origins] == ['exact', 'visual']
-        assert origins[1].score == pytest.approx(1)
-        assert result.visual.groups[0].origins[0].score == pytest.approx(.8)
+        assert [origin.branch for origin in origins] == ['exact']
+        assert result.visual.groups[0].origins[0].score == pytest.approx(.8,abs=5e-4)
     else:
         assert result.exact.status == 'NOT_REQUESTED' and result.visual.group_count == 2
 
@@ -250,8 +269,8 @@ def test_temporary_visual_query_encodes_only_itself_once_and_releases_its_vector
         mode='combined', profile_id=profile.profile_id, top_k=2)
     for _ in range(2):
         result = ConsistencyService(db).retrieve(request, owner_id='session')
-        assert result.visual.status == 'READY' and result.member_count == 3
-        assert result.exact.member_count == 2 and result.visual.member_count == 1
+        assert result.visual.status == 'READY' and result.member_count == 4
+        assert result.exact.member_count == 2 and result.visual.member_count == 2
     assert calls == [(profile.profile_id, 1, (320, 240))]
     assert runtime.temporary_images.stats().vector_bytes == profile.dim * 4
     assert len(FeatureRepository(db).records([PixelIndex(db).get(config.dataset.id + ':dent.png').content_group_id], profile.profile_id)) == 1
@@ -267,8 +286,8 @@ def test_failed_visual_source_does_not_downgrade_the_successful_exact_branch(ret
     result = ConsistencyService(db).retrieve(ImageRetrieve(query={'kind': 'sample',
         'sample_id': config.dataset.id + ':dent.png'}, mode='combined', profile_id=profile.profile_id, top_k=2))
     assert result.exact.status == 'READY' and result.visual.status == 'PARTIAL'
-    assert result.coverage.verification.total == 2
-    assert result.coverage.verification.completed == result.coverage.verification.failed == 1
+    assert result.coverage.verification.total == 3
+    assert result.coverage.verification.completed == 2 and result.coverage.verification.failed == 1
     assert result.exact.groups[0].members[0].relation == 'EXACT'
     assert result.visual.groups[0].members[0].relation == 'UNCHECKED'
     assert result.visual.groups[0].members[0].error_code == 'SOURCE_UNAVAILABLE'

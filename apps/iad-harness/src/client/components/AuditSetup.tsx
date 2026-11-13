@@ -34,8 +34,8 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
   const [consistencyId,setConsistencyId]=useState('');
   const [detail,setDetail]=useState<Pick<React.ComponentProps<typeof KnowledgeEntryDialog>,'source'|'checkId'>|null>(null);
   const [statisticsId,setStatisticsId]=useState('');
-  const statistics=useQuery({queryKey:['iad','consistency-conflicts',statisticsId],enabled:!!statisticsId,
-    queryFn:({signal})=>ConsistencyView.loadCheck(statisticsId,signal)},queryClient);
+  const statistics=useQuery({queryKey:['iad','consistency-statistics',statisticsId],enabled:!!statisticsId,
+    queryFn:({signal})=>ConsistencyView.statistics(statisticsId,signal)},queryClient);
   const [benchmarkId,setBenchmarkId]=useState('');
   const [knowledgePage,setKnowledgePage]=useState(1),[entryPage,setEntryPage]=useState(1),[consistencyPage,setConsistencyPage]=useState(1);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -134,7 +134,7 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
       {error&&<p className="audit-source-error" role="alert">{error}</p>}{catalog.error&&<p className="audit-source-error" role="alert">{catalog.error}</p>}
     </section>
     {detail&&<KnowledgeEntryDialog {...detail} onClose={()=>setDetail(null)}/>}
-    {statisticsId&&<ConsistencyStatisticsDialog items={statistics.data?.items||[]} loading={statistics.isPending}
+    {statisticsId&&<ConsistencyStatisticsDialog statistics={statistics.data} loading={statistics.isPending}
       error={statistics.error?.message} onClose={()=>setStatisticsId('')}/>}
   </div>;
 }

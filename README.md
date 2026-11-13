@@ -19,15 +19,15 @@ Linux x64 的原生图像附件要求 GLIBC ≥ 2.28，见 [Sharp 官方运行�
 
 使用独立 Node 运行环境时，在 `.env.local` 指定 `IAD_NODE_PATH`；[启动入口](start.sh)让服务与构建共用该可执行文件，不设置全局 `LD_LIBRARY_PATH`。
 
-基础 Python 安装支持原始像素内容索引，无需 torch、FAISS 或模型服务。CPU 向量检索使用 `pip install -e '.[retrieval]'`；编码器依赖见 [pyproject.toml](pyproject.toml) 的 `encoders` 组合，CPU torch 轮子按 [PyTorch 官方安装入口](https://pytorch.org/get-started/locally/)选择。每个环境只安装一种 FAISS 发行包；已有 GPU FAISS 的环境不要叠加 CPU 包。
+基础 Python 安装支持原始像素内容索引，无需 torch、FAISS 或模型服务。相似图检索需要 CUDA GPU，安装 `pip install -e '.[retrieval,encoders]'`；依赖以 [pyproject.toml](pyproject.toml) 为准，每个环境只安装一种 FAISS 发行包。
 
-【模型设置 → 图像检索】独立配置图像编码器、实际权重、官方源码目录与运行资源。支持的骨干和预处理以[配置契约](python/iad_core/feature/profiles.py)为准；加载检查实际编码一张检查图，不代表工业召回率。真实权重验证入口为[verify_image_encoders.py](scripts/verify_image_encoders.py)，参数见脚本帮助。
+【Settings → 数据一致性】集中配置审核、检索方式及相似图模型，修改后自动保存。型号、权重目录和字段约束见[模型设置合同](python/iad_core/feature/settings.py)；准备权重使用 [prepare_dinov3.py](scripts/prepare_dinov3.py)，参数见脚本帮助。
 
-DINO 源码目录使用官方 [DINOv2](https://github.com/facebookresearch/dinov2) 或 [DINOv3](https://github.com/facebookresearch/dinov3) 仓库根目录；SSCD 使用官方 TorchScript 权重。公开接口的实际加载验证见[verify_image_encoder_http.mjs](scripts/verify_image_encoder_http.mjs)。
+预处理与 CLS 输出见[编码器](python/iad_core/feature/encoder.py)，GPU Top-K 与阈值过滤见[索引引擎](python/iad_core/feature/flat_index.py)。公开接口的实际加载验证见[verify_image_encoder_http.mjs](scripts/verify_image_encoder_http.mjs)。
 
 在仅有基础依赖的独立虚拟环境运行 `python scripts/verify_image_index_cpu.py`，可验证真实导入、严格同图分组、16位TIFF、单像素alpha差异、增量复用及无模型运行时。
 
-侧栏【模型设置】为方向探索、良品/异常知识挖掘、模型审计统一选择提供商与模型。提供商页与 DSH 原生设置共用资料及凭据；DSH 会话通过输入框的模型菜单独立选择。行为与能力范围见[设置规格](docs/specs/workbench-model-settings.md)，实现和验收见[架构索引](docs/architecture.md)。[启动补丁](config/dsh_web_lan_patch.yml)只配置服务监听和工业插件；独立 Python 验证的环境配置见下文。
+【Settings】集中管理提供商及各业务模块的模型，DSH 会话通过输入框的模型菜单独立选择。入口见[原生设置注册](apps/iad-harness/src/client/host/WorkbenchSettings.tsx)，实现与验收见[文档索引](docs/README.md)。[启动补丁](config/dsh_web_lan_patch.yml)只配置服务监听和工业插件；独立 Python 验证的环境配置见下文。
 
 - **模型审计**：导入 Labelme 或目录图像级数据，选择已完成的一致性作业，按范围启动主子 Agent 审计；知识可选。设置、证据与验收入口见[审计说明](<docs/工业数据集质量与评测能力审计 Agent.md>)。
 - **人工复核**：查看复核明细并提交人工裁决。

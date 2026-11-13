@@ -36,7 +36,8 @@ class ImageFeatureExtractor(FeatureExtractor):
             if self.profile.backend=='transformers':
                 from transformers import DINOv3ViTImageProcessorFast
                 self._transform=DINOv3ViTImageProcessorFast.from_pretrained(
-                    str(Path(self.profile.weights_ref).parent),local_files_only=True)
+                    str(Path(self.profile.weights_ref).parent),local_files_only=True,
+                    size={'height':self.profile.input_size,'width':self.profile.input_size})
             elif self.profile.processor=='dinov2_imagenet_eval':
                 self._transform=transforms.Compose([transforms.Resize(self.profile.resize_size,interpolation=interpolation),
                     transforms.CenterCrop(self.profile.input_size),transforms.ToTensor(),normal])

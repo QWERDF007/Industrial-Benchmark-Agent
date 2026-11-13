@@ -47,22 +47,22 @@ def test_cross_dataset_index_uses_one_row_per_content_and_exact_cosine_ranking(c
     with CorpusIndexes(db) as indexes:
         info=indexes.prepare({'kind':'all_registered'},profile.profile_id)
         assert info.vector_count==3 and info.member_count==4
-        assert info.vector_bytes==3*512*4 and info.coverage.completed==4
+        assert info.vector_bytes==3*512*2 and info.coverage.completed==4
+        assert info.backend=='faiss-gpu-flat' and info.storage_dtype=='float16'
         with indexes.acquire({'kind':'all_registered'},profile.profile_id) as index:
             query=np.zeros((1,512),dtype=np.float32);query[0,0]=1
             hits=index.search(query,top_k=3)[0]
             assert [hit.group_id for hit in hits]==groups
-            assert [hit.score for hit in hits]==pytest.approx([1,.8,0],abs=1e-6)
+            assert [hit.score for hit in hits]==pytest.approx([1,.8,0],abs=5e-4)
             assert set(index.members(groups[0]))=={ids[0],datasets[1].dataset.id+':copy.png'}
         assert indexes.stats().builds==1 and indexes.stats().disk_loads==0
 
 
-@pytest.mark.parametrize('stored_precision', [False, True])
-def test_similarity_threshold_includes_its_stored_value_and_excludes_the_next_lower_score(corpus_vectors, stored_precision):
+def test_similarity_threshold_includes_its_fp16_score_and_excludes_the_next_lower_score(corpus_vectors):
     db, _, _, profile, _, groups = corpus_vectors
-    boundary = np.float32(.95)
-    scores = ([np.nextafter(boundary, np.float32(-np.inf)), boundary,
-        np.nextafter(boundary, np.float32(np.inf))] if stored_precision else [.94996, .95, .951])
+    boundary = np.float16(.95)
+    scores = [np.nextafter(boundary, np.float16(-np.inf)), boundary,
+        np.nextafter(boundary, np.float16(np.inf))]
     for group, score in zip(groups, scores):
         vector = np.zeros(profile.dim, dtype=np.float32)
         vector[:2] = score, np.sqrt(1 - float(score) ** 2)
@@ -70,15 +70,12 @@ def test_similarity_threshold_includes_its_stored_value_and_excludes_the_next_lo
             dim=profile.dim, dtype='float32', embedding_blob=vector.tobytes()))
     query = np.zeros((1, profile.dim), dtype=np.float32)
     query[0, 0] = 1
-    minimum = float(boundary) if stored_precision else .95
+    minimum = float(boundary)
     with CorpusIndexes(db) as indexes, indexes.acquire({'kind': 'all_registered'}, profile.profile_id) as index:
-        results = index.search(query, top_k=None, min_similarity=minimum)[0]
+        results = index.search(query, top_k=3, min_similarity=minimum)[0]
         assert [hit.group_id for hit in results] == [groups[2], groups[1]]
         assert results[1].score == float(boundary)
-        if stored_precision:
-            assert results[0].score == float(scores[2])
-        else:
-            assert results[0].score == pytest.approx(.951, abs=2e-7, rel=0)
+        assert results[0].score == float(scores[2])
 
 
 def test_hot_queries_reuse_memory_and_a_new_pool_loads_one_complete_artifact(corpus_vectors):
@@ -210,7 +207,7 @@ def test_concurrent_builds_reserve_cache_slots_before_publication(corpus_vectors
         assert indexes.stats().cache_entries==1
 
 
-def test_profile_isolation_and_float16_storage_use_separate_fp32_indexes(corpus_vectors):
+def test_profile_isolation_and_float16_storage_use_separate_gpu_indexes(corpus_vectors):
     db,_,_,profile,_,groups=corpus_vectors
     alternate=EmbeddingProfile.create(profile.model_id,profile.weights_ref,storage_dtype='float16')
     ImageEncoders(db).register(alternate)
@@ -226,7 +223,7 @@ def test_profile_isolation_and_float16_storage_use_separate_fp32_indexes(corpus_
             hits=different.search(query,top_k=3)[0]
             assert [hit.group_id for hit in hits]==groups[::-1]
             assert [hit.score for hit in hits]==pytest.approx([1,.6,0],abs=5e-4)
-            assert different.info.vector_bytes==3*512*4
+            assert different.info.vector_bytes==3*512*2
         assert query[0,0]==2 and indexes.stats().cache_entries==2
 
 

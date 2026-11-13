@@ -54,26 +54,8 @@ export class ConsistencyCheckScheduler {
     async run(runId, signal) {
         const snapshot = await this.bridge.execute('consistency_agent_snapshot', { run_id: runId });
         const { anchors } = await this.bridge.execute('consistency_agent_anchors', { run_id: runId });
-        const ready = [];
-        await runConcurrent(anchors, snapshot.concurrency, signal, async (anchor) => {
-            if (anchor.state === 'COMPLETED') {
-                if (anchor.trace_state !== 'CLOSED')
-                    await this.closeTrace(runId, anchor.anchor_id);
-                return;
-            }
-            const identity = { run_id: runId, anchor_id: anchor.anchor_id, attempt: anchor.attempt };
-            try {
-                if (!anchor.session_created) {
-                    await this.host.create(anchor.session_id);
-                    await this.host.notice(anchor.session_id, { type: 'iad/consistency', summary: '主图审核会话已创建', value: { job_id: runId, anchor_id: anchor.anchor_id } });
-                    await this.bridge.execute('consistency_agent_session_created', identity);
-                }
-                ready.push(anchor);
-            }
-            catch (error) {
-                await this.failure(identity, error, signal);
-            }
-        });
+        await runConcurrent(anchors.filter(anchor => anchor.state === 'COMPLETED' && anchor.trace_state !== 'CLOSED'), snapshot.concurrency, signal, anchor => this.closeTrace(runId, anchor.anchor_id));
+        const ready = anchors.filter(anchor => anchor.state !== 'COMPLETED');
         let preparationError;
         if (ready.length && !signal.aborted && snapshot.retrieval.mode === 'combined') {
             try {
@@ -94,6 +76,13 @@ export class ConsistencyCheckScheduler {
             try {
                 if (preparationError)
                     throw preparationError;
+                signal.throwIfAborted();
+                if (!anchor.session_created) {
+                    await this.host.create(anchor.session_id);
+                    await this.host.notice(anchor.session_id, { type: 'iad/consistency', summary: '主图审核会话已创建',
+                        record_id: anchor.session_id + ':created', value: { job_id: runId, anchor_id: anchor.anchor_id } });
+                    await this.bridge.execute('consistency_agent_session_created', identity, signal);
+                }
                 const candidates = await this.bridge.execute('consistency_agent_retrieve', identity);
                 await this.host.notice(anchor.session_id, { type: 'iad/consistency', summary: '主图候选检索已完成', value: { job_id: runId, anchor_id: anchor.anchor_id, retrieval: candidates } });
                 if (candidates.candidates.length === 0) {

@@ -165,6 +165,8 @@ class ConsistencyService:
                     raise visual_query.error
                 used = 0
                 for hit in visual_query.hits:
+                    if request.mode == 'combined' and hit.group_id in candidates:
+                        continue
                     members = [entries[identity] for identity in visual_query.members[hit.group_id] if not exclude_self or identity != query_id]
                     if not members:
                         continue
@@ -193,7 +195,7 @@ class ConsistencyService:
                     for member in group.members):
                 branch.status = 'PARTIAL'
         completeness = ('PARTIAL' if any(branch.status not in ('READY', 'NOT_REQUESTED') for branch in (exact, visual))
-            else 'EXACT_SCOPE' if request.mode == 'exact' else 'SIMILARITY_THRESHOLD' if request.min_similarity is not None else 'TOP_K')
+            else 'EXACT_SCOPE' if request.mode == 'exact' else 'TOP_K')
         result = RetrievalPage(query=request.query, scope_id=scope.scope_id, mode=request.mode, profile_id=profile_id,
             exact=exact, visual=visual, coverage=ConsistencyCoverage(corpus=visual.corpus_coverage if request.mode == 'visual' else corpus,
                 verification=verified.verification, annotation=verified.annotation),

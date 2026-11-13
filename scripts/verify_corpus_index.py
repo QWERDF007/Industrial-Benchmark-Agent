@@ -80,7 +80,7 @@ def main():
             retained=repository.get_for_sample(datasets[1].dataset.id+':copy'+args.image[0].suffix,profile.profile_id)
             assert retained['attempt_count']==1 and retained['embedding_blob']==record['embedding_blob']
             result={'verification':'real-model cross-dataset index smoke','profile':profile.model_dump(),
-                'model_device':args.device,'faiss_version':faiss.__version__,'faiss_cpu_threads':faiss.omp_get_max_threads(),
+                'model_device':args.device,'faiss_version':faiss.__version__,'index_device':first.device,
                 'prepared':prepared.model_dump(),'initial_index':first.model_dump(),'warm':warm.model_dump(),
                 'query_end_to_end_ms':timings,'query_p50_ms':float(np.percentile(timings,50)),
                 'query_p95_ms':float(np.percentile(timings,95)),'after_delete':current.model_dump(),

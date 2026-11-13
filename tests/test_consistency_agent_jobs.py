@@ -6,6 +6,31 @@ from iad_core.workbench.module_settings import ModuleSettings
 from iad_core.workbench.runtime import WorkbenchRuntime
 
 
+def test_session_registration_preserves_the_job_payload_and_rejects_stopped_attempts(dataset):
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+
+    database, _, config = dataset
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact'})['run_id']
+        anchor = checks.anchors(run)[0]
+        before = runtime.jobs.status(run)
+        created = checks.session_created(run, anchor.anchor_id)
+        assert created.session_created
+        assert runtime.jobs.status(run) == before
+        assert checks.session_created(run, anchor.anchor_id) == created
+        checks.cancel(run)
+        with pytest.raises(InterruptedError):
+            checks.session_created(run, anchor.anchor_id)
+        checks.resume(run)
+        with pytest.raises(ValueError, match='过期'):
+            checks.session_created(run, anchor.anchor_id, attempt=1)
+        assert checks.session_created(run, anchor.anchor_id, attempt=2).attempt == 2
+    finally:
+        runtime.close()
+
+
 def test_a_late_failure_after_cancellation_preserves_the_stopped_anchor(dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 

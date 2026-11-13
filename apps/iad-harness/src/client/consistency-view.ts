@@ -1,4 +1,4 @@
-import type {AnchorImageItem, AnchorImagePage, ConsistencyAnchorRun, ConsistencyReport, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference} from '../shared/domain.generated.js';
+import type {AnchorImageItem, AnchorImagePage, ConsistencyAnchorRun, ConsistencyReport, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference,GalleryStatistics} from '../shared/domain.generated.js';
 import {conflictCategories,modelConclusionLabels} from '../shared/consistency.parameters.generated.js';
 import {mediaUrl,request} from './api.js';
 
@@ -65,7 +65,7 @@ export class ConsistencyView {
     return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-original${thumbnail?'?max_side=480':''}`;
   }
 
-  static async load(batchId:string,signal:AbortSignal):Promise<{queryId:string;items:ConflictCardItem[]}> {
+  static async load(batchId:string,signal:AbortSignal):Promise<{queryId:string;items:ConflictCardItem[];statistics:GalleryStatistics}> {
     const report=await request<ConsistencyReport>('/consistency/report',{
       selection:{kind:'batch',batch_id:batchId},page_size:1
     },undefined,signal);
@@ -73,19 +73,22 @@ export class ConsistencyView {
     for(let page=1;;page++){
       const result=await request<GalleryPage>('/consistency/gallery',{query_id:queryId,kind:'conflicts',page,page_size:200},undefined,signal);
       items.push(...result.items);
-      if(items.length>=result.total)break;
+      if(items.length>=result.total)return {queryId,items:this.cards(items,{query_id:queryId}),statistics:result.statistics};
     }
-    return {queryId,items:this.cards(items,{query_id:queryId})};
   }
 
-  static async loadCheck(runId:string,signal:AbortSignal):Promise<{queryId:string;items:ConflictCardItem[]}> {
+  static async loadCheck(runId:string,signal:AbortSignal):Promise<{queryId:string;items:ConflictCardItem[];statistics:GalleryStatistics}> {
     const items:GalleryItem[]=[];
     for(let page=1;;page++){
       const result=await request<GalleryPage>(`/consistency/checks/${encodeURIComponent(runId)}/gallery?page=${page}&page_size=200`,undefined,undefined,signal);
       items.push(...result.items);
-      if(items.length>=result.total)break;
+      if(items.length>=result.total)return {queryId:runId,items:this.cards(items,{job_id:runId}),statistics:result.statistics};
     }
-    return {queryId:runId,items:this.cards(items,{job_id:runId})};
+  }
+
+  static async statistics(runId:string,signal:AbortSignal):Promise<GalleryStatistics> {
+    const result=await request<GalleryPage>(`/consistency/checks/${encodeURIComponent(runId)}/gallery?page=1&page_size=1`,undefined,undefined,signal);
+    return result.statistics;
   }
 
   static async loadImages(runId:string,signal:AbortSignal):Promise<ConsistencyComparisonItem[]> {

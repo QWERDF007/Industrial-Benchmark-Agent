@@ -37,7 +37,7 @@ class QueryFeatures:
                 record = repository.get_for_sample(query.sample_id, profile.profile_id)
             if record is None:
                 raise ConsistencyError('INDEX_NOT_READY', 'Query vector is unavailable for this profile')
-            vector = np.frombuffer(record['embedding_blob'], dtype=record['dtype']).astype(np.float32).reshape(1, -1)
+            vector = np.frombuffer(record['embedding_blob'], dtype=record['dtype']).reshape(1, -1)
         else:
             def encode(source):
                 if checkpoint:checkpoint()

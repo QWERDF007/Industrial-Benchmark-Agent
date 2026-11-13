@@ -8,8 +8,10 @@ import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
 import {Builder,By,Key,until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
+import {Select as NativeSelect} from 'selenium-webdriver/lib/select.js';
 import {createIadHttpHandler} from '../lib/server/routes/index.js';
 import {createConsistencyAgentHost} from '../test/fixtures/consistency-agent-host.js';
+import {consistencyTaskPrompts,consistencyIdentityPrompts} from '../lib/shared/prompt-defaults.generated.js';
 
 const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
@@ -56,7 +58,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     const texts=async css=>Promise.all((await driver.findElements(By.css(css))).map(item=>item.getText()));
     await(await element('[data-dc="raw-tab"][data-id="类别不一致"]')).click();
     await element('[data-dc="open-conflict"]');
-    await(await element('[data-dc="view-prompt"]')).click();
+    await(await element('.iad-jobs-table button[title="查看提示词"]')).click();
     const prompt=await element('dialog[aria-label="查看提示词"]');
     for(const text of Object.values(historicalIdentity))assert.ok((await prompt.getText()).includes(text));
     await driver.executeScript('Object.defineProperty(navigator,"clipboard",{configurable:true,value:{writeText:async text=>{window.copiedPrompt=text;}}});');
@@ -75,11 +77,12 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     assert.equal((await driver.findElements(By.css('.dc-model-panel h4'))).length,0);
     assert.doesNotMatch(await(await element('.dc-model-panel')).getText(),/位置差异|拆分|合并|多标|少标/);
     await(await element('.dc-dialog-head [aria-label="关闭"]')).click();
-    await(await element('[data-dc="stats"]')).click();
+    await(await element('.iad-jobs-table button[title="统计"]')).click();
     await element('.dc-stats-dialog');
-    assert.deepEqual(await texts('[data-dc="stat-category"] .dc-vchart-value'),['1']);
-    assert.equal((await driver.findElements(By.css('[data-dc="stat-category"]'))).length,1);
-    await(await element('[data-dc="stat-category"]')).click();
+    assert.match(await(await element('[data-chart="stat-category"] .iad-chart-plot')).getAttribute('aria-label'),/图组（组）：1/);
+    const statistic=await element('select[aria-label="按统计结果筛选"]');
+    await new NativeSelect(statistic).selectByValue('0');
+    await driver.wait(async()=>(await driver.findElements(By.css('.dc-stats-dialog'))).length===0,5000);
     await(await element('[data-dc="raw-tab"][data-id="images"]')).click();
     await(await element(`[data-dc="job-image"][data-id="${fixture.sampleIds.C}"]`)).click();
     await element('#dc-compare-mask');
@@ -104,15 +107,13 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     await driver.navigate().back();await element('[data-dc="start-check"]');
     await driver.navigate().forward();await element('#dc-create-page');
     await driver.navigate().refresh();await element('#dc-create-page');
-    assert.ok((await(await element('#dc-new-prompt-system')).getAttribute('value')).includes('OK/NG'));
+    assert.equal(await(await element('#dc-new-prompt-system')).getAttribute('value'),consistencyTaskPrompts.anomaly_detection.system);
     await(await element('[data-dc="close-new"]')).click();await element('[data-dc="start-check"]');
     await(await element('[data-dc="start-check"]')).click();await element('#dc-create-page');
     const identityFields=['gate_system','gate_user','gate_examples'];
     const identityEditors=await Promise.all(identityFields.map(name=>element('#dc-identity-'+name)));
     const identityDefaults=await Promise.all(identityEditors.map(input=>input.getAttribute('value')));
-    assert.match(identityDefaults[0],/工业图像身份与内容验证员/);
-    assert.match(identityDefaults[1],/比较本次实际送达的主图与候选图/);
-    assert.match(identityDefaults[2],/单侧|只有候选一侧/);
+    assert.deepEqual(identityDefaults,identityFields.map(name=>consistencyIdentityPrompts[name]));
     const editedIdentity={gate_system:'自定义身份系统原文\n保留完整内容。',gate_user:'自定义身份用户原文。',gate_examples:'自定义身份示例原文。'};
     for(const [index,input] of identityEditors.entries()){
       assert.equal(await input.getDomAttribute('readonly'),null);
@@ -142,7 +143,8 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     await driver.manage().window().setRect({width:1440,height:1100});
     const system=await element('#dc-new-prompt-system'),user=await element('#dc-new-prompt');
     const anomalySystem=await system.getAttribute('value'),anomalyUser=await user.getAttribute('value');
-    assert.match(anomalySystem,/OK\/NG/);
+    assert.equal(anomalySystem,consistencyTaskPrompts.anomaly_detection.system);
+    assert.equal(anomalyUser,consistencyTaskPrompts.anomaly_detection.user);
     assert.doesNotMatch(anomalySystem+anomalyUser,/矩形|拆分|合并(?:实例|标注|框)/);
     const editedSystem='自定义系统原文\n只按用户要求审核。',editedUser='自定义用户原文\n完整保留。';
     for(const [input,text] of [[system,editedSystem],[user,editedUser]]){
@@ -154,7 +156,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
       await(await element(`#dc-new-child-options input[value="${identity}"]`)).click();
     };
     await toggle(fixture.datasetId);await toggle(bbox.dataset_id);
-    assert.match(await system.getAttribute('value'),/矩形/);
+    assert.equal(await system.getAttribute('value'),consistencyTaskPrompts.bbox_defect.system);
     assert.doesNotMatch(await system.getAttribute('value'),/OK\/NG/);
     const bboxSystem=await system.getAttribute('value');
     await toggle(bbox.dataset_id);await toggle(fixture.datasetId);

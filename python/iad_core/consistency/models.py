@@ -12,6 +12,7 @@ Identifier = Annotated[str, StringConstraints(strip_whitespace=True, min_length=
 Digest = Annotated[str, StringConstraints(pattern=r'^[a-f0-9]{64}$')]
 Count = Annotated[int, Field(ge=0, strict=True)]
 CandidateLimit = Annotated[int, Field(ge=1, strict=True)]
+TopKLimit = Annotated[int, Field(ge=1, le=200, strict=True)]
 SimilarityThreshold = Annotated[FiniteFloat, Field(ge=0, le=1, strict=True)]
 DEFAULT_MIN_SIMILARITY = 0.95
 DEFAULT_REVIEW_MIN_SIMILARITY = 0.98
@@ -26,7 +27,7 @@ class ConsistencyRetrievalSettings(AnalysisModel):
     mode: ReviewMode = 'combined'
     min_similarity: SimilarityThreshold = DEFAULT_REVIEW_MIN_SIMILARITY
     max_exact_candidates: CandidateLimit = 5
-    max_similar_candidates: CandidateLimit = 10
+    max_similar_candidates: TopKLimit = 10
 
 
 class AllRegisteredScope(AnalysisModel):
@@ -131,6 +132,7 @@ class ConsistencyStart(AnalysisModel):
     corpus_scope: CorpusScope = Field(default_factory=AllRegisteredScope)
     mode: Mode = 'exact'
     min_similarity: SimilarityThreshold = DEFAULT_MIN_SIMILARITY
+    top_k: TopKLimit = 50
     profile_id: Optional[Identifier] = None
     request_id: Identifier
     model_analysis_prompt: Optional[str] = None
@@ -142,16 +144,9 @@ class ImageRetrieve(AnalysisModel):
     corpus_scope: CorpusScope = Field(default_factory=AllRegisteredScope)
     mode: Mode = 'combined'
     profile_id: Optional[Identifier] = None
-    top_k: int | None = Field(default=50, ge=1, le=200, strict=True)
+    top_k: TopKLimit = 50
     min_similarity: SimilarityThreshold | None = None
     cursor: Optional[Identifier] = None
-
-    @model_validator(mode='after')
-    def visual_selection(self):
-        if (self.top_k is None) == (self.min_similarity is None):
-            raise ValueError('Choose either a neighbor count or a minimum similarity')
-        return self
-
 
 class ImageIndexPrepare(AnalysisModel):
     corpus_scope: CorpusScope = Field(default_factory=AllRegisteredScope)

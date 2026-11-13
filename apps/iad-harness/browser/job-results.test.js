@@ -118,9 +118,9 @@ createRoot(document.getElementById('root')).render(<QueryClientProvider client={
  const consistencyChoice=await element('input[name="audit-consistency-source"]');
  assert.equal(await consistencyChoice.isSelected(),false);
  await click('#audit-create-consistency-jobs button[title="统计"]');
- await element('dialog[aria-label="标注冲突统计"]');await element('[aria-label="结论一致性柱状图"]');
- assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll(".dc-vchart-value")].map(node=>node.textContent)'),['0','0']);
- assert.equal((await driver.findElements(By.css('button.dc-vchart-bar'))).length,0,'来源统计不提供页面筛选操作');
+ await element('dialog[aria-label="标注冲突统计"]');await element('[data-chart="stat-agreement"][data-chart-type="donut"]');
+ assert.match(await(await element('[data-chart="stat-agreement"] .iad-chart-plot')).getAttribute('aria-label'),/一致，数量（组）：0；不一致，数量（组）：0/);
+ assert.equal((await driver.findElements(By.css('select[aria-label="按统计结果筛选"]'))).length,0,'来源统计不提供页面筛选操作');
  await click('button[aria-label="关闭标注冲突统计"]');
  assert.equal(await consistencyChoice.isSelected(),false,'查看统计不选择来源');
  assert.equal(await check.isSelected(),true);

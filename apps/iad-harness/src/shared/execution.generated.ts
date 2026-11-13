@@ -19,6 +19,7 @@ export const queryOperations = [
   "analysis_status",
   "audit_agent_context",
   "audit_agent_discovery",
+  "audit_agent_distribution",
   "audit_agent_report_statistics",
   "audit_agent_sample",
   "audit_agent_samples",

@@ -6,7 +6,7 @@ import path from 'node:path';
 import http from 'node:http';
 import {PythonBridge,createIadHttpHandler} from '../lib/server/index.js';
 
-test('image settings use independent persisted profiles and structured encoder errors',async()=>{
+test('image settings expose fixed DINOv3 options and revision-checked writes',async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-image-settings-'));
   const bridge=new PythonBridge({dbPath:path.join(root,'test.db')});
   const server=http.createServer(createIadHttpHandler(bridge));
@@ -19,30 +19,30 @@ test('image settings use independent persisted profiles and structured encoder e
     const initialSettings=await initial.json();
     assert.equal(initialSettings.revision,0);assert.equal(initialSettings.selection,null);
     assert.equal(initialSettings.resources.decode_workers,2);assert.equal(initialSettings.resources.decode_memory_mb,512);
-    const resourceOnly=await post('/images/settings',{expected_revision:0,selection:null,
-      resources:{...initialSettings.resources,decode_workers:3,decode_memory_mb:64}});
-    assert.equal(resourceOnly.status,200,await resourceOnly.clone().text());
-    const resourceSettings=await resourceOnly.json();assert.equal(resourceSettings.selection,null);
-    assert.equal(resourceSettings.resources.decode_workers,3);assert.equal(resourceSettings.resources.decode_memory_mb,64);
+    assert.deepEqual(initialSettings.models.map(model=>model.model_id),['dinov3_vits16','dinov3_vits16plus','dinov3_vitb16','dinov3_vitl16']);
     const unavailable=await post('/images/settings/check',{});
     assert.equal(unavailable.status,409);
     assert.equal((await unavailable.json()).error.code,'PROFILE_NOT_CONFIGURED');
-    const weights=path.join(root,'model.pt');await fs.writeFile(weights,'invalid-model');
-    const profileResponse=await post('/images/profiles',{model_id:'sscd_disc_mixup',weights_ref:weights});
-    assert.equal(profileResponse.status,200,await profileResponse.clone().text());
-    const profile=await profileResponse.json();assert.equal(profile.dim,512);
-    const selection={profile,device:'cpu',batch_size:2,gpu_memory_mb:2048,compute_dtype:'float32',decode_workers:3,decode_memory_mb:64};
-    const saved=await post('/images/settings',{expected_revision:1,selection});
-    assert.equal(saved.status,200,await saved.clone().text());
-    assert.deepEqual((await saved.json()).selection,selection);
-    assert.deepEqual((await bridge.execute('feature_settings_view',{})).selection,selection);
-    const failed=await post('/images/settings/check',{});
-    assert.equal(failed.status,409);
-    assert.equal((await failed.json()).error.code,'ENCODER_UNAVAILABLE');
-    const missing=await post('/images/profiles',{model_id:'sscd_disc_mixup',weights_ref:path.join(root,'missing.pt')});
-    assert.equal(missing.status,409);
-    assert.equal((await missing.json()).error.code,'ENCODER_UNAVAILABLE');
-    const reread=await fetch(base+'/images/settings');assert.equal((await reread.json()).revision,2);
+    const model=initialSettings.models.find(model=>model.available);
+    const values={expected_revision:0,model_id:model?.model_id??'dinov3_vits16',batch_size:8,input_size:224};
+    assert.equal((await post('/images/settings',{...values,input_size:225})).status,422);
+    assert.equal((await post('/images/settings',{...values,batch_size:0})).status,422);
+    assert.equal((await post('/images/settings',{...values,weights_ref:'/client/path'})).status,422);
+    if(model){
+      const saved=await post('/images/settings',values);assert.equal(saved.status,200,await saved.clone().text());
+      const current=await saved.json();assert.equal(current.revision,1);
+      assert.equal(current.selection.profile.model_id,model.model_id);
+      assert.equal(current.selection.compute_dtype,'float16');
+      assert.equal((await post('/images/settings',{...values,batch_size:16})).status,422);
+      const response=await post('/images/settings',{...values,expected_revision:1,batch_size:16});
+      assert.equal(response.status,200,await response.clone().text());
+      const batched=await response.json();
+      assert.equal(batched.selection.profile.profile_id,current.selection.profile.profile_id);
+      assert.equal((await bridge.execute('feature_settings_view',{})).resources.batch_size,16);
+    }else{
+      assert.equal((await post('/images/settings',values)).status,409);
+      assert.equal((await (await fetch(base+'/images/settings')).json()).revision,0);
+    }
   }finally{
     await new Promise(resolve=>server.close(resolve));bridge.destroy();await fs.rm(root,{recursive:true,force:true});
   }

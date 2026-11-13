@@ -18,7 +18,7 @@ from pydantic import TypeAdapter, ValidationError
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.models import CorpusScope, CoverageCount, FrozenScope
 from iad_core.consistency.scopes import ConsistencyScopes
-from iad_core.feature.flat_index import CpuFlatIndex
+from iad_core.feature.flat_index import GpuDevice, GpuFlatIndex
 from iad_core.feature.index_artifacts import IndexArtifacts
 from iad_core.feature.index_models import CorpusIndexInfo, IndexLimits, IndexStats
 from iad_core.feature.profiles import ImageEncoders
@@ -36,13 +36,13 @@ class CorpusState:
     coverage: CoverageCount
 
     def resident_bytes(self, dim: int) -> int:
-        return 4096+len(self.group_ids)*(dim*4+128)+sum(len(value.encode())+96 for values in self.members.values() for value in values)
+        return 4096+len(self.group_ids)*(dim*2+128)+sum(len(value.encode())+96 for values in self.members.values() for value in values)
 
 
 @dataclass(eq=False)
 class IndexEntry:
     info: CorpusIndexInfo
-    engine: CpuFlatIndex
+    engine: GpuFlatIndex
     version: int
     pins: int = 0
 
@@ -73,7 +73,7 @@ class IndexLease:
     def vectors(self, start: int, count: int):
         with self._lock:return self._live().engine.vectors(start,count)
 
-    def search(self, vectors, top_k: int | None = 50, *, min_similarity: float | None = None):
+    def search(self, vectors, top_k: int = 50, *, min_similarity: float | None = None):
         with self._lock,self._slots:
             started=time.perf_counter()
             result=self._live().engine.search(vectors,top_k,min_similarity=min_similarity)
@@ -85,7 +85,7 @@ class IndexLease:
 
 
 class CorpusIndexes:
-    """Bounded leases over immutable, content-level CPU indexes."""
+    """Bounded leases over immutable, content-level FP16 GPU indexes."""
 
     def __init__(self, db: Database, cache_dir: str | Path | None = None, limits: IndexLimits | None = None):
         self.db=db
@@ -97,6 +97,7 @@ class CorpusIndexes:
         self._condition=threading.Condition(self._mutex)
         self._probe=db.get_connection()
         self._entries=OrderedDict()
+        self._devices: dict[int, GpuDevice] = {}
         self._reserved_keys=set()
         self._retired=set()
         self._stats=IndexStats()
@@ -155,7 +156,7 @@ class CorpusIndexes:
             self._reserved+=size;self._scratch+=scratch;self._building+=1
             self._reserved_keys.add(protect)
 
-    def _get(self, corpus_scope, profile_id: str | None, force: bool = False) -> IndexEntry:
+    def _get(self, corpus_scope, profile_id: str | None, force: bool = False, *, device: int | None = None) -> IndexEntry:
         expected=corpus_scope if isinstance(corpus_scope,FrozenScope) else None
         try:
             selector=TypeAdapter(CorpusScope).validate_python(expected.selector if expected else corpus_scope)
@@ -164,9 +165,13 @@ class CorpusIndexes:
         if selector.kind=='datasets':selector=selector.model_copy(update={'dataset_ids':sorted(selector.dataset_ids)})
         profile=ImageEncoders(self.db).profile(profile_id)
         range_id='corpus_'+hashlib.sha256(json.dumps(selector.model_dump(),sort_keys=True).encode()).hexdigest()
-        key=(range_id,profile.profile_id)
+        device = ImageEncoders(self.db).read().resources.index_device if device is None else device
+        key=(range_id,profile.profile_id,device)
         version=self._version()
         with self._mutex:
+            if device not in self._devices:
+                self._devices[device] = GpuDevice(device)
+            gpu = self._devices[device]
             entry=self._entries.get(key)
             if entry is not None and entry.version==version and not force:
                 if expected is not None and entry.info.scope_id!=expected.scope_id:
@@ -190,13 +195,13 @@ class CorpusIndexes:
             reserved=True
             try:
                 info=CorpusIndexInfo(scope_id=state.scope_id,range_id=range_id,profile_id=profile.profile_id,
-                    signature=state.signature,generation=uuid.uuid4().hex,vector_count=len(state.group_ids),
+                    signature=state.signature,generation=uuid.uuid4().hex,vector_count=len(state.group_ids),device=device,
                     member_count=sum(len(values) for values in state.members.values()),dim=profile.dim,
-                    vector_bytes=len(state.group_ids)*profile.dim*4,resident_bytes=size,coverage=state.coverage,index_path=str(path))
+                    vector_bytes=len(state.group_ids)*profile.dim*2,resident_bytes=size,coverage=state.coverage,index_path=str(path))
                 loaded=None
                 if path.exists() and not force:
                     try:
-                        loaded=self.artifacts.load(path,info,state.group_ids,state.members,self.limits)
+                        loaded=self.artifacts.load(path,info,state.group_ids,state.members,self.limits,gpu)
                     except ConsistencyError:
                         raise
                     except (OSError,ValueError,KeyError,RuntimeError,zipfile.BadZipFile):
@@ -210,8 +215,8 @@ class CorpusIndexes:
                             connection.execute('BEGIN')
                             if self._capture(selector,profile.profile_id,expected,connection).signature!=state.signature:
                                 raise ConsistencyError('SOURCE_UNAVAILABLE','Corpus changed before index construction')
-                            engine=CpuFlatIndex.build(self.repository.iter_vectors(state.group_ids,profile.profile_id,connection),
-                                state.group_ids,state.members,profile.dim,self.limits)
+                            engine=GpuFlatIndex.build(self.repository.iter_vectors(state.group_ids,profile.profile_id,connection),
+                                state.group_ids,state.members,profile.dim,self.limits,gpu=gpu)
                     except ImportError as error:
                         raise ConsistencyError('INDEX_NOT_READY','Install the retrieval optional dependency to use visual indexes') from error
                     temporary=self.artifacts.stage(path,info,engine)
@@ -254,14 +259,14 @@ class CorpusIndexes:
             self._stats.search_batches+=1
             self._stats.query_seconds+=elapsed
 
-    def prepare(self, corpus_scope, profile_id: str | None = None, *, force: bool = False) -> CorpusIndexInfo:
-        entry=self._get(corpus_scope,profile_id,force)
+    def prepare(self, corpus_scope, profile_id: str | None = None, *, force: bool = False, device: int | None = None) -> CorpusIndexInfo:
+        entry=self._get(corpus_scope,profile_id,force,device=device)
         try:return entry.info.model_copy(deep=True)
         finally:self._release(entry)
 
     @contextmanager
-    def acquire(self, corpus_scope, profile_id: str | None = None):
-        entry=self._get(corpus_scope,profile_id)
+    def acquire(self, corpus_scope, profile_id: str | None = None, *, device: int | None = None):
+        entry=self._get(corpus_scope,profile_id,device=device)
         lease=IndexLease(entry,self._queried,self._queries)
         try:yield lease
         finally:lease.close();self._release(entry)
@@ -281,3 +286,4 @@ class CorpusIndexes:
                 if entry.pins:self._retired.add(entry)
                 else:self._resident-=entry.info.resident_bytes
             self._entries.clear()
+            self._devices.clear()

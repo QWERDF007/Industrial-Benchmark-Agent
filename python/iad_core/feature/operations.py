@@ -2,8 +2,10 @@ from pydantic import Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.errors import ConsistencyError
-from iad_core.feature.profiles import EmbeddingProfile, ImageEncoderConfig, ImageEncoderEdit, ImageEncoders, ImageModelId, EmbeddingPrecision
+from iad_core.feature.profiles import EmbeddingProfile, ImageEncoderConfig, ImageEncoders, ImageModelId, EmbeddingPrecision
 from iad_core.storage.database import Database
+from iad_core.feature.backbones import DinoInputSize
+from iad_core.feature.settings import DinoEncoderEdit, DinoEncoderSettings
 
 
 class ImageProfileCreate(AnalysisModel):
@@ -11,6 +13,7 @@ class ImageProfileCreate(AnalysisModel):
     weights_ref: str = Field(min_length=1)
     source_ref: str | None = None
     storage_dtype: EmbeddingPrecision = 'float32'
+    input_size: DinoInputSize | None = None
 
 
 def feature_profile_create(args, db_path):
@@ -19,11 +22,11 @@ def feature_profile_create(args, db_path):
 
 
 def feature_settings_view(args, db_path):
-    return ImageEncoders(Database(db_path)).read().model_dump()
+    return DinoEncoderSettings(Database(db_path)).view().model_dump(mode='json')
 
 
 def feature_settings_save(args, db_path):
-    return ImageEncoders(Database(db_path)).save(ImageEncoderEdit.model_validate(args)).model_dump()
+    return DinoEncoderSettings(Database(db_path)).save(DinoEncoderEdit.model_validate(args)).model_dump(mode='json')
 
 
 def feature_connection_check(args, db_path):

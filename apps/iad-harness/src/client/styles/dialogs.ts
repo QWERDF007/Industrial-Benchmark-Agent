@@ -17,9 +17,6 @@ dialog.iad-detail-dialog {text-align:left;}
   --iba-dialog-edit-width: var(--iad-dialog-medium-width);
   --iba-dialog-max-height: var(--iad-dialog-max-height);
   --iba-dialog-gap: var(--iad-dialog-gutter);
-  --iba-dialog-ink: var(--iad-text);
-  --iba-dialog-border: var(--iad-border);
-  --iba-dialog-font: var(--iad-font-family);
 
   --iad-modal-backdrop: rgba(23, 34, 51, 0.68);
   --iad-dialog-gutter: clamp(12px, 2.5vw, 32px);
@@ -32,7 +29,6 @@ dialog.iad-detail-dialog {text-align:left;}
   --iad-dialog-small-width: 530px;
 
   /* Surfaces & Borders */
-  --iad-dialog-bg: var(--iad-surface);
   --iad-dialog-radius: 7px;
   --iad-dialog-border: 1px solid #d9e2ed;
   --iad-dialog-shadow: 0 20px 64px rgba(14, 26, 48, 0.27);
@@ -41,8 +37,15 @@ dialog.iad-detail-dialog {text-align:left;}
   /* Typography */
   --iad-dialog-title-font: 17px;
   --iad-dialog-title-weight: 650;
-  --iad-dialog-title-color: var(--iad-text);
   --iad-dialog-text-font: var(--iad-font-size);
+}
+
+dialog:is(.iad-detail-dialog,.iad-fullscreen-dialog) {
+  --iba-dialog-ink: var(--iad-text);
+  --iba-dialog-border: var(--iad-border);
+  --iba-dialog-font: var(--iad-font-family);
+  --iad-dialog-bg: var(--iad-surface);
+  --iad-dialog-title-color: var(--iad-text);
   --iad-dialog-text-color: var(--iad-text);
   --iad-dialog-muted-color: var(--iad-muted);
 }

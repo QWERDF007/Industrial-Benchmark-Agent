@@ -491,7 +491,7 @@ OPERATIONS.update({operation.__name__: operation for operation in ANALYSIS_AGENT
 OPERATIONS.update({operation.__name__: operation for operation in AUDIT_AGENT_OPERATIONS})
 
 QUERY_OPERATIONS = frozenset({
-    'audit_agent_discovery',
+    'audit_agent_discovery', 'audit_agent_distribution',
     'audit_agent_snapshot','audit_agent_samples','audit_agent_sample','audit_agent_context','audit_agent_session_location', 'audit_evidence',
     'analysis_evidence', 'analysis_current_evidence', 'analysis_current_sample_evidence', 'audit_agent_report_statistics', 'analysis_publication', 'analysis_sample_evidence', 'analysis_observations', 'analysis_direction_choices', 'analysis_sources', 'analysis_agent_catalog', 'analysis_agent_history',
     'analysis_agent_arguments', 'analysis_agent_claims',

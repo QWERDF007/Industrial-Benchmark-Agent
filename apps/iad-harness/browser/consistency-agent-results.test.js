@@ -132,7 +132,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     assert.match(identityText,/内容不同/);
     assert.doesNotMatch(identityText,/未进行标注审核|暂无已保存|尚无已保存/);
     assert.doesNotMatch(identityText,/暂无已保存的整组分析/);
-    assert.deepEqual(await Promise.all((await driver.findElements(By.css('[data-dc="identity-analysis"] .dc-analysis-sources'))).map(item=>item.getText())),
+    assert.deepEqual((await Promise.all((await driver.findElements(By.css('[data-dc="identity-analysis"] .dc-analysis-sources'))).map(item=>item.getText()))).sort(),
       ['A.png：内容不同','B.png：内容不同','D.png：内容不同']);
     await driver.wait(async()=>(await driver.findElements(By.css('[data-dc="retrieved-candidate"]'))).length===3,5000);
     assert.equal((await driver.findElements(By.css('[data-dc="candidate"]'))).length,0);
@@ -221,10 +221,12 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     await (await element('.iad-jobs-table button[title="统计"]')).click();
     phase = 'statistics';
     await element('.dc-stats-dialog');
-    assert.equal(await (await element('[data-dc="stat-category"][data-id="多类别"] .dc-vchart-value')).getText(), '1');
-    assert.equal(await (await element('[data-dc="stat-category"][data-id="少类别"] .dc-vchart-value')).getText(), '1');
-    assert.equal(await (await element('[data-dc="stat-agreement"][data-id="same"] .dc-vchart-value')).getText(), '2');
-    await (await element('[data-dc="stat-category"][data-id="多类别"]')).click();
+    const categoryDescription=await(await element('[data-chart="stat-category"] .iad-chart-plot')).getAttribute('aria-label');
+    assert.match(categoryDescription,/多标，图组（组）：1/);
+    assert.match(categoryDescription,/少标，图组（组）：1/);
+    assert.match(await(await element('[data-chart="stat-agreement"] .iad-chart-plot')).getAttribute('aria-label'),/一致，数量（组）：2/);
+    const choice=await driver.executeScript('return [...document.querySelector("select[aria-label=按统计结果筛选]").options].find(option=>option.textContent.startsWith("差异类型：多标")).value');
+    await new NativeSelect(await element('select[aria-label="按统计结果筛选"]')).selectByValue(choice);
     await driver.wait(async () => (await cards()).length === 1, 5000);
     await (await element('[data-dc="raw-tab"][data-id="images"]')).click();
     await driver.wait(async () => (await cards()).length === 3, 5000);

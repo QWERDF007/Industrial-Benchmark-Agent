@@ -61,9 +61,16 @@ def test_conflict_categories_follow_frozen_anchor_direction(dataset,tmp_path,lef
     service=ConsistencyService(db)
     service.compare(ConsistencyCompare(sample_a=config.dataset.id+':anchor.png',sample_b=config.dataset.id+':candidate.png'))
     snapshot=ResultQueries(db).query(ConsistencyQuery(selection={'kind':'scope','subjects':{'kind':'all_registered'}}))
-    item=GalleryQueries(db).query(GalleryQuery(query_id=snapshot.query_id,kind='conflicts')).items[0]
+    gallery = GalleryQueries(db)
+    page = gallery.query(GalleryQuery(query_id=snapshot.query_id,kind='conflicts',page_size=1))
+    item=page.items[0]
     assert item.anchor.sample.relative_path=='anchor.png'
     assert item.conflict_categories==expected
+    assert page.statistics.original_categories == dict.fromkeys(expected, 1)
+    assert page.statistics.model_categories == {}
+    assert page.statistics.agreement == {'same': 0, 'different': 0}
+    assert page.statistics.unjudged == 1
+    assert gallery.query(GalleryQuery(query_id=snapshot.query_id,kind='conflicts',page=2,page_size=1)).statistics == page.statistics
 
 
 def test_gallery_groups_complete_snapshot_instead_of_current_result_page(dataset):

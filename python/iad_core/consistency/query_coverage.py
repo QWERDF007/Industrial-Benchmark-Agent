@@ -78,5 +78,5 @@ class QueryCoverage:
         corpus=CoverageCount(total=len(corpus_states),completed=corpus_states.count('COMPLETE'),failed=corpus_states.count('UNAVAILABLE'),
             unsupported=corpus_states.count('UNSUPPORTED'),pending=corpus_states.count('PENDING'))
         complete=execution.total>0 and execution.completed==execution.total and corpus.completed==corpus.total
-        kind='INDEX_ONLY' if mode is None else 'PARTIAL' if not complete else 'EXACT_SCOPE' if mode=='exact' else 'SIMILARITY_THRESHOLD' if minimum is not None else 'TOP_K'
+        kind='INDEX_ONLY' if mode is None else 'PARTIAL' if not complete else 'EXACT_SCOPE' if mode=='exact' else 'TOP_K'
         return cls(execution,corpus,mode,profile,kind,minimum)

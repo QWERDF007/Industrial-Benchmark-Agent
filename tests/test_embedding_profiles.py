@@ -31,6 +31,33 @@ def local_dinov3_snapshot(tmp_path):
     return snapshot
 
 
+@pytest.mark.parametrize(('model_id', 'dim', 'layers', 'heads', 'intermediate', 'gated'), [
+    ('dinov3_vits16', 384, 12, 6, 1536, False),
+    ('dinov3_vits16plus', 384, 12, 6, 1536, True),
+    ('dinov3_vitb16', 768, 12, 12, 3072, False),
+    ('dinov3_vitl16', 1024, 24, 16, 4096, False),
+])
+def test_dinov3_variants_freeze_cls_and_an_explicit_input_size(local_dinov3_snapshot,
+        model_id, dim, layers, heads, intermediate, gated):
+    snapshot = local_dinov3_snapshot
+    config = json.loads((snapshot / 'config.json').read_text())
+    config.update(hidden_size=dim, num_hidden_layers=layers, num_attention_heads=heads,
+        intermediate_size=intermediate, use_gated_mlp=gated)
+    (snapshot / 'config.json').write_text(json.dumps(config))
+    before = (snapshot / 'preprocessor_config.json').read_bytes()
+    profile = EmbeddingProfile.create(model_id, str(snapshot), storage_dtype='float16', input_size=256)
+    assert profile.dim == dim and profile.pooling == 'pooler_output'
+    assert profile.input_size == profile.resize_size == 256
+    profile.verify_artifacts()
+    extractor = ImageFeatureExtractor(ImageEncoderConfig(profile=profile))
+    assert tuple(extractor.preprocess(Image.new('RGB', (41, 59), 'blue')).shape) == (3, 256, 256)
+    assert (snapshot / 'preprocessor_config.json').read_bytes() == before
+    assert EmbeddingProfile.create(model_id, str(snapshot), storage_dtype='float16').profile_id != profile.profile_id
+    for invalid in (0, 225, True, 256.5):
+        with pytest.raises((ValueError, TypeError)):
+            EmbeddingProfile.create(model_id, str(snapshot), input_size=invalid)
+
+
 def test_local_dinov3_snapshot_records_official_processor_and_artifact_changes(local_dinov3_snapshot):
     snapshot=local_dinov3_snapshot
     profile=EmbeddingProfile.create('dinov3_vitb16',str(snapshot))

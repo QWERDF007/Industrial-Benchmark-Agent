@@ -9,7 +9,7 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.annotation_models import AnnotationComparison, ANNOTATION_DIFFERENCE_CATEGORIES
-from iad_core.consistency.models import MODEL_ASSESSMENT_LABELS, Count, DifferenceType, GalleryFilterKind, GalleryModelFilter, Identifier, ModelAssessmentState
+from iad_core.consistency.models import MODEL_ASSESSMENT_LABELS, Count, DifferenceType, GalleryFilterKind, GalleryModelFilter, Identifier
 from iad_core.consistency.result_models import FactState, ResultSelection
 from iad_core.consistency.review_repository import ConsistencyDecisionRepository
 from iad_core.consistency.review_states import ReviewStates
@@ -26,6 +26,7 @@ from iad_core.consistency.annotation_models import AnnotationMatchingConfig
 from iad_core.consistency.evidence_models import FrozenEvidenceSource
 from iad_core.evidence.consistency_sources import EvidenceSourcesCapture
 from iad_core.evidence.retained import RetainedImages
+from iad_core.consistency.gallery_statistics import GalleryStatisticFact, GalleryStatistics
 
 
 class GalleryQuery(AnalysisModel):
@@ -51,21 +52,14 @@ class GalleryMemberQuery(GalleryReference):
     page_size: int = Field(default=20, ge=1, le=1000, strict=True)
 
 
-class GalleryItem(AnalysisModel):
-    group_id: Identifier
-    facts_state: FactState
+class GalleryItem(GalleryStatisticFact):
     anchor: GalleryImage
     member_count: Count
     candidate_count: Count
     dataset_count: Count
     pair_count: Count
     difference_types: list[DifferenceType]
-    conflict_categories: list[ConflictCategory]
-    model_categories: list[ConflictCategory]
     confirmed_conflict: bool
-    model_state: ModelAssessmentState
-    model_conclusion: str | None = None
-    annotation_conclusion: str
     review_state: ReviewDisposition
 
 
@@ -88,6 +82,7 @@ class GalleryPage(AnalysisModel):
     model_filters: list[GalleryModelFilterCount]
     items: list[GalleryItem]
     total: Count
+    statistics: GalleryStatistics
 
 
 class GalleryMemberPage(AnalysisModel):
@@ -200,10 +195,17 @@ class GalleryQueries:
             if model_matches:counts[category] += 1
             if category_matches:model_counts[model_state] += 1
             if category_matches and model_matches:
-                selected.append((row,model_state,state,observed,all(item.geometry_compared for item in observations)))
+                ordered_categories = [category for category in ConflictCategory if category in observed]
+                fact = GalleryStatisticFact(group_id=row['group_id'], facts_state=row['facts_state'], model_state=model_state,
+                    conflict_categories=ordered_categories,
+                    annotation_conclusion=AnnotationObservation.conclusion_for(ordered_categories, all(item.geometry_compared for item in observations)),
+                    model_categories=state.categories if state and state.status == 'COMPLETED' else [],
+                    model_conclusion=state.conclusion if state and state.status == 'COMPLETED' else None)
+                selected.append((row, fact))
         total = len(selected)
+        statistics = GalleryStatistics.capture((fact for _, fact in selected), include_model_categories=True)
         rows = selected[(request.page - 1) * request.page_size:request.page * request.page_size]
-        review_facts = {(row['group_id'],row['facts_state']):json.loads(row['review_facts']) for row,_,_,_,_ in rows}
+        review_facts = {(row['group_id'],row['facts_state']):json.loads(row['review_facts']) for row,_ in rows}
         histories = ConsistencyDecisionRepository(self.db).histories({identity for pairs in review_facts.values() for identity in pairs})
         reviews = {}
         for key,pairs in review_facts.items():
@@ -211,14 +213,11 @@ class GalleryQueries:
             reviews[key] = next(iter(states)) if len(states)==1 else 'pending'
         filters = [GalleryFilterCount(value=value,label=label,count=sum(counts.values()) if value=='all' else counts[value]) for value,label in self.FILTERS]
         model_filters=[GalleryModelFilterCount(value=value,label=label,count=sum(model_counts.values()) if value=='all' else model_counts[value]) for value,label in self.MODEL_FILTERS]
-        return GalleryPage(query_id=request.query_id,kind=request.kind,total=total,filters=filters,model_filters=model_filters,items=[
-            GalleryItem(group_id=row['group_id'],facts_state=row['facts_state'],anchor=self.image(row),
+        return GalleryPage(query_id=request.query_id,kind=request.kind,total=total,statistics=statistics,filters=filters,model_filters=model_filters,items=[
+            GalleryItem(**fact.model_dump(),anchor=self.image(row),
                 member_count=row['member_count'],candidate_count=row['member_count']-1,dataset_count=row['dataset_count'],
-                pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed']),model_state=model_state,
-                conflict_categories=[category for category in ConflictCategory if category in observed],
-                annotation_conclusion=AnnotationObservation.conclusion_for([category for category in ConflictCategory if category in observed],geometry_compared),
-                model_categories=state.categories if state and state.status=='COMPLETED' else [],
-                model_conclusion=state.conclusion if state and state.status=='COMPLETED' else None,review_state=reviews[row['group_id'],row['facts_state']]) for row,model_state,state,observed,geometry_compared in rows])
+                pair_count=row['pair_count'],difference_types=json.loads(row['difference_types']),confirmed_conflict=bool(row['confirmed']),
+                review_state=reviews[row['group_id'],row['facts_state']]) for row,fact in rows])
 
     def members(self, request: GalleryMemberQuery) -> GalleryMemberPage:
         ResultSnapshots(self.db).get(request.query_id)

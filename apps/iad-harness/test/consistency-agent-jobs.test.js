@@ -121,10 +121,11 @@ print(json.dumps({'dataset_id':config.dataset.id}))
     const failedAnchors = await bridge.execute('consistency_agent_anchors', {run_id: combined.run_id});
     assert.equal(failedAnchors.anchors.every(anchor => anchor.state === 'FAILED' && anchor.result === null), true);
     for (const failedAnchor of failedAnchors.anchors) {
-      const trace = await host.read(failedAnchor.session_id);
-      const failure = trace.events.filter(event => event.type === 'iad/consistency').at(-1).data.value;
-      assert.equal(failure.state, 'FAILED');
-      assert.equal(failure.errors[0].code, 'PROFILE_NOT_CONFIGURED');
+      assert.equal(failedAnchor.session_created,false);
+      assert.equal(await host.exists(failedAnchor.session_id),false);
+      const detail=await bridge.execute('consistency_agent_detail',{run_id:combined.run_id,anchor_id:failedAnchor.anchor_id});
+      assert.equal(detail.errors[0].code,'PROFILE_NOT_CONFIGURED');
+      assert.equal(detail.trace_ref,null);
     }
     const writeNotice = host.notice.bind(host);
     let interruptClosing = true;
@@ -153,8 +154,9 @@ print(json.dumps({'dataset_id':config.dataset.id}))
     assert.equal(reconciled.trace_state, 'CLOSED');
     assert.equal(reconciled.trace_error, null);
     const trace = await host.read(reconciled.session_id);
-    const submissions = trace.events.filter(event => event.type === 'iad/consistency' && event.data.record_id);
+    const submissions = trace.events.filter(event => event.type === 'iad/consistency' && event.data.record_id && event.data.value.result);
     assert.equal(submissions.length, 1, '实际终稿事件已落盘时，对账不应重复写事件或重新审核');
+    assert.equal(trace.events.filter(event=>event.data?.record_id===reconciled.session_id+':created').length,1);
     assert.deepEqual(unexpected, []);
     assert.equal((await bridge.execute('analysis_status', {run_id: committed.run_id})).completed, 1);
   } finally {

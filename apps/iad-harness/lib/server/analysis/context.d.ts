@@ -53,7 +53,7 @@ export declare class AnalysisPromptContext {
             relative_path: string;
         };
         sampling_group: import("../../shared/domain.generated.js").SamplingGroup;
-        dataset_format: import("../../shared/domain.generated.js").DatasetFormat3;
+        dataset_format: import("../../shared/domain.generated.js").DatasetFormat4;
     }[];
     selectedDirections(directions: FrozenAnalysisDirection[]): {
         ref: import("../../shared/domain.generated.js").Ref;
@@ -123,7 +123,7 @@ export declare class AnalysisPromptContext {
                 relative_path: string;
             };
             sampling_group: import("../../shared/domain.generated.js").SamplingGroup;
-            dataset_format: import("../../shared/domain.generated.js").DatasetFormat3;
+            dataset_format: import("../../shared/domain.generated.js").DatasetFormat4;
         }[];
         selected_directions: {
             ref: import("../../shared/domain.generated.js").Ref;
@@ -231,7 +231,7 @@ export declare class AnalysisPromptContext {
                 relative_path: string;
             };
             sampling_group: import("../../shared/domain.generated.js").SamplingGroup;
-            dataset_format: import("../../shared/domain.generated.js").DatasetFormat3;
+            dataset_format: import("../../shared/domain.generated.js").DatasetFormat4;
         }[];
     };
     finalization(context: AnalysisFinalizationContext): AnalysisFinalizationContext | {
@@ -322,7 +322,7 @@ export declare class AnalysisPromptContext {
                 relative_path: string;
             };
             sampling_group: import("../../shared/domain.generated.js").SamplingGroup;
-            dataset_format: import("../../shared/domain.generated.js").DatasetFormat3;
+            dataset_format: import("../../shared/domain.generated.js").DatasetFormat4;
         }[];
         selected_directions: {
             ref: import("../../shared/domain.generated.js").Ref;

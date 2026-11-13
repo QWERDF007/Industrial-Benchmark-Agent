@@ -35,6 +35,7 @@ test('native consistency schemas preserve discriminated scopes and managed image
 test('consistency start leaves module defaults to the server',()=>{
   assert.equal('default' in consistencyStartParameters.mode,false);
   assert.equal('default' in consistencyStartParameters.min_similarity,false);
+  assert.equal('default' in consistencyStartParameters.top_k,false);
 });
 
 test('native decisions exclude derived conclusions and preserve nullable context queries', () => {

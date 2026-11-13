@@ -33,9 +33,8 @@ export class ConsistencyView {
             const result = await request('/consistency/gallery', { query_id: queryId, kind: 'conflicts', page, page_size: 200 }, undefined, signal);
             items.push(...result.items);
             if (items.length >= result.total)
-                break;
+                return { queryId, items: this.cards(items, { query_id: queryId }), statistics: result.statistics };
         }
-        return { queryId, items: this.cards(items, { query_id: queryId }) };
     }
     static async loadCheck(runId, signal) {
         const items = [];
@@ -43,9 +42,12 @@ export class ConsistencyView {
             const result = await request(`/consistency/checks/${encodeURIComponent(runId)}/gallery?page=${page}&page_size=200`, undefined, undefined, signal);
             items.push(...result.items);
             if (items.length >= result.total)
-                break;
+                return { queryId: runId, items: this.cards(items, { job_id: runId }), statistics: result.statistics };
         }
-        return { queryId: runId, items: this.cards(items, { job_id: runId }) };
+    }
+    static async statistics(runId, signal) {
+        const result = await request(`/consistency/checks/${encodeURIComponent(runId)}/gallery?page=1&page_size=1`, undefined, undefined, signal);
+        return result.statistics;
     }
     static async loadImages(runId, signal) {
         const items = [];

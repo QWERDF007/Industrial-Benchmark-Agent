@@ -76,10 +76,10 @@ def evaluate_retrieval(manifest: RetrievalBenchmark, config: ImageEncoderConfig,
         if prepared.completed_samples != len(identities):
             raise ValueError('Benchmark features are incomplete')
         started = time.perf_counter()
-        info = runtime.indexes.prepare(scope, config.profile.profile_id)
+        info = runtime.indexes.prepare(scope, config.profile.profile_id, device=config.index_device)
         index_cold_seconds = time.perf_counter() - started
         started = time.perf_counter()
-        warm = runtime.indexes.prepare(scope, config.profile.profile_id)
+        warm = runtime.indexes.prepare(scope, config.profile.profile_id, device=config.index_device)
         index_hot_seconds = time.perf_counter() - started
         if info.generation != warm.generation:
             raise ValueError('Repeated index preparation unexpectedly rebuilt the corpus')
@@ -88,7 +88,7 @@ def evaluate_retrieval(manifest: RetrievalBenchmark, config: ImageEncoderConfig,
         vectors = np.stack([np.frombuffer(feature_repository.get_for_sample(identities[query.query_id], config.profile.profile_id)
             ['embedding_blob'], dtype=config.profile.storage_dtype).astype(np.float32) for query in queries])
         vector_times, hits_by_query = [], []
-        with runtime.indexes.acquire(scope, config.profile.profile_id) as index:
+        with runtime.indexes.acquire(scope, config.profile.profile_id, device=config.index_device) as index:
             for vector in vectors:
                 started = time.perf_counter()
                 index.search(vector.reshape(1, -1), top_k=top_k)
@@ -180,7 +180,7 @@ def evaluate_retrieval(manifest: RetrievalBenchmark, config: ImageEncoderConfig,
             'resources': {'process_peak_rss_bytes_including_model': resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024,
                 'machine': platform.machine(), 'cpu': platform.processor(), 'device': config.device,
                 'gpu': gpu, 'rss_measurement_scope': 'process_lifetime_including_model',
-                'cpu_threads': runtime.indexes.limits.cpu_threads, 'gpu_memory_budget_mb': config.gpu_memory_mb},
+                'index_device': info.device, 'index_storage_dtype': info.storage_dtype, 'gpu_memory_budget_mb': config.gpu_memory_mb},
             'gates': ready, 'publication_ready': all(ready.values())}
         (output / 'metrics.json').write_text(json.dumps(metrics, ensure_ascii=False, indent=2))
         (output / 'outcomes.json').write_text(json.dumps(outcomes, ensure_ascii=False, indent=2))

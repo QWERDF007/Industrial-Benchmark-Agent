@@ -37,8 +37,8 @@ def test_consistency_statistics_keep_program_matches_separate_from_visual_review
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count':1000, 'max_model_len':32768})
         facts = json.loads(json.loads(request.content)['messages'][-1]['content'][1]['text'])['facts']
-        answer = {'observations':[{'candidate_id':identity, 'description':'对应边缘的主要覆盖相同。',
-            'media_ids':facts['required_image_ids'][identity]} for identity in facts['candidates']]}
+        answer = {'reviews': {identity: {'verdict': 'EQUIVALENT', 'explanation': '对应边缘的主要覆盖相同。',
+            'issues': [], 'limitations': [], 'disputed_regions': []} for identity in facts['candidates']}}
         return httpx.Response(200, json={'choices':[{'finish_reason':'stop', 'message':{'content':json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))

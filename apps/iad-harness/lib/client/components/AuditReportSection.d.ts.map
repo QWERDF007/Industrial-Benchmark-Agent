@@ -1,0 +1,1 @@
+{"version":3,"file":"AuditReportSection.d.ts","sourceRoot":"","sources":["../../../src/client/components/AuditReportSection.tsx"],"names":[],"mappings":"AAAA,OAAO,KAAK,MAAM,OAAO,CAAC;AAC1B,OAAO,EAAqB,KAAK,qBAAqB,EAAC,MAAM,oBAAoB,CAAC;AAElF,wBAAgB,kBAAkB,CAAC,EAAC,OAAO,EAAC,QAAQ,EAAC,EAAC;IAAC,OAAO,EAAC,qBAAqB,CAAC;IAAA,QAAQ,EAAC,KAAK,CAAC,SAAS,CAAA;CAAC,qBAI7G"}
