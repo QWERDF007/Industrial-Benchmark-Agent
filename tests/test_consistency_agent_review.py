@@ -1,6 +1,7 @@
 import base64
 from copy import deepcopy
 import io
+import hashlib
 import json
 from uuid import uuid4
 
@@ -65,6 +66,8 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         anchor_id = config.dataset.id + ':dent.png'
         job_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})['run_id']
+        from iad_core.duplicate.index import PixelIndex
+        PixelIndex(database).prepare([sample.sample_id for sample in checks.snapshot(job_id).scopes.corpus.samples])
         checks.session_created(job_id, anchor_id)
         selected = checks.retrieve(job_id, anchor_id)
         review = ConsistencyAgentReview(runtime, client)
@@ -91,7 +94,10 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
             review.observe(job_id, anchor_id, {**request, 'question': '在原始像素中补充核对标注边界'})
         actual = [json.loads(part['text'].removeprefix('图像视图：')) for part in next(message for message in sent[0]['messages'] if message['role']=='user')['content']
             if part['type'] == 'text' and part['text'].startswith('图像视图：')]
-        assert [item.sha256 for item in observed.request.media] == [item['sha256'] for item in actual]
+        image_parts = next(message['content'] for message in sent[0]['messages'] if message['role'] == 'user')
+        assert [item.sha256 for item in observed.request.media] == [hashlib.sha256(
+            base64.b64decode(item['image_url']['url'].split(',', 1)[1])).hexdigest()
+            for item in image_parts if item['type'] == 'image_url']
         assert any(item['source'] == 'annotation' and item['crop_bbox'] == [8, 8, 32, 32] and item['sent_size'] == [24, 24] for item in actual)
         assert all(item['representation'] == 'raw' for item in actual)
         assert review.observe(job_id, anchor_id, request) == observed
@@ -225,6 +231,10 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
     registry.rescan(config.dataset.id)
     reference_dataset = registry.import_labelme(DatasetImport(format='labelme', name='对侧空标',
         image_dir=str(root), annotation_dir=str(root)))
+    with database.connection() as connection:
+        sample_ids = [row[0] for row in connection.execute('SELECT sample_id FROM samples WHERE dataset_id IN (?,?)',
+            (config.dataset.id, reference_dataset.dataset.id))]
+    PixelIndex(database).prepare(sample_ids)
     main_id = config.dataset.id + ':dent.png'
     reference_id = reference_dataset.dataset.id + ':reference.png'
     corpus_id = reference_dataset.dataset.id
@@ -324,6 +334,8 @@ def test_invalid_visual_output_has_bounded_schema_correction(dataset):
         anchor = config.dataset.id + ':dent.png'
         run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'instruction': instruction, 'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
+        from iad_core.duplicate.index import PixelIndex
+        PixelIndex(database).prepare([sample.sample_id for sample in checks.snapshot(run).scopes.corpus.samples])
         checks.session_created(run, anchor)
         selected = checks.retrieve(run, anchor)
         with pytest.raises(ModelOutputError):

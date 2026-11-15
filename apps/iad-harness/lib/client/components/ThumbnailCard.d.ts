@@ -7,6 +7,7 @@ export interface ThumbnailCardProps extends React.ButtonHTMLAttributes<HTMLButto
     label: string;
     children?: React.ReactNode;
     mediaOverlay?: React.ReactNode;
+    imageLoading?: 'eager' | 'lazy';
 }
 export declare const ThumbnailCard: React.ForwardRefExoticComponent<ThumbnailCardProps & React.RefAttributes<HTMLButtonElement>>;
 //# sourceMappingURL=ThumbnailCard.d.ts.map

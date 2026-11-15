@@ -11,6 +11,7 @@ from iad_core.analysis.jobs import AnalysisAgentJobs
 from iad_core.audit.jobs import AuditAgentJobs
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.dataset.registry import DatasetImport, DatasetRegistry
+from iad_core.duplicate.preparation import PixelPreparation
 from iad_core.knowledge.instructions import default_directions
 from iad_core.storage.database import Database
 from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
@@ -18,9 +19,6 @@ from iad_core.workbench.module_settings import ModuleSettings
 from iad_core.workbench.runtime import WorkbenchRuntime
 from tests.audit_support import save_image
 
-root = Path(sys.argv[1])
-runtime = WorkbenchRuntime(Database(str(root / 'test.db')))
-analysis, consistency, audit = AnalysisAgentJobs(runtime), ConsistencyAgentJobs(runtime), AuditAgentJobs(runtime)
 def command(action, module=None):
     if action == 'init':
         images = root / 'images'
@@ -46,6 +44,7 @@ def command(action, module=None):
                 request['mining_prompt'] = dict(objective='核对主体外缘。', instruction='核对可见外缘。', directions=[default_directions()[0].model_dump(mode='json')])
             jobs[module] = analysis.start(request, agent=role)['run_id']
         upstream = consistency.start(dict(submission_id=str(uuid4()), dataset_ids=[did], mode='exact'))['run_id']
+        PixelPreparation(runtime.db).prepare([sample.sample_id for sample in consistency.snapshot(upstream).scopes.corpus.samples])
         for anchor in consistency.anchors(upstream):
             consistency.session_created(upstream, anchor.anchor_id)
             assert not consistency.retrieve(upstream, anchor.anchor_id).candidates
@@ -94,14 +93,19 @@ def command(action, module=None):
     return json.loads((root / 'fixture.json').read_text())
 
 
-try:
-    for line in sys.stdin:
-        try:
-            request = json.loads(line)
-            print(json.dumps(command(**request)), flush=True)
-        except Exception as error:
-            import traceback
-            traceback.print_exc(file=sys.stderr)
-            print(json.dumps({'error':str(error)}), flush=True)
-finally:
-    runtime.close()
+if __name__ == '__main__':
+    root = Path(sys.argv[1])
+    runtime = WorkbenchRuntime(Database(str(root / 'test.db')))
+    analysis, consistency, audit = AnalysisAgentJobs(runtime), ConsistencyAgentJobs(runtime), AuditAgentJobs(runtime)
+    try:
+        for line in sys.stdin:
+            try:
+                request = json.loads(line)
+                print(json.dumps(command(**request)), flush=True)
+            except Exception as error:
+                import traceback
+                traceback.print_exc(file=sys.stderr)
+                print(json.dumps({'error':str(error)}), flush=True)
+    finally:
+        runtime.close()
+        PixelPreparation.close()

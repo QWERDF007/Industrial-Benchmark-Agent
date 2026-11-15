@@ -5,7 +5,7 @@ from contextlib import contextmanager,nullcontext
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from sqlite3 import Connection
-from typing import Annotated, Any, Callable, List, Literal, Optional, Tuple
+from typing import Annotated, Any, Callable, List, Literal, Optional, Tuple, Sequence
 
 import httpx
 from pydantic import AwareDatetime, Field, FiniteFloat
@@ -27,6 +27,7 @@ class ModelCallSummary(AnalysisModel):
     schema_name: Optional[str]
     phase: Optional[str]
     sample_id: Optional[str]
+    pair_keys: list[str] = Field(default_factory=list)
     role: Optional[Literal['agent', 'vision']] = None
     request_id: Optional[str] = None
     source: Literal['http', 'native_llm'] = 'http'
@@ -64,7 +65,7 @@ class NativeModelCallEnd(AnalysisModel):
     http_status: Optional[int] = None
 
 
-_active: ContextVar[Optional[Tuple['ModelCalls', str, Optional[Callable[[], None]], str, Optional[str], Optional[str], Optional[str]]]] = ContextVar('iad_model_calls', default=None)
+_active: ContextVar[Optional[Tuple['ModelCalls', str, Optional[Callable[[], None]], str, Optional[str], Optional[str], Optional[str], tuple[str, ...]]]] = ContextVar('iad_model_calls', default=None)
 
 
 class ModelCalls:
@@ -83,7 +84,11 @@ class ModelCalls:
 
     def start_native(self, run_id: str, request: NativeModelCallStart, *, sample_id: str | None, session_id: str,
                      attempt: int) -> None:
-        with self.db.connection() as connection:
+        body = json.dumps(request.request, ensure_ascii=False).encode()
+        with (
+            self.db.call_payloads.prepare(run_id, request.call_id, 'request', body) as prepared,
+            self.db.connection(after_commit=prepared.commit) as connection,
+        ):
             payload = json.loads(connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0])
             summary = ModelCallSummary(call_id=request.call_id, run_id=run_id, operation='generate',
                 schema_name=None, phase=payload.get('phase'), sample_id=sample_id,
@@ -91,10 +96,13 @@ class ModelCalls:
                 started_at=request.started_at.isoformat())
             connection.execute('INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)',
                 (summary.call_id, run_id, summary.model_dump_json()))
-            self.db.call_payloads.write(run_id, summary.call_id, 'request', json.dumps(request.request, ensure_ascii=False).encode())
+            prepared.publish()
 
     def finish_native(self, run_id: str, sample_id: str | None, result: NativeModelCallEnd) -> None:
-        with self.db.connection() as connection:
+        with (
+            self.db.call_payloads.prepare(run_id, result.call_id, 'response', result.model_dump_json().encode()) as prepared,
+            self.db.connection(after_commit=prepared.commit) as connection,
+        ):
             row = connection.execute('SELECT summary_json FROM model_calls WHERE run_id=? AND call_id=?',
                 (run_id, result.call_id)).fetchone()
             if row is None:
@@ -108,12 +116,13 @@ class ModelCalls:
                 and result.usage and any(result.usage.values()) else None)
             summary.error, summary.http_status = result.error, result.http_status
             connection.execute('UPDATE model_calls SET summary_json=? WHERE call_id=?', (summary.model_dump_json(), summary.call_id))
-            self.db.call_payloads.write(run_id, summary.call_id, 'response', result.model_dump_json().encode())
+            prepared.publish()
 
     @contextmanager
     def bind(self, run_id: str, checkpoint: Optional[Callable[[], None]] = None, *, state_run_id: Optional[str] = None,
-             role: Optional[Literal['agent', 'vision']] = None, request_id: Optional[str] = None, sample_id: Optional[str] = None):
-        token = _active.set((self, run_id, checkpoint, state_run_id or run_id, role, request_id, sample_id))
+             role: Optional[Literal['agent', 'vision']] = None, request_id: Optional[str] = None, sample_id: Optional[str] = None,
+             pair_keys: Sequence[str] = ()):
+        token = _active.set((self, run_id, checkpoint, state_run_id or run_id, role, request_id, sample_id, tuple(pair_keys)))
         try:
             yield
         finally:
@@ -130,7 +139,9 @@ class ModelCalls:
             finally:
                 response.close()
             return
-        repository, run_id, checkpoint, state_run_id, role, request_id, sample_id = binding
+        repository, run_id, checkpoint, state_run_id, role, request_id, sample_id, pair_keys = binding
+        if checkpoint:
+            checkpoint()
         with repository.db.connection() as conn:
             payload = json.loads(conn.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (state_run_id,)).fetchone()[0])
             anchor = conn.execute('SELECT phase,session_id,attempt FROM consistency_anchor_runs WHERE job_id=? AND anchor_id=?',
@@ -141,12 +152,20 @@ class ModelCalls:
                 sample_id=sample_id if sample_id is not None else payload.get('current_sample_id'),
                 role=role, request_id=request_id,
                 started_at=datetime.now(timezone.utc).isoformat())
+        with (
+            repository.db.call_payloads.prepare(run_id, summary.call_id, 'request', request.content) as prepared,
+            repository.db.connection(after_commit=prepared.commit) as conn,
+        ):
             conn.execute('INSERT INTO model_calls(call_id,run_id,summary_json) VALUES(?,?,?)',
                          (summary.call_id, run_id, summary.model_dump_json()))
-            repository.db.call_payloads.write(run_id, summary.call_id, 'request', request.content)
+            conn.executemany('INSERT INTO model_call_pairs VALUES(?,?,?)',
+                [(summary.call_id, run_id, key) for key in pair_keys])
+            prepared.publish()
         response, capture, response_body = None, None, None
         started = time.perf_counter()
         try:
+            if checkpoint:
+                checkpoint()
             response = client.send(request, stream=stream)
             if stream and not response.is_stream_consumed:
                 capture = ResponseCapture(response.stream, checkpoint)
@@ -180,16 +199,21 @@ class ModelCalls:
                         reason = choices[0].get('finish_reason')
                         summary.finish_reason = reason if isinstance(reason, str) else None
                 response.close()
-            with repository.db.connection() as conn:
-                updated = conn.execute('UPDATE model_calls SET summary_json=? WHERE call_id=?',
-                    (summary.model_dump_json(), summary.call_id))
-                if updated.rowcount and response_body is not None:
-                    repository.db.call_payloads.write(run_id, summary.call_id, 'response', response_body)
+            prepared_body = (repository.db.call_payloads.prepare(run_id, summary.call_id, 'response', response_body)
+                             if response_body is not None else nullcontext(None))
+            with prepared_body as prepared:
+                with repository.db.connection(after_commit=prepared.commit if prepared is not None else None) as conn:
+                    updated = conn.execute('UPDATE model_calls SET summary_json=? WHERE call_id=?',
+                        (summary.model_dump_json(), summary.call_id))
+                    if updated.rowcount and prepared is not None:
+                        prepared.publish()
 
     def list(self, run_id: str, connection: Optional[Connection] = None) -> List[ModelCallSummary]:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
-            rows = conn.execute('SELECT summary_json FROM model_calls WHERE run_id=? ORDER BY rowid', (run_id,)).fetchall()
-        return [ModelCallSummary.model_validate_json(row[0]) for row in rows]
+            rows = conn.execute('''SELECT c.summary_json,(SELECT json_group_array(p.pair_key) FROM model_call_pairs p
+                WHERE p.call_id=c.call_id AND p.job_id=c.run_id) pair_keys
+                FROM model_calls c WHERE c.run_id=? ORDER BY c.rowid''', (run_id,)).fetchall()
+        return [ModelCallSummary.model_validate_json(row[0]).model_copy(update={'pair_keys': json.loads(row[1])}) for row in rows]
 
     def interrupt(self, run_id: str, connection: Connection) -> None:
         rows = connection.execute("""SELECT summary_json FROM model_calls WHERE run_id=?
@@ -208,6 +232,8 @@ class ModelCalls:
                 raise LookupError('Model call not found in this job')
             request, response = self.db.call_payloads.read(run_id, call_id)
             summary = json.loads(row['summary_json'])
+            summary['pair_keys'] = [item[0] for item in conn.execute(
+                'SELECT pair_key FROM model_call_pairs WHERE call_id=? AND job_id=?', (call_id, run_id))]
             if summary.get('finished_at') and summary.get('http_status') is not None and response is None:
                 raise RuntimeError('模型调用响应正文缺失')
         return ModelCallDetail(**summary, request_body=request.decode(),

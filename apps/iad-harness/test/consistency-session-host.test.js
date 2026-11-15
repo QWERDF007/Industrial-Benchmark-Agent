@@ -9,9 +9,73 @@ import {LlmAdapter, MessageId} from '@deepseek-ai/dsh-llm';
 import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl';
 import {JobSessionHost} from '../lib/server/sessions/host.js';
 import {imageSessionPath} from '../lib/server/sessions/image-path.js';
+import {JobSessionPersistence} from '../lib/server/sessions/persistence.js';
 
 const locate = root => async id => imageSessionPath(root, {job_id: 'analysis_test', submitted_at: '2026-11-08T06:50:49.561969+00:00',
   image_name: '公头 - 副本.jpg', image_id: id});
+
+async function persistenceFixture(t) {
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-session-owner-'));
+  const ctx=new Context();let persistence,sessions;
+  const fork=await ctx.plugin({name:'exclusive-session-test',apply:scope=>{
+    sessions=new SessionStore(scope);persistence=new JobSessionPersistence(scope,root,locate(root));
+  }});
+  t.after(async()=>{await fork.dispose();await fs.rm(root,{recursive:true,force:true});});
+  return {persistence,sessions,root};
+}
+
+test('every concurrent close waits for durable completion and releases the writer',async t=>{
+  const {persistence,sessions}=await persistenceFixture(t),id=SessionId('closing');
+  const handle=await persistence.create(sessions.prepare(id).header);
+  const first=handle.close();
+  await handle.close();
+  const reopened=await persistence.open(id,'write');
+  await reopened.close();await first;
+});
+
+test('creation owns the writer before its initial file sync completes',async t=>{
+  const {persistence,sessions}=await persistenceFixture(t),id=SessionId('creating');
+  const entered=Promise.withResolvers(),release=Promise.withResolvers(),open=fs.open;
+  t.mock.method(fs,'open',async(...args)=>{
+    const file=await open(...args);
+    if(args[1]==='ax+'){
+      const sync=file.sync.bind(file);
+      t.mock.method(file,'sync',async()=>{entered.resolve();await release.promise;await sync();});
+    }
+    return file;
+  });
+  const creating=persistence.create(sessions.prepare(id).header);
+  try{
+    await entered.promise;
+    await assert.rejects(persistence.open(id,'write'),/active write handle/);
+  }finally{release.resolve();await(await creating).close();}
+});
+
+test('concurrent write opens reserve exactly one session owner',async t=>{
+  const {persistence,sessions}=await persistenceFixture(t);
+  const handles=[];
+  try{
+    const id=SessionId('owner');const created=await persistence.create(sessions.prepare(id).header);await created.close();
+    const opened=await Promise.allSettled(Array.from({length:8},()=>persistence.open(id,'write')));
+    handles.push(...opened.filter(value=>value.status==='fulfilled').map(value=>value.value));
+    assert.equal(handles.length,1);
+    assert.ok(opened.filter(value=>value.status==='rejected').every(value=>/active write handle/.test(value.reason.message)));
+  }finally{await Promise.all(handles.map(handle=>handle.close()));}
+});
+
+test('parallel comparison notices preserve one ordered log and deduplicate record IDs', async () => {
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-session-parallel-'));
+  const host=await JobSessionHost.open(root,locate(root));
+  try{
+    await host.create('anchor');
+    const notices=Array.from({length:20},(_,index)=>({type:'iad/consistency',summary:'内容核对已完成',record_id:'pair-'+index,value:{index}}));
+    await Promise.all([...notices,...notices].map(notice=>host.notice('anchor',notice)));
+    const stored=await host.read('anchor');
+    assert.equal(stored.events.length,20);
+    assert.deepEqual(stored.events.map(event=>event.seq),Array.from({length:20},(_,index)=>index));
+    assert.deepEqual(new Set(stored.events.map(event=>event.data.record_id)),new Set(notices.map(notice=>notice.record_id)));
+  }finally{await host.dispose();await fs.rm(root,{recursive:true,force:true});}
+});
 
 test('session events use the job timestamp and image name in one uncompressed JSONL file', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'iad-session-layout-'));

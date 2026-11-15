@@ -7,7 +7,8 @@ from typing import List, Optional
 
 from iad_core.dataset.path_safety import AuthorizedDatasetPaths, PathSafetyError, validate_sample_image_path
 from iad_core.dataset.registry import DatasetRegistry
-from iad_core.evidence.images import file_sha256, image_pixel_sha256
+from iad_core.evidence.images import image_pixel_sha256
+from iad_core.evidence.files import file_sha256
 from iad_core.evidence.sources import SampleContent
 from iad_core.duplicate.index import PixelIndex
 from iad_core.knowledge.models import KnowledgeFinding, KnowledgeKind, KnowledgeSnapshot, KnowledgeSource, KnowledgeSourceMetadata, KnowledgeSourceItem
@@ -158,5 +159,5 @@ class KnowledgeSources:
             indexed = PixelIndex(self.db).get(sample_id, connection=connection)
             digest = (indexed.descriptor.pixel_key if indexed and indexed.image_sha256 == content.sha256
                 and indexed.descriptor.decode_status == 'COMPLETE' and indexed.descriptor.pixel_key
-                else image_pixel_sha256(sample.image_path, content.sha256))
+                else image_pixel_sha256(sample.image_path))
         return KnowledgeSource(**content.model_dump(), pixel_sha256=digest)

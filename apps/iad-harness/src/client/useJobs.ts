@@ -14,9 +14,12 @@ export function useJobs(kind:'audit'|'knowledge'|'exploration'|'consistency',dat
       const ids:string[]=JSON.parse(scope);
       const signal=AbortSignal.any([querySignal,AbortSignal.timeout(10000)]);
       try {
-        const results=await Promise.all(ids.map(id=>request<{jobs:JobSnapshot[];pending_count?:number}>(kind==='audit'
-          ? `/audit/jobs?dataset_id=${encodeURIComponent(id)}`
-          : `/analysis/jobs?${new URLSearchParams({dataset_id:id,analysis_kind:kind})}`,undefined,undefined,signal)));
+        const results=kind==='audit'
+          ? await Promise.all(ids.map(id=>request<{jobs:JobSnapshot[];pending_count?:number}>(
+            `/audit/jobs?dataset_id=${encodeURIComponent(id)}`,undefined,undefined,signal)))
+          : [await request<{jobs:JobSnapshot[];pending_count?:number}>(
+            `/analysis/jobs?${new URLSearchParams({dataset_ids:JSON.stringify(ids),analysis_kind:kind,summary:'true'})}`,
+            undefined,undefined,signal)];
         const jobs=[...new Map(results.flatMap(result=>result.jobs).map(job=>[job.run_id,job])).values()]
           .sort((a,b)=>b.submitted_at.localeCompare(a.submitted_at));
         return {jobs,pendingCount:results.reduce((sum,result)=>sum+(result.pending_count||0),0)};

@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import AwareDatetime, Field, FiniteFloat, computed_field
+from pydantic import AwareDatetime, Field, FiniteFloat, computed_field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.agent_models import AnchorResult, AnchorState
@@ -8,6 +8,7 @@ from iad_core.consistency.candidate_selection import AnchorCandidates, SelectedC
 from iad_core.consistency.annotations import AnnotationSet
 from iad_core.consistency.group_models import GalleryImage
 from iad_core.consistency.conflict_categories import ConflictCategory
+from iad_core.consistency.group_analysis_conclusions import ModelConclusionChoice, MODEL_CONCLUSION_LABELS
 from iad_core.consistency.models import CandidateLimit, Count, FrozenSample, Identifier, ModelAssessmentVerdict, ReviewMode, SimilarityThreshold
 from iad_core.consistency.review_models import ReviewDisposition
 from iad_core.workbench.job_models import JobFailure, JobStatus
@@ -17,6 +18,7 @@ from iad_core.consistency.candidate_records import CandidatePhaseRecord
 
 
 DiagnosticRecording = Literal['COMPLETE', 'UNAVAILABLE']
+AnnotationReviewStatus = Literal['not_required', 'pending', 'running', 'completed', 'failed', 'cancelled', 'interrupted']
 
 
 class AnchorCandidatePreview(SelectedCandidate):
@@ -55,6 +57,37 @@ class AnchorResultSummary(AnalysisModel):
     program_conclusion: str
     model_conclusion: ConflictCategory | Literal['无冲突'] | None
     result_ref: Identifier
+    annotation_review_status: AnnotationReviewStatus = 'pending'
+    annotation_review_label: str = '等待标注审核'
+
+    @model_validator(mode='after')
+    def derive_review_status(self):
+        if self.reason in ('NO_CANDIDATES', 'NO_ELIGIBLE_CANDIDATES', 'PROGRAM_REVIEWED'):
+            status = 'not_required'
+        elif self.reason == 'MODEL_REVIEWED':
+            status = 'completed'
+        elif self.state in ('FAILED', 'CANCELLED', 'INTERRUPTED'):
+            status = self.state.lower()
+        elif self.phase in ('PLANNING_VISUAL_PAGES', 'OBSERVING_ANCHOR', 'RECORDING_ASSESSMENT', 'FINALIZING_REVIEW'):
+            status = 'running'
+        else:
+            status = 'pending'
+        self.annotation_review_status = status
+        self.annotation_review_label = {'not_required': '无需标注审核', 'pending': '等待标注审核',
+            'running': '标注审核中', 'completed': '标注审核完成', 'failed': '审核失败',
+            'cancelled': '已取消审核', 'interrupted': '审核已中断'}[status]
+        return self
+
+    def with_progress(self, state: AnchorState, phase: str, attempt: int, error_code: str | None = None):
+        values = self.model_dump() | {'state': state, 'phase': phase, 'attempt': attempt}
+        if self.reason not in ('NO_CANDIDATES', 'NO_ELIGIBLE_CANDIDATES', 'PROGRAM_REVIEWED', 'MODEL_REVIEWED'):
+            values['reason'] = error_code or phase
+            values['program_conclusion'] = ({'FAILED': '核对失败', 'CANCELLED': '已取消', 'INTERRUPTED': '已中断',
+                'PENDING': '等待处理'}.get(state) or {'RETRIEVING_ANCHOR': '检索候选中',
+                'VERIFYING_CONTENT': '内容核对中', 'AWAITING_REVIEW': '等待标注审核',
+                'PLANNING_VISUAL_PAGES': '标注审核中', 'OBSERVING_ANCHOR': '标注审核中',
+                'RULE_READY': '正在汇总', 'RESUMING': '继续处理中'}.get(phase, '处理中'))
+        return type(self).model_validate(values)
 
 
 class AnchorImageItem(AnalysisModel):
@@ -62,12 +95,34 @@ class AnchorImageItem(AnalysisModel):
     summary: AnchorResultSummary
     image: GalleryImage | None
     review_state: ReviewDisposition
+    model_filter: ModelConclusionChoice | None = None
+    agreement: Literal['same', 'different'] | None = None
+
+    @model_validator(mode='after')
+    def derive_filters(self):
+        summary = self.summary
+        self.model_filter = (('EQUIVALENT' if summary.verdict == 'EQUIVALENT' else summary.model_conclusion)
+            if summary.reason == 'MODEL_REVIEWED' else None)
+        if self.model_filter not in MODEL_CONCLUSION_LABELS:
+            self.model_filter = None
+        self.agreement = (None if self.model_filter is None else 'same' if summary.program_conclusion in
+            (self.model_filter, MODEL_CONCLUSION_LABELS[self.model_filter]) else 'different')
+        return self
 
 
 class AnchorImagePage(AnalysisModel):
     job_id: Identifier
     total: Count
     items: list[AnchorImageItem]
+    counts: dict[str, Count] = Field(default_factory=dict)
+
+
+class AnchorImageQuery(AnalysisModel):
+    group: ConflictCategory | Literal['images', 'NO_CANDIDATES', 'NO_ELIGIBLE_CANDIDATES', 'PROGRAM_CONSISTENT'] = 'images'
+    search: str = Field(default='', max_length=500)
+    model: ModelConclusionChoice | Literal['all'] = 'all'
+    agreement: Literal['all', 'same', 'different'] = 'all'
+    review: ReviewDisposition | Literal['all'] = 'all'
 
 
 class AnchorEvidenceReference(AnalysisModel):

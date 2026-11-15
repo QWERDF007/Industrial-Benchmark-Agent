@@ -1,4 +1,4 @@
-import type { AnchorImageItem, ConsistencyAnchorRun, GalleryItem, GalleryMember, GalleryReference, GalleryStatistics } from '../shared/domain.generated.js';
+import type { AnchorImageItem, AnchorImageQuery, ConsistencyAnchorRun, GalleryItem, GalleryMember, GalleryReference, GalleryStatistics } from '../shared/domain.generated.js';
 import { modelConclusionLabels } from '../shared/consistency.parameters.generated.js';
 export declare const consistencyImageGroups: {
     readonly NO_CANDIDATES: '无候选';
@@ -21,6 +21,7 @@ export interface ConsistencyComparisonItem {
     model: {
         status: 'conflict' | 'no_conflict' | 'unknown';
         modelType: keyof typeof modelConclusionLabels | '';
+        label?: string;
     };
     review: GalleryItem['review_state'];
     agreement: 'same' | 'different' | null;
@@ -50,13 +51,12 @@ export declare class ConsistencyView {
         items: ConflictCardItem[];
         statistics: GalleryStatistics;
     }>;
-    static loadCheck(runId: string, signal: AbortSignal): Promise<{
-        queryId: string;
-        items: ConflictCardItem[];
-        statistics: GalleryStatistics;
-    }>;
     static statistics(runId: string, signal: AbortSignal): Promise<GalleryStatistics>;
-    static loadImages(runId: string, signal: AbortSignal): Promise<ConsistencyComparisonItem[]>;
+    static loadImagePage(runId: string, query: AnchorImageQuery, page: number, signal: AbortSignal): Promise<{
+        items: ConsistencyComparisonItem[];
+        total: number;
+        counts: import("../shared/domain.generated.js").Counts1;
+    }>;
     private static cards;
     static imageCards(runId: string, items: AnchorImageItem[]): ConsistencyComparisonItem[];
     static members(reference: ConsistencyAnalysisReference, signal: AbortSignal): Promise<GalleryMember[]>;

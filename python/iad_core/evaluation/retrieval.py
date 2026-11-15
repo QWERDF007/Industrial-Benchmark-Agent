@@ -32,10 +32,6 @@ def evaluate_retrieval(manifest: RetrievalBenchmark, config: ImageEncoderConfig,
     if (output / 'benchmark.db').exists():
         raise ValueError('Evaluation requires a fresh output directory for a cold database and index')
     items = {item.item_id: item for item in manifest.items}
-    for item in items.values():
-        path = manifest.datasets[item.dataset] / item.relative_path
-        if hashlib.sha256(path.read_bytes()).hexdigest() != item.sha256:
-            raise ValueError('Benchmark source changed: ' + item.item_id)
     (output / 'manifest.json').write_text(manifest.model_dump_json(indent=2))
     (output / 'config.json').write_text(config.model_dump_json(indent=2))
     db = Database(str(output / 'benchmark.db'))
@@ -49,6 +45,7 @@ def evaluate_retrieval(manifest: RetrievalBenchmark, config: ImageEncoderConfig,
         datasets[name] = dataset.dataset.id
         expected = {item.relative_path: item.item_id for item in items.values() if item.dataset == name}
         samples = SampleRepository(db).list_by_task(dataset.task.task_id)
+        PixelIndex(db).prepare([sample.sample_id for sample in samples])
         if {sample.relative_path for sample in samples} != set(expected):
             raise ValueError('Dataset membership differs from the frozen manifest: ' + name)
         identities.update({expected[sample.relative_path]: sample.sample_id for sample in samples})

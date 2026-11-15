@@ -16,10 +16,7 @@ export declare function readEvidenceAttachment(bridge: PythonBridge, ctx: Contex
     version_id?: string;
     suggestion_id?: string;
     media_id?: string;
-}, signal: AbortSignal, expected?: {
-    byte_count: number;
-    sha256: string;
-}): Promise<{
+}, signal: AbortSignal): Promise<{
     evidence_id: string;
     run_id?: string;
     version_id?: string;

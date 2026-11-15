@@ -1,6 +1,9 @@
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from contextlib import contextmanager
+from functools import wraps
+from typing import Callable, TypeVar
+import logging
 
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_results import ConsistencyAgentResults
@@ -9,8 +12,33 @@ from iad_core.storage.database import Database
 from iad_core.workbench.runtime import workbench
 
 
+Result = TypeVar('Result')
+
+
+def _publish_results(operation: Callable[[dict, str], Result]) -> Callable[[dict, str], Result]:
+    @wraps(operation)
+    def execute(args: dict, db_path: str) -> Result:
+        failure: BaseException | None = None
+        try:
+            return operation(args, db_path)
+        except BaseException as error:
+            failure = error
+            raise
+        finally:
+            try:
+                ConsistencyAgentResults(Database(db_path)).prepare_indexes(args['run_id'])
+            except Exception:
+                if failure is None:
+                    raise
+                logging.getLogger(__name__).exception('结果索引刷新失败')
+    return execute
+
+
 def consistency_agent_start(args, db_path):
-    return ConsistencyAgentJobs(workbench(db_path)).start(args['request'], roles=args.get('roles'), configuration=args.get('configuration'))
+    checks = ConsistencyAgentJobs(workbench(db_path))
+    job = checks.start(args['request'], roles=args.get('roles'), configuration=args.get('configuration'))
+    checks.results.prepare_indexes(job['run_id'])
+    return job
 
 
 def consistency_agent_configuration(args, db_path):
@@ -20,7 +48,7 @@ def consistency_agent_configuration(args, db_path):
 def consistency_agent_prepare(args, db_path):
     from iad_core.consistency.agent_preparation import ConsistencyAgentPreparation
     batch = ConsistencyAgentPreparation(workbench(db_path)).prepare(args['run_id'])
-    return {'preparation': batch.summary().model_dump(mode='json') if batch is not None else None}
+    return {'preparation': batch.summary().model_dump(mode='json')}
 
 
 def consistency_agent_trace_event(args, db_path):
@@ -75,7 +103,12 @@ def consistency_agent_gallery(args, db_path):
 
 def consistency_agent_images(args, db_path):
     return ConsistencyAgentResults(Database(db_path)).images(args['run_id'], page=int(args.get('page', 1)),
-        page_size=int(args.get('page_size', 18))).model_dump(mode='json')
+        page_size=int(args.get('page_size', 18)), query={key:args[key] for key in
+            ('group', 'search', 'model', 'agreement', 'review') if key in args}).model_dump(mode='json')
+
+
+def consistency_agent_statistics(args, db_path):
+    return ConsistencyAgentResults(Database(db_path)).statistics(args['run_id']).model_dump(mode='json')
 
 
 def consistency_agent_members(args, db_path):
@@ -90,6 +123,7 @@ def consistency_agent_review(args, db_path):
     return ConsistencyGroupReview(Database(db_path)).context(args['run_id'], args['anchor_id']).model_dump(mode='json')
 
 
+@_publish_results
 def consistency_agent_review_submit(args, db_path):
     return ConsistencyGroupReview(Database(db_path)).submit(args['run_id'], args['anchor_id'], args['request']).model_dump(mode='json')
 
@@ -113,36 +147,50 @@ def consistency_agent_session_created(args, db_path):
         args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)).model_dump(mode='json')
 
 
+@_publish_results
 def consistency_agent_retrieve(args, db_path):
     return ConsistencyAgentJobs(workbench(db_path)).retrieve(args['run_id'], args['anchor_id']).model_dump(mode='json')
 
 
+@_publish_results
+def consistency_agent_retrieve_many(args, db_path):
+    return {'items': [item.model_dump(mode='json') for item in ConsistencyAgentJobs(workbench(db_path)).retrieve_many(
+        args['run_id'], args['anchor_ids'])]}
+
+
+@_publish_results
 def consistency_agent_submit_empty(args, db_path):
     return ConsistencyAgentJobs(workbench(db_path)).submit_empty(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)).model_dump(mode='json')
 
 
+@_publish_results
 def consistency_agent_failure(args, db_path):
     return ConsistencyAgentJobs(workbench(db_path)).fail(args['run_id'], args['anchor_id'],
         args['message'], args.get('code'), attempt=args.get('attempt', 1),
         source_run_id=args.get('source_run_id'), source_phase=args.get('source_phase')).model_dump(mode='json')
 
 
+@_publish_results
 def consistency_agent_cancel(args, db_path):
     return ConsistencyAgentJobs(workbench(db_path)).cancel(args['run_id'])
 
 
+@_publish_results
 def consistency_agent_resume(args, db_path):
     return ConsistencyAgentJobs(workbench(db_path)).resume(args['run_id'])
 
 
+@_publish_results
 def consistency_agent_interrupt(args, db_path):
     return ConsistencyAgentJobs(workbench(db_path)).interrupt(args['run_id'])
 
 
+@_publish_results
 def consistency_agent_finish(args, db_path):
     return ConsistencyAgentJobs(workbench(db_path)).finish(args['run_id'])
 
 
+@_publish_results
 def consistency_agent_context(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     if args.get('_model_execution'):
@@ -168,28 +216,32 @@ def _visual_review(args, db_path):
         client.close()
 
 
+@_publish_results
 def consistency_agent_plan(args, db_path):
     with _visual_review(args, db_path) as review:
         return review.plan(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)).model_dump(mode='json')
 
 
+@_publish_results
 def consistency_agent_verify(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
-    with _visual_review(args, db_path) as review:
-        return ConsistencyWorkflow(review.runtime, review.client).prepare(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1))
+    return ConsistencyWorkflow(workbench(db_path)).prepare(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1))
 
 
+@_publish_results
 def consistency_agent_observe(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     with _visual_review(args, db_path) as review:
         return ConsistencyWorkflow(review.runtime, review.client).observe(args['run_id'], args['anchor_id'], args['request'], attempt=args.get('attempt', 1))
 
 
+@_publish_results
 def consistency_agent_assess(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     return ConsistencyWorkflow(workbench(db_path)).assess(args['run_id'], args['anchor_id'], args['submission'], attempt=args.get('attempt', 1))
 
 
+@_publish_results
 def consistency_agent_submit(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     return ConsistencyWorkflow(workbench(db_path)).submit(args['run_id'], args['anchor_id'], args['submission'], attempt=args.get('attempt', 1))
@@ -200,6 +252,13 @@ def consistency_agent_pair_tasks(args, db_path):
     return {'tasks': [task.model_dump(mode='json') for task in ConsistencyPairReviews(workbench(db_path)).plan(args['run_id'])]}
 
 
+@_publish_results
+def consistency_agent_pair_prepare_many(args, db_path):
+    from iad_core.consistency.pair_reviews import ConsistencyPairReviews
+    return {'prepared': ConsistencyPairReviews(workbench(db_path)).prepare_many(args['run_id'], args['pair_keys'])}
+
+
+@_publish_results
 def consistency_agent_pair_review(args, db_path):
     from iad_core.consistency.pair_reviews import ConsistencyPairReviews
     with _visual_review(args, db_path) as review:
@@ -207,12 +266,26 @@ def consistency_agent_pair_review(args, db_path):
         return receipt.model_dump(mode='json') if receipt is not None else None
 
 
+@_publish_results
+def consistency_agent_pair_review_many(args, db_path):
+    from iad_core.consistency.pair_reviews import ConsistencyPairReviews
+    with _visual_review(args, db_path) as review:
+        return {'receipts': [receipt.model_dump(mode='json') for receipt in
+            ConsistencyPairReviews(review.runtime, review.client).review_many(args['run_id'], args['pair_keys'])]}
+
+
+@_publish_results
 def consistency_agent_audit(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     with _visual_review(args, db_path) as review:
         return ConsistencyWorkflow(review.runtime, review.client).audit(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1))
 
 
+@_publish_results
 def consistency_agent_finalize(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     return ConsistencyWorkflow(workbench(db_path)).finish(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1)).model_dump(mode='json')
+
+
+def consistency_agent_index(args, db_path):
+    return ConsistencyAgentResults(Database(db_path)).prepare_indexes(args.get('run_id'))

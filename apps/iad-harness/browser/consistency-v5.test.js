@@ -52,7 +52,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     driver=await new Builder().forBrowser('firefox').setFirefoxOptions(new firefox.Options()
       .addArguments('-headless','--remote-allow-system-access').setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox'))
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
-    await driver.manage().window().setRect({width:1440,height:1100});
+    await driver.manage().window().setRect({width:1920,height:1080});
     await driver.get(`http://127.0.0.1:${server.address().port}/`);
     const element=css=>driver.wait(until.elementLocated(By.css(css)),10000);
     const texts=async css=>Promise.all((await driver.findElements(By.css(css))).map(item=>item.getText()));
@@ -78,11 +78,11 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     assert.doesNotMatch(await(await element('.dc-model-panel')).getText(),/位置差异|拆分|合并|多标|少标/);
     await(await element('.dc-dialog-head [aria-label="关闭"]')).click();
     await(await element('.iad-jobs-table button[title="统计"]')).click();
-    await element('.dc-stats-dialog');
+    await element('.dc-stats-drawer');
     assert.match(await(await element('[data-chart="stat-category"] .iad-chart-plot')).getAttribute('aria-label'),/图组（组）：1/);
-    const statistic=await element('select[aria-label="按统计结果筛选"]');
-    await new NativeSelect(statistic).selectByValue('0');
-    await driver.wait(async()=>(await driver.findElements(By.css('.dc-stats-dialog'))).length===0,5000);
+    assert.equal((await driver.findElements(By.css('select[aria-label="按统计结果筛选"]'))).length,0);
+    assert.equal((await driver.findElements(By.css('.dc-stats-drawer [data-chart-type="bar"]'))).length,3);
+    await(await element('button[aria-label="关闭标注冲突统计"]')).click();
     await(await element('[data-dc="raw-tab"][data-id="images"]')).click();
     await(await element(`[data-dc="job-image"][data-id="${fixture.sampleIds.C}"]`)).click();
     await element('#dc-compare-mask');
@@ -128,7 +128,7 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     await examples.sendKeys(editedIdentity.gate_examples,Key.TAB);
     assert.equal(await(await element('[data-dc="create-job"]')).isEnabled(),true);
     await fs.writeFile('/tmp/consistency-identity-prompts-create.png',await driver.takeScreenshot(),'base64');
-    await driver.manage().window().setRect({width:450,height:650});
+    await driver.manage().window().setRect({width:1920,height:1080});
     await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',examples);
     const bounds=await driver.executeScript(`const form=document.querySelector('#dc-create-page'),surface=form.closest('.iad-workbench');
       const f=form.getBoundingClientRect();return {left:f.left,right:f.right,viewport:innerWidth,scrollable:surface.scrollHeight>surface.clientHeight,
@@ -139,8 +139,8 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     const submit=await element('[data-dc="create-job"]');
     await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',submit);
     assert.equal(await driver.executeScript('const r=arguments[0].getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight',submit),true);
-    await fs.writeFile('/tmp/consistency-identity-prompts-narrow.png',await driver.takeScreenshot(),'base64');
-    await driver.manage().window().setRect({width:1440,height:1100});
+    await fs.writeFile('/tmp/consistency-identity-prompts-desktop.png',await driver.takeScreenshot(),'base64');
+    await driver.manage().window().setRect({width:1920,height:1080});
     const system=await element('#dc-new-prompt-system'),user=await element('#dc-new-prompt');
     const anomalySystem=await system.getAttribute('value'),anomalyUser=await user.getAttribute('value');
     assert.equal(anomalySystem,consistencyTaskPrompts.anomaly_detection.system);

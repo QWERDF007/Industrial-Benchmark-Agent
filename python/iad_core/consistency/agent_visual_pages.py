@@ -25,13 +25,20 @@ class AnchorVisualPages:
         context.checkpoint()
         if anchor.candidates is None or not anchor.candidates.candidates:
             raise ValueError('视觉分页要求本场已冻结的非空候选清单')
+        from iad_core.consistency.agent_assessments import AnchorAssessments
+        with self.runtime.db.connection() as connection:
+            programmatic = {item.submission.assessment.candidate_id
+                for item in AnchorAssessments.list(connection, run_id, anchor_id) if not item.submission.observation_ids}
         plan = anchor.visual_plan
+        if plan is not None and any(programmatic.intersection(page.candidate_ids) for page in plan.pages):
+            plan = None
         if plan is None:
             self.checks.phase(run_id, anchor_id, 'PLANNING_VISUAL_PAGES')
             snapshot = self.checks.snapshot(run_id)
             from iad_core.consistency.identity import CandidateIdentity
             identity = CandidateIdentity(self.runtime).read(run_id, anchor_id)
-            identities = identity.eligible_ids
+            identities = [gate.candidate_id for gate in identity.gates
+                if gate.gate_status == 'eligible' and gate.candidate_id not in programmatic]
             revisions = {gate.candidate_id: gate.revision for gate in identity.gates if gate.candidate_id in identities}
             if not identities:
                 raise ValueError('没有合格候选，不需要标注观察分页')

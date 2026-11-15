@@ -216,9 +216,10 @@ def test_position_coverage_is_required_for_new_reviews_but_not_historical_reader
         runtime.jobs.finish_external(run_id)
         # A persisted v5 fixture has its original fields; public readers must not re-audit it.
         with runtime.db.connection() as connection:
-            payload=json.loads(connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(run_id,)).fetchone()[0])
-            payload['request']['consistency_check'].update(review_pipeline='identity-v5',prompt_version='consistency-unified-v5')
-            connection.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?',(json.dumps(payload),run_id))
+            frozen=json.loads(connection.execute('SELECT request_json FROM job_requests WHERE job_id=?',(run_id,)).fetchone()[0])
+            frozen['consistency_check'].update(review_pipeline='identity-v5',prompt_version='consistency-unified-v5')
+            connection.execute('DELETE FROM job_requests WHERE job_id=?',(run_id,))
+            connection.execute('INSERT INTO job_requests VALUES(?,?)',(run_id,json.dumps(frozen)))
             result=json.loads(connection.execute('SELECT result_json FROM consistency_anchor_runs WHERE job_id=?',(run_id,)).fetchone()[0])
             result['schema_version']='5.0'
             for assessment in result['assessments']:
@@ -226,6 +227,10 @@ def test_position_coverage_is_required_for_new_reviews_but_not_historical_reader
                     for field in ('coverage_effect','coverage_reason','region_pair_ids'):issue.pop(field,None)
             original=json.dumps(result)
             connection.execute('UPDATE consistency_anchor_runs SET result_json=? WHERE job_id=?',(original,run_id))
+        from iad_core.workbench.job_requests import JobRequests
+        from iad_core.consistency.check_snapshots import CheckSnapshots
+        JobRequests._cache.clear()
+        CheckSnapshots._snapshots.clear()
         results=ConsistencyAgentResults(runtime.db)
         detail=results.detail(run_id,anchor)
         issue=next(issue for assessment in detail.result.assessments for issue in assessment.issues)
@@ -267,8 +272,7 @@ def test_gate_sends_originals_annotations_and_every_roi_together_even_when_overv
                 np.testing.assert_array_equal(np.asarray(pictures[2+index*2+side_index]),np.asarray(pictures[side_index])[y1:y2,x1:x2])
             assert window['source_annotations']
         answer=identity_response(context,'transformed_same_content','实际局部完整对应。')
-        answer['overview']={**answer['regions'][context['windows'][0]['ref']]}
-        answer['overview']['relation']=overview_relation
+        answer['overview']='different' if overview_relation=='content_different' else 'same'
         generated.append(context)
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})
     client=VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))

@@ -18,7 +18,7 @@ import {chatRequest,sendResponses} from './responses.js';
 
 export async function createConsistencyAgentHost({multiCandidate=false,withSimilarCandidate=false,candidateCount,
   maxVisualInputs,maxCandidatesPerPage,onTokenize,generationUsage,generationFinish,indexMode,afterSubmission,
-  modelRouting,onGeneration,bridgeTimeoutMs,protocol='openai-completions',maxOutputTokens=4096,taskType='bbox_defect'}={}) {
+  modelRouting,onGeneration,bridgeTimeoutMs,protocol='openai-completions',maxOutputTokens=4096,taskType='bbox_defect',unannotated=false,annotatedCandidates=false,featureGroupSize}={}) {
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-program-check-'));
   const workspace=findWorkspaceRoot(),database=path.join(root,'checks.db');
   const wires=[],tokenizations=[],errors=[];
@@ -58,11 +58,10 @@ export async function createConsistencyAgentHost({multiCandidate=false,withSimil
       const context=JSON.parse(content[1].text);
       let answer;
       if(!context.facts) {
-        const finding={relation:'content_different',
-          main_description:'蓝色主体。',candidate_description:'绿色主体。'};
-        answer={overview:finding,summary:'两图主体颜色不同。',regions:Object.fromEntries([
-          ...context.windows.map(region=>[region.ref,finding]),
-          ...context.unmapped_regions.map(region=>[region.ref,{observation:'局部没有可靠的对侧对应位置。'}])]),limitations:[]};
+        const describe=pair=>({overview:'different',summary:'两图主体颜色不同。',regions:'D'.repeat(pair.windows.length),
+          unmapped_regions:Object.fromEntries(pair.unmapped_regions.map(region=>[region.ref,{observation:'局部没有可靠的对侧对应位置。'}])),
+          details:pair.windows.length?[{refs:pair.windows.map(region=>region.ref),observation:'一侧主体为蓝色，另一侧为绿色。'}]:[],limitations:[]});
+        answer=context.scope==='pairs'?Object.fromEntries(Object.entries(context.pairs).map(([key,pair])=>[key,describe(pair)])):describe(context);
       } else {
         const facts=context.facts,sources=Object.values(facts.sources),main=sources.find(source=>source.sample_id===facts.anchor.sample_id);
         const groups=content.filter(part=>part.type==='text'&&part.text.startsWith('原图资料：')).map(part=>JSON.parse(part.text.slice(5)));
@@ -111,9 +110,12 @@ names=['A','B','C','D'] if sys.argv[3]=='multi' else ['A','B']
 count=json.loads(sys.argv[6])
 if count is not None: names=['A',*[f'R{index:02d}' for index in range(count)]]
 for name in names:
-    Image.new('RGB',(40,40),'green' if name=='C' else 'blue').save(images/(name+'.png'))
-    shapes=[{'label':'scratch','shape_type':'rectangle','points':[[10,10],[20,20]]}] if name in ('A','D') or name=='C' and sys.argv[7]=='true' else []
-    (labels/(name+'.json')).write_text(json.dumps({'imageWidth':40,'imageHeight':40,'shapes':shapes}))
+    image=Image.new('RGB',(max(40,(count or 0)+2),40),'green' if name=='C' else 'blue')
+    if count is not None and sys.argv[7]=='true' and name.startswith('R'):
+        image.putpixel((int(name[1:])+1,0),(255,0,0))
+    image.save(images/(name+'.png'))
+    shapes=[{'label':'scratch','shape_type':'rectangle','points':[[10,10],[20,20]]}] if sys.argv[9]!='true' and (sys.argv[10]=='true' or name in ('A','D') or name=='C' and sys.argv[7]=='true') else []
+    (labels/(name+'.json')).write_text(json.dumps({'imageWidth':image.width,'imageHeight':image.height,'shapes':shapes}))
 db=Database(sys.argv[2])
 if sys.argv[8]=='anomaly_detection':
     from iad_core.dataset.folder_preview import preview_folder_dataset
@@ -133,6 +135,8 @@ if sys.argv[5] != 'none':
     from iad_core.feature.cache import ContentFeatureCache
     selection=configure_test_encoder(db,root)
     if sys.argv[5] in ('cached','partial'):
+        from iad_core.duplicate.index import PixelIndex
+        PixelIndex(db).prepare(identities.values())
         ContentFeatureCache(db).prepare([identities[name] for name in (names if sys.argv[5]=='cached' else ['A'])],selection,
             extractor=MockFeatureExtractor(profile=selection.profile))
 if sys.argv[7]=='true':
@@ -140,14 +144,15 @@ if sys.argv[7]=='true':
     from iad_core.duplicate.index import PixelIndex
     from iad_core.storage.features import FeatureRepository
     from iad_core.storage.models import FeatureRecord
-    for name in names:
-        vector=np.zeros(selection.profile.dim,dtype=selection.profile.storage_dtype);vector[0]=1
+    group_size=json.loads(sys.argv[11])
+    for index,name in enumerate(names):
+        vector=np.zeros(selection.profile.dim,dtype=selection.profile.storage_dtype);vector[index//group_size if group_size else 0]=1
         FeatureRepository(db).upsert(FeatureRecord(content_group_id=PixelIndex(db).get(identities[name]).content_group_id,
             profile_id=selection.profile.profile_id,dim=selection.profile.dim,dtype=selection.profile.storage_dtype,embedding_blob=vector.tobytes()))
 retrieval={'mode':'combined','min_similarity':0.9} if sys.argv[7]=='true' else {'mode':'exact'}
 ModuleSettings(db).save({'module':'consistency','expected_revision':0,'settings':{**retrieval,'vision_limits':{'capacity_mode':'vllm_tokenize','max_output_tokens':4096,'max_visual_inputs':json.loads(sys.argv[4]),'request_parameters':{'temperature':0.2}},'model':{'provider_id':'isolated','model_id':'vision'}}})
 print(json.dumps({'dataset_id':config.dataset.id,'sample_ids':identities}))
-`, root, database, multiCandidate ? 'multi' : 'pair', JSON.stringify(maxVisualInputs ?? null), indexMode ?? (withSimilarCandidate?'cached':'none'), JSON.stringify(candidateCount ?? null), JSON.stringify(withSimilarCandidate),taskType], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
+`, root, database, multiCandidate ? 'multi' : 'pair', JSON.stringify(maxVisualInputs ?? null), indexMode ?? (withSimilarCandidate?'cached':'none'), JSON.stringify(candidateCount ?? null), JSON.stringify(withSimilarCandidate),taskType,JSON.stringify(unannotated),JSON.stringify(annotatedCandidates),JSON.stringify(featureGroupSize??null)], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
   const bridge = new PythonBridge({cwd: workspace, dbPath: database, timeoutMs: bridgeTimeoutMs});
   const host = await JobSessionHost.open(path.join(root, 'sessions'),
     async session_id => imageSessionPath(path.join(root, 'sessions'), await bridge.execute('consistency_agent_session_location', {session_id})));
@@ -174,7 +179,7 @@ print(json.dumps({'dataset_id':config.dataset.id,'sample_ids':identities}))
     holdAfterObservations(count=1){holdAt=wires.length+count+1;},
     rejectGeneration(){rejectNext=true;},
     async close(){
-      release.resolve();await scheduler.dispose();removeRouting();bridge.destroy();await host.dispose();await fork.dispose();
+      release.resolve();await scheduler.dispose();removeRouting();await host.dispose();await fork.dispose();await bridge.destroy();
       await new Promise(resolve=>provider.close(resolve));await fs.rm(root,{recursive:true,force:true});
     }};
 }

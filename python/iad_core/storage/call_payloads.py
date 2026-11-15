@@ -3,13 +3,50 @@ import os
 import shutil
 import tempfile
 import zlib
+from contextlib import AbstractContextManager, contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from sqlite3 import Connection
-from typing import Literal
-from filelock import FileLock
+from typing import Iterator, Literal
+from filelock import FileLock, Timeout
 
 
 CallBodyKind = Literal['request', 'response']
+
+
+@dataclass
+class PreparedCallPayload:
+    path: Path
+    temporary: Path
+    durable: bool
+    lock: FileLock
+    previous: Path | None = None
+    published: bool = False
+    committed: bool = False
+    locked: bool = False
+
+    def commit(self) -> None:
+        self.committed = True
+        if self.locked:
+            self.lock.release()
+            self.locked = False
+
+    def publish(self) -> None:
+        self.lock.acquire()
+        self.locked = True
+        created = not self.path.parent.exists()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if self.path.exists():
+            previous = self.temporary.parent / 'previous'
+            os.link(self.path, previous)
+            self.previous = previous
+        os.replace(self.temporary, self.path)
+        self.published = True
+        if self.durable:
+            CallPayloads._sync_directory(self.path.parent)
+            if created:
+                CallPayloads._sync_directory(self.path.parent.parent)
+                CallPayloads._sync_directory(self.path.parent.parent.parent)
 
 
 class CallPayloads:
@@ -48,29 +85,47 @@ class CallPayloads:
         self._sync_directory(self.root)
         self._sync_directory(self.root.parent)
 
-    def _save(self, path: Path, compressed: bytes, *, durable: bool = True) -> None:
-        created = not path.parent.exists()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = None
+    @contextmanager
+    def _stage(self, path: Path, compressed: bytes, *, durable: bool = True) -> Iterator[PreparedCallPayload]:
+        with self.reading():
+            directory = Path(tempfile.mkdtemp(dir=self.root.parent, prefix=self.root.name + '.pending-'))
+            lease = FileLock(str(directory) + '.lock')
+            lease.acquire()
+        prepared = None
         try:
-            with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as file:
-                temporary = Path(file.name)
+            temporary = directory / 'payload'
+            with temporary.open('xb') as file:
                 file.write(compressed)
                 file.flush()
                 if durable:
                     os.fsync(file.fileno())
-            os.replace(temporary, path)
-            if durable:
-                self._sync_directory(path.parent)
-                if created:
-                    self._sync_directory(self.root)
-                    self._sync_directory(self.root.parent)
+            prepared = PreparedCallPayload(path, temporary, durable, self._read_lock)
+            yield prepared
+        except BaseException:
+            if prepared is not None and prepared.published and not prepared.committed:
+                if prepared.previous is not None:
+                    os.replace(prepared.previous, path)
+                else:
+                    path.unlink(missing_ok=True)
+                if durable:
+                    self._sync_directory(path.parent)
+            raise
         finally:
-            if temporary is not None:
-                temporary.unlink(missing_ok=True)
+            with self.reading():
+                if prepared is not None and prepared.locked:
+                    prepared.lock.release()
+                    prepared.locked = False
+                shutil.rmtree(directory)
+                lease.release()
+                Path(lease.lock_file).unlink(missing_ok=True)
 
-    def write(self, run_id: str, call_id: str, kind: CallBodyKind, body: bytes) -> None:
-        self._save(self._path(run_id, call_id, kind), zlib.compress(body))
+    def _save(self, path: Path, compressed: bytes, *, durable: bool = True) -> None:
+        with self._stage(path, compressed, durable=durable) as prepared:
+            prepared.publish()
+
+    def prepare(self, run_id: str, call_id: str, kind: CallBodyKind, body: bytes) -> AbstractContextManager[PreparedCallPayload]:
+        """Prepare outside SQLite; publish in the metadata transaction and retain after commit."""
+        return self._stage(self._path(run_id, call_id, kind), zlib.compress(body))
 
     def read(self, run_id: str, call_id: str) -> tuple[bytes, bytes | None]:
         try:
@@ -133,6 +188,20 @@ class CallPayloads:
         return migrated
 
     def recover(self, connection: Connection) -> None:
+        with self.reading():
+            for directory in self.root.parent.glob(self.root.name + '.pending-*'):
+                if not directory.is_dir():
+                    continue
+                lease = FileLock(str(directory) + '.lock')
+                try:
+                    lease.acquire(timeout=0)
+                except Timeout:
+                    continue
+                try:
+                    shutil.rmtree(directory)
+                finally:
+                    lease.release()
+                    Path(lease.lock_file).unlink(missing_ok=True)
         if not self.root.exists():
             return
         with self.reading():

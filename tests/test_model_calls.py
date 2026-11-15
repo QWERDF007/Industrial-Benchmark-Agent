@@ -1,16 +1,20 @@
 import base64
+import hashlib
 import json
+import multiprocessing
 import os
 import sqlite3
+import stat
 import zlib
 import threading
+import time
 from pathlib import Path
 
 import httpx
 import pytest
 from PIL import Image
 
-from iad_core.workbench.calls import ModelCalls
+from iad_core.workbench.calls import ModelCalls, NativeModelCallEnd, NativeModelCallStart
 from iad_core.storage.database import Database
 from iad_core.storage.call_payloads import CallPayloads
 
@@ -50,6 +54,193 @@ def test_large_call_history_is_deleted_without_reading_request_bodies(dataset, r
     with pytest.raises(LookupError):
         recorder.get('large-history', call.call_id)
     assert sum(path.stat().st_size for path in Path(db.db_path).parent.rglob('*') if path.is_file()) < 2_000_000
+
+
+@pytest.mark.parametrize('source', ['http', 'native'])
+@pytest.mark.parametrize('kind', ['request', 'response'])
+@pytest.mark.parametrize('blocked_operation', ['compress', 'file_sync'])
+def test_payload_preparation_does_not_lock_unrelated_progress_writes(
+        dataset, record_call, monkeypatch, source, kind, blocked_operation):
+    db, _, config = dataset
+    entered, release = threading.Event(), threading.Event()
+    errors = []
+    operations = 0
+    compress, fsync = zlib.compress, os.fsync
+    run_id = 'payload-concurrency'
+
+    def pause():
+        nonlocal operations
+        operations += 1
+        if operations == (1 if kind == 'request' else 2):
+            entered.set()
+            assert release.wait(10), '等待并发进度写入'
+
+    def prepare_body(body):
+        pause()
+        return compress(body)
+
+    def sync_file(descriptor):
+        if stat.S_ISREG(os.fstat(descriptor).st_mode):
+            pause()
+        return fsync(descriptor)
+
+    if blocked_operation == 'compress':
+        monkeypatch.setattr(zlib, 'compress', prepare_body)
+    else:
+        monkeypatch.setattr(os, 'fsync', sync_file)
+
+    def record():
+        try:
+            if source == 'http':
+                record_call(run_id, b'{"original":true}')
+            else:
+                with db.connection() as connection:
+                    connection.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES(?,?,'MODEL_AUDIT','RUNNING','{}')",
+                                       (run_id, config.task.task_id))
+                calls = ModelCalls(db)
+                calls.start_native(run_id, NativeModelCallStart(call_id='native-call',
+                    started_at='2026-11-14T08:00:00Z', request={'original': True}),
+                    sample_id=None, session_id='session', attempt=1)
+                calls.finish_native(run_id, None, NativeModelCallEnd(call_id='native-call',
+                    finished_at='2026-11-14T08:00:01Z', elapsed_ms=1000, finish_reason='stop'))
+        except Exception as error:
+            errors.append(error)
+
+    worker = threading.Thread(target=record)
+    worker.start()
+    try:
+        assert entered.wait(5)
+        with sqlite3.connect(db.db_path, timeout=.1) as connection:
+            assert connection.execute("UPDATE job_runs SET status=status WHERE job_id=?", (run_id,)).rowcount == 1
+    finally:
+        release.set()
+        worker.join(10)
+    assert not worker.is_alive() and not errors
+    calls = ModelCalls(db)
+    summary = calls.list(run_id)[0]
+    detail = calls.get(run_id, summary.call_id)
+    assert json.loads(detail.request_body) == {'original': True}
+    assert detail.response_body and summary.finished_at
+
+
+@pytest.mark.parametrize('replace_existing', [False, True])
+def test_failed_metadata_commit_restores_prepared_payloads(dataset, record_call, replace_existing):
+    db, _, _ = dataset
+    calls = record_call('payload-rollback', b'{"original":true}')
+    call = calls.list('payload-rollback')[0]
+    before = calls.get('payload-rollback', call.call_id)
+    call_id = call.call_id if replace_existing else 'uncommitted-call'
+    with pytest.raises(sqlite3.IntegrityError):
+        with db.call_payloads.prepare('payload-rollback', call_id, 'response', b'{"replacement":true}') as prepared:
+            with db.connection() as connection:
+                connection.execute('PRAGMA defer_foreign_keys=ON')
+                connection.execute("INSERT INTO model_calls VALUES('uncommitted-metadata','missing-job','{}')")
+                prepared.publish()
+    assert calls.get('payload-rollback', call.call_id) == before
+    assert not any(db.call_payloads.root.parent.glob(db.call_payloads.root.name + '.pending-*'))
+    if not replace_existing:
+        assert len(list(db.call_payloads.root.rglob('*.response'))) == 1
+
+
+@pytest.mark.parametrize('kind', ['request', 'response'])
+def test_committed_payload_survives_later_retirement_failure(dataset, record_call, kind):
+    db, _, _ = dataset
+    db.call_payloads.root.mkdir(parents=True, exist_ok=True)
+    retired = db.call_payloads.root / hashlib.sha256(b'broken-retirement').hexdigest()
+    retired.write_text('无法作为目录删除')
+    event = 'INSERT' if kind == 'request' else 'UPDATE'
+    with sqlite3.connect(db.db_path) as connection:
+        connection.execute(f'''CREATE TRIGGER fail_retirement_after_record AFTER {event} ON model_calls
+            BEGIN INSERT INTO call_payload_deletions VALUES('broken-retirement'); END''')
+    with pytest.raises(NotADirectoryError):
+        record_call('post-commit-retirement', b'{"original":true}')
+    calls = ModelCalls(db)
+    summary = calls.list('post-commit-retirement')[0]
+    detail = calls.get(summary.run_id, summary.call_id)
+    assert detail.request_body == '{"original":true}'
+    if kind == 'response':
+        assert detail.response_body and detail.finished_at
+
+
+def test_payload_recovery_preserves_live_staging_and_reclaims_a_killed_writer(dataset):
+    db, _, _ = dataset
+    processes = multiprocessing.get_context('fork')
+    entered = processes.Event()
+
+    def stage():
+        with CallPayloads(db.db_path).prepare('staging-owner', 'pending-call', 'request', b'{"original":true}'):
+            entered.set()
+            time.sleep(30)
+
+    worker = processes.Process(target=stage)
+    worker.start()
+    try:
+        assert entered.wait(5)
+        stages = list(db.call_payloads.root.parent.glob(db.call_payloads.root.name + '.pending-*'))
+        assert stages
+        with db.connection() as connection:
+            db.call_payloads.recover(connection)
+        assert all(path.exists() for path in stages), '不能删除存活进程尚未发布的正文'
+        worker.kill()
+        worker.join(5)
+        assert worker.exitcode is not None
+        with db.connection() as connection:
+            db.call_payloads.recover(connection)
+        assert not any(db.call_payloads.root.parent.glob(db.call_payloads.root.name + '.pending-*'))
+    finally:
+        if worker.is_alive():
+            worker.kill()
+        worker.join(5)
+
+
+def test_failed_payload_commit_cannot_overwrite_a_later_committed_response(dataset, record_call, monkeypatch):
+    db, _, _ = dataset
+    calls = record_call('concurrent-response', b'{"original":true}')
+    call = calls.list('concurrent-response')[0]
+    restoring, release, committed = threading.Event(), threading.Event(), threading.Event()
+    errors = []
+    replace = os.replace
+
+    def restore(source, destination):
+        if Path(source).name == 'previous':
+            restoring.set()
+            assert release.wait(10)
+        return replace(source, destination)
+
+    monkeypatch.setattr(os, 'replace', restore)
+
+    def write(fail):
+        try:
+            body = b'{"writer":"failed"}' if fail else b'{"writer":"committed"}'
+            with db.call_payloads.prepare(call.run_id, call.call_id, 'response', body) as prepared:
+                with db.connection(after_commit=prepared.commit) as connection:
+                    connection.execute('BEGIN IMMEDIATE')
+                    if fail:
+                        connection.execute('PRAGMA defer_foreign_keys=ON')
+                        connection.execute("INSERT INTO model_calls VALUES('bad-commit','missing-job','{}')")
+                    prepared.publish()
+            if not fail:
+                committed.set()
+        except sqlite3.IntegrityError:
+            if not fail:
+                raise
+        except Exception as error:
+            errors.append(error)
+
+    failing = threading.Thread(target=write, args=(True,))
+    following = threading.Thread(target=write, args=(False,))
+    failing.start()
+    try:
+        assert restoring.wait(5)
+        following.start()
+        assert not committed.wait(.1), '回滚正文前不能让后续提交被旧正文覆盖'
+    finally:
+        release.set()
+        failing.join(10)
+        if following.ident is not None:
+            following.join(10)
+    assert not failing.is_alive() and not following.is_alive() and not errors and committed.is_set()
+    assert json.loads(calls.get(call.run_id, call.call_id).response_body) == {'writer': 'committed'}
 
 
 def test_recorded_payloads_survive_a_rolled_back_dataset_delete(dataset, tmp_path, record_call):

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from iad_core.advisory.conclusions import descriptive_conclusion
 from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.consistency.conflict_categories import CONFLICT_CATEGORY_DEFAULTS, CONFLICT_CATEGORY_LABELS
@@ -7,6 +9,7 @@ CONCLUSION_CATEGORIES = tuple(CONFLICT_CATEGORY_DEFAULTS['labelme'])
 EQUIVALENT_CONCLUSION = '一致'
 CONCLUSION_CHOICES = (*CONCLUSION_CATEGORIES, EQUIVALENT_CONCLUSION)
 MODEL_CONCLUSION_LABELS = {**CONFLICT_CATEGORY_LABELS, 'EQUIVALENT': EQUIVALENT_CONCLUSION}
+ModelConclusionChoice = Literal[tuple(MODEL_CONCLUSION_LABELS)]
 
 
 def assertive_conclusion(value: str | None, verdict: str) -> str | None:

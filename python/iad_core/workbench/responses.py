@@ -1,5 +1,6 @@
 from openai.types.responses import Response
 from iad_core.workbench.model_profile import ReasoningEffort
+from iad_core.workbench.completion import RetryableModelError
 
 
 class ResponsesProtocol:
@@ -24,6 +25,9 @@ class ResponsesProtocol:
         result = Response.model_construct(**body)
         if result.status != 'completed':
             reason = result.incomplete_details.reason if result.incomplete_details else result.error.message if result.error else result.status
+            if result.status == 'failed' and result.error and result.error.code in (
+                    'upstream_error', 'upstream_stream_read_error', 'server_error', 'rate_limit_exceeded'):
+                raise RetryableModelError('Responses 模型服务临时失败：' + str(reason))
             raise ValueError('Responses 模型输出未完整完成：' + str(reason))
         if not result.output_text.strip():
             raise ValueError('Responses 模型没有返回最终文本')

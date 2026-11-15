@@ -219,10 +219,11 @@ test('an actual encoder preparation failure retains its error code across the wo
     assert.ok(node.index_batch_id);
     const preparation = await fixture.bridge.execute('consistency_status', {batch_id: node.index_batch_id});
     assert.equal(preparation.status, 'FAILED');
-    assert.equal(preparation.children.length, 1, '编码器失败不能自动再次尝试');
-    assert.equal(preparation.children[0].errors[0].code, 'ENCODER_UNAVAILABLE');
-    assert.ok(status.errors.every(error => error.source_run_id === preparation.children[0].run_id
-      && error.source_phase === preparation.children[0].errors[0].source_phase));
+    const encoders=preparation.children.filter(child=>child.job_type==='IMAGE_INDEX');
+    assert.equal(encoders.length, 1, '编码器失败不能自动再次尝试');
+    assert.equal(encoders[0].errors[0].code, 'ENCODER_UNAVAILABLE');
+    assert.ok(status.errors.every(error => error.source_run_id === encoders[0].run_id
+      && error.source_phase === encoders[0].errors[0].source_phase));
   } finally {await fixture.close();}
 });
 

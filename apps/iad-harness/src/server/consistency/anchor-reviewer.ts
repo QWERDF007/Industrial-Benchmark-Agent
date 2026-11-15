@@ -7,7 +7,7 @@ export class ConsistencyAnchorReviewer {
   constructor(private readonly bridge: PythonBridge, private readonly host: JobSessionHost,
     private readonly providers: Pick<NativeProviders, 'credentialsFor'>) {}
 
-  async review(task: AnchorReviewTask): Promise<void> {
+  async review(task: AnchorReviewTask): Promise<boolean> {
     const {vision} = task.snapshot.roles;
     if (vision.error || !vision.profile)
       throw new Error('视觉模型角色不可用：' + (vision.error || '未配置'));
@@ -17,5 +17,6 @@ export class ConsistencyAnchorReviewer {
       {...identity, _model_execution: await this.providers.credentialsFor(vision.profile)}, task.signal, {timeoutMs: 0});
     await this.host.notice(task.sessionId, {type:'iad/consistency',
       summary:result.ready ? '标注比较已完成' : '图像内容需要重新核对', value:{...identity,...result}});
+    return result.ready;
   }
 }

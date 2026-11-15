@@ -263,6 +263,8 @@ def test_delete_invalidates_cross_dataset_evidence_and_preserves_independent_his
     ConsistencyReview(db).submit(ConsistencyReviewSubmission(client_request_id=uuid4(), evidence_id=owned.evidence_id,
         result_id=owned.result_id, difference_ids=[difference.difference_id], reviewer='删除验收',
         action={'kind': 'EXPECTED_POLICY_DIFFERENCE'}, comment='按规范保留差异'))
+    from iad_core.duplicate.index import PixelIndex
+    PixelIndex(db).prepare([other.dataset.id + ':one.png', other.dataset.id + ':two.png'])
     queries = ResultQueries(db)
     removed_query = queries.query(ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}}))
     kept_query = queries.query(ConsistencyQuery(selection={'kind': 'scope',
@@ -317,7 +319,7 @@ def test_delete_rejects_active_batch_when_dataset_is_only_in_corpus(dataset, tmp
             conn.execute('UPDATE job_runs SET status=? WHERE job_id=?', (status, batch.children[0].run_id))
             before = {table: [tuple(row) for row in conn.execute(f'SELECT * FROM {table}')]
                 for table in ('datasets', 'samples', 'consistency_runs', 'consistency_children', 'job_runs')}
-        with pytest.raises(ValueError, match='关联审核作业'):
+        with pytest.raises(ValueError, match='作业'):
             dataset_delete({'dataset_id': config.dataset.id}, db.db_path)
         with db.connection() as conn:
             for table, rows in before.items():

@@ -17,6 +17,10 @@ def _projection(conn: Connection, name: str, source: str, key: str, fields: tupl
         {','.join(field + ' TEXT NOT NULL' for field in fields)},PRIMARY KEY(source_id,{columns}))''')
     conn.execute(f'CREATE INDEX IF NOT EXISTS idx_{name}_lookup ON {name}({columns},source_id)')
     insert = f'INSERT INTO {name} SELECT * FROM {name}_source WHERE source_id=NEW.{key};'
+    trigger = conn.execute("SELECT tbl_name FROM sqlite_master WHERE name=? AND type='trigger'", (name+'_insert',)).fetchone()
+    if trigger and trigger[0] != source:
+        conn.execute(f'DROP TRIGGER {name}_insert')
+        conn.execute(f'DROP TRIGGER {name}_update')
     conn.execute(f'CREATE TRIGGER IF NOT EXISTS {name}_insert AFTER INSERT ON {source} BEGIN {insert} END')
     conn.execute(f'''CREATE TRIGGER IF NOT EXISTS {name}_update AFTER UPDATE OF {updates} ON {source}
         BEGIN DELETE FROM {name} WHERE source_id=OLD.{key}; {insert} END''')
@@ -28,17 +32,17 @@ def _projection(conn: Connection, name: str, source: str, key: str, fields: tupl
 def initialize_deletion_indexes(conn: Connection) -> None:
     if not conn.in_transaction:
         conn.execute('BEGIN IMMEDIATE')
-    _projection(conn, 'job_dataset_scopes', 'job_runs', 'job_id', ('dataset_id', 'kind'), '''
+    _projection(conn, 'job_dataset_scopes', 'job_requests', 'job_id', ('dataset_id', 'kind'), '''
         SELECT job_id AS source_id,
-            COALESCE(json_extract(payload_json,'$.request.dataset_id'),json_extract(payload_json,'$.dataset_id')) AS dataset_id,
-            'direct' AS kind FROM job_runs WHERE dataset_id IS NOT NULL
-        UNION SELECT job_id,value,'workflow' FROM job_runs,json_each(payload_json,'$.request.dataset_ids')
+            COALESCE(json_extract(request_json,'$.dataset_id'),json_extract(payload_json,'$.dataset_id')) AS dataset_id,
+            'direct' AS kind FROM job_run_requests WHERE dataset_id IS NOT NULL
+        UNION SELECT job_id,value,'workflow' FROM job_run_requests,json_each(request_json,'$.dataset_ids')
             WHERE job_type IN ('ANALYSIS_WORKFLOW','MODEL_AUDIT') AND value IS NOT NULL
-        UNION SELECT job_id,value,'consistency' FROM job_runs,json_tree(payload_json,'$.request.frozen_group')
+        UNION SELECT job_id,value,'consistency' FROM job_run_requests,json_tree(request_json,'$.frozen_group')
             WHERE job_type='CONSISTENCY_ANALYSIS' AND key='dataset_id' AND value IS NOT NULL
-        UNION SELECT job_id,value,'consistency' FROM job_runs,json_tree(payload_json,'$.request.consistency_scopes')
+        UNION SELECT job_id,value,'consistency' FROM job_run_requests,json_tree(request_json,'$.consistency_scopes')
             WHERE job_type='CONSISTENCY_MODEL_BATCH' AND key='dataset_id' AND value IS NOT NULL
-        ''', 'payload_json,job_type')
+        ''', 'request_json')
     _projection(conn, 'job_ownership_edges', 'job_runs', 'job_id', ('parent_id', 'child_id'), '''
         SELECT job_id AS source_id,job_id AS parent_id,value AS child_id
             FROM job_runs,json_each(payload_json,'$.batch_runs') WHERE value IS NOT NULL

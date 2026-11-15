@@ -1,11 +1,12 @@
+import type {AnchorImageQuery,GalleryStatistics} from '../../shared/domain.generated.js';
 import {useQuery} from '@tanstack/react-query';
 import {queryClient} from '../query-client.js';
 import {JOB_POLL_INTERVAL,jobIsActive} from '../../shared/job-display.js';
 import {SectionHeading} from './layout/SectionHeading.js';
-import {PromptDrawer} from './PromptDrawer.js';
+import {ConsistencyPromptDrawer} from './ConsistencyPromptDrawer.js';
 import {conflictCategoryDefaults,conflictCategoryLabels,modelConclusionLabels} from '../../shared/consistency.parameters.generated.js';
 import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
-import {ConsistencyStatisticsDialog,type ConsistencyStatisticAction} from './ConsistencyStatisticsDialog.js';
+import {ConsistencyStatisticsDrawer} from './ConsistencyStatisticsDrawer.js';
 import {ConsistencyConflictDialog} from './ConsistencyConflictDialog.js';
 import {ConsistencyImages} from './ConsistencyImages.js';
 import {useConsistencyImages} from '../useConsistencyImages.js';
@@ -32,9 +33,8 @@ import { message, request } from '../api.js';
 import { workbenchStyles } from '../styles.js';
 import {consistencyTaskCategories} from '../../shared/prompt-defaults.generated.js';
 import {ConsistencyCheckCreate} from './ConsistencyCheckCreate.js';
-import {identityPromptFields} from '../consistency-prompts.js';
 import {usePagePosition} from '../usePagePosition.js';
-import {ConsistencyView,consistencyImageGroups,initialConsistencyFilters,type ConsistencyImageGroup,type ConsistencyFilterValues} from '../consistency-view.js';
+import {ConsistencyView,consistencyImageGroups,type ConsistencyFilterValues} from '../consistency-view.js';
 import {useJobs} from '../useJobs.js';
 import {useDatasetCatalog} from '../useDatasetCatalog.js';
 
@@ -115,18 +115,19 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   const selectedJob=jobList.selected;
 
   const images=useConsistencyImages(selectedJob?.consistency_check_version===1?selectedJob.run_id:undefined,
-    `${revision}:${selectedJob?.status}`,!!selectedJob&&['PENDING','RUNNING'].includes(selectedJob.status));
-  const imageGroup:ConsistencyImageGroup|null=kind==='images'||Object.hasOwn(consistencyImageGroups,kind)
-    ?kind as ConsistencyImageGroup:null;
-
-  const conflictQuery=useQuery({queryKey:['iad','consistency-conflicts',selectedJob?.run_id],enabled:!!selectedJob,
-    queryFn:({signal})=>selectedJob!.consistency_check_version===1?ConsistencyView.loadCheck(selectedJob!.run_id,signal):ConsistencyView.load(selectedJob!.program_batch_id!,signal),
+    `${revision}:${selectedJob?.status}`,!!selectedJob&&['PENDING','RUNNING'].includes(selectedJob.status),
+    {group:kind as AnchorImageQuery['group'],search,model:modelFilter,agreement,review:reviewFilter},page);
+  const conflictQuery=useQuery({queryKey:['iad','consistency-conflicts',selectedJob?.run_id],enabled:!!selectedJob&&selectedJob.consistency_check_version!==1,
+    queryFn:({signal})=>ConsistencyView.load(selectedJob!.program_batch_id!,signal),
     refetchInterval:jobIsActive(selectedJob)?JOB_POLL_INTERVAL:false,refetchOnWindowFocus:true,
   },queryClient);
+  const statistics=useQuery({queryKey:['iad','consistency-statistics',statsModalJobId],enabled:!!statsModalJobId,
+    queryFn:({signal})=>request<GalleryStatistics>(`/consistency/checks/${encodeURIComponent(statsModalJobId)}/statistics`,undefined,undefined,signal),
+    refetchInterval:jobIsActive(selectedJob)?JOB_POLL_INTERVAL:false},queryClient);
   const jobConflicts=conflictQuery.data?.items||[];
-  const conflictsLoading=!!selectedJob&&conflictQuery.isPending;
+  const conflictsLoading=!!selectedJob&&(selectedJob.consistency_check_version===1?images.pending:conflictQuery.isPending);
   useEffect(()=>{
-    if(selectedJob)void conflictQuery.refetch({cancelRefetch:false});
+    if(selectedJob&&selectedJob.consistency_check_version!==1)void conflictQuery.refetch({cancelRefetch:false});
   },[selectedJob?.run_id,selectedJob?.status,revision]);
 
   const visibleConflicts = useMemo(() => ConsistencyView.filter(jobConflicts,
@@ -211,39 +212,6 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
     if(modelFilter!=='all'&&!modelTypes.some(option=>option.value===modelFilter))setModelFilter('all');
   },[conflictTabs,taskType,kind,modelFilter]);
 
-  const handleStatClick = useCallback(
-    (action: ConsistencyStatisticAction, id: string) => {
-      if (action === 'stat-category') {
-        setKind(id);
-        setModelFilter('all');
-        setAgreement('all');
-        setReviewFilter('all');
-        setPage(1);
-        setStatsModalJobId('');
-      } else if (action === 'stat-model') {
-        setModelFilter(ConsistencyView.modelConclusion(id)||'all');
-        setKind('images');
-        setAgreement('all');
-        setReviewFilter('all');
-        setPage(1);
-        setStatsModalJobId('');
-      } else if (action === 'stat-agreement') {
-        setAgreement(id==='same'?'same':'different');
-        setKind('images');
-        setModelFilter('all');
-        setReviewFilter('all');
-        setPage(1);
-        setStatsModalJobId('');
-      }
-      setTimeout(() => {
-        const el = document.querySelector('.dc-results-section');
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }, 50);
-    },
-    []
-  );
-
-
   const surface=usePagePosition(createOpen?'consistency:create':`consistency:results:${selectedParentId}:${selectedJobId}`,createOpen||!conflictsLoading);
 
   return (
@@ -313,12 +281,12 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
               {/* Conflict Type Tabs */}
               <TabBar label="原始标注冲突类型" value={kind} onChange={value => {setKind(value); setPage(1);}}
                 items={conflictTabs.map(tab => ({id: tab.value, label: <><span>{tab.label}</span><span className="iad-tab-count">{
-                  tab.value==='images' ? selectedJob.total_samples : Object.hasOwn(consistencyImageGroups,tab.value)
-                    ?ConsistencyView.filter(images.items,initialConsistencyFilters,tab.value as keyof typeof consistencyImageGroups).length : jobConflicts.filter(conflict => conflict.types.some(type=>type===tab.value)).length
+                  selectedJob.consistency_check_version===1 ? images.counts[tab.value]??(tab.value==='images'?selectedJob.total_samples:0) : Object.hasOwn(consistencyImageGroups,tab.value)
+                    ?images.counts[tab.value]||0 : jobConflicts.filter(conflict => conflict.types.some(type=>type===tab.value)).length
                 }</span></>, buttonProps: {'data-dc': 'raw-tab', 'data-id': tab.value}}))} />
 
               <div className="dc-result-panel" role="tabpanel" aria-label={conflictTabs.find(tab=>tab.value===kind)?.label}>
-              {imageGroup ? <ConsistencyImages key={selectedJob.run_id} jobId={selectedJob.run_id} images={images} group={imageGroup}
+              {selectedJob.consistency_check_version===1 ? <ConsistencyImages key={selectedJob.run_id} jobId={selectedJob.run_id} images={images} group={kind} page={page} onPage={setPage}
                 filters={{search,model:modelFilter,agreement,review:reviewFilter}} onReviewed={()=>setRevision(value=>value+1)}/> : conflictsLoading ? <p className="iad-result-empty" role="status">正在读取结果…</p>
                 : !jobConflicts.length ? <p className="iad-result-empty" role="status">当前没有结果</p> : <>
 
@@ -347,12 +315,10 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
         onSelect={setCurrentConflictId} onClose={()=>setModal('')}
         onReviewed={()=>setRevision(value=>value+1)} />}
 
-      {promptJob && <PromptDrawer title="查看提示词" text={promptJob.consistency_prompt || '该作业没有保存提示词。'} systemText={promptJob.system_prompt}
-        additionalSections={promptJob.consistency_identity_prompts?identityPromptFields.map(({name,label})=>({
-          title:label,text:promptJob.consistency_identity_prompts![name]})):[]} onClose={()=>setPromptJob(null)} />}
+      {promptJob&&<ConsistencyPromptDrawer job={promptJob} onClose={()=>setPromptJob(null)}/>}
 
-      {!!statsModalJobId && <ConsistencyStatisticsDialog statistics={conflictQuery.data?.statistics} onFilter={handleStatClick}
-        loading={conflictsLoading} error={conflictQuery.error?.message}
+      {!!statsModalJobId && <ConsistencyStatisticsDrawer statistics={statistics.data}
+        loading={statistics.isPending} error={statistics.error?.message}
         onClose={()=>setStatsModalJobId('')} />}
 
       {statusJobId && batches.some(job=>job.root_run_id===statusJobId) && <JobStatusDrawer

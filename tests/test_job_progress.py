@@ -1,8 +1,78 @@
 import threading
 import time
 import json
+import pytest
 
 from iad_core.workbench.jobs import JobRunner
+
+
+def test_job_summaries_do_not_materialize_large_frozen_image_inputs(dataset):
+    import tracemalloc
+    from iad_core.workbench.analysis_job_views import AnalysisJobViews
+
+    db, _, config = dataset
+    runner = JobRunner(db, ('ANALYSIS_WORKFLOW',))
+    sid = config.dataset.id + ':normal.png'
+    assets = [{'sample_id': f'image-{index}', 'source_fingerprint': 'a' * 64} for index in range(5000)]
+    try:
+        for _ in range(18):
+            job = runner.start('ANALYSIS_WORKFLOW', config.task.task_id,
+                dict(dataset_id=config.dataset.id, sample_ids=[sid], analysis_kind='consistency', frozen_assets=assets), None, '分析')
+            runner.record(job['run_id'], sid)
+            runner.finish_external(job['run_id'])
+        tracemalloc.start()
+        for _ in range(2):
+            summaries = AnalysisJobViews(db).list(config.dataset.id, 'consistency', summary=True)
+        _, peak = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        assert len(summaries) == 18 and all(job['completed'] == 1 for job in summaries)
+        assert all('request' not in job and 'sample_ids' not in job for job in summaries)
+        assert peak < 8 * 1024 * 1024, f'摘要不应构造冻结图片列表：峰值 {peak / 1024 / 1024:.1f}MB'
+    finally:
+        tracemalloc.stop()
+        runner.close()
+
+
+def test_execution_context_cannot_mutate_the_frozen_request(dataset):
+    db, _, config = dataset
+    runner = JobRunner(db, ('MODEL_AUDIT',))
+    sid = config.dataset.id + ':normal.png'
+    try:
+        job = runner.start('MODEL_AUDIT', config.task.task_id,
+            dict(dataset_id=config.dataset.id, sample_ids=[sid], settings={'labels': ['划痕']}), None, '分析')
+        context = runner.context(job['run_id'])
+        with pytest.raises((TypeError, AttributeError)):
+            context.payload['request']['sample_ids'].append('foreign-sample')
+        with pytest.raises((TypeError, AttributeError)):
+            context.payload['request']['settings']['labels'].append('外来类别')
+        with pytest.raises(TypeError):
+            context.payload['request']['dataset_id'] = 'foreign-dataset'
+        assert list(runner.context(job['run_id']).payload['sample_ids']) == [sid]
+        assert list(runner.context(job['run_id']).payload['settings']['labels']) == ['划痕']
+    finally:
+        runner.close()
+
+
+def test_progress_updates_do_not_rewrite_large_immutable_job_requests(dataset):
+    from pathlib import Path
+
+    db, _, config = dataset
+    runner = JobRunner(db, ('MODEL_AUDIT',))
+    sid = config.dataset.id + ':normal.png'
+    instruction = '按原始标注核对图像。' * 150000
+    try:
+        job = runner.start('MODEL_AUDIT', config.task.task_id,
+            dict(dataset_id=config.dataset.id, sample_ids=[sid], instruction=instruction), None, '分析')
+        with db.connection() as connection:
+            connection.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+        for index in range(12):
+            runner.update(job['run_id'], phase='OBSERVING_IMAGE', inspected_regions=index)
+        assert Path(db.db_path + '-wal').stat().st_size < 1024 * 1024
+        assert runner.context(job['run_id']).payload['instruction'] == instruction
+        runner.context(job['run_id']).record(sid)
+        assert runner.status(job['run_id'])['completed'] == 1
+    finally:
+        runner.close()
 
 
 def test_listing_a_workflow_does_not_rescan_all_owned_batches_per_job(dataset, monkeypatch):

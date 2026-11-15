@@ -6,12 +6,163 @@ import pytest
 
 from iad_core.consistency.agent_review import ConsistencyAgentReview
 from iad_core.workbench.vision import VlmClient
-from tests.test_consistency_identity import similar_job
+from iad_core.workbench.model_profile import ModelProfile
+from tests.test_consistency_identity import similar_job, identity_response
 from tests.test_consistency_program_workflow import pair_job
 
 
+@pytest.mark.parametrize('similar_job', ['registered', 'registered_mixed', 'original_resolution'], indirect=True)
+@pytest.mark.parametrize('protocol', ['openai-completions', 'openai-responses'])
+def test_pair_batch_declares_each_region_contract_once(pair_job, record_property, protocol):
+    from iad_core.consistency.pair_reviews import ConsistencyPairReviews
+
+    runtime, _, run_id = pair_job
+    requests = []
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        body = json.loads(request.content)
+        messages = body['input'] if protocol == 'openai-responses' else body['messages']
+        context = json.loads(messages[-1]['content'][1]['text'])
+        assert context['scope'] == 'pairs'
+        schema = (body['text']['format']['schema'] if protocol == 'openai-responses'
+            else body['response_format']['json_schema']['schema'])
+        layouts = {
+            (tuple(view['ref'] for view in pair['windows']),
+             tuple(view['ref'] for view in pair['unmapped_regions']))
+            for pair in context['pairs'].values()
+        }
+        definitions = [value for value in schema['$defs'].values() if value.get('title') == 'IdentityDecision']
+        record_property('schema_bytes', len(json.dumps(schema, ensure_ascii=False).encode()))
+        record_property('pairs', len(context['pairs']))
+        record_property('distinct_region_layouts', len(layouts))
+        record_property('region_layouts', json.dumps(sorted(layouts)))
+        assert len(definitions) == len(layouts), 'Identical region layouts must share the output contract'
+        assert set(schema['properties']) == set(schema['required']) == set(context['pairs'])
+        requests.append(body)
+        answers = {key: identity_response(pair, 'unverified', '两图局部无法可靠对应。')
+            for key, pair in context['pairs'].items()}
+        if protocol == 'openai-responses':
+            return httpx.Response(200, json={'status':'completed','output':[{'type':'message','role':'assistant',
+                'content':[{'type':'output_text','text':json.dumps(answers),'annotations':[]}]}]})
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
+            'message': {'content': json.dumps(answers)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)), profile=ModelProfile(
+        endpoint='http://model.invalid/v1', api=protocol, model_id='vision',
+        capacity_mode='provider_managed' if protocol == 'openai-responses' else 'vllm_tokenize',
+        context_tokens=32768))
+    try:
+        reviews = ConsistencyPairReviews(runtime, client)
+        tasks = reviews.plan(run_id)
+        receipts = reviews.review_many(run_id, [task.pair_key for task in tasks])
+        assert len(requests) == 1 and len(receipts) == len(tasks)
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize('similar_job', ['original_resolution'], indirect=True)
+def test_unmapped_regions_keep_every_observation_and_require_empty_registered_details(similar_job):
+    runtime, _, run_id, anchor = similar_job
+    observed = []
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        body = json.loads(request.content)
+        content = next(message['content'] for message in body['messages']
+            if message['role'] == 'user' and isinstance(message['content'], list))
+        context = json.loads(content[1]['text'])
+        assert not context['windows']
+        schema = body['response_format']['json_schema']['schema']
+        assert schema['properties']['details']['maxItems'] == 0
+        observed.append(context)
+        answer = identity_response(context, 'unverified', '两图没有可靠对应位置，局部内容无法确认。')
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
+            'message': {'content': json.dumps(answer)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    try:
+        state = ConsistencyAgentReview(runtime, client).verify(run_id, anchor)
+        assert state.completed and observed
+        for gate in state.gates:
+            if gate.source == 'vision':
+                assert not gate.region_checks
+                assert {check.region_pair_id for check in gate.unmapped_region_checks} == set(gate.required_region_pair_ids)
+                assert all(check.observation for check in gate.unmapped_region_checks)
+    finally:
+        client.close()
+
+
 @pytest.mark.parametrize('similar_job', ['registered'], indirect=True)
-def test_each_required_region_retains_both_observations_without_repeating_the_explanation(similar_job):
+@pytest.mark.parametrize('overlap', [False, True])
+def test_repeated_difference_fact_is_shared_without_dropping_any_region_judgment(similar_job, overlap):
+    runtime, _, run_id, anchor = similar_job
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        content = next(message['content'] for message in json.loads(request.content)['messages']
+            if message['role'] == 'user' and isinstance(message['content'], list))
+        context = json.loads(content[1]['text'])
+        answer = identity_response(context, 'content_different', '两图中央纹理的明暗分布不同。')
+        answer['details'] = [{'refs': [window['ref'] for window in context['windows']],
+            'observation': '中央纹理一侧为亮块，另一侧为暗块。'}]
+        if overlap:
+            answer['details'].append({'refs': [window['ref'] for window in context['windows']],
+                'observation': '纹理右侧另多出一个黑点。'})
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    try:
+        state = ConsistencyAgentReview(runtime, client).verify(run_id, anchor)
+        assert state.completed
+        for gate in state.gates:
+            if gate.source == 'vision':
+                assert gate.relation == 'content_different'
+                assert len(gate.region_checks) == len(gate.required_region_pair_ids)
+                observation = '中央纹理一侧为亮块，另一侧为暗块。' + ('；纹理右侧另多出一个黑点。' if overlap else '')
+                assert all(check.visual_relation == 'different' and check.observation == observation
+                    for check in gate.region_checks)
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize('similar_job', ['registered'], indirect=True)
+def test_compact_identity_records_every_region_without_repeating_same_content_descriptions(similar_job):
+    runtime, _, run_id, anchor = similar_job
+    contexts = []
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        body = json.loads(request.content)
+        assert 'summary_refs' not in body['response_format']['json_schema']['schema']['properties']
+        content = next(message['content'] for message in body['messages']
+            if message['role'] == 'user' and isinstance(message['content'], list))
+        context = json.loads(content[1]['text'])
+        contexts.append(context)
+        answer = {'overview': 'same', 'summary': '两图纹理相同，所有标注区域均已核对。',
+            'regions': 'S' * len(context['windows']), 'unmapped_regions': {}, 'details': [], 'limitations': []}
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    try:
+        state = ConsistencyAgentReview(runtime, client).verify(run_id, anchor)
+        assert state.completed and state.eligible_ids
+        assert contexts and all(context['windows'] for context in contexts)
+        for gate in state.gates:
+            if gate.source == 'vision':
+                assert len(gate.region_checks) == len(gate.required_region_pair_ids)
+                assert all(check.visual_relation == 'same' and check.observation is None for check in gate.region_checks)
+                assert gate.reason == '两图纹理相同，所有标注区域均已核对。'
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize('similar_job', ['registered'], indirect=True)
+def test_each_required_region_retains_its_judgment_without_repeating_the_explanation(similar_job):
     runtime, _, run_id, anchor = similar_job
     contexts = []
 
@@ -25,10 +176,7 @@ def test_each_required_region_retains_both_observations_without_repeating_the_ex
         assert not re.search(r'(?:img_|rp_|ann_)[0-9a-f]{32,}', json.dumps(body['messages'])), \
             'Program-bound evidence must use short references throughout the actual model request'
         contexts.append(context)
-        finding = {'main_description': '右下角纹理和细线清晰。', 'candidate_description': '相同细线随整体平移。',
-            'relation': 'transformed_same_content'}
-        answer = {'overview': finding, 'summary': '两图纹理和细线相同，只有整体平移。',
-            'regions': {region['ref']: finding for region in context['windows']}, 'limitations': []}
+        answer = identity_response(context, 'transformed_same_content', '两图纹理和细线相同，只有整体平移。')
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
@@ -41,7 +189,7 @@ def test_each_required_region_retains_both_observations_without_repeating_the_ex
             assert gate.reason == '两图纹理和细线相同，只有整体平移。'
             assert gate.region_checks
             assert set(gate.required_region_pair_ids) == {check.region_pair_id for check in gate.region_checks}
-            assert all(check.main_description and check.candidate_description and check.reason is None
+            assert all(check.visual_relation == 'same' and check.observation is None
                 for check in gate.region_checks)
     finally:
         client.close()
@@ -71,12 +219,7 @@ def test_shared_comparison_corrects_directional_text_before_publishing_either_si
             if message['role'] == 'user' and isinstance(message['content'], list))
         context = json.loads(content[1]['text'])
         requests.append(body)
-        finding = {'main_description': '右下角有一条短划痕。',
-            'candidate_description': '右下角没有对应短划痕。', 'relation': 'content_different'}
-        regions = {region['ref']: (finding if region['mapping'] == 'registered' else
-            {'observation': '局部可见蓝色边缘，没有可靠配对的另一侧局部。'})
-            for region in [*context['windows'], *context['unmapped_regions']]}
-        answer = {'overview': finding, 'summary': summary, 'regions': regions, 'limitations': []}
+        answer = identity_response(context, 'content_different', summary)
         if len(requests) == 1:
             answer[field] = directional_text
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})

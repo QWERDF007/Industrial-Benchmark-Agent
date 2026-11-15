@@ -233,7 +233,8 @@ class WorkbenchQuery:
             samples = conn.execute(BASE + f"""
                 SELECT b.sample_id,b.width,b.height,b.suggestion_id,b.suggested_label,b.review_decision,
                     b.reviewed_at,b.audit_run_id,a.analysis_json,b.quality_status,
-                    b.source_fingerprint,a.source_fingerprint AS audited_source_fingerprint
+                    b.source_fingerprint,a.source_fingerprint AS audited_source_fingerprint,
+                    b.source_revision,a.source_revision AS audited_source_revision
                 FROM base b LEFT JOIN audit_suggestions a ON a.suggestion_id=b.suggestion_id
                 WHERE {" AND ".join("b." + clause for clause in clauses)}
             """, params).fetchall()
@@ -247,28 +248,25 @@ class WorkbenchQuery:
 
     def datasets(self) -> dict:
         registry = DatasetRegistry(self.db)
-        items = []
-        for config in registry.list():
-            dataset_id = config.dataset.id
-            report = self.report(dataset_id=dataset_id, task_id=config.task.task_id)
-            with self.db.connection() as conn:
-                annotation_counts = conn.execute("SELECT a.raw_label,count(*) FROM annotations a JOIN samples s ON s.sample_id=a.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 GROUP BY a.raw_label ORDER BY a.raw_label", (dataset_id,)).fetchall()
-                feature_count = conn.execute("SELECT count(DISTINCT f.sample_id) FROM sample_features f JOIN samples s ON s.sample_id=f.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 AND f.view_key='full' AND f.profile_id=(SELECT profile_id FROM workbench_image_settings WHERE id=1)", (dataset_id,)).fetchone()[0]
-                explicit_labels = conn.execute("SELECT count(*) FROM samples WHERE dataset_id=? AND is_excluded=0 AND quality_status IN ('PASS', 'FAIL')", (dataset_id,)).fetchone()[0]
-                row = conn.execute("SELECT reference_selection_set, group_id FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
-                selected = row[0] if row else 0
-                group_id = row[1] if row and len(row) > 1 else None
-            items.append({**report, "dataset_id": dataset_id, "name": config.dataset.name or dataset_id,
-                          "format": config.dataset.format,
-                          "group_id": group_id,
-                          "task_name": config.task.name or config.task.product or config.task.task_id,
-                          "product": config.task.product, "image_dir": config.root, "annotation_dir": config.annotations.root,
-                          "annotation_categories": [row[0] for row in annotation_counts], "annotation_count": sum(row[1] for row in annotation_counts),
-                          "labeled_sample_count": explicit_labels,
-                          "folder_rules": [r.model_dump() for r in (getattr(config, "folder_rules", []) or [])],
-                          "reference_sample_ids": registry.references(dataset_id, limit=None),
-                          "reference_mode": "selected" if selected else "automatic",
-                          "unannotated_is_normal": config.dataset.unannotated_is_normal,
-                          "annotation_policy": config.annotations.model_dump(include=set(AnnotationPolicy.model_fields)),
-                          "feature_coverage_pct": round(100 * feature_count / report["total_samples"], 2) if report["total_samples"] else 0})
-        return {"datasets": items, "groups": registry.list_groups()}
+        return {"datasets": [self.dataset(config.dataset.id) for config in registry.list()], "groups": registry.list_groups()}
+
+    def dataset(self, dataset_id: str) -> dict:
+        registry = DatasetRegistry(self.db)
+        config = registry.get(dataset_id)
+        report = self.report(dataset_id=dataset_id, task_id=config.task.task_id)
+        with self.db.connection() as conn:
+            annotation_counts = conn.execute("SELECT a.raw_label,count(*) FROM annotations a JOIN samples s ON s.sample_id=a.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 GROUP BY a.raw_label ORDER BY a.raw_label", (dataset_id,)).fetchall()
+            feature_count = conn.execute("SELECT count(DISTINCT f.sample_id) FROM sample_features f JOIN samples s ON s.sample_id=f.sample_id WHERE s.dataset_id=? AND s.is_excluded=0 AND f.view_key='full' AND f.profile_id=(SELECT profile_id FROM workbench_image_settings WHERE id=1)", (dataset_id,)).fetchone()[0]
+            explicit_labels = conn.execute("SELECT count(*) FROM samples WHERE dataset_id=? AND is_excluded=0 AND quality_status IN ('PASS', 'FAIL')", (dataset_id,)).fetchone()[0]
+            row = conn.execute("SELECT reference_selection_set, group_id FROM datasets WHERE dataset_id=?", (dataset_id,)).fetchone()
+        return {**report, "dataset_id": dataset_id, "name": config.dataset.name or dataset_id,
+            "format": config.dataset.format, "group_id": row['group_id'],
+            "task_name": config.task.name or config.task.product or config.task.task_id,
+            "product": config.task.product, "image_dir": config.root, "annotation_dir": config.annotations.root,
+            "annotation_categories": [row[0] for row in annotation_counts], "annotation_count": sum(row[1] for row in annotation_counts),
+            "labeled_sample_count": explicit_labels, "folder_rules": [rule.model_dump() for rule in config.folder_rules],
+            "reference_sample_ids": registry.references(dataset_id, limit=None),
+            "reference_mode": "selected" if row['reference_selection_set'] else "automatic",
+            "unannotated_is_normal": config.dataset.unannotated_is_normal,
+            "annotation_policy": config.annotations.model_dump(include=set(AnnotationPolicy.model_fields)),
+            "feature_coverage_pct": round(100 * feature_count / report['total_samples'], 2) if report['total_samples'] else 0}

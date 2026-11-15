@@ -4,7 +4,7 @@ import http from 'node:http';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {build} from 'esbuild';
-import {Builder,By,until} from 'selenium-webdriver';
+import {Builder,By,Key,until} from 'selenium-webdriver';
 import firefox from 'selenium-webdriver/firefox.js';
 
 const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
@@ -15,12 +15,12 @@ import {useJobList} from './src/client/useJobList.ts';
 import {workbenchStyles} from './src/client/styles.ts';
 window.jobNow=Date.parse('2026-11-05T12:00:10Z');Date.now=()=>window.jobNow;
 const initial={run_id:'analysis-first',root_run_id:'analysis-first',dataset_id:'dataset',dataset_ids:['dataset'],status:'RUNNING',completed:8,total_samples:100,failed:0,submitted_at:'2026-11-05T12:00:00Z',started_at:'2026-11-05T12:00:00Z',finished_at:null,model_name:'test-model'};
-function App(){const [jobs,setJobs]=React.useState([initial]),[selected,setSelected]=React.useState('');const list=useJobList(jobs,'dataset',selected);window.selectExternal=setSelected;window.updateJob=patch=>setJobs(rows=>rows.map((job,index)=>index?job:{...job,...patch}));window.addJobs=()=>setJobs(rows=>[...rows,...Array.from({length:8},(_,i)=>({...initial,run_id:'analysis-older-'+i,root_run_id:'analysis-older-'+i,status:'COMPLETED',finished_at:'2026-11-05T12:00:15Z',submitted_at:'2026-11-04T12:00:00Z'}))]);return <main className="iad-workbench"><style>{workbenchStyles}</style><JobList title="测试作业" list={list} datasets={[{dataset_id:'dataset',name:'测试数据集'}]} actions={{status:job=>window.lastAction='status:'+job.run_id,prompt:job=>window.lastAction='prompt:'+job.run_id,delete:async job=>setJobs(rows=>rows.filter(row=>row.run_id!==job.run_id)),additional:[{id:'statistics',label:'统计',icon:'stats',onClick:job=>window.lastAction='stats:'+job.run_id}]}}/></main>}
+function App(){const [jobs,setJobs]=React.useState([initial]),[selected,setSelected]=React.useState('');const [picking,setPicking]=React.useState(false),[checked,setChecked]=React.useState(new Set());window.enablePicking=()=>setPicking(true);window.selectedSources=()=>[...checked];const list=useJobList(jobs,'dataset',selected);window.selectExternal=setSelected;window.updateJob=patch=>setJobs(rows=>rows.map((job,index)=>index?job:{...job,...patch}));window.addJobs=()=>setJobs(rows=>[...rows,...Array.from({length:8},(_,i)=>({...initial,run_id:'analysis-older-'+i,root_run_id:'analysis-older-'+i,status:'COMPLETED',finished_at:'2026-11-05T12:00:15Z',submitted_at:'2026-11-04T12:00:00Z'}))]);return <main className="iad-workbench"><style>{workbenchStyles}</style><JobList title="测试作业" list={list} selection={picking?{name:"sources",label:"选择来源作业",selectedIds:checked,onChange:setChecked}:undefined} datasets={[{dataset_id:'dataset',name:'测试数据集'}]} actions={{status:job=>window.lastAction='status:'+job.run_id,prompt:job=>window.lastAction='prompt:'+job.run_id,delete:picking?undefined:async job=>setJobs(rows=>rows.filter(row=>row.run_id!==job.run_id)),additional:[{id:'statistics',label:'统计',icon:'stats',onClick:job=>window.lastAction='stats:'+job.run_id}]}}/></main>}
 createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
  const server=http.createServer((req,res)=>{res.setHeader('Content-Type',req.url==='/app.js'?'application/javascript':'text/html;charset=utf-8');res.end(req.url==='/app.js'?bundle.outputFiles[0].contents:'<!doctype html><meta charset="utf-8"><div id="root"></div><script src="/app.js"></script>');});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  let driver;t.after(async()=>{await driver?.quit();await new Promise(resolve=>server.close(resolve));});
- const options=new firefox.Options().addArguments('-headless').setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox');
+ const options=new firefox.Options().addArguments('-headless','--remote-allow-system-access').setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox');
  driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
  await driver.get(`http://127.0.0.1:${server.address().port}`);
  await driver.wait(until.elementLocated(By.css('table tbody tr')),10000);
@@ -68,4 +68,23 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
  await(await driver.wait(until.elementLocated(By.xpath('//dialog[@open]//button[normalize-space(.)="删除作业"]')),3000)).click();
  await driver.wait(async()=>(await driver.findElements(By.css('dialog[open]'))).length===0,3000);
  assert.equal((await driver.findElements(By.css('.iad-pagination'))).length,0,'删除末页唯一作业后隐藏单页分页');
+ await driver.executeScript('window.enablePicking()');
+ await driver.wait(async()=>(await texts('thead th'))[0]==='选择',3000,'来源列表应前置勾选列');
+ assert.deepEqual(await texts('thead th'),['选择','作业ID','状态','数据集','进度','提交时间','耗时','操作']);
+ assert.equal((await driver.findElements(By.css('button[title="删除作业"]'))).length,0);
+ const choice=await driver.findElement(By.css('tbody input[type="checkbox"]'));
+ assert.equal(await choice.isSelected(),false,'首行默认展示不能自动勾选来源');
+ await choice.click();assert.equal(await choice.isSelected(),true);
+ await choice.sendKeys(Key.SPACE);assert.equal(await choice.isSelected(),false,'可用键盘取消勾选');
+ await(await driver.findElement(By.css('tbody tr td:nth-child(2)'))).click();
+ assert.equal(await choice.isSelected(),true,'行点击切换一次勾选');
+ await(await driver.findElement(By.css('tbody button[title="查看提示词"]'))).click();
+ assert.equal(await choice.isSelected(),true,'查看操作不修改勾选');
+ const selectedSources=await driver.executeScript('return window.selectedSources()');
+ await driver.executeScript('window.addJobs()');
+ await driver.wait(until.elementLocated(By.css('.iad-pagination')),3000);
+ await(await driver.findElement(By.xpath('//nav/button[normalize-space(.)="下一页"]'))).click();
+ assert.deepEqual(await driver.executeScript('return window.selectedSources()'),selectedSources,'翻页不修改来源选择');
+ await(await driver.findElement(By.css('input[aria-label="搜索作业"]'))).sendKeys('no-matching-job');
+ assert.deepEqual(await driver.executeScript('return window.selectedSources()'),selectedSources,'搜索不修改来源选择');
 });

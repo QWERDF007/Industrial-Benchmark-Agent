@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from iad_core.consistency.agent_assessments import AnchorAssessments
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
-from iad_core.consistency.agent_models import ModelReviewedResult
+from iad_core.consistency.agent_models import ReviewedResult
 from iad_core.consistency.agent_review_models import (AnchorAssessmentInput, AnchorAssessmentRecord, AnchorAssessmentSubmission, AnchorDraftSubmission, AnchorObservation, AnchorVisualPlan, AnchorVisualRequest,
     AnchorReviewSubmission, AnchorVisualResult, AnchorVisualStart, VISUAL_REQUEST_ID_RULE)
 from iad_core.consistency.agent_visual_inputs import AnchorVisualInput
@@ -45,19 +45,21 @@ class ConsistencyAgentReview:
             return self.checks.complete(run_id, anchor_id, NoEligibleResult(), attempt=attempt)
         self.checks.phase(run_id, anchor_id, 'AWAITING_REVIEW')
         group = CandidateIdentity(self.runtime).review_group(run_id, anchor_id)
-        first = self.runtime.consistency_service.evidence(group.members[0].comparison.evidence_id)
-        if first.sources.left.annotations.dataset_format == 'folder_classification':
-            from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
-            records = []
-            gates = {gate.candidate_id: gate for gate in state.gates}
-            for member in group.members:
-                saved = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
-                assessment = AnnotationEvaluation.labels((saved.sources.left, saved.sources.right), member.image.sample_id,
-                    [media.evidence_id for media in gates[member.image.sample_id].media[:2]])
-                record = self.save_assessment(run_id, anchor_id, AnchorAssessmentSubmission(fingerprint=state.fingerprint,
-                    observation_ids=[], assessment=assessment,
-                    comparison=member.comparison.model_dump(exclude={'anchor_side'})), attempt=attempt)
-                records.append(record.assessment_id)
+        from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
+        records = []
+        gates = {gate.candidate_id: gate for gate in state.gates}
+        for member in group.members:
+            saved = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
+            gate = gates[member.image.sample_id]
+            assessment = AnnotationEvaluation.programmatic((saved.sources.left, saved.sources.right), member.image.sample_id,
+                [media.evidence_id for media in gate.media[:2]])
+            if assessment is None:
+                continue
+            record = self.save_assessment(run_id, anchor_id, AnchorAssessmentSubmission(fingerprint=state.fingerprint,
+                gate_revision=gate.revision, observation_ids=[], assessment=assessment,
+                comparison=member.comparison.model_dump(exclude={'anchor_side'})), attempt=attempt)
+            records.append(record.assessment_id)
+        if len(records) == len(group.members):
             return self.finalize(run_id, anchor_id, {'fingerprint': state.fingerprint, 'assessment_ids': records}, attempt=attempt)
         return None
 
@@ -200,7 +202,7 @@ class ConsistencyAgentReview:
             with self.db.connection() as connection:
                 return AnchorAssessments.append(connection, run_id, anchor_id, submission, request_id=request_id)
 
-    def finalize(self, run_id: str, anchor_id: str, submission: dict | AnchorReviewSubmission, *, attempt: int = 1) -> ModelReviewedResult:
+    def finalize(self, run_id: str, anchor_id: str, submission: dict | AnchorReviewSubmission, *, attempt: int = 1) -> ReviewedResult:
         submission = AnchorReviewSubmission.model_validate(submission)
         with self.runtime.jobs.lock:
             anchor = self.checks.attempt(run_id, anchor_id, attempt)
@@ -235,17 +237,24 @@ class ConsistencyAgentReview:
                     'conclusions': [{'text': item.assessment.explanation, 'references': [item.reference]} for item in selected],
                     'limitations': limitations}}, attempt=attempt)
 
-    def submit(self, run_id: str, anchor_id: str, submission: dict | AnchorDraftSubmission, *, attempt: int = 1) -> ModelReviewedResult:
+    def submit(self, run_id: str, anchor_id: str, submission: dict | AnchorDraftSubmission, *, attempt: int = 1) -> ReviewedResult:
         submission = AnchorDraftSubmission.model_validate(submission)
         anchor = self.checks.attempt(run_id, anchor_id, attempt)
-        result = ModelReviewedResult(**submission.draft.model_dump(), fingerprint=submission.fingerprint,
+        result = ReviewedResult(**submission.draft.model_dump(), fingerprint=submission.fingerprint,
             observation_ids=submission.observation_ids)
         if anchor.result is not None:
+            if anchor.result.reason == 'PROGRAM_REVIEWED' and not any(submission.observation_ids.values()):
+                result.reason = 'PROGRAM_REVIEWED'
             return self.checks.complete(run_id, anchor_id, result, attempt=attempt,
                 request_id=submission.request_id, request_payload=submission.model_dump(mode='json'))
         from iad_core.consistency.identity import CandidateIdentity
         group = CandidateIdentity(self.runtime).review_group(run_id, anchor_id)
         self.validate(run_id, anchor_id, submission, group, attempt=attempt)
+        if not any(submission.observation_ids.values()):
+            from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
+            if all(AnnotationEvaluation.empty_pair((evidence.sources.left,evidence.sources.right))
+                    for evidence in (self.runtime.consistency_service.evidence(member.comparison.evidence_id) for member in group.members)):
+                result.reason = 'PROGRAM_REVIEWED'
         return self.checks.complete(run_id, anchor_id, result, attempt=attempt,
             request_id=submission.request_id, request_payload=submission.model_dump(mode='json'))
 
@@ -265,7 +274,7 @@ class ConsistencyAgentReview:
         for assessment in submission.draft.assessments:
             member = next(member for member in group.members if member.image.sample_id == assessment.candidate_id)
             evidence = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
-            deterministic = evidence.sources.left.annotations.dataset_format == 'folder_classification'
+            deterministic = AnnotationEvaluation.deterministic((evidence.sources.left,evidence.sources.right))
             references = submission.observation_ids.get(assessment.candidate_id, [])
             media_ids = ([image.evidence_id for image in gates[assessment.candidate_id].media[:2]] if deterministic else
                 next((finding.media_ids for reference in references if reference in observed
@@ -275,7 +284,8 @@ class ConsistencyAgentReview:
                 gate=gates[assessment.candidate_id])
         for identity, references in submission.observation_ids.items():
             member = next(member for member in group.members if member.image.sample_id == identity)
-            deterministic = self.runtime.consistency_service.evidence(member.comparison.evidence_id).sources.left.annotations.dataset_format == 'folder_classification'
+            evidence = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
+            deterministic = AnnotationEvaluation.deterministic((evidence.sources.left,evidence.sources.right))
             if ((not references and not deterministic) or len(references) != len(set(references)) or not set(references) <= observed.keys()):
                 raise ValueError('终稿引用的视觉观察不属于本场或尚未完成')
             for reference in references:

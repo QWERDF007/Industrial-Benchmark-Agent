@@ -5,10 +5,10 @@ from PIL import Image
 from iad_core.consistency.service import ConsistencyService
 
 
-def test_exact_evidence_survives_source_deletion_until_dataset_is_deleted(dataset):
+def test_exact_evidence_survives_source_deletion_until_dataset_is_deleted(indexed_dataset):
     from iad_core.consistency.evidence_models import ConsistencyCompare
 
-    db,registry,config=dataset
+    db,registry,config=indexed_dataset
     service=ConsistencyService(db)
     request=ConsistencyCompare(sample_a=config.dataset.id+':dent.png',sample_b=config.dataset.id+':scratch.png')
     result=service.compare(request)
@@ -21,7 +21,6 @@ def test_exact_evidence_survives_source_deletion_until_dataset_is_deleted(datase
     for path in Path(config.root).glob('*.png'):path.unlink()
     reopened=ConsistencyService(db).evidence(result.evidence_id)
     assert reopened.result==result
-    assert reopened.source_states.left==reopened.source_states.right=='MISSING'
     original=service.evidence_media(result.evidence_id,'left-original')
     from iad_core.duplicate.pixels import PixelContent
     assert PixelContent.read(original['path']).descriptor.width==320
@@ -51,10 +50,10 @@ def test_16bit_original_is_lossless_and_preview_uses_the_full_value_range(tmp_pa
         assert image.mode=='RGB' and [image.getpixel((x,0)) for x in range(3)]==[(0,0,0),(128,128,128),(255,255,255)]
 
 
-def test_empty_annotation_mask_is_empty_instead_of_a_copy_of_the_photo(dataset):
+def test_empty_annotation_mask_is_empty_instead_of_a_copy_of_the_photo(indexed_dataset):
     from iad_core.consistency.evidence_models import ConsistencyCompare
 
-    db,_,config=dataset;service=ConsistencyService(db)
+    db,_,config=indexed_dataset;service=ConsistencyService(db)
     result=service.compare(ConsistencyCompare(sample_a=config.dataset.id+':normal.png',sample_b=config.dataset.id+':normal.png'))
     mask=service.evidence_media(result.evidence_id,'left-annotation_mask')
     with Image.open(mask['path']) as image:assert image.convert('L').getbbox() is None
@@ -147,23 +146,11 @@ def test_mask_and_annotation_history_survive_rescan_and_cache_removal(defect_dat
     with Image.open(path) as image:assert image.convert('L').getbbox()==(90,110,111,131)
 
 
-def test_tampered_retained_pixels_are_never_replaced_with_current_source(dataset):
-    import pytest
-    from iad_core.consistency.evidence_models import ConsistencyCompare
-    from iad_core.consistency.errors import ConsistencyError
-
-    db,_,config=dataset;service=ConsistencyService(db)
-    result=service.compare(ConsistencyCompare(sample_a=config.dataset.id+':dent.png',sample_b=config.dataset.id+':scratch.png'))
-    path=service.evidence_media(result.evidence_id,'left-original')['path']
-    Path(path).write_bytes(b'changed')
-    with pytest.raises(ConsistencyError,match='historical proof'):service.evidence(result.evidence_id)
-
-
-def test_reordered_annotations_publish_new_facts_without_rewriting_history(dataset):
+def test_reordered_annotations_publish_new_facts_without_rewriting_history(indexed_dataset):
     import json
     from iad_core.consistency.evidence_models import ConsistencyCompare
 
-    db,registry,config=dataset;service=ConsistencyService(db)
+    db,registry,config=indexed_dataset;service=ConsistencyService(db)
     path=Path(config.annotations.root)/'dent.json'
     document=json.loads(path.read_text());document['shapes'].append({'label':'pit','shape_type':'rectangle','points':[[40,40],[60,60]]})
     path.write_text(json.dumps(document));registry.rescan(config.dataset.id)
@@ -177,17 +164,6 @@ def test_reordered_annotations_publish_new_facts_without_rewriting_history(datas
     assert frozen.sources.left.annotations==before.sources.left.annotations
     assert frozen.result==previous and frozen.source_states.left=='CHANGED'
     assert frozen.sources.left.image==service.evidence(current.evidence_id).sources.left.image
-
-
-def test_source_replacement_before_rescan_cannot_freeze_stale_index_facts(dataset):
-    import pytest
-    from iad_core.consistency.evidence_models import ConsistencyCompare
-    from iad_core.consistency.errors import ConsistencyError
-
-    db,_,config=dataset
-    Image.new('RGB',(320,240),'red').save(Path(config.root)/'dent.png')
-    with pytest.raises(ConsistencyError,match='rescan'):
-        ConsistencyService(db).compare(ConsistencyCompare(sample_a=config.dataset.id+':dent.png',sample_b=config.dataset.id+':scratch.png'))
 
 
 def test_lossless_metadata_variants_share_one_retained_original(tmp_path):
@@ -209,11 +185,11 @@ def test_lossless_metadata_variants_share_one_retained_original(tmp_path):
     assert bundle.sources.left.scan_ref==bundle.sources.right.scan_ref
 
 
-def test_two_independent_services_publish_the_same_immutable_evidence(dataset):
+def test_two_independent_services_publish_the_same_immutable_evidence(indexed_dataset):
     from concurrent.futures import ThreadPoolExecutor
     from iad_core.consistency.evidence_models import ConsistencyCompare
 
-    db,_,config=dataset
+    db,_,config=indexed_dataset
     request=ConsistencyCompare(sample_a=config.dataset.id+':dent.png',sample_b=config.dataset.id+':scratch.png')
     with ThreadPoolExecutor(max_workers=2) as executor:
         results=list(executor.map(lambda _:ConsistencyService(db).compare(request),range(2)))
@@ -240,12 +216,12 @@ def test_rgba_mask_overlay_preserves_transparency_without_losing_mask_pixels(tmp
         assert image.getpixel((3,3))[:3]!=(10,20,30)
 
 
-def test_human_review_is_frozen_separately_from_raw_quality(dataset):
+def test_human_review_is_frozen_separately_from_raw_quality(indexed_dataset):
     from uuid import uuid4
     from iad_core.consistency.evidence_models import ConsistencyCompare
     from iad_core.workbench.review import HumanReview,ReviewSubmission
 
-    db,_,config=dataset;service=ConsistencyService(db)
+    db,_,config=indexed_dataset;service=ConsistencyService(db)
     request=ConsistencyCompare(sample_a=config.dataset.id+':dent.png',sample_b=config.dataset.id+':scratch.png')
     reviewer=HumanReview(db)
     reviewer.submit(ReviewSubmission(submission_id=uuid4(),dataset_id=config.dataset.id,sample_id=request.sample_a,reviewer='operator',decision='PASS'))
@@ -284,9 +260,9 @@ def test_unreadable_annotation_remains_unavailable_in_export(defect_dataset):
         assert manifest['evidence']['sources']['left']['issues']
 
 
-def test_frozen_gallery_thumbnail_does_not_replace_full_resolution_evidence(dataset, monkeypatch):
+def test_frozen_gallery_thumbnail_does_not_replace_full_resolution_evidence(indexed_dataset, monkeypatch):
     from iad_core.consistency.evidence_models import ConsistencyCompare
-    db, _, config = dataset
+    db, _, config = indexed_dataset
     service = ConsistencyService(db)
     result = service.compare(ConsistencyCompare(sample_a=config.dataset.id + ':dent.png', sample_b=config.dataset.id + ':scratch.png'))
     from iad_core.consistency.retrieval_sources import SourceImage
@@ -297,6 +273,17 @@ def test_frozen_gallery_thumbnail_does_not_replace_full_resolution_evidence(data
         return original(path, published)
     monkeypatch.setattr(SourceImage, 'read', record)
     thumbnail = service.evidence_media(result.evidence_id, 'left-preview', max_side=96)
+    import cProfile
+    profile = cProfile.Profile()
+    profile.enable()
+    repeated = ConsistencyService(db).evidence_media(result.evidence_id, 'left-preview', max_side=96)
+    profile.disable()
+    image_work = [(entry.code.co_name, entry.callcount) for entry in profile.getstats()
+        if not isinstance(entry.code, str) and entry.code.co_filename.endswith('/PIL/Image.py')
+        and entry.code.co_name in ('open', 'save')]
+    assert image_work == [], f'同一冻结预览应直接复用文件，不再解码或编码：{image_work}'
+    assert repeated['path'] == thumbnail['path']
+    assert thumbnail['media_type'] == 'image/jpeg'
     full = service.evidence_media(result.evidence_id, 'left-original')
     assert reads == [], '冻结媒体不应重读当前来源，当前来源状态由证据详情单独核验'
     with Image.open(thumbnail['path']) as image:

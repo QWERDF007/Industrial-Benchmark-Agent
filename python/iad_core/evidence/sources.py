@@ -1,13 +1,13 @@
 import hashlib
 import json
+from contextlib import nullcontext
 from sqlite3 import Connection
 from typing import Optional
 from pydantic import Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.dataset.path_safety import AuthorizedDatasetPaths
-from iad_core.evidence.images import file_sha256
-from iad_core.evidence.masks import MaskImages
+from iad_core.evidence.files import file_sha256
 from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository, SampleRepository
 from iad_core.storage.models import AnnotationAvailability, Sample, Annotation
@@ -42,11 +42,22 @@ class SampleContent(AnalysisModel):
         if sample.is_excluded:
             raise ValueError('Sample is excluded from the current dataset scope')
         annotations = AnnotationRepository(db).list_by_sample(sample_id, connection=connection)
-        for annotation in annotations:
-            if annotation.annotation_type == 'mask' and annotation.geometry_status != 'INVALID':
-                MaskImages.load(annotation, sample)
-        path = (paths if paths is not None else AuthorizedDatasetPaths(db.db_path)).image(sample)
-        return cls.describe(sample, annotations, file_sha256(path))
+        (paths if paths is not None else AuthorizedDatasetPaths(db.db_path)).image(sample)
+        digest = cls.image_sha256(db, sample, connection=connection)
+        return cls.describe(sample, annotations, digest)
+
+    @classmethod
+    def image_sha256(cls, db: Database, sample: Sample, *, connection: Optional[Connection] = None) -> str:
+        with nullcontext(connection) if connection is not None else db.connection() as conn:
+            row = conn.execute('''SELECT COALESCE(s.source_sha256,p.image_sha256) FROM samples s
+                LEFT JOIN sample_pixel_index p ON p.sample_id=s.sample_id WHERE s.sample_id=?''',
+                (sample.sample_id,)).fetchone()
+        if row is not None and row[0]:
+            return row[0]
+        digest = file_sha256(sample.image_path)
+        with nullcontext(connection) if connection is not None else db.connection() as conn:
+            conn.execute('UPDATE samples SET source_sha256=? WHERE sample_id=?', (digest, sample.sample_id))
+        return digest
 
     @classmethod
     def capture_many(cls, db: Database, sample_ids: list[str]) -> list['SampleContent']:

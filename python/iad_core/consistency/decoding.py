@@ -104,7 +104,7 @@ class ImageDecoding:
             if checkpoint:
                 checkpoint()
             try:
-                image = SourceImage.read(source.path, source.published)
+                image = SourceImage.read(source.path)
                 if checkpoint:
                     checkpoint()
                 pixels = image.pixels()

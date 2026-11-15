@@ -74,7 +74,7 @@ class AuditAgentJobs(AuditState):
             raise ValueError('请选择已完成的一致性作业')
         source = ConsistencyAgentJobs(self.runtime).snapshot(request.consistency_job_id)
         frozen = {sample.sample_id:sample for sample in source.scopes.subjects.samples}
-        if any(record.sample.sample_id not in frozen or frozen[record.sample.sample_id].source_fingerprint != record.source_fingerprint
+        if any(record.sample.sample_id not in frozen or frozen[record.sample.sample_id].source_revision != record.source_revision
                 or frozen[record.sample.sample_id].quality_status != record.sample.quality_status for record in manifest.records):
             raise ValueError('所选图像或标注版本与一致性作业冻结范围不一致，请先重新检查一致性')
         results = ConsistencyAgentResults(self.db)

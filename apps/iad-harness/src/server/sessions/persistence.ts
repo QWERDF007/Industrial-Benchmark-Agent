@@ -14,6 +14,7 @@ export type SessionLocator = (id: string) => Promise<string>;
 class JobSessionHandle implements SessionHandle {
   private chain: Promise<void> = Promise.resolve();
   private closed = false;
+  private closing?: Promise<void>;
 
   constructor(readonly id: SessionId, readonly header: SessionHeader, readonly access: SessionAccess,
     readonly inheritedEventCount: SessionLogOffset, private readonly filename: string,
@@ -63,14 +64,19 @@ class JobSessionHandle implements SessionHandle {
     await this.file.sync();
   }
 
-  async close(): Promise<void> {
-    if (this.closed) return;
+  close(): Promise<void> {
+    if (this.closing) return this.closing;
     this.closed = true;
-    this.release();
-    try {
-      await this.chain;
-      if (this.access === 'write') await this.file.sync();
-    } finally {await this.file.close();}
+    this.closing = (async()=>{
+      try {
+        await this.chain;
+        if (this.access === 'write') await this.file.sync();
+      } finally {
+        try {await this.file.close();}
+        finally {this.release();}
+      }
+    })();
+    return this.closing;
   }
 
   [Symbol.asyncDispose](): Promise<void> {return this.close();}
@@ -78,7 +84,7 @@ class JobSessionHandle implements SessionHandle {
 
 export class JobSessionPersistence extends SessionPersistence {
   private readonly handles = new Set<JobSessionHandle>();
-  private readonly writers = new Map<SessionId, JobSessionHandle>();
+  private readonly writers = new Map<SessionId, JobSessionHandle | null>();
 
   constructor(ctx: Context, private readonly root: string, private readonly locate: SessionLocator) {
     super(ctx);
@@ -96,48 +102,61 @@ export class JobSessionPersistence extends SessionPersistence {
   async create(header: SessionHeader, options?: SessionPersistenceCreateOptions): Promise<SessionHandle> {
     options?.signal?.throwIfAborted();
     const meta = materializeCreateHeader(header);
-    const filename = await this.locate(meta.id);
-    const inheritedEventCount = SessionLogOffset(options?.inheritedEventCount ?? 0);
-    const text = JSON.stringify(sessionFormatCatalog.encodeCurrentHeader(
-      {...meta, delegationDepth: meta.delegationDepth ?? 0}, inheritedEventCount)) + '\n';
-    await fs.mkdir(path.dirname(filename), {recursive: true});
-    let file: FileHandle;
-    try {file = await fs.open(filename, 'ax+');}
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new SessionAlreadyExistsError(meta.id);
+    if (this.writers.has(meta.id)) throw new SessionAlreadyExistsError(meta.id);
+    this.writers.set(meta.id, null);
+    try {
+      const filename = await this.locate(meta.id);
+      const inheritedEventCount = SessionLogOffset(options?.inheritedEventCount ?? 0);
+      const text = JSON.stringify(sessionFormatCatalog.encodeCurrentHeader(
+        {...meta, delegationDepth: meta.delegationDepth ?? 0}, inheritedEventCount)) + '\n';
+      await fs.mkdir(path.dirname(filename), {recursive: true});
+      let file: FileHandle;
+      try {file = await fs.open(filename, 'ax+');}
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new SessionAlreadyExistsError(meta.id);
+        throw error;
+      }
+      try {await file.writeFile(text);await file.sync();}
+      catch (error) {await file.close();throw error;}
+      const handle = new JobSessionHandle(meta.id, meta, 'write', inheritedEventCount, filename, file, 0,
+        () => {this.handles.delete(handle);this.writers.delete(meta.id);});
+      this.handles.add(handle);this.writers.set(meta.id, handle);
+      return handle;
+    } catch(error) {
+      this.writers.delete(meta.id);
       throw error;
     }
-    try {await file.writeFile(text);await file.sync();}
-    catch (error) {await file.close();throw error;}
-    const handle = new JobSessionHandle(meta.id, meta, 'write', inheritedEventCount, filename, file, 0,
-      () => {this.handles.delete(handle);this.writers.delete(meta.id);});
-    this.handles.add(handle);this.writers.set(meta.id, handle);
-    return handle;
   }
 
   async open(id: SessionId, access: SessionAccess, options?: SessionPersistenceOpenOptions): Promise<SessionHandle> {
     options?.signal?.throwIfAborted();
     if (access === 'write' && this.writers.has(id)) throw new SessionAlreadyOwnedError(id);
-    const filename = await this.locate(id);
-    let stored: Awaited<ReturnType<typeof JobSessionHandle.load>>;
-    try {stored = await JobSessionHandle.load(filename, id);}
-    catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new SessionPersistenceNotFoundError(id);
+    if (access === 'write') this.writers.set(id, null);
+    try {
+      const filename = await this.locate(id);
+      let stored: Awaited<ReturnType<typeof JobSessionHandle.load>>;
+      try {stored = await JobSessionHandle.load(filename, id);}
+      catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') throw new SessionPersistenceNotFoundError(id);
+        throw error;
+      }
+      const file = await fs.open(filename, access === 'write' ? 'a+' : 'r');
+      if (access === 'write' && stored.torn) await file.truncate(stored.bytes);
+      const handle = new JobSessionHandle(id, stored.header, access, stored.inheritedEventCount,
+        filename, file, stored.events.length, () => {
+          this.handles.delete(handle);
+          if (access === 'write') this.writers.delete(id);
+        });
+      this.handles.add(handle);
+      if (access === 'write') this.writers.set(id, handle);
+      return handle;
+    } catch(error) {
+      if (access === 'write') this.writers.delete(id);
       throw error;
     }
-    const file = await fs.open(filename, access === 'write' ? 'a+' : 'r');
-    if (access === 'write' && stored.torn) await file.truncate(stored.bytes);
-    const handle = new JobSessionHandle(id, stored.header, access, stored.inheritedEventCount,
-      filename, file, stored.events.length, () => {
-        this.handles.delete(handle);
-        if (access === 'write') this.writers.delete(id);
-      });
-    this.handles.add(handle);
-    if (access === 'write') this.writers.set(id, handle);
-    return handle;
   }
 
-  async flush(): Promise<void> {await Promise.all([...this.writers.values()].map(handle => handle.flush()));}
+  async flush(): Promise<void> {await Promise.all([...this.writers.values()].map(handle => handle?.flush()));}
 
   async stat(id: SessionId, options?: {signal?: AbortSignal}) {
     options?.signal?.throwIfAborted();

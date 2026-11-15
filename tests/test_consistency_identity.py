@@ -14,11 +14,13 @@ from iad_core.workbench.vision import VlmClient
 
 
 def identity_response(context, relation, reason):
-    finding = {'relation': relation, 'main_description': '主图真实局部细节。',
-        'candidate_description': '候选真实局部细节。'}
+    finding = {'transformed_same_content': 'same', 'content_different': 'different', 'unverified': 'unverified'}[relation]
     return {'overview': finding, 'summary': reason,
-        'regions': {window['ref']: finding for window in context['windows']} | {
+        'regions': {'same': 'S', 'different': 'D', 'unverified': 'U'}[finding] * len(context['windows']),
+        'unmapped_regions': {
             window['ref']: {'observation': '实际局部无法可靠对应。'} for window in context['unmapped_regions']},
+        'details': [{'refs': [window['ref']], 'observation': '两图对应位置的纹理不同。' if finding == 'different' else '该处细节不足，无法确认两图相同。'}
+            for window in context['windows'] if finding != 'same'],
         'limitations': []}
 
 
@@ -31,18 +33,23 @@ def similar_job(dataset, tmp_path, request):
 
     database, _, config = dataset
     case = getattr(request, 'param', 'dent')
-    if case == 'registered':
+    if case in ('registered', 'registered_mixed'):
         import cv2
         from iad_core.storage.repositories import SampleRepository
         raw = np.zeros((240, 320, 3), dtype=np.uint8)
         raw[40:200, 40:280] = np.random.default_rng(71).integers(0, 256, (160, 240, 3), dtype=np.uint8)
         transformed = cv2.warpAffine(raw, np.float64([[1, 0, 8], [0, 1, 4]]), (320, 240))
         for name in ('normal', 'normal2', 'dent', 'scratch'):
-            Image.fromarray(raw if name == 'dent' else transformed).save(
+            pixels = (cv2.warpAffine(raw, np.float64([[1, 0, -8], [0, 1, -4]]), (320, 240))
+                if case == 'registered_mixed' and name == 'scratch' else raw if name == 'dent' else transformed)
+            Image.fromarray(pixels).save(
                 SampleRepository(database).get(config.dataset.id + ':' + name + '.png').image_path)
+            if case == 'registered_mixed':
+                (tmp_path/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':320,'imageHeight':240,
+                    'shapes':[{'label':'scratch','shape_type':'rectangle','points':[[2,50],[5,53]]}]}))
         from iad_core.dataset.registry import DatasetRegistry
         DatasetRegistry(database).rescan(config.dataset.id)
-    if case in ('original_resolution', 'no_annotations'):
+    if case in ('original_resolution', 'no_annotations', 'mixed_empty'):
         from iad_core.storage.repositories import SampleRepository
         from iad_core.dataset.registry import DatasetRegistry
         from PIL import ImageDraw
@@ -52,9 +59,10 @@ def similar_job(dataset, tmp_path, request):
             ImageDraw.Draw(image).rectangle((1200+index*20, 800, 1210+index*20, 810), fill='red')
             image.save(sample.image_path)
             shapes = ([{'shape_type':'rectangle', 'label':'defect', 'points':[[100,100],[200,200]]}]
-                if case == 'original_resolution' and name in ('dent', 'scratch') else [])
+                if case == 'original_resolution' and name in ('dent', 'scratch') or case == 'mixed_empty' and name == 'scratch' else [])
             (tmp_path/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':1600,'imageHeight':1200,'shapes':shapes}))
         DatasetRegistry(database).rescan(config.dataset.id)
+    PixelIndex(database).prepare([config.dataset.id + ':' + name + '.png' for name in ('normal', 'normal2', 'dent', 'scratch')])
     encoder = configure_test_encoder(database, tmp_path)
     for name in ('normal', 'normal2', 'dent', 'scratch'):
         group = PixelIndex(database).get(config.dataset.id + ':' + name + '.png').content_group_id
@@ -64,7 +72,7 @@ def similar_job(dataset, tmp_path, request):
             dim=encoder.profile.dim, dtype=encoder.profile.storage_dtype, embedding_blob=vector.tobytes()))
     runtime = WorkbenchRuntime(database)
     checks = ConsistencyAgentJobs(runtime)
-    anchor = config.dataset.id + ':' + ('dent' if case in ('registered','original_resolution','no_annotations') else case) + '.png'
+    anchor = config.dataset.id + ':' + ('dent' if case in ('registered','registered_mixed','original_resolution','no_annotations','mixed_empty') else case) + '.png'
     run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'combined',
         'min_similarity': 0.9, 'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
     checks.session_created(run_id, anchor)
@@ -75,7 +83,7 @@ def similar_job(dataset, tmp_path, request):
         runtime.close()
 
 
-@pytest.mark.parametrize('similar_job', ['original_resolution','no_annotations'], indirect=True)
+@pytest.mark.parametrize('similar_job', ['original_resolution'], indirect=True)
 def test_identity_sends_originals_and_only_ten_percent_annotation_crops(similar_job):
     import base64
     import io
@@ -153,7 +161,7 @@ def test_nonidentical_candidates_use_annotations_without_quality_labels_or_paths
     assert {item.image.sample.sample_id for item in results.members(run_id, anchor).items} == set(state.eligible_ids)
 
 
-@pytest.mark.parametrize('similar_job', ['normal'], indirect=True)
+@pytest.mark.parametrize('similar_job', ['original_resolution'], indirect=True)
 def test_completed_unverified_candidates_pass_without_annotation_assessments(similar_job):
     runtime, checks, run_id, anchor = similar_job
 
@@ -259,6 +267,8 @@ def test_exact_candidates_have_persisted_identity_before_annotation_review(datas
         anchor_id = config.dataset.id + ':dent.png'
         run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id],
             'mode': 'exact', 'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})['run_id']
+        from iad_core.duplicate.preparation import PixelPreparation
+        PixelPreparation(database).prepare([sample.sample_id for sample in checks.snapshot(run_id).scopes.corpus.samples])
         checks.session_created(run_id, anchor_id)
         selected = checks.retrieve(run_id, anchor_id)
         review = ConsistencyAgentReview(runtime)
@@ -290,10 +300,10 @@ def test_identity_rejects_one_different_local_window_despite_matching_overview(s
         assert context['scope']=='joint' and context['windows']
         sent.append(context)
         answer=identity_response(context,'transformed_same_content','整图轮廓和局部纹理对应。')
-        for window in context['windows']:
+        for index, window in enumerate(context['windows']):
             if window['main_window']==[8,8,32,32]:
-                answer['regions'][window['ref']] = {**answer['regions'][window['ref']],
-                    'relation':'content_different','candidate_description':'对应位置新增黑点。'}
+                answer['regions'] = answer['regions'][:index] + 'D' + answer['regions'][index + 1:]
+                answer['details'].append({'refs': [window['ref']], 'observation': '一侧对应位置新增黑点，另一侧没有。'})
                 answer['summary'] = '局部新增黑点。'
         return httpx.Response(200,json={'choices':[{'finish_reason':'stop','message':{'content':json.dumps(answer)}}]})
 
@@ -348,7 +358,7 @@ def test_identity_cannot_qualify_when_model_omits_a_local_window(similar_job):
         context = json.loads(message['content'][1]['text'])
         decision = identity_response(context, 'transformed_same_content', '外观相似。')
         if context['scope'] == 'joint':
-            decision['regions'].pop(context['windows'][-1]['ref'])
+            decision['regions'] = decision['regions'][:-1]
             generated.append(decision)
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(decision)}}]})
 

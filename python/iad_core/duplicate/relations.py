@@ -4,8 +4,6 @@ from sqlite3 import Connection
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.errors import ConsistencyError
-from iad_core.consistency.retrieval_sources import SourceImage
-from iad_core.duplicate.index import PixelIndex
 from iad_core.storage.database import Database
 
 
@@ -32,7 +30,5 @@ class ContentRelations:
             for row in rows:
                 if row['scan_ref'] != row['dataset_scan_ref']:
                     raise ConsistencyError('SOURCE_UNAVAILABLE', 'Published content scan is no longer current')
-                entry = PixelIndex.entry(row)
-                SourceImage.read(row['image_path'], entry)
-                groups.setdefault(entry.content_group_id, []).append(entry.sample_id)
+                groups.setdefault(row['content_group_id'], []).append(row['sample_id'])
         return [StrictContentGroup(group_id=identity, sample_ids=members) for identity, members in groups.items()]

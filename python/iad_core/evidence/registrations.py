@@ -5,8 +5,10 @@ from typing import TYPE_CHECKING
 from pydantic import Field, StrictInt, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence
-from iad_core.evidence.images import EvidenceImages, PreparedImage, file_sha256, image_pixel_sha256
+from iad_core.evidence.images import EvidenceImages, PreparedImage, image_pixel_sha256
 from iad_core.evidence.sources import SampleContent
+from iad_core.duplicate.index import PixelIndex
+from iad_core.storage.database import Database
 
 if TYPE_CHECKING:
     from iad_core.workbench.analysis_manifest import AnalysisRegistration
@@ -82,19 +84,12 @@ class RegistrationImages:
     """Prepare the frozen whole image and every annotation ROI for all native workflows."""
 
     def __init__(self, db_path: str):
+        self.db = Database(db_path)
         self.images = EvidenceImages(db_path)
-
-    @staticmethod
-    def _source_digest(record: AnalysisRegistration) -> str:
-        digest=file_sha256(record.sample.image_path)
-        content=SampleContent.describe(record.sample,record.annotations,digest)
-        if record.source_fingerprint and content.fingerprint != record.source_fingerprint:
-            raise ValueError('源图或标注版本与冻结清单不一致')
-        return digest
 
     def crop(self, record: AnalysisRegistration, bbox: list[int], *, single_window: bool = False) -> PreparedRegistration:
         sample=record.sample
-        digest=self._source_digest(record)
+        digest=SampleContent.image_sha256(self.db, sample)
         box=[max(0,bbox[0]),max(0,bbox[1]),min(sample.width,bbox[2]),min(sample.height,bbox[3])]
         if box[0]>=box[2] or box[1]>=box[3]:
             raise ValueError('裁窗与原图没有有效交集')
@@ -112,11 +107,12 @@ class RegistrationImages:
         result = PreparedRegistration(sample_id=sample.sample_id, images=[])
         prepared = []
         try:
-            digest = self._source_digest(record)
+            digest = SampleContent.image_sha256(self.db, sample)
             overview = self.images.capture(sample, 'overview', 'global', source_sha256=digest,
                 max_side=max_side, full_resolution=True)
             prepared.append(overview.with_source(sample, record.dataset_format, record.annotations))
-            result.pixel_sha256 = image_pixel_sha256(sample.image_path, digest)
+            indexed = PixelIndex(self.db).get(sample.sample_id)
+            result.pixel_sha256 = indexed.descriptor.pixel_key if indexed and indexed.content_group_id else image_pixel_sha256(sample.image_path)
             if sample.annotation_availability.status == 'UNREADABLE':
                 raise ValueError('原图可读，必需标注文件不可读')
             if record.dataset_format == 'labelme':

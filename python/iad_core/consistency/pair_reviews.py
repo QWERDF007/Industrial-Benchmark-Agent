@@ -1,19 +1,16 @@
 import hashlib
 import json
-from contextlib import contextmanager
-from threading import Lock
-from weakref import WeakValueDictionary
-
-import numpy as np
-
+from contextlib import contextmanager, ExitStack
+from collections.abc import Iterator
+from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.identity import CandidateIdentity
-from iad_core.consistency.identity_geometry import ImageCorrespondence
-from iad_core.consistency.identity_inputs import IdentityInputPlan, IdentityInputs
-from iad_core.consistency.identity_models import CandidateIdentityRecord
+from iad_core.consistency.identity_inputs import IdentityInputs
+from iad_core.consistency.identity_models import PAIR_REVIEW_BATCH_SIZE, CandidateIdentityRecord, CandidateObservationRequest, candidate_pair_key
 from iad_core.consistency.candidate_records import CandidateRecords
+from iad_core.consistency.pair_locks import CandidatePairLocks
 
 
 class PairReviewLink(AnalysisModel):
@@ -24,6 +21,7 @@ class PairReviewLink(AnalysisModel):
 class PairReviewTask(AnalysisModel):
     pair_key: str
     links: list[PairReviewLink]
+    estimated_annotation_count: int = Field(default=0, ge=0, description='仅用于批次调度的标注数量估计，程序判定仍需核验冻结证据')
 
 
 class PairReviewResult(AnalysisModel):
@@ -37,9 +35,6 @@ class PairReviewReceipt(PairReviewTask):
 
 
 class ConsistencyPairReviews:
-    _locks = WeakValueDictionary()
-    _locks_guard = Lock()
-
     def __init__(self, runtime, client=None):
         self.runtime, self.db, self.client = runtime, runtime.db, client
         self.checks = ConsistencyAgentJobs(runtime)
@@ -48,18 +43,26 @@ class ConsistencyPairReviews:
     def plan(self, run_id: str) -> list[PairReviewTask]:
         snapshot = self.checks.snapshot(run_id)
         snapshot_hash = hashlib.sha256(snapshot.model_dump_json().encode()).hexdigest()
-        pairs = {}
+        pairs, pending = {}, set()
         for anchor in self.checks.anchors(run_id):
-            if anchor.state != 'RUNNING' or anchor.result is not None or anchor.candidates is None:
+            if anchor.candidates is None:
                 continue
-            current = {gate.candidate_id: gate for gate in self.identity.read(run_id, anchor.anchor_id).gates}
+            active = anchor.state == 'RUNNING' and anchor.result is None
+            current = {gate.candidate_id: gate for gate in self.identity.read(run_id, anchor.anchor_id).gates} if active else {}
             for candidate in anchor.candidates.candidates:
-                if candidate.sample_id in current and current[candidate.sample_id].execution_status == 'completed':
+                if candidate.kind == 'exact':
                     continue
-                key = 'pair_' + hashlib.sha256(json.dumps(sorted((anchor.anchor_id, candidate.sample_id))).encode()).hexdigest()
+                key = candidate_pair_key(anchor.anchor_id, candidate.sample_id)
                 pairs.setdefault(key, []).append(PairReviewLink(anchor_id=anchor.anchor_id, candidate_id=candidate.sample_id))
-        result = []
+                if active and (candidate.sample_id not in current or current[candidate.sample_id].execution_status != 'completed'):
+                    pending.add(key)
+        result, owner_weights = [], {}
         with self.db.connection() as connection:
+            sample_ids = sorted({identity for key, links in pairs.items() if key in pending for link in links
+                for identity in (link.anchor_id, link.candidate_id)})
+            counts = {row['sample_id']: row['n'] for row in connection.execute(
+                '''SELECT value sample_id,(SELECT count(*) FROM annotations WHERE sample_id=requested.value) n
+                    FROM json_each(?) requested''', (json.dumps(sample_ids),))}
             annotation_counts = {(row['anchor_id'], row['candidate_id']): row['annotation_count']
                 for row in connection.execute('''SELECT captured.anchor_id,captured.candidate_id,
                     json_array_length(result.snapshot_json,'$.sources.left.annotations.annotations') +
@@ -67,25 +70,93 @@ class ConsistencyPairReviews:
                     FROM consistency_anchor_evidence captured JOIN consistency_results result USING(evidence_id)
                     WHERE captured.job_id=?''', (run_id,))}
             for key, links in pairs.items():
-                task = PairReviewTask(pair_key=key, links=sorted(links, key=lambda link: link.anchor_id))
+                if key not in pending:
+                    continue
+                links = sorted(links, key=lambda link: link.anchor_id)
+                owner = links[0]
+                weight = annotation_counts.get((owner.anchor_id, owner.candidate_id),
+                    counts.get(owner.anchor_id, 0) + counts.get(owner.candidate_id, 0))
+                task = PairReviewTask(pair_key=key, links=links, estimated_annotation_count=weight)
                 fingerprint = hashlib.sha256((snapshot_hash + key).encode()).hexdigest()
                 saved = connection.execute('SELECT input_fingerprint FROM consistency_pair_reviews WHERE job_id=? AND pair_key=?',
                     (run_id, key)).fetchone()
                 if saved is not None and saved[0] != fingerprint:
                     raise ValueError('图像对的冻结来源、模型或提示词发生变化')
                 connection.execute('''INSERT INTO consistency_pair_reviews(job_id,pair_key,input_fingerprint,task_json)
-                    VALUES(?,?,?,?) ON CONFLICT(job_id,pair_key) DO UPDATE SET task_json=excluded.task_json''',
+                    VALUES(?,?,?,?) ON CONFLICT(job_id,pair_key) DO UPDATE SET task_json=excluded.task_json
+                    WHERE consistency_pair_reviews.task_json IS NOT excluded.task_json''',
                     (run_id, key, fingerprint, task.model_dump_json()))
+                owner_weights[owner.anchor_id] = max(owner_weights.get(owner.anchor_id, 0), weight)
                 result.append(task)
-        return sorted(result, key=lambda task: -annotation_counts[(task.links[0].anchor_id, task.links[0].candidate_id)])
+        return sorted(result, key=lambda task: (task.estimated_annotation_count == 0,
+            -owner_weights[task.links[0].anchor_id], task.links[0].anchor_id,
+            -task.estimated_annotation_count, task.pair_key))
 
     @contextmanager
     def exclusive(self, run_id, pair_key):
-        key = (str(self.db.db_path), run_id, pair_key)
-        with self._locks_guard:
-            lock = self._locks.setdefault(key, Lock())
-        with lock:
+        with CandidatePairLocks.exclusive(self.db.db_path, run_id, pair_key):
             yield
+
+    @contextmanager
+    def _pending(self, run_id: str, pair_keys: list[str]) -> Iterator[list[CandidateObservationRequest]]:
+        if not pair_keys or len(pair_keys) > PAIR_REVIEW_BATCH_SIZE or len(set(pair_keys)) != len(pair_keys):
+            raise ValueError(f'每批要求一至{PAIR_REVIEW_BATCH_SIZE}个不重复的图像对')
+        with ExitStack() as locks:
+            for key in sorted(pair_keys):
+                locks.enter_context(self.exclusive(run_id, key))
+            requests = []
+            for key in pair_keys:
+                with self.db.connection() as connection:
+                    row = connection.execute('SELECT task_json,result_json FROM consistency_pair_reviews WHERE job_id=? AND pair_key=?',
+                        (run_id, key)).fetchone()
+                if row is None:
+                    raise ValueError('图像对不属于当前冻结检查')
+                if row['result_json'] is not None:
+                    continue
+                task = PairReviewTask.model_validate_json(row['task_json'])
+                active = [link for link in task.links if self.checks.anchor(run_id, link.anchor_id).state == 'RUNNING']
+                if not active:
+                    continue
+                owner = active[0]
+                anchor = self.checks.anchor(run_id, owner.anchor_id)
+                state = self.identity.prepare(run_id, owner.anchor_id, attempt=anchor.attempt)
+                gate = next((gate for gate in state.gates if gate.candidate_id == owner.candidate_id), None)
+                if gate is not None and gate.execution_status == 'completed':
+                    result = PairReviewResult(anchor_id=owner.anchor_id, record=gate.model_copy(update={'pair_key': key}))
+                    with self.db.connection() as connection:
+                        connection.execute('UPDATE consistency_pair_reviews SET result_json=? WHERE job_id=? AND pair_key=?',
+                            (result.model_dump_json(), run_id, key))
+                    continue
+                revision = gate.revision if gate else 0
+                requests.append(CandidateObservationRequest(anchor_id=owner.anchor_id, candidate_id=owner.candidate_id,
+                    expected_revision=revision, request_id=key+'-'+str(revision), attempt=anchor.attempt))
+            yield requests
+
+    def prepare_many(self, run_id: str, pair_keys: list[str]) -> int:
+        context = self.runtime.jobs.context(run_id)
+        with self._pending(run_id, pair_keys) as requests:
+            prompts = self.checks.snapshot(run_id).prompts
+            for request in requests:
+                context.checkpoint()
+                group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, request.anchor_id,
+                    checkpoint=context.checkpoint)
+                member = next(member for member in group.members if member.image.sample_id == request.candidate_id)
+                saved = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
+                IdentityInputs(self.db).freeze(run_id, request.anchor_id, request.candidate_id,
+                    (saved.sources.left, saved.sources.right), prompts)
+            return len(requests)
+
+    def review_many(self, run_id: str, pair_keys: list[str]) -> list[PairReviewReceipt]:
+        with self._pending(run_id, pair_keys) as requests:
+            if requests:
+                for request, observed in self.identity.observe_many(run_id, requests):
+                    key = candidate_pair_key(request.anchor_id, request.candidate_id)
+                    result = PairReviewResult(anchor_id=request.anchor_id, record=observed.model_copy(update={'pair_key': key}))
+                    with self.db.connection() as connection:
+                        connection.execute('UPDATE consistency_pair_reviews SET result_json=? WHERE job_id=? AND pair_key=?',
+                            (result.model_dump_json(), run_id, key))
+                    self.review(run_id, key)
+            return [receipt for key in pair_keys if (receipt := self.review(run_id, key)) is not None]
 
     def review(self, run_id: str, pair_key: str) -> PairReviewReceipt | None:
         with self.exclusive(run_id, pair_key):
@@ -113,6 +184,8 @@ class ConsistencyPairReviews:
                         (result.model_dump_json(), run_id, pair_key))
             else:
                 result = PairReviewResult.model_validate_json(row['result_json'])
+            if result.record.source == 'vision':
+                IdentityInputs(self.db).validate_record(run_id, result.anchor_id, result.record)
             for link in active:
                 anchor = self.checks.anchor(run_id, link.anchor_id)
                 previous = next((gate for gate in self.identity.read(run_id, link.anchor_id).gates
@@ -121,26 +194,20 @@ class ConsistencyPairReviews:
                     continue
                 record = result.record
                 if link.anchor_id != result.anchor_id:
-                    geometry = record.geometry
-                    if geometry.candidate_to_main is not None:
-                        geometry = ImageCorrespondence(np.asarray(geometry.candidate_to_main), geometry).inverted().facts
-                    pairs = [pair.model_copy(update={'main_window': pair.candidate_window, 'candidate_window': pair.main_window,
-                        'main_media': pair.candidate_media, 'candidate_media': pair.main_media,
-                        'source_annotations': [origin.model_copy(update={'side': 'candidate' if origin.side == 'main' else 'main'})
-                            for origin in pair.source_annotations]}) for pair in record.region_pairs]
                     checks = [check.model_copy(update={'main_media_id': check.candidate_media_id,
                         'candidate_media_id': check.main_media_id, 'main_description': check.candidate_description,
                         'candidate_description': check.main_description}) for check in record.region_checks]
-                    record = record.model_copy(update={'geometry': geometry, 'region_pairs': pairs, 'region_checks': checks,
+                    record = record.model_copy(update={'region_checks': checks,
                         'media': [record.media[1], record.media[0], *record.media[2:]]})
                 record = record.model_copy(update={'candidate_id': link.candidate_id,
                     'fingerprint': anchor.candidates.fingerprint, 'gate_id': 'pending', 'revision': 0})
                 group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, link.anchor_id, checkpoint=lambda: None)
-                member = next(member for member in group.members if member.image.sample_id == link.candidate_id)
-                evidence = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
-                IdentityInputs(self.db).save(run_id, link.anchor_id, link.candidate_id,
-                    (evidence.sources.left, evidence.sources.right), self.checks.snapshot(run_id).prompts,
-                    IdentityInputPlan(geometry=record.geometry, region_pairs=record.region_pairs))
+                if record.source == 'vision':
+                    member = next(member for member in group.members if member.image.sample_id == link.candidate_id)
+                    evidence = self.runtime.consistency_service.evidence(member.comparison.evidence_id)
+                    plan = IdentityInputs(self.db).freeze(run_id, link.anchor_id, link.candidate_id,
+                        (evidence.sources.left, evidence.sources.right), self.checks.snapshot(run_id).prompts)
+                    record = record.model_copy(update={'geometry': plan.geometry, 'region_pairs': plan.region_pairs})
                 self.identity.commit(run_id, link.anchor_id, record, expected_revision=previous.revision if previous else 0,
                     request_id=pair_key + '-commit-' + str(previous.revision if previous else 0), attempt=anchor.attempt)
             return PairReviewReceipt(**task.model_dump(), observation_owner_id=result.anchor_id,
@@ -162,7 +229,8 @@ class ConsistencyPairReviews:
             rows = connection.execute('''SELECT candidate.anchor_id,candidate.candidate_id,candidate.revision,candidate.record_json
                 FROM consistency_candidate_records candidate JOIN consistency_anchor_runs anchor
                 ON anchor.job_id=candidate.job_id AND anchor.anchor_id=candidate.anchor_id
-                WHERE candidate.job_id=? AND candidate.phase='gate' AND anchor.state='RUNNING'
+                WHERE candidate.job_id=? AND candidate.phase='gate' AND anchor.state IN ('RUNNING','FAILED')
+                AND anchor.result_json IS NULL
                 AND json_extract(candidate.record_json,'$.pair_key')=? AND candidate.id IN (
                     SELECT MAX(id) FROM consistency_candidate_records WHERE job_id=? AND phase='gate'
                     GROUP BY anchor_id,candidate_id)''', (run_id, current.pair_key, run_id)).fetchall()

@@ -16,6 +16,38 @@ from iad_core.storage.models import FeatureRecord
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.module_settings import ModuleSettings
 from tests.feature_fixtures import configure_test_encoder
+from tests.test_consistency_identity import similar_job
+
+
+def test_batched_candidate_selection_matches_full_retrieval_without_reading_image_files(similar_job, monkeypatch):
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+    from iad_core.consistency.candidate_selection import AnchorCandidates
+
+    runtime, checks, source_run, _ = similar_job
+    source = checks.snapshot(source_run)
+    job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': source.scopes.corpus.dataset_ids,
+        'mode': 'combined', 'min_similarity': .9})
+    frozen = checks.snapshot(job['run_id'])
+    expected = {}
+    for sample in frozen.scopes.subjects.samples:
+        page = runtime.consistency_service.retrieve_full(ImageRetrieve(query={'kind': 'sample', 'sample_id': sample.sample_id},
+            corpus_scope=frozen.scopes.corpus.selector, mode='combined', top_k=frozen.retrieval.max_similar_candidates,
+            min_similarity=.9, profile_id=frozen.image_encoder.profile.profile_id), frozen_scope=frozen.scopes.corpus,
+            encoder=frozen.image_encoder)
+        expected[sample.sample_id] = AnchorCandidates.select(page, frozen.retrieval)
+    reads = []
+    open_file = Path.open
+
+    def observe_file(path, *args, **kwargs):
+        if path.suffix.lower() == '.png':
+            reads.append(path)
+        return open_file(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, 'open', observe_file)
+    actual = checks.retrieve_many(job['run_id'], list(expected))
+    assert {item.anchor_id: item.candidates for item in actual} == expected
+    assert all(item.error is None for item in actual)
+    assert reads == [], 'Prepared pixel groups and vectors already establish the retrieval candidates'
 
 
 def test_anchor_candidates_count_samples_and_exclude_all_exact_overflow(tmp_path):
@@ -31,6 +63,7 @@ def test_anchor_candidates_count_samples_and_exclude_all_exact_overflow(tmp_path
     database = Database(str(tmp_path / 'candidates.db'))
     config = DatasetRegistry(database).import_labelme(DatasetImport(format='labelme', name='候选配额',
         image_dir=str(root), annotation_dir=str(root)))
+    PixelIndex(database).prepare([config.dataset.id + ':' + image.name for image in root.iterdir()])
     encoder = configure_test_encoder(database, tmp_path)
     repository = FeatureRepository(database)
     for image in sorted(root.iterdir()):
@@ -99,6 +132,7 @@ def test_exact_candidates_work_without_an_encoder_and_empty_is_a_complete_result
     runtime = WorkbenchRuntime(database)
     try:
         scope = ConsistencyScopes(database).resolve({'kind': 'datasets', 'dataset_ids': [config.dataset.id]})
+        PixelIndex(database).prepare(sample.sample_id for sample in scope.samples)
         settings = ConsistencyRetrievalSettings(mode='exact', max_exact_candidates=3, max_similar_candidates=7)
         service = ConsistencyService(database, runtime=runtime)
         for anchor, expected in [('dent', ['scratch']), ('normal', [])]:
@@ -121,6 +155,8 @@ def test_combined_retrieval_without_vectors_cannot_be_selected_as_an_empty_succe
     from iad_core.consistency.errors import ConsistencyError
 
     database, _, config = dataset
+    scope = ConsistencyScopes(database).resolve({'kind': 'datasets', 'dataset_ids': [config.dataset.id]})
+    PixelIndex(database).prepare(sample.sample_id for sample in scope.samples)
     runtime = WorkbenchRuntime(database)
     try:
         retrieved = ConsistencyService(database, runtime=runtime).retrieve_full(ImageRetrieve(

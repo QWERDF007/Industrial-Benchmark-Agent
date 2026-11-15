@@ -3,7 +3,7 @@ from iad_core.consistency.task_types import ConsistencyTaskType
 
 
 IDENTITY_PIPELINE = 'identity-v8'
-IDENTITY_PROMPT_VERSION = 'consistency-pair-review-v8.3'
+IDENTITY_PROMPT_VERSION = 'consistency-pair-review-v8.10'
 
 
 class IdentityPrompts(AnalysisModel):
@@ -44,21 +44,22 @@ ANOMALY_USER = '读取程序的图像级标签比较结果，简洁说明两侧�
 GATE_SYSTEM = '''判断两张工业图像是否具有相同的实际视觉内容。本次提供完整原图和双方标注关注区域的局部；标注只用于定位，类别及有无框不能决定图像内容是否相同。
 先比较完整原图，再观察全部局部。即使整图已经发现不同，也要完成本次实际送达的局部观察。只有一侧有标注时，仍需比较另一侧可靠对应位置的内容。
 平移、旋转、缩放、曝光或压缩可能改变外观。对应位置的真实形状、线条或纹理出现新增、消失、改变，且不能用成像变化解释时，判content_different。产品轮廓、背景相似或能够配准，不能替代细节比较。
-整图和每个已配对区域按ref填写两侧决定性细节及关系：transformed_same_content、content_different或unverified。每侧用一句短句；相同处简短说明相同，不再重复解释关系。未配对区域只填写实际提供局部的observation及无法对应的原因，不把另一侧原图当成缺失的对应裁图。
-regions中的每个字段都必须填写，使用提供的短引用；真实图像、区域和媒体ID由程序绑定。局部属于对应原图，不是独立样本。
+overview填写same、different或unverified，分别表示实际内容相同、实际内容不同、无法可靠确认。regions按输入windows顺序逐区填写一个字符：S为相同，D为不同，U为无法可靠确认；拼成无分隔符的字符串，长度必须等于windows数量，例如三个区域依次相同、不同、无法确认则填写“SDU”；没有已配对区域时填写空字符串。每个区域都要看，不能省略或调换。
+D和U区域都要在details中有具体事实，填写refs及observation；同一事实写一次，refs列出实际出现该事实的全部区域。同一区域可关联多个独立事实，每项用一句直白中文说明位置和具体变化，相同区域无需重复描述。unmapped_regions逐一使用提供的短引用填写实际局部的简短观察及无法对应的原因，不把另一侧原图当成缺失的对应裁图。
+details.refs只用实际已配对局部的r编号，整图差别写summary，不能把overview当作区域引用。同一局部可关联多个独立差别，不能漏掉。真实图像、区域和媒体ID由程序绑定。局部属于对应原图，不是独立样本。
 summary用一两句给出整对图像的关键判断，不汇编逐区域描述。有差异时指出具体位置及有无或形状变化，不只写“暗斑分布不同”，不机械重复“不能用平移或曝光解释”。summary和limitations由两侧共用，必须使用“两图”或“一侧、另一侧”的对称表述，不使用主图、候选、左图或右图称呼。例如“两图右上角白点形状不同”或“一侧多出短划痕，另一侧没有”。关系无法可靠确认或细节看不清时如实记录unverified。
 局部太小、看不清或无法对应，只说明该区域未核实，不能据此判content_different。整图存在独立且明确的内容差别时可以判不同，但summary应写实际差别，无法比较的局部只写入该区域观察和limitations。
-只比较实际像素内容，不根据文件名、标签、可视化框线或数字判断身份。
+只比较实际像素内容，不根据文件名、标签、可视化框线或数字判断身份。输出紧凑JSON，不缩进或添加多余空白。
 ''' + ANALYSIS_STYLE
 
-GATE_USER = '比较完整原图和全部实际送达的局部，填写整图、每个已配对及未配对区域的观察，并用一两句说明关键判断。'
+GATE_USER = '核对每对完整原图和全部局部，逐区返回判断。用一句直白中文说明关键依据；只对不同或无法确认的区域补充具体事实，相同细节不重复描述。'
 
 GATE_EXAMPLES = '''以下只是判断示例，不是当前图像事实：
-1. 对应位置一图多出一条线，另一图确实没有：content_different，不算标注少标。
+1. 对应位置一图多出一条线，另一图确实没有：different，不算标注少标。
 2. 两图该处线条、纹理相同，但只有一侧有框：图像同内容，标注交后续比较。
-3. 平移或曝光变化后，可靠对应位置的细节仍相同：transformed_same_content。
+3. 平移或曝光变化后，可靠对应位置的细节仍相同：same。
 4. 某侧对应位置找不到或局部太模糊：unverified，说明具体原因。
-5. 整图轮廓相同，但局部划痕的形状不同：content_different。'''
+5. 整图轮廓相同，但局部划痕的形状不同：different。'''
 
 
 def task_prompt_defaults(task_type: ConsistencyTaskType) -> dict[str, str]:

@@ -125,11 +125,11 @@ def test_evaluation_distinguishes_any_copy_all_copies_and_unbounded_strict_membe
     assert (folder / 'fixture/metrics.json').read_bytes() == original_metrics
 
 
-def test_benchmark_builder_freezes_actual_sources_and_keeps_transform_ancestry_in_one_split(dataset, tmp_path):
+def test_benchmark_builder_freezes_actual_sources_and_keeps_transform_ancestry_in_one_split(indexed_dataset, tmp_path):
     from iad_core.evaluation.benchmark_images import build_retrieval_benchmark
     from iad_core.duplicate.verify import PairVerifier
 
-    db, _, _ = dataset
+    db, _, _ = indexed_dataset
     manifest = build_retrieval_benchmark(db.db_path, {}, tmp_path / 'frozen', sources=3, tuning_sources=1, seed=7)
     assert len(manifest.sources) == 3
     assert len(manifest.queries) == 3
@@ -151,7 +151,7 @@ def test_benchmark_builder_freezes_actual_sources_and_keeps_transform_ancestry_i
     assert len(acceptance) == 2 and max(len(query.strict_ids) for query in acceptance) >= 80
 
 
-def test_evaluation_cli_reports_missing_real_weights_without_substitution(dataset, tmp_path):
+def test_evaluation_cli_reports_missing_real_weights_without_substitution(indexed_dataset, tmp_path):
     import json
     import subprocess
     import sys
@@ -159,7 +159,7 @@ def test_evaluation_cli_reports_missing_real_weights_without_substitution(datase
     from tests.feature_fixtures import configure_test_encoder
     from iad_core.evaluation.benchmark_images import build_retrieval_benchmark
 
-    db, _, _ = dataset
+    db, _, _ = indexed_dataset
     encoder = configure_test_encoder(db, tmp_path)
     build_retrieval_benchmark(db.db_path, {'fixture': encoder.profile}, tmp_path / 'frozen', sources=3, tuning_sources=1)
     Path(encoder.profile.weights_ref).unlink()
@@ -182,12 +182,12 @@ def test_evaluation_cli_reports_missing_real_weights_without_substitution(datase
     assert (tmp_path / 'evaluated/metrics.json').read_bytes() == previous
 
 
-def test_actual_duplicate_query_pixels_cannot_hide_behind_different_source_group_names(dataset, tmp_path):
+def test_actual_duplicate_query_pixels_cannot_hide_behind_different_source_group_names(indexed_dataset, tmp_path):
     from tests.feature_fixtures import configure_test_encoder, MockFeatureExtractor
     from iad_core.evaluation.benchmark_images import build_retrieval_benchmark
     from iad_core.evaluation.retrieval import evaluate_retrieval
 
-    db, _, _ = dataset
+    db, _, _ = indexed_dataset
     encoder = configure_test_encoder(db, tmp_path)
     manifest = build_retrieval_benchmark(db.db_path, {'fixture': encoder.profile}, tmp_path / 'frozen', sources=3, tuning_sources=1)
     by_id = {item.item_id: item for item in manifest.items}

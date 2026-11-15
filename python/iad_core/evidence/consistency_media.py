@@ -12,6 +12,7 @@ from iad_core.evidence.images import EvidenceImages, OVERVIEW_MAX_SIDE
 from iad_core.evidence.files import ImageFiles
 from iad_core.evidence.retained import RetainedImages
 from iad_core.evidence.views import padded_bbox
+from iad_core.evidence.thumbnails import ThumbnailImages
 from iad_core.storage.database import Database
 
 
@@ -20,6 +21,7 @@ class ConsistencyMedia:
         self.images=RetainedImages(db)
         self.sources=EvidenceSourcesCapture(self.images)
         self.previews=EvidenceImages(db.db_path)
+        self.thumbnails=ThumbnailImages(db.db_path)
 
     @staticmethod
     def source_region(difference: AnnotationDifference, sources: EvidenceSources, comparison: AnnotationComparison, side: Literal['left','right']) -> list[float]:
@@ -66,6 +68,8 @@ class ConsistencyMedia:
         source=getattr(evidence.sources,media.side)
         original=self.images.path(source.image)
         if media.representation=='original':return {'path':original,'media_type':'image/png'}
+        if media.representation=='preview' and max_side is not None and tuple(media.bbox)==(0,0,source.sample.width,source.sample.height):
+            return self.thumbnails.read(original, source.image.sha256, max_side)
         annotations=self.sources.annotations(source).annotations if media.representation in ('annotation_overlay','annotation_mask','reference_overlay') else None
         if media.annotation_id is not None:annotations=[item for item in annotations if item.annotation_id==media.annotation_id]
         sample=source.sample.model_copy(update={'image_path':original})

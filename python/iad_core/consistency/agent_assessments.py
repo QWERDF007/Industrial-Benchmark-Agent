@@ -7,8 +7,8 @@ from iad_core.consistency.candidate_records import CandidateRecords
 
 class AnchorAssessments:
     @staticmethod
-    def list(connection: Connection, run_id: str, anchor_id: str) -> list[AnchorAssessmentRecord]:
-        if CandidateRecords.enabled(connection, run_id):
+    def list(connection: Connection, run_id: str, anchor_id: str, *, records_enabled=None) -> list[AnchorAssessmentRecord]:
+        if CandidateRecords.enabled(connection, run_id) if records_enabled is None else records_enabled:
             return CandidateRecords.audits(connection, run_id, anchor_id)
         rows = connection.execute('''SELECT id,submission_json FROM consistency_candidate_assessments
             WHERE job_id=? AND anchor_id=? AND id IN (

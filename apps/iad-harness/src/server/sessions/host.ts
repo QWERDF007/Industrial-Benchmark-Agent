@@ -16,6 +16,7 @@ import SubagentRuntime from '@deepseek-ai/dsh-subagent';
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process';
 import SessionQuery from '@deepseek-ai/dsh-session-query-sqlite';
 import {ObservedImages} from './observed-images.js';
+import {Mutex} from 'async-mutex';
 
 interface JobSessionNoticeData {summary: string; value: unknown; record_id?: string}
 export type JobSessionNotice = JobSessionNoticeData & {type: 'iad/job' | 'iad/consistency'};
@@ -29,6 +30,7 @@ declare module '@deepseek-ai/dsh-session' {
 
 export class JobSessionHost {
   private readonly active = new Map<string, JobSessionHost>();
+  private readonly notices = new Map<string, Mutex>();
   private constructor(private readonly root: string, private readonly locate: SessionLocator, private readonly ctx: Context, private readonly sessions: SessionStore,
     private readonly stop: () => Promise<void>) {}
 
@@ -135,15 +137,21 @@ export class JobSessionHost {
   }
 
   async notice(id: string, notice: JobSessionNotice): Promise<void> {
-    const {type, ...data} = notice;
-    const handle = await this.ctx.sessionPersistence.open(SessionId(id), 'write');
+    const mutex=this.notices.get(id)||new Mutex();
+    this.notices.set(id,mutex);
     try {
-      const {events} = await handle.read();
-      if (data.record_id && events.some(event => event.type === type && event.data.record_id === data.record_id)) return;
-      await handle.append([{type, seq: SessionSeq(events.length), time: Date.now(), ignorable: true, data}]);
-      await handle.flush();
+      await mutex.runExclusive(async()=>{
+        const {type, ...data} = notice;
+        const handle = await this.ctx.sessionPersistence.open(SessionId(id), 'write');
+        try {
+          const {events} = await handle.read();
+          if (data.record_id && events.some(event => event.type === type && event.data.record_id === data.record_id)) return;
+          await handle.append([{type, seq: SessionSeq(events.length), time: Date.now(), ignorable: true, data}]);
+          await handle.flush();
+        } finally {await handle.close();}
+      });
     } finally {
-      await handle.close();
+      if(!mutex.isLocked())this.notices.delete(id);
     }
   }
 
@@ -155,6 +163,7 @@ export class JobSessionHost {
   }
 
   async dispose(): Promise<void> {
+    await Promise.all([...this.notices.values()].map(mutex=>mutex.waitForUnlock()));
     await this.stop();
   }
 }

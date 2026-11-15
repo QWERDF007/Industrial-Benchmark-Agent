@@ -16,12 +16,13 @@ class GroupAnalysisQueries:
         if record is None:
             return GroupAnalysisView(group_id=reference.group_id, status='NOT_ANALYZED')
         with self.db.connection() as connection:
-            row = connection.execute('SELECT * FROM job_runs WHERE job_id=?',(record.run_id,)).fetchone()
+            row = connection.execute('SELECT * FROM job_run_requests WHERE job_id=?',(record.run_id,)).fetchone()
         return self.view(row)
 
     @staticmethod
     def view(row) -> GroupAnalysisView:
         payload = json.loads(row['payload_json'])
+        payload['request'] = json.loads(row['request_json'])
         result = GroupAnalysisDraft.model_validate(payload['group_analysis']) if row['status'] == 'COMPLETED' else None
         return GroupAnalysisView(completed_batches=payload.get('completed_batches',0), total_batches=payload.get('total_batches'), group_id=payload['request']['frozen_group']['group_id'], status=row['status'], run_id=row['job_id'],
             model_name=payload['request']['model_name'], result=result,

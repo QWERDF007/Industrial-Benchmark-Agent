@@ -4,7 +4,7 @@ from pydantic import Field, create_model, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.advisory.output_validation import repairable_output_error
-from iad_core.consistency.agent_review_models import AnchorAssessmentDecision, AnchorObservation, AnchorVisualResult, CandidateVisualObservation, GateDispute
+from iad_core.consistency.agent_review_models import AnchorAssessmentDecision, AnchorObservation, AnchorVisualRequest, AnchorVisualResult, CandidateVisualObservation, GateDispute
 from iad_core.consistency.annotation_issues import BboxAnnotationIssue
 from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
 from iad_core.consistency.references import ReferenceAliases
@@ -20,13 +20,13 @@ class AnnotationDecision(AnalysisModel):
     explanation: NonBlankText = Field(description='直接说明两侧框、类别和实际覆盖的比较结果，不复述流程。')
     issues: list[ReviewIssue] = Field(default_factory=list)
     limitations: list[NonBlankText] = Field(default_factory=list, description='只记录本次实际看不清或无法比较的具体部分。')
-    disputed_regions: list[str] = Field(default_factory=list, description='仅资格争议时填写实际发生内容矛盾的区域短引用。')
+    disputed_regions: list[str] = Field(default_factory=list,
+        description='仅 verdict 为 GATE_DISPUTE 时填写内容争议对应的本候选局部编号；其他判断必须为空列表。差别在完整原图其他位置时也填空列表，在 explanation 写具体位置及差别。')
 
 
-class AnnotationInspection:
-    def __init__(self, inputs):
-        self.inputs = inputs
-        request = inputs.request
+class AnnotationModelContext:
+    def __init__(self, request: AnchorVisualRequest):
+        self.request = request
         aliases = {request.anchor_id: 'main', **{identity: 'c' + str(index)
             for index, identity in enumerate(request.candidate_ids)}}
         for source in request.facts['sources'].values():
@@ -38,6 +38,18 @@ class AnnotationInspection:
             for index, region in enumerate(candidate.get('gate', {}).get('verified_region_pair_ids', [])):
                 aliases[region] = aliases[identity] + '_r' + str(index)
         self.references = ReferenceAliases(aliases)
+
+    def model_context(self) -> dict:
+        facts = self.request.facts
+        sources = {self.references.public[source['sample_id']]: source for source in facts['sources'].values()}
+        return self.references.translate({'facts': {**facts, 'sources': sources}})
+
+
+class AnnotationInspection:
+    def __init__(self, inputs):
+        self.inputs = inputs
+        self.context = AnnotationModelContext(inputs.request)
+        self.references = self.context.references
 
     def normalize(self, response) -> AnchorVisualResult:
         observations = []
@@ -83,14 +95,21 @@ class AnnotationInspection:
                 raise repairable_output_error('annotation_decision', str(error)) from error
             return value
 
-        decisions = create_model('CandidateReviews', __base__=AnalysisModel, **{
-            self.references.public[identity]: (AnnotationDecision, ...) for identity in self.inputs.request.candidate_ids})
+        candidates = {}
+        for identity in self.inputs.request.candidate_ids:
+            regions = tuple(self.references.public[ref] for ref in
+                self.inputs.request.facts['candidates'][identity]['gate']['verified_region_pair_ids'])
+            verdicts = ('EQUIVALENT', 'MATERIAL', 'UNCERTAIN') + (
+                ('GATE_DISPUTE',) if self.inputs.gates[identity].relation != 'pixel_identical' else ())
+            decision = create_model('AnnotationDecision', __base__=AnnotationDecision,
+                verdict=(Literal[verdicts], ...),
+                disputed_regions=(list[Literal[regions]] if regions else list[str], Field(default_factory=list,
+                    max_length=len(regions), description=AnnotationDecision.model_fields['disputed_regions'].description)))
+            candidates[self.references.public[identity]] = (decision, ...)
+        decisions = create_model('CandidateReviews', __base__=AnalysisModel, **candidates)
         response_type = create_model('AnnotationReview', __base__=AnalysisModel,
             __validators__={'validate_reviews': validate_reviews}, reviews=(decisions, ...))
-        facts = self.inputs.request.facts
-        sources = {self.references.public[source['sample_id']]: source for source in facts['sources'].values()}
-        context = self.references.translate({'facts': {**facts, 'sources': sources}})
         bundles = [PreparedImageBundle(self.references.public.get(bundle.evidence_id, bundle.evidence_id),
             self.references.translate(bundle.context), bundle.images) for bundle in self.inputs.images]
         return client.plan(response_type, self.inputs.prompt, bundles, client.resolve_model(),
-            context=context, system_prompt=self.inputs.system_prompt)
+            context=self.context.model_context(), system_prompt=self.inputs.system_prompt)

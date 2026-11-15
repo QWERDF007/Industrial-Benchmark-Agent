@@ -7,6 +7,7 @@ from pathlib import Path
 from PIL import Image
 
 from iad_core.dataset.registry import DatasetRegistry
+from iad_core.duplicate.index import PixelIndex
 from iad_core.evaluation.resource_cancellation import probe_encoder_cancellation
 from iad_core.evaluation.resource_workload import materialize_resource_image
 from iad_core.feature.base import FeatureExtractor
@@ -40,6 +41,7 @@ def evaluate_resource_incremental(prepared: dict, output: Path, *, count: int = 
         image.close()
     registry.rescan(original.dataset_id)
     current = samples.list_by_task(original.task_id)
+    PixelIndex(db).prepare([sample.sample_id for sample in current])
     new = [sample.sample_id for sample in current if sample.sample_id not in set(original_ids)]
     if len(new) != count:
         raise ValueError('Incremental scan did not discover the requested new originals')

@@ -7,7 +7,6 @@ from pathlib import Path
 from PIL import Image, ImageEnhance
 
 from iad_core.consistency.retrieval_sources import SourceImage
-from iad_core.duplicate.index import PixelIndex
 from iad_core.evaluation.retrieval_models import BenchmarkImage, BenchmarkQuery, BenchmarkSource, RetrievalBenchmark
 from iad_core.feature.profiles import EmbeddingProfile
 
@@ -36,7 +35,7 @@ def build_retrieval_benchmark(db_path: str, profiles: dict[str, EmbeddingProfile
         root.mkdir()
     images, queries, provenance = [], [], {}
     for position, row in enumerate(rows[:sources]):
-        original = SourceImage.read(row['image_path'], PixelIndex.entry(row))
+        original = SourceImage.read(row['image_path'])
         group = row['content_group_id']
         split = 'tuning' if position < tuning_sources else 'acceptance'
         provenance[group] = BenchmarkSource(sample_id=row['sample_id'], image_path=Path(row['image_path']), sha256=original.sha256)

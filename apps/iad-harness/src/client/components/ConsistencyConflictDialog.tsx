@@ -20,12 +20,13 @@ interface ConsistencyConflictDialogProps {
   conflict:ConsistencyComparisonItem;
   items:ConsistencyComparisonItem[];
   onSelect(id:string):void;
+  onMove?(offset:-1|1):void;
   onClose():void;
   onReviewed():void;
 }
 
 export function ConsistencyConflictDialog({conflict:currentConflict,items:visibleConflicts,
-  onSelect,onClose,onReviewed}:ConsistencyConflictDialogProps) {
+  onSelect,onMove,onClose,onReviewed}:ConsistencyConflictDialogProps) {
   const currentConflictId=currentConflict.id;
   const catalog=useDatasetCatalog();
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
@@ -48,7 +49,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   const candidates=useResource<AnchorCandidatePage>(jobId ?
     `/consistency/checks/${encodeURIComponent(jobId)}/anchors/${encodeURIComponent(currentConflictId)}/candidates`:null);
   const modelConclusion=ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType,modelResult?.overall.verdict);
-  const displayModelConclusion=modelConclusion ? modelConclusionLabels[modelConclusion] : '';
+  const displayModelConclusion=modelConclusion ? modelConclusionLabels[modelConclusion] : currentConflict.model.label||'';
   const groupConclusion=currentConflict.type;
   const displayGroupConclusion=groupConclusion in conflictCategoryLabels
     ? conflictCategoryLabels[groupConclusion as keyof typeof conflictCategoryLabels] : groupConclusion;
@@ -67,6 +68,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   const anchorAnnotations=anchorSource?datasetImageAnnotations(catalog.data?.datasets.find(dataset=>dataset.dataset_id===anchorSource.sample.dataset_id)?.format,anchorSource.sample,anchorSource.annotations.annotations):{};
   const candidateAnnotations=candidateSource?datasetImageAnnotations(catalog.data?.datasets.find(dataset=>dataset.dataset_id===candidateSource.sample.dataset_id)?.format,candidateSource.sample,candidateSource.annotations.annotations):{};
   const handlePrevConflict = useCallback(() => {
+    if(onMove){onMove(-1);return;}
     const list = visibleConflicts;
     const idx = list.findIndex(c => c.id === currentConflictId);
     if (idx > 0) {
@@ -74,9 +76,10 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
       onSelect(prev.id);
       setCandidateIndex(0);
     }
-  }, [visibleConflicts, currentConflictId,onSelect]);
+  }, [visibleConflicts, currentConflictId,onSelect,onMove]);
 
   const handleNextConflict = useCallback(() => {
+    if(onMove){onMove(1);return;}
     const list = visibleConflicts;
     const idx = list.findIndex(c => c.id === currentConflictId);
     if (idx >= 0 && idx < list.length - 1) {
@@ -84,7 +87,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
       onSelect(next.id);
       setCandidateIndex(0);
     }
-  }, [visibleConflicts, currentConflictId,onSelect]);
+  }, [visibleConflicts, currentConflictId,onSelect,onMove]);
 
   return <>
         <Modal title="标注冲突对比" id="dc-compare-mask" className="dc-dialog dc-conflict-dialog" header={false} onClose={onClose}>

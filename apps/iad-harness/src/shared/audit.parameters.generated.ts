@@ -1055,6 +1055,7 @@ export const auditReportParameters = {
           "enum": [
             "NO_CANDIDATES",
             "NO_ELIGIBLE_CANDIDATES",
+            "PROGRAM_REVIEWED:EQUIVALENT",
             "MODEL_REVIEWED:EQUIVALENT",
             "MODEL_REVIEWED:MATERIAL",
             "MODEL_REVIEWED:UNCERTAIN"

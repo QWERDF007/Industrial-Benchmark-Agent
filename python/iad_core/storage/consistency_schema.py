@@ -26,6 +26,13 @@ def init_content_index_schema(connection: Connection) -> None:
         fingerprint TEXT NOT NULL,plan_json TEXT NOT NULL CHECK(json_valid(plan_json)),
         FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE,
         PRIMARY KEY(job_id,anchor_id,candidate_id))''')
+    if 'call_ids_json' not in {row[1] for row in connection.execute('PRAGMA table_info(consistency_gate_observations)')}:
+        connection.execute("ALTER TABLE consistency_gate_observations ADD COLUMN call_ids_json TEXT NOT NULL DEFAULT '[]'")
+    connection.execute('''CREATE TABLE IF NOT EXISTS model_call_pairs(
+        call_id TEXT NOT NULL REFERENCES model_calls(call_id) ON DELETE CASCADE,
+        job_id TEXT NOT NULL REFERENCES job_runs(job_id) ON DELETE CASCADE,pair_key TEXT NOT NULL,
+        PRIMARY KEY(call_id,job_id,pair_key))''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_model_call_pairs ON model_call_pairs(job_id,pair_key,call_id)')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_identity_views (
         job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,page_index INTEGER NOT NULL,
         fingerprint TEXT NOT NULL,record_json TEXT NOT NULL CHECK(json_valid(record_json)),
@@ -188,6 +195,8 @@ def init_content_index_schema(connection: Connection) -> None:
         indexed_at TEXT NOT NULL,
         CHECK((json_extract(descriptor_json,'$.decode_status')='COMPLETE') = (content_group_id IS NOT NULL)))''')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_pixels_candidate ON sample_pixel_index(compare_profile,pixel_key)')
+    if 'file_revision_json' not in {row[1] for row in connection.execute('PRAGMA table_info(sample_pixel_index)')}:
+        connection.execute('ALTER TABLE sample_pixel_index ADD COLUMN file_revision_json TEXT')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_pixels_group ON sample_pixel_index(content_group_id,sample_id)')
     columns={row[1] for row in connection.execute('PRAGMA table_info(feature_records)')}
     if 'sample_id' in columns:
@@ -209,3 +218,32 @@ def init_content_index_schema(connection: Connection) -> None:
         SELECT p.sample_id,f.* FROM sample_pixel_index p JOIN samples s ON s.sample_id=p.sample_id
         JOIN feature_records f ON f.content_group_id=p.content_group_id
         WHERE f.status='COMPLETE' AND s.is_excluded=0''')
+    init_result_index_schema(connection)
+
+
+def init_result_index_schema(connection: Connection) -> None:
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_result_index (
+        job_id TEXT NOT NULL,anchor_id TEXT NOT NULL,ordinal INTEGER NOT NULL,filename TEXT NOT NULL,
+        reason TEXT NOT NULL,program_conclusion TEXT NOT NULL,model_conclusion TEXT,agreement TEXT,
+        review_state TEXT NOT NULL,categories_json TEXT NOT NULL CHECK(json_valid(categories_json)),
+        image_json TEXT NOT NULL CHECK(json_valid(image_json)),gallery_json TEXT,
+        PRIMARY KEY(job_id,anchor_id),
+        FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE)''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_consistency_result_order ON consistency_result_index(job_id,ordinal)')
+    connection.execute("DELETE FROM consistency_result_index WHERE instr(filename,'/')>0")
+    for table in ('consistency_candidate_records', 'consistency_candidate_identity', 'consistency_group_decisions'):
+        for event in ('INSERT', 'UPDATE', 'DELETE'):
+            source = 'OLD' if event == 'DELETE' else 'NEW'
+            connection.execute(f'''CREATE TRIGGER IF NOT EXISTS invalidate_result_{table}_{event}
+                AFTER {event} ON {table} BEGIN DELETE FROM consistency_result_index
+                WHERE job_id={source}.job_id AND anchor_id={source}.anchor_id; END''')
+    previous = connection.execute("SELECT sql FROM sqlite_master WHERE name='invalidate_result_anchor'").fetchone()
+    if previous and 'UPDATE OF state,phase,attempt' in previous[0]:
+        connection.execute('DELETE FROM consistency_result_index')
+    connection.execute('DROP TRIGGER IF EXISTS invalidate_result_anchor')
+    connection.execute('DROP TRIGGER IF EXISTS invalidate_result_stop')
+    connection.execute('''CREATE TRIGGER invalidate_result_anchor
+        AFTER UPDATE OF candidates_json,group_json,result_json ON consistency_anchor_runs
+        WHEN NEW.candidates_json IS NOT OLD.candidates_json OR NEW.group_json IS NOT OLD.group_json
+            OR NEW.result_json IS NOT OLD.result_json
+        BEGIN DELETE FROM consistency_result_index WHERE job_id=NEW.job_id AND anchor_id=NEW.anchor_id; END''')

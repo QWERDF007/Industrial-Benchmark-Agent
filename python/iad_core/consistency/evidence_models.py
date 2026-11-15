@@ -15,6 +15,7 @@ from iad_core.evidence.images import OVERVIEW_MAX_SIDE
 class ConsistencyCompare(AnalysisModel):
     sample_a: Identifier
     sample_b: Identifier
+    purpose: Literal['full', 'annotations'] = 'full'
     matching: AnnotationMatchingConfig = Field(default_factory=AnnotationMatchingConfig)
     near: NearComparisonConfig = Field(default_factory=NearComparisonConfig)
 

@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import tempfile
@@ -124,8 +123,6 @@ class AnalysisExports:
                     archive.writestr(zipfile.ZipInfo(name,date_time=timestamp),content,compress_type=zipfile.ZIP_DEFLATED)
                 for name,source in assets.items():
                     payload = Path(source).read_bytes()
-                    if hashlib.sha256(payload).hexdigest() != Path(name).stem:
-                        raise ValueError('冻结证据在导出期间变化')
                     path = target / name
                     path.parent.mkdir(parents=True,exist_ok=True)
                     path.write_bytes(payload)

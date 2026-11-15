@@ -23,7 +23,7 @@ export declare class AnalysisPromptContext {
             };
         }[];
         checks: {
-            status: import("../../shared/domain.generated.js").Status23;
+            status: import("../../shared/domain.generated.js").Status24;
             independent_source_count: import("../../shared/domain.generated.js").IndependentSourceCount;
             suggested_status: import("../../shared/domain.generated.js").SuggestedStatus;
             support_limitations: import("../../shared/domain.generated.js").SupportLimitations2;
@@ -93,7 +93,7 @@ export declare class AnalysisPromptContext {
                 };
             }[];
             checks: {
-                status: import("../../shared/domain.generated.js").Status23;
+                status: import("../../shared/domain.generated.js").Status24;
                 independent_source_count: import("../../shared/domain.generated.js").IndependentSourceCount;
                 suggested_status: import("../../shared/domain.generated.js").SuggestedStatus;
                 support_limitations: import("../../shared/domain.generated.js").SupportLimitations2;
@@ -185,7 +185,7 @@ export declare class AnalysisPromptContext {
                     };
                 }[];
                 checks: {
-                    status: import("../../shared/domain.generated.js").Status23;
+                    status: import("../../shared/domain.generated.js").Status24;
                     independent_source_count: import("../../shared/domain.generated.js").IndependentSourceCount;
                     suggested_status: import("../../shared/domain.generated.js").SuggestedStatus;
                     support_limitations: import("../../shared/domain.generated.js").SupportLimitations2;
@@ -241,7 +241,7 @@ export declare class AnalysisPromptContext {
         direction_reviews: import("../../shared/domain.generated.js").DirectionReviews2;
         complete: import("../../shared/domain.generated.js").Complete5;
         version_id: import("../../shared/domain.generated.js").VersionId21;
-        phase: import("../../shared/domain.generated.js").Phase6;
+        phase: import("../../shared/domain.generated.js").Phase7;
         job_id: import("../../shared/domain.generated.js").JobId7;
         session_id: import("../../shared/domain.generated.js").SessionId6;
         revision: import("../../shared/domain.generated.js").Revision9;
@@ -292,7 +292,7 @@ export declare class AnalysisPromptContext {
                 };
             }[];
             checks: {
-                status: import("../../shared/domain.generated.js").Status23;
+                status: import("../../shared/domain.generated.js").Status24;
                 independent_source_count: import("../../shared/domain.generated.js").IndependentSourceCount;
                 suggested_status: import("../../shared/domain.generated.js").SuggestedStatus;
                 support_limitations: import("../../shared/domain.generated.js").SupportLimitations2;
@@ -371,7 +371,7 @@ export declare class AnalysisPromptContext {
                 };
             }[];
             checks: {
-                status: import("../../shared/domain.generated.js").Status23;
+                status: import("../../shared/domain.generated.js").Status24;
                 independent_source_count: import("../../shared/domain.generated.js").IndependentSourceCount;
                 suggested_status: import("../../shared/domain.generated.js").SuggestedStatus;
                 support_limitations: import("../../shared/domain.generated.js").SupportLimitations2;

@@ -2,6 +2,28 @@ import json
 import sqlite3
 
 
+def migrate_job_requests(conn: sqlite3.Connection) -> None:
+    exists = conn.execute("SELECT 1 FROM sqlite_master WHERE name='job_requests' AND type='table'").fetchone()
+    conn.execute('''CREATE TABLE IF NOT EXISTS job_requests(
+        job_id TEXT PRIMARY KEY REFERENCES job_runs(job_id) ON DELETE CASCADE,
+        request_json TEXT NOT NULL CHECK(json_valid(request_json)))''')
+    if not exists:
+        conn.execute("""INSERT INTO job_requests SELECT job_id,COALESCE(json_extract(payload_json,'$.request'),'{}')
+            FROM job_runs""")
+        conn.execute("""UPDATE job_runs SET payload_json=json_remove(payload_json,'$.request')
+            WHERE json_type(payload_json,'$.request') IS NOT NULL""")
+        for name in ('idx_jobs_queue', 'idx_jobs_submission', 'idx_jobs_analysis_request', 'idx_jobs_analysis_group'):
+            conn.execute('DROP INDEX IF EXISTS ' + name)
+    conn.execute('''CREATE VIEW IF NOT EXISTS job_run_requests AS
+        SELECT j.*,r.request_json FROM job_runs j JOIN job_requests r USING(job_id)''')
+    conn.execute('''CREATE TRIGGER IF NOT EXISTS capture_job_request AFTER INSERT ON job_runs BEGIN
+        INSERT INTO job_requests VALUES(NEW.job_id,COALESCE(json_extract(NEW.payload_json,'$.request'),'{}'));
+        UPDATE job_runs SET payload_json=json_remove(payload_json,'$.request') WHERE job_id=NEW.job_id;
+        END''')
+    conn.execute('''CREATE TRIGGER IF NOT EXISTS immutable_job_request BEFORE UPDATE ON job_requests BEGIN
+        SELECT RAISE(ABORT,'Job request is immutable'); END''')
+
+
 def migrate_audit_jobs(conn: sqlite3.Connection) -> None:
     rows = conn.execute("""SELECT job_id,payload_json FROM job_runs
         WHERE job_type='MODEL_AUDIT'

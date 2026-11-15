@@ -3,7 +3,7 @@ from iad_core.storage.call_payloads import CallPayloads
 from iad_core.storage.deletion_indexes import initialize_deletion_indexes
 
 from iad_core.storage.review_schema import init_review_schema
-from iad_core.storage.job_schema import migrate_audit_jobs
+from iad_core.storage.job_schema import migrate_audit_jobs, migrate_job_requests
 from iad_core.storage.knowledge_schema import migrate_knowledge_sources, migrate_unified_knowledge
 from iad_core.storage.consistency_schema import init_content_index_schema
 from iad_core.storage.analysis_schema import initialize_analysis_schema
@@ -79,6 +79,9 @@ def initialize_schema(conn: Connection) -> bool:
         cursor.execute("ALTER TABLE samples ADD COLUMN annotation_availability_json TEXT NOT NULL DEFAULT '{}'")
     if 'source_fingerprint' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
         cursor.execute('ALTER TABLE samples ADD COLUMN source_fingerprint TEXT')
+    for column in ('source_revision', 'source_file_json', 'source_sha256'):
+        if column not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
+            cursor.execute(f'ALTER TABLE samples ADD COLUMN {column} TEXT')
     if 'is_excluded' not in {row[1] for row in cursor.execute('PRAGMA table_info(samples)')}:
         cursor.execute('ALTER TABLE samples ADD COLUMN is_excluded INTEGER NOT NULL DEFAULT 0 CHECK(is_excluded IN (0,1))')
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_samples_dataset_id ON samples(dataset_id)")
@@ -293,6 +296,7 @@ def initialize_schema(conn: Connection) -> bool:
         "audit_run_id": "TEXT",
         "analysis_json": "TEXT",
         "source_fingerprint": "TEXT",
+        "source_revision": "TEXT",
     }.items():
         if column not in columns:
             cursor.execute(f"ALTER TABLE audit_suggestions ADD COLUMN {column} {definition}")
@@ -303,19 +307,20 @@ def initialize_schema(conn: Connection) -> bool:
         cursor.execute("ALTER TABLE job_runs ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'")
     if "deleted_at" not in job_columns:
         cursor.execute("ALTER TABLE job_runs ADD COLUMN deleted_at TEXT")
+    migrate_audit_jobs(conn)
+    migrate_job_requests(conn)
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_root
         ON job_runs(json_extract(payload_json,'$.root_run_id'))""")
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_queue
-        ON job_runs(job_type,json_extract(payload_json,'$.request.dataset_id'),status,id)""")
+        ON job_runs(job_type,status,id)""")
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_submission
-        ON job_runs(job_type,json_extract(payload_json,'$.request.submission.submission_id'))""")
+        ON job_requests(json_extract(request_json,'$.submission.submission_id'),job_id)""")
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_analysis_request
-        ON job_runs(json_extract(payload_json,'$.request.analysis_request_id'),id) WHERE job_type='CONSISTENCY_ANALYSIS'""")
+        ON job_requests(json_extract(request_json,'$.analysis_request_id'),job_id)""")
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_analysis_group
-        ON job_runs(json_extract(payload_json,'$.request.frozen_group.group_id'),id) WHERE job_type='CONSISTENCY_ANALYSIS'""")
+        ON job_requests(json_extract(request_json,'$.frozen_group.group_id'),job_id)""")
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_program_batch
         ON job_runs(json_extract(payload_json,'$.program_batch_id'),id) WHERE job_type='ANALYSIS_WORKFLOW'""")
-    migrate_audit_jobs(conn)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS dataset_groups (
             group_id TEXT PRIMARY KEY,

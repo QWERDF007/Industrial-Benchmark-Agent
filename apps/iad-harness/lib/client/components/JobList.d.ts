@@ -2,10 +2,11 @@ import React from 'react';
 import type { Dataset, JobSnapshot } from '../../shared/contracts.js';
 import type { useJobList } from '../useJobList.js';
 import { type IconName } from './IconButton.js';
+import type { RowSelection } from '../row-selection.js';
 export interface JobListActions {
     status(job: JobSnapshot): void;
     prompt(job: JobSnapshot): void;
-    delete(job: JobSnapshot): Promise<void>;
+    delete?(job: JobSnapshot): Promise<void>;
     additional?: {
         id: string;
         label: string;
@@ -13,7 +14,9 @@ export interface JobListActions {
         onClick(job: JobSnapshot): void;
     }[];
 }
-export declare function JobList({ title, list, datasets, actions, loading, className }: {
+export declare function JobList({ id, title, list, datasets, actions, selection, loading, className }: {
+    id?: string;
+    selection?: RowSelection;
     title: string;
     list: ReturnType<typeof useJobList>;
     datasets: Dataset[];

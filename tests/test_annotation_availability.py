@@ -51,10 +51,10 @@ def test_scan_distinguishes_valid_empty_missing_unreadable_and_conventional_empt
     assert capture('broken').availability.status == 'UNREADABLE'
 
 
-def test_old_samples_without_availability_remain_unknown_when_schema_is_upgraded(dataset):
+def test_old_samples_without_availability_remain_unknown_when_schema_is_upgraded(indexed_dataset):
     from iad_core.storage.repositories import SampleRepository
 
-    db, _, config = dataset
+    db, _, config = indexed_dataset
     with db.connection() as connection:
         connection.execute('ALTER TABLE samples DROP COLUMN annotation_availability_json')
     upgraded = Database(db.db_path)
@@ -63,13 +63,13 @@ def test_old_samples_without_availability_remain_unknown_when_schema_is_upgraded
     assert sample.annotation_availability.source is None
 
 
-def test_unreadable_frozen_annotation_is_an_execution_error_with_no_verdict(dataset, tmp_path):
+def test_unreadable_frozen_annotation_is_an_execution_error_with_no_verdict(indexed_dataset, tmp_path):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
     from iad_core.consistency.errors import ConsistencyError
     from iad_core.workbench.runtime import WorkbenchRuntime
 
-    db, registry, config = dataset
+    db, registry, config = indexed_dataset
     (tmp_path / 'labels/scratch.json').write_text('{')
     registry.rescan(config.dataset.id)
     anchor = config.dataset.id + ':dent.png'
@@ -89,10 +89,10 @@ def test_unreadable_frozen_annotation_is_an_execution_error_with_no_verdict(data
 
 
 @pytest.mark.parametrize('provided', [False, True])
-def test_original_matching_never_confirms_missing_annotations_from_unprovided_sources(dataset, tmp_path, provided):
+def test_original_matching_never_confirms_missing_annotations_from_unprovided_sources(indexed_dataset, tmp_path, provided):
     from iad_core.consistency.annotations import AnnotationMatcher
 
-    db, registry, config = dataset
+    db, registry, config = indexed_dataset
     config.dataset.unannotated_is_normal = False
     config.annotations.annotation_coverage = 'EXHAUSTIVE'
     config.annotations.annotation_role = 'REFERENCE'
@@ -112,7 +112,7 @@ def test_original_matching_never_confirms_missing_annotations_from_unprovided_so
 
 
 @pytest.mark.parametrize('case', ['partial', 'unknown', 'not_provided', 'ignored', 'exhaustive', 'main_partial'])
-def test_direct_review_preserves_raw_annotations_without_policy_based_verdict_gates(dataset, tmp_path, case):
+def test_direct_review_preserves_raw_annotations_without_policy_based_verdict_gates(indexed_dataset, tmp_path, case):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
     from iad_core.consistency.agent_review import ConsistencyAgentReview
@@ -120,7 +120,7 @@ def test_direct_review_preserves_raw_annotations_without_policy_based_verdict_ga
     from iad_core.workbench.runtime import WorkbenchRuntime
     from iad_core.workbench.vision import VlmClient
 
-    db, registry, config = dataset
+    db, registry, config = indexed_dataset
     config.dataset.unannotated_is_normal = False
     config.annotations.annotation_coverage = {'partial': 'PARTIAL', 'main_partial': 'PARTIAL', 'unknown': 'UNKNOWN'}.get(case, 'EXHAUSTIVE')
     registry.save(config)

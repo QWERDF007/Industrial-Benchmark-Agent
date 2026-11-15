@@ -69,7 +69,10 @@ class AuditEvidence:
         if prepared.error:
             raise ValueError(prepared.error)
         whole=next(item for item in prepared.images if item.image.is_whole_image)
-        record=record.model_copy(update={'sample':record.sample.model_copy(update={'image_path':whole.path}), 'source_fingerprint':None})
+        from iad_core.evidence.sources import SampleContent
+        record=record.model_copy(update={'sample':record.sample.model_copy(update={'image_path':whole.path}),
+            'source_revision':None,
+            'source_fingerprint':SampleContent.describe(record.sample,record.annotations,whole.image.sha256).fingerprint})
         media=self.images.crop(record,query.bbox,single_window=True)
         with self.db.connection() as connection:
             connection.executemany('''INSERT INTO audit_sample_media(job_id,target_id,media_key,sample_id,media_json)

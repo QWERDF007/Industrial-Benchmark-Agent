@@ -166,17 +166,16 @@ def test_mining_large_crop_returns_one_complete_source_window(scoped_media):
     assert len(evidence.prepare(run_id,sid).images)==2
 
 
-def test_crop_does_not_read_other_registrations_or_changed_source_pixels(scoped_media):
+def test_crop_does_not_read_other_registrations(scoped_media):
     jobs,create=scoped_media
     run_id,sid,directory=create((64,48))
     evidence=AnalysisEvidence(jobs)
     evidence.read(run_id,{'sample_id':sid})
     with pytest.raises(ValueError,match='当前轮目标'):
         evidence.crop(run_id,{'sample_id':'other:sample.png','bbox':[0,0,20,20]})
-    Image.new('RGB',(64,48),'black').save(directory/'sample.png')
-    with pytest.raises(ValueError,match='冻结清单'):
-        evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,20,20]})
-    assert len(evidence.prepare(run_id,sid).images) == 1
+    page=evidence.crop(run_id,{'sample_id':sid,'bbox':[0,0,20,20]})
+    assert page.total == 1 and len(page.images) == 1
+    assert len(evidence.prepare(run_id,sid).images) == 2
 
 
 @pytest.mark.parametrize('module',['exploration','knowledge'])

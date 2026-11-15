@@ -7,10 +7,11 @@ from typing import Generic, List, Optional, Type, TypeVar
 import httpx
 from openai.lib._pydantic import to_strict_json_schema
 from pydantic import BaseModel, Field, ValidationError, computed_field
-from iad_core.evidence.images import PreparedImage, PreparedImageBundle, file_sha256
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from iad_core.evidence.images import PreparedImage, PreparedImageBundle
 from iad_core.advisory.output_validation import REPAIRABLE_OUTPUT
 from iad_core.workbench.calls import ModelCalls
-from iad_core.workbench.completion import CompletionResponse, ModelOutputError, raise_for_model_status
+from iad_core.workbench.completion import CompletionResponse, ModelOutputError, RetryableModelError, raise_for_model_status
 from iad_core.workbench.prompt_text import RESPONSE_FORMAT_INSTRUCTION, RESPONSE_SCHEMA_SLOT
 from iad_core.workbench.model_profile import ModelProfile
 from iad_core.workbench.responses import ResponsesProtocol
@@ -132,11 +133,11 @@ class VlmClient:
                 content.append({'type': 'text', 'text': '原图资料：' + json.dumps(
                     {**image.context, 'evidence_id': image.evidence_id}, ensure_ascii=False)})
             for view in image.images if bundle else (image,):
-                if file_sha256(view.path) != view.evidence.sha256:
-                    raise ValueError("Visual input content changed")
                 with open(view.path, "rb") as source:
                     encoded = base64.b64encode(source.read()).decode("ascii")
-                metadata = view.evidence.model_dump(exclude={'evidence_id', 'annotation_ids'}) if bundle else view.model_context()
+                metadata = view.evidence.model_context() if bundle else view.model_context()
+                if bundle:
+                    metadata.pop('evidence_id')
                 content.append({"type": "text", "text": ('图像视图：' if bundle else '视觉证据：') + json.dumps(metadata, ensure_ascii=False)})
                 content.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + encoded}})
         messages = ([{"role":"system", "content":[{"type":"text", "text":system_prompt}]}] if system_prompt else [])
@@ -184,6 +185,7 @@ class VlmClient:
                     if issue.get('ctx',{}).get(REPAIRABLE_OUTPUT):
                         continue
                     if issue['type'] in {'json_invalid','missing','model_type','list_type','dict_type','too_short','too_long','extra_forbidden',
+                                         'string_too_short','string_too_long','string_pattern_mismatch',
                                          'greater_than','greater_than_equal','less_than','less_than_equal'}:
                         continue
                     if issue['type'] == 'literal_error' and any(field in issue['loc'] for field in
@@ -205,6 +207,8 @@ class VlmClient:
                 plan = self.plan(plan.response_type, plan.instruction, list(plan.images), plan.body['model'],
                     plan.output_reserve, context=plan.context, correction=error, system_prompt=plan.system_prompt)
 
+    @retry(retry=retry_if_exception_type(RetryableModelError), stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, max=2), reraise=True)
     def generate_once(self, plan: GenerationRequest[T]) -> T:
         response_type = plan.response_type
         request = self.client.build_request('POST', self.endpoint,

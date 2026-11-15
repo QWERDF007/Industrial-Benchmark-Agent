@@ -120,7 +120,7 @@ class ConsistencyService:
                 raise ConsistencyError('REFERENCE_NOT_FOUND', 'Query sample does not exist')
             if query.is_excluded:
                 raise ConsistencyError('INVALID_SCOPE', 'Excluded samples cannot be queried')
-            source = SourceImage.read(query.image_path, PixelIndex(self.db).get(query_id))
+            source = SourceImage.read(query.image_path)
         else:
             query_id = None
             source = self.runtime.temporary_images.read(request.query.image_ref, owner_id=owner_id)

@@ -2,15 +2,15 @@ from iad_core.workbench.session_models import ImageSessionLocation
 import json
 from pathlib import PurePosixPath
 from collections import Counter
-from contextlib import contextmanager
-from sqlite3 import Row
+from contextlib import contextmanager, nullcontext
+from sqlite3 import Connection, Row
 from typing import IO
 from urllib.parse import quote
 
 from iad_core.consistency.agent_models import ConsistencyAnchorRun, ConsistencyCheckSnapshot
 from iad_core.consistency.agent_assessments import AnchorAssessments
 from iad_core.consistency.agent_evidence_records import AnchorEvidenceRecords
-from iad_core.consistency.agent_result_models import (AnchorCandidatePage, AnchorCandidatePreview, AnchorImageItem, AnchorImagePage, AnchorResultDetail,
+from iad_core.consistency.agent_result_models import (AnchorCandidatePage, AnchorCandidatePreview, AnchorImageItem, AnchorImagePage, AnchorImageQuery, AnchorResultDetail,
     AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport, AnchorDiagnostics, AnchorPhaseTiming, ModelRoleDiagnostics, ModelRolesDiagnostics)
 from iad_core.consistency.agent_review_models import AnchorObservation, AnchorVisualRequest
 from iad_core.consistency.annotation_inventory import AnnotationObservation
@@ -44,16 +44,21 @@ class ConsistencyAgentResults:
                 image_id=sample_uuid(row['anchor_id']))
 
     @contextmanager
-    def _read(self, run_id: str):
-        with self.db.connection() as connection:
-            connection.execute('BEGIN')
-            row = connection.execute("SELECT status,payload_json FROM job_runs WHERE job_id=? AND job_type='ANALYSIS_WORKFLOW'",
+    def _read(self, run_id: str, *, write=False, connection: Connection | None = None):
+        from iad_core.consistency.check_snapshots import CheckSnapshots
+        shared = connection is not None
+        with nullcontext(connection) if shared else self.db.connection() as connection:
+            if not shared:
+                connection.execute('BEGIN IMMEDIATE' if write else 'BEGIN')
+            row = connection.execute("""SELECT status,json_object('errors',json_extract(payload_json,'$.errors'),
+                'error_history',json_extract(payload_json,'$.error_history')) payload_json
+                FROM job_runs WHERE job_id=? AND job_type='ANALYSIS_WORKFLOW'""",
                 (run_id,)).fetchone()
             payload = json.loads(row['payload_json']) if row else {}
-            frozen = payload.get('request', {}).get('consistency_check')
-            if frozen is None:
+            if row is None:
                 raise LookupError('主图审核作业不存在')
-            yield connection, row['status'], payload, ConsistencyCheckSnapshot.model_validate(frozen)
+            payload['error_history'] = payload.get('error_history') or []
+            yield connection, row['status'], payload, CheckSnapshots.read(connection, run_id)
 
     @staticmethod
     def _anchor(row: Row, job_status: str) -> ConsistencyAnchorRun:
@@ -67,12 +72,9 @@ class ConsistencyAgentResults:
         return anchor
 
     def snapshot(self, run_id: str) -> ConsistencyCheckSnapshot:
+        from iad_core.consistency.check_snapshots import CheckSnapshots
         with self.db.connection() as connection:
-            row = connection.execute("""SELECT json_extract(payload_json,'$.request.consistency_check') FROM job_runs
-                WHERE job_id=? AND job_type='ANALYSIS_WORKFLOW'""", (run_id,)).fetchone()
-        if row is None or row[0] is None:
-            raise LookupError('主图审核作业不存在')
-        return ConsistencyCheckSnapshot.model_validate_json(row[0])
+            return CheckSnapshots.read(connection, run_id)
 
     def media(self, run_id: str, anchor_id: str, media_id: str) -> dict:
         from iad_core.evidence.images import EvidenceImages
@@ -102,13 +104,14 @@ class ConsistencyAgentResults:
     def references(run_id: str, anchor_id: str) -> str:
         return '/api/iad/consistency/checks/' + quote(run_id, safe='') + '/anchors/' + quote(anchor_id, safe='')
 
-    def _summary(self, connection, row, status, payload, snapshot) -> AnchorResultSummary:
+    def _summary(self, connection, row, status, payload, snapshot, *, sample_formats=None) -> AnchorResultSummary:
         anchor = self._anchor(row, status)
         original = set()
         geometry_checks = []
         identity = None
         if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8') and anchor.candidates is not None:
-            identity = CandidateIdentityRecords.read(connection, anchor.job_id, anchor.anchor_id, anchor.candidates)
+            identity = CandidateIdentityRecords.read(connection, anchor.job_id, anchor.anchor_id, anchor.candidates,
+                records_enabled=snapshot.review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8'))
         if row['group_json']:
             group = FrozenAnalysisGroup.model_validate_json(row['group_json'])
             for member in group.members:
@@ -124,7 +127,8 @@ class ConsistencyAgentResults:
                 geometry_checks.append(observation.geometry_compared)
         original_categories = [category for category in ConflictCategory if category in original]
         result = anchor.result
-        reviewed = result is not None and result.reason == 'MODEL_REVIEWED'
+        reviewed = result is not None and result.reason in ('MODEL_REVIEWED', 'PROGRAM_REVIEWED')
+        model_reviewed = reviewed and result.reason == 'MODEL_REVIEWED'
         verdict = result.overall.verdict if reviewed else result.verdict if result else None
         categories = ([ConflictCategory(result.overall.text)] if reviewed and verdict == 'MATERIAL' else [])
         errors = [error for error in payload['errors'] if error['sample_id'] == anchor.anchor_id]
@@ -136,14 +140,18 @@ class ConsistencyAgentResults:
             if identity:
                 from iad_core.consistency.identity_outcome import IdentityOutcome
                 outcome.update(candidate_stats=IdentityOutcome(identity).statistics([
-                    record.submission.assessment for record in AnchorAssessments.list(connection, anchor.job_id, anchor.anchor_id)]),
+                    record.submission.assessment for record in AnchorAssessments.list(connection, anchor.job_id, anchor.anchor_id,
+                        records_enabled=snapshot.review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8'))]),
                     candidate_gate_ids=[gate.gate_id for gate in identity.gates])
-        dataset_format = snapshot.dataset_formats.get(next(sample.dataset_id for sample in snapshot.scopes.subjects.samples
-            if sample.sample_id == anchor.anchor_id))
-        if anchor.state != 'COMPLETED':
+        dataset_format = sample_formats[anchor.anchor_id] if sample_formats is not None else snapshot.dataset_formats.get(
+            next(sample.dataset_id for sample in snapshot.scopes.subjects.samples if sample.sample_id == anchor.anchor_id))
+        reason = result.reason if result else identity.terminal_reason if identity else None
+        if reason in ('NO_CANDIDATES', 'NO_ELIGIBLE_CANDIDATES'):
+            program_conclusion = '无候选' if reason == 'NO_CANDIDATES' else '无有效候选'
+        elif anchor.state != 'COMPLETED':
             program_conclusion = '未完成'
-        elif result is not None and result.reason in ('NO_CANDIDATES', 'NO_ELIGIBLE_CANDIDATES'):
-            program_conclusion = '无候选' if result.reason == 'NO_CANDIDATES' else '无有效候选'
+        elif result is not None and result.reason == 'PROGRAM_REVIEWED':
+            program_conclusion = '一致'
         else:
             program_conclusion = str(original_categories[0]) if original_categories else AnnotationObservation.conclusion_for([],
                 dataset_format == 'folder_classification' or bool(geometry_checks) and all(geometry_checks))
@@ -153,11 +161,12 @@ class ConsistencyAgentResults:
             state=anchor.state, phase=anchor.phase, attempt=anchor.attempt,
             **snapshot.retrieval.model_dump(), selected_exact=anchor.candidates.exact.selected if anchor.candidates else None,
             selected_similar=anchor.candidates.similar.selected if anchor.candidates else None, verdict=verdict,
-            reason=result.reason if result else (errors[0].get('code') or anchor.phase) if errors else anchor.phase,
+            reason=reason or ((errors[0].get('code') or anchor.phase) if errors else anchor.phase),
             categories=categories, conclusion=result.overall.text if reviewed else result.conclusion if result else None,
             original_categories=original_categories, original_conclusion=next(iter(original_categories), None),
-            model_conclusion=categories[0] if categories else '无冲突' if reviewed and verdict == 'EQUIVALENT' else None,
-            result_ref=self.references(anchor.job_id, anchor.anchor_id))
+            model_conclusion=categories[0] if categories else '无冲突' if model_reviewed and verdict == 'EQUIVALENT' else None,
+            result_ref=self.references(anchor.job_id, anchor.anchor_id)).with_progress(anchor.state, anchor.phase,
+                anchor.attempt, errors[0].get('code') if errors else None)
 
     def page(self, run_id: str, *, page: int = 1, page_size: int = 18) -> AnchorResultPage:
         if page < 1 or not 1 <= page_size <= 1000:
@@ -210,7 +219,12 @@ class ConsistencyAgentResults:
             if row is None:
                 raise LookupError('主图不属于当前作业')
             anchor = self._anchor(row, status)
-            calls = [call for call in ModelCalls(self.db).list(run_id, connection) if call.sample_id == anchor_id]
+            shared = {row[0] for row in connection.execute('''SELECT DISTINCT c.call_id FROM model_call_pairs c
+                JOIN consistency_pair_reviews p ON p.job_id=c.job_id AND p.pair_key=c.pair_key,
+                    json_each(p.task_json,'$.links') link
+                WHERE c.job_id=? AND json_extract(link.value,'$.anchor_id')=?''', (run_id, anchor_id))}
+            calls = [call for call in ModelCalls(self.db).list(run_id, connection)
+                if call.sample_id == anchor_id or call.call_id in shared]
             no_candidates = anchor.result is not None and anchor.result.reason == 'NO_CANDIDATES'
             phases = connection.execute('''WITH timeline AS (
                 SELECT *,LEAD(started_at) OVER(ORDER BY id) next_at,LEAD(attempt) OVER(ORDER BY id) next_attempt
@@ -257,34 +271,74 @@ class ConsistencyAgentResults:
             verdicts={verdict: verdicts[verdict] for verdict in ('MATERIAL','EQUIVALENT','UNCERTAIN')},
             original_categories=dict(original), model_categories=dict(model), agreement={'一致':agreement['一致'], '不一致':agreement['不一致']})
 
+    def refresh_index(self, run_id: str, *, connection: Connection | None = None) -> int:
+        from iad_core.consistency.result_index import ConsistencyResultIndex
+        with self._read(run_id, write=True, connection=connection) as (connection, status, payload, snapshot):
+            samples = {sample.sample_id: sample for sample in snapshot.scopes.subjects.samples}
+            formats = {identity: snapshot.dataset_formats.get(sample.dataset_id) for identity, sample in samples.items()}
+            reviews = ConsistencyGroupReview.dispositions(run_id, connection)
+            reviewed = {identity for identity, _ in reviews}
+
+            def project(row):
+                summary = self._summary(connection, row, status, payload, snapshot, sample_formats=formats)
+                group = FrozenAnalysisGroup.model_validate_json(row['group_json']) if row['group_json'] else None
+                disposition = reviews.get((row['anchor_id'], ConsistencyGroupReview.fingerprint(row)), 'pending') if row['anchor_id'] in reviewed else 'pending'
+                image = AnchorImageItem(sample=samples[row['anchor_id']], image=group.anchor if group else None,
+                    summary=summary, review_state=disposition)
+                gallery = None
+                if summary.original_conclusion:
+                    if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8'):
+                        identity = CandidateIdentityRecords.read(connection, run_id, summary.anchor_id,
+                            self._anchor(row, status).candidates,
+                            records_enabled=snapshot.review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8'))
+                        group.members = [member for member in group.members if member.image.sample_id in identity.eligible_ids]
+                    evidence = [FrozenEvidence.model_validate_json(connection.execute(
+                        'SELECT snapshot_json FROM consistency_results WHERE evidence_id=?', (member.comparison.evidence_id,)).fetchone()[0])
+                        for member in group.members]
+                    gallery = GalleryItem(group_id=summary.anchor_id, facts_state=group.facts_state, anchor=group.anchor,
+                        member_count=len(group.members) + 1, candidate_count=len(group.members),
+                        dataset_count=len({value.sample.dataset_id for value in [group.anchor, *(member.image for member in group.members)]}),
+                        pair_count=len(group.members), difference_types=sorted({kind for item in evidence for kind in item.result.annotation.factual_difference_types}),
+                        conflict_categories=[summary.original_conclusion], model_categories=summary.categories,
+                        confirmed_conflict=any(item.result.annotation.confirmed_conflict for item in evidence),
+                        model_state=summary.verdict or ('RUNNING' if summary.state == 'RUNNING' else 'FAILED' if summary.state == 'FAILED' else 'NOT_ANALYZED'),
+                        model_conclusion=summary.model_conclusion, annotation_conclusion=summary.original_conclusion,
+                        review_state=disposition)
+                return image, gallery
+
+            index = ConsistencyResultIndex(connection, run_id)
+            return index.refresh(project)
+
+    def prepare_indexes(self, run_id: str | None = None) -> dict[str, int]:
+        from iad_core.consistency.result_index import ConsistencyResultIndex
+        with self.db.connection() as connection:
+            identities = [run_id] if run_id else [row[0] for row in connection.execute('''SELECT DISTINCT a.job_id
+                FROM consistency_anchor_runs a JOIN job_runs j ON j.job_id=a.job_id WHERE j.deleted_at IS NULL''')]
+            missing = [identity for identity in identities if not ConsistencyResultIndex(connection, identity).current()]
+        return {identity: self.refresh_index(identity) for identity in missing}
+
+    @contextmanager
+    def indexed(self, run_id: str):
+        from iad_core.consistency.result_index import ConsistencyResultIndex
+        while True:
+            with self._read(run_id) as (connection, _, payload, _):
+                index = ConsistencyResultIndex(connection, run_id, errors=payload['errors'])
+                if index.current():
+                    yield index
+                    return
+            self.refresh_index(run_id)
+
     def gallery(self, run_id: str, *, page: int = 1, page_size: int = 200) -> GalleryPage:
         if page < 1 or not 1 <= page_size <= 1000:
             raise ValueError('分页参数不合法')
-        items = []
-        with self._read(run_id) as (connection, status, payload, snapshot):
-            reviews = ConsistencyGroupReview.dispositions(run_id, connection)
-            for row in connection.execute('SELECT * FROM consistency_anchor_runs WHERE job_id=? ORDER BY ordinal', (run_id,)):
-                summary = self._summary(connection, row, status, payload, snapshot)
-                if not summary.original_conclusion:
-                    continue
-                group = FrozenAnalysisGroup.model_validate_json(row['group_json'])
-                if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8'):
-                    identity = CandidateIdentityRecords.read(connection, run_id, summary.anchor_id, self._anchor(row, status).candidates)
-                    group.members = [member for member in group.members if member.image.sample_id in identity.eligible_ids]
-                evidence = [FrozenEvidence.model_validate_json(connection.execute(
-                    'SELECT snapshot_json FROM consistency_results WHERE evidence_id=?', (member.comparison.evidence_id,)).fetchone()[0])
-                    for member in group.members]
-                items.append(GalleryItem(group_id=summary.anchor_id, facts_state=group.facts_state, anchor=group.anchor,
-                    member_count=len(group.members) + 1, candidate_count=len(group.members),
-                    dataset_count=len({image.sample.dataset_id for image in [group.anchor, *(member.image for member in group.members)]}),
-                    pair_count=len(group.members), difference_types=sorted({kind for item in evidence for kind in item.result.annotation.factual_difference_types}),
-                    conflict_categories=[summary.original_conclusion], model_categories=summary.categories,
-                    confirmed_conflict=any(item.result.annotation.confirmed_conflict for item in evidence),
-                    model_state=summary.verdict or ('RUNNING' if summary.state == 'RUNNING' else 'FAILED' if summary.state == 'FAILED' else 'NOT_ANALYZED'),
-                    model_conclusion=summary.model_conclusion, annotation_conclusion=summary.original_conclusion,
-                    review_state=reviews.get((summary.anchor_id, ConsistencyGroupReview.fingerprint(row)), 'pending')))
-        return GalleryPage(query_id=run_id, kind='conflicts', filters=[], model_filters=[], statistics=GalleryStatistics.capture(items),
-            items=items[(page - 1) * page_size:page * page_size], total=len(items))
+        with self.indexed(run_id) as index:
+            statistics = index.statistics()
+            return GalleryPage(query_id=run_id, kind='conflicts', filters=[], model_filters=[],
+                statistics=statistics, items=index.gallery(page, page_size), total=statistics.total)
+
+    def statistics(self, run_id: str) -> GalleryStatistics:
+        with self.indexed(run_id) as index:
+            return index.statistics()
 
     def members(self, run_id: str, anchor_id: str) -> GalleryMemberPage:
         with self._read(run_id) as (connection, status, _, snapshot):
@@ -300,21 +354,13 @@ class ConsistencyAgentResults:
                 group.members = [member for member in group.members if member.image.sample_id in identity.eligible_ids]
             return GalleryMemberPage(query_id=run_id, group_id=anchor_id, anchor=group.anchor, items=group.members, total=len(group.members))
 
-    def images(self, run_id: str, *, page: int = 1, page_size: int = 18) -> AnchorImagePage:
+    def images(self, run_id: str, *, page: int = 1, page_size: int = 18,
+               query: AnchorImageQuery | dict | None = None) -> AnchorImagePage:
         if page < 1 or not 1 <= page_size <= 1000:
             raise ValueError('分页参数不合法')
-        with self._read(run_id) as (connection, status, payload, snapshot):
-            total = connection.execute('SELECT COUNT(*) FROM consistency_anchor_runs WHERE job_id=?', (run_id,)).fetchone()[0]
-            samples = {sample.sample_id: sample for sample in snapshot.scopes.subjects.samples}
-            reviews = ConsistencyGroupReview.dispositions(run_id, connection)
-            items = []
-            for row in connection.execute('''SELECT * FROM consistency_anchor_runs WHERE job_id=?
-                    ORDER BY ordinal LIMIT ? OFFSET ?''', (run_id, page_size, (page - 1) * page_size)):
-                image = FrozenAnalysisGroup.model_validate_json(row['group_json']).anchor if row['group_json'] else None
-                items.append(AnchorImageItem(sample=samples[row['anchor_id']], image=image,
-                    summary=self._summary(connection, row, status, payload, snapshot),
-                    review_state=reviews.get((row['anchor_id'], ConsistencyGroupReview.fingerprint(row)), 'pending')))
-            return AnchorImagePage(job_id=run_id, total=total, items=items)
+        query = AnchorImageQuery.model_validate(query or {})
+        with self.indexed(run_id) as index:
+            return index.images(query, page, page_size)
 
     def candidates(self, run_id: str, anchor_id: str) -> AnchorCandidatePage:
         with self._read(run_id) as (connection, status, _, snapshot):
@@ -340,7 +386,7 @@ class ConsistencyAgentResults:
 
     def analysis(self, run_id: str, anchor_id: str) -> GroupAnalysisView:
         detail = self.detail(run_id, anchor_id)
-        result = detail.result if detail.result and detail.result.reason == 'MODEL_REVIEWED' else None
+        result = detail.result if detail.result and detail.result.reason in ('MODEL_REVIEWED', 'PROGRAM_REVIEWED') else None
         return GroupAnalysisView(group_id=anchor_id, status=detail.state if detail.state != 'COMPLETED' or result else 'NOT_ANALYZED',
             run_id=run_id, result=GroupAnalysisDraft.model_validate(result.model_dump(include=set(GroupAnalysisDraft.model_fields))) if result else None,
             error='；'.join(error.message for error in detail.errors) or None,

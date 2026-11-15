@@ -13,7 +13,7 @@ def test_execution_context_uses_current_progress_and_cancellation_without_diagno
         runner.update(run, phase='VERIFYING_CONTENT')
         context = runner.context(run)
         assert context.payload['phase'] == 'VERIFYING_CONTENT'
-        assert context.payload['sample_ids'] == [sample_id]
+        assert list(context.payload['sample_ids']) == [sample_id]
         assert 'model_calls' not in context.payload
         context.checkpoint()
         context.record(sample_id)

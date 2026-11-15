@@ -100,8 +100,12 @@ class QualityAssessment(AnalysisModel):
             and row['audited_source_fingerprint'] != row['source_fingerprint']
         }
         source_changed_ids.update(row['sample_id'] for row in samples
+            if row.get('audited_source_revision') and row.get('source_revision')
+            and row['audited_source_revision'] != row['source_revision'])
+        source_changed_ids.update(row['sample_id'] for row in samples
                                   if row.get('suggestion_id') is not None and row['sample_id'] in blocking)
         unverified_ids = {row['sample_id'] for row in samples if row.get('suggestion_id') is not None
+                          and row['sample_id'] not in source_changed_ids
                           and (not row.get('source_fingerprint') or not row.get('audited_source_fingerprint'))}
 
         comparable = [row for row in samples if row.get('quality_status') in ('PASS', 'FAIL')

@@ -68,7 +68,7 @@ class RetrievalVerifier:
                         try:
                             if isinstance(content,UnavailableImage):
                                 raise content.error
-                            other = content.image if entry.sample_id==content.source.published.sample_id else SourceImage.read(sample.image_path, entry)
+                            other = content.image if entry.sample_id==content.source.published.sample_id else SourceImage.read(sample.image_path)
                             if checkpoint:checkpoint()
                             if comparison is None:
                                 other_pixels=content.pixels

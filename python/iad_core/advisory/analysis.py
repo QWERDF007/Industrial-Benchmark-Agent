@@ -141,7 +141,7 @@ class VisualView(AnalysisModel):
         return self.role == 'overview' and self.representation == 'raw' and self.crop_bbox == [0, 0, *self.original_size]
 
     def model_context(self) -> dict:
-        return self.model_dump(exclude={'annotation_ids'})
+        return self.model_dump(exclude={'annotation_ids', 'sha256', 'source_sha256', 'annotation_sha256', 'media_type'})
 
 
 class VisualEvidence(VisualView):

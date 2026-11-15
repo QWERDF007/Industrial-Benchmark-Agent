@@ -3,7 +3,8 @@ from collections import defaultdict
 from typing import List, Optional
 
 from iad_core.dataset.path_safety import validate_sample_image_path
-from iad_core.evidence.images import file_sha256, image_pixel_sha256
+from iad_core.evidence.images import image_pixel_sha256
+from iad_core.evidence.sources import SampleContent
 from iad_core.duplicate.repository import load_leakage_relations
 from iad_core.duplicate.index import PixelIndex
 from iad_core.knowledge.models import KnowledgeEvidence, KnowledgeSource, KnowledgeStatus, KnowledgeSupportAssessment, KnowledgeSupportPolicy
@@ -41,12 +42,13 @@ class KnowledgeSupport:
         if target_sample_id:
             target = repository.get(target_sample_id)
             path = validate_sample_image_path(target, self.db.db_path)
-            sha256 = file_sha256(path)
+            sha256 = SampleContent.image_sha256(self.db, target)
             versions[target_sample_id] = sha256
             by_hash['file:' + sha256].append(target_sample_id)
-            by_hash['pixels:' + image_pixel_sha256(path, sha256)].append(target_sample_id)
+            indexed = PixelIndex(self.db).get(target_sample_id)
+            pixel_key = indexed.descriptor.pixel_key if indexed and indexed.content_group_id else image_pixel_sha256(path)
+            by_hash['pixels:' + pixel_key].append(target_sample_id)
         current_ids = [sample.sample_id for sample in samples if sample.sample_id in versions
-            and os.path.isfile(sample.image_path) and file_sha256(sample.image_path) == versions[sample.sample_id]
             and (entry := PixelIndex(self.db).get(sample.sample_id)) is not None
             and entry.image_sha256 == versions[sample.sample_id]]
         relations = [load_leakage_relations(self.db, task_id, sample_ids=current_ids) for task_id in task_ids]

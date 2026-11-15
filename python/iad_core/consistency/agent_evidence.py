@@ -35,7 +35,8 @@ class ConsistencyAgentEvidence:
             evidence = self.runtime.consistency_service.evidence(record.evidence_id) if record is not None else None
             if evidence is None:
                 comparison = self.runtime.consistency_service.compare(ConsistencyCompare(
-                    sample_a=anchor_id, sample_b=candidate.sample_id), checkpoint=checkpoint, frozen_scopes=snapshot.scopes)
+                    sample_a=anchor_id, sample_b=candidate.sample_id, purpose='annotations'),
+                    checkpoint=checkpoint, frozen_scopes=snapshot.scopes)
                 with self.db.connection() as connection:
                     AnchorEvidenceRecords.capture(connection, run_id, anchor_id, candidate.sample_id, comparison)
                 evidence = self.runtime.consistency_service.evidence(comparison.evidence_id)

@@ -13,7 +13,7 @@ from iad_core.advisory.analysis import VisualEvidence, RegionProposal, RegionOri
 from iad_core.evidence.views import padded_bbox
 from iad_core.evidence.masks import annotation_mask, annotation_overlay
 from iad_core.storage.models import Sample, Annotation
-from iad_core.evidence.files import ImageFiles, file_sha256
+from iad_core.evidence.files import ImageFiles
 
 OVERVIEW_MAX_SIDE = 1280
 ROI_MAX_SIDE = 1024
@@ -26,16 +26,12 @@ def normalized_preview(image: Image.Image) -> Image.Image:
     return image.copy() if image.mode=='RGBA' else image.convert('RGB')
 
 
-def image_pixel_sha256(path: str, expected_sha256: str) -> str:
-    data = Path(path).read_bytes()
-    if hashlib.sha256(data).hexdigest() != expected_sha256:
-        raise ValueError('图像在冻结期间发生变化，请重新选择')
+def image_pixel_sha256(path: str) -> str:
     from iad_core.duplicate.pixels import PixelContent
-    with Image.open(io.BytesIO(data)) as original:
-        pixels = PixelContent.read(original)
-        if pixels.descriptor.decode_status != 'COMPLETE':
-            raise ValueError(pixels.descriptor.reason)
-        return pixels.descriptor.pixel_key
+    pixels = PixelContent.read(path)
+    if pixels.descriptor.decode_status != 'COMPLETE':
+        raise ValueError(pixels.descriptor.reason)
+    return pixels.descriptor.pixel_key
 
 
 @dataclass(frozen=True)
@@ -101,29 +97,28 @@ class EvidenceImages:
                 annotation_origins: Optional[List[Annotation]] = None) -> PreparedImage:
         box = bbox or [0, 0, sample.width, sample.height]
         original_bytes = Path(sample.image_path).read_bytes()
-        source_sha = hashlib.sha256(original_bytes).hexdigest()
-        if source_sha256 and source_sha != source_sha256:
-            raise ValueError("Source image changed before capture")
-        with Image.open(io.BytesIO(original_bytes)) as original:
-            if original.size != (sample.width, sample.height):
-                raise ValueError("Image dimensions changed; rescan the dataset")
-            image = original.copy() if full_resolution else normalized_preview(original)
-            if bbox is not None:
-                image = image.crop(tuple(box))
-            if annotations is not None:
-                image = (annotation_mask(sample, annotations, box).convert("RGB") if annotation_mode == "annotation_mask"
-                         else annotation_overlay(sample, image, annotations, box))
-            if max_side is not None:
-                if max_side < 1:raise ValueError('Invalid preview size budget')
-                image.thumbnail((max_side,max_side),Image.Resampling.LANCZOS)
-            elif role != "roi" and not full_resolution:
-                image.thumbnail((OVERVIEW_MAX_SIDE, OVERVIEW_MAX_SIDE), Image.Resampling.LANCZOS)
-            elif role == 'roi' and not full_resolution and max(image.size) > ROI_MAX_SIDE:
-                raise ValueError("ROI must be tiled before encoding")
-            buffer = io.BytesIO()
-            image.save(buffer, "PNG")
-            sent_size = list(image.size)
-        payload = buffer.getvalue()
+        source_sha = source_sha256 or hashlib.sha256(original_bytes).hexdigest()
+        if full_resolution and bbox is None and annotations is None and max_side is None and original_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+            payload, sent_size = original_bytes, [sample.width, sample.height]
+        else:
+            with Image.open(io.BytesIO(original_bytes)) as original:
+                image = original.copy() if full_resolution else normalized_preview(original)
+                if bbox is not None:
+                    image = image.crop(tuple(box))
+                if annotations is not None:
+                    image = (annotation_mask(sample, annotations, box).convert("RGB") if annotation_mode == "annotation_mask"
+                             else annotation_overlay(sample, image, annotations, box))
+                if max_side is not None:
+                    if max_side < 1:raise ValueError('Invalid preview size budget')
+                    image.thumbnail((max_side,max_side),Image.Resampling.LANCZOS)
+                elif role != "roi" and not full_resolution:
+                    image.thumbnail((OVERVIEW_MAX_SIDE, OVERVIEW_MAX_SIDE), Image.Resampling.LANCZOS)
+                elif role == 'roi' and not full_resolution and max(image.size) > ROI_MAX_SIDE:
+                    raise ValueError("ROI must be tiled before encoding")
+                buffer = io.BytesIO()
+                image.save(buffer, "PNG")
+                sent_size = list(image.size)
+            payload = buffer.getvalue()
         path,sha = ImageFiles(self.root).store(payload)
         representation = annotation_mode if annotations is not None else "raw"
         linked_annotations = annotations if annotations is not None else annotation_origins
@@ -139,8 +134,6 @@ class EvidenceImages:
 
     def path(self, evidence: VisualEvidence) -> str:
         path = self.root / (evidence.sha256 + ".png")
-        if not path.is_file() or file_sha256(str(path)) != evidence.sha256:
-            raise FileNotFoundError("Visual evidence is missing or its content changed")
         return str(path)
 
     def capture_regions(self, sample: Sample, regions: List[RegionView], annotations: List[Annotation],

@@ -27,7 +27,7 @@ class PairObservations:
             published = PixelIndex(self.db).get(identity)
             if published is None:
                 raise ConsistencyError('INDEX_NOT_READY', 'Publish image content before verifying relations')
-            sources.append(SourceImage.read(samples[identity].image_path, published))
+            sources.append(SourceImage.read(samples[identity].image_path))
         result = verifier.verify_pixels(sources[0].pixels(), sources[1].pixels(), dino_cosine)
         observation = PairObservation(sample_id_a=left, sample_id_b=right,
             image_sha256_a=sources[0].sha256, image_sha256_b=sources[1].sha256,
@@ -57,9 +57,6 @@ class PairObservations:
         for row in states:
             if row['scan_ref'] != row['dataset_scan_ref']:
                 continue
-            try:
-                current[row['sample_id']] = SourceImage.read(row['image_path'], PixelIndex.entry(row)).sha256
-            except ConsistencyError:
-                continue
+            current[row['sample_id']] = row['image_sha256']
         return [item for item in observations if current.get(item.sample_id_a) == item.image_sha256_a
             and current.get(item.sample_id_b) == item.image_sha256_b]

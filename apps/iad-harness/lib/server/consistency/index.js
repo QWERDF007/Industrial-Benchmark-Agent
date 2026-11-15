@@ -46,7 +46,7 @@ export function createConsistencyTools(bridge, ctx) {
                         existing_images.push({ media_id: item.descriptor.media_id, attachment: { ...existing } });
                         continue;
                     }
-                    const media = await readEvidenceAttachment(bridge, ctx, 'consistency_evidence_media', { evidence_id: context.evidence_id, media_id: item.descriptor.media_id }, exec.signal, item);
+                    const media = await readEvidenceAttachment(bridge, ctx, 'consistency_evidence_media', { evidence_id: context.evidence_id, media_id: item.descriptor.media_id }, exec.signal);
                     attachments.push({ media_id: item.descriptor.media_id, attachment: media.attachment });
                     sent.set(item.sha256, media.attachment);
                 }

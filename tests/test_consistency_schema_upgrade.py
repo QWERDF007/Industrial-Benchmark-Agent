@@ -2,6 +2,7 @@ import sqlite3
 from uuid import uuid4
 
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+from iad_core.duplicate.preparation import PixelPreparation
 from iad_core.storage.database import Database
 from iad_core.workbench.runtime import WorkbenchRuntime
 
@@ -29,6 +30,7 @@ def test_existing_database_can_create_and_resume_checks_after_anchor_schema_upgr
         anchor = checks.anchor(job['run_id'], anchor_id)
         assert anchor.attempt == 1 and anchor.trace_state == 'OPEN'
         assert anchor.visual_plan is None and anchor.trace_error is None
+        PixelPreparation(upgraded).prepare([sample.sample_id for sample in checks.snapshot(job['run_id']).scopes.corpus.samples])
         checks.session_created(job['run_id'], anchor_id)
         assert checks.retrieve(job['run_id'], anchor_id).candidates == []
         checks.cancel(job['run_id'])

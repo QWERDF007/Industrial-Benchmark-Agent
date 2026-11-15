@@ -1,4 +1,3 @@
-import hashlib
 import json
 import resource
 import threading
@@ -24,9 +23,6 @@ def prepare_resource_index(workload: ResourceWorkload, config: ImageEncoderConfi
     output = Path(output).resolve()
     output.mkdir(parents=True)
     started = time.perf_counter()
-    for item in workload.items:
-        if hashlib.sha256(item.path.read_bytes()).hexdigest() != item.sha256:
-            raise ValueError('Resource input changed after materialization: ' + str(item.path))
     db = Database(str(output / 'initial.db'))
     registry = DatasetRegistry(db)
     datasets, identities = {}, {}
@@ -38,6 +34,7 @@ def prepare_resource_index(workload: ResourceWorkload, config: ImageEncoderConfi
         root = roots.pop()
         dataset = registry.import_labelme(DatasetImport(format='labelme', name=kind, image_dir=str(root), annotation_dir=str(root)))
         samples = SampleRepository(db).list_by_task(dataset.task.task_id)
+        PixelIndex(db).prepare([sample.sample_id for sample in samples])
         if {sample.image_path for sample in samples} != {str(item.path) for item in declared}:
             raise ValueError('Resource dataset differs from the frozen workload')
         groups = {PixelIndex(db).get(sample.sample_id).content_group_id for sample in samples}

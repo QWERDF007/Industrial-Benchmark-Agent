@@ -321,15 +321,16 @@ def test_capability_gallery_accepts_typical_and_counter_originals_from_its_evide
         save_image(jobs,run_id,sample)
     publish_batch(jobs,run_id)
     reports=AuditReports(jobs.db);reports.begin(run_id)
-    originals=[AuditEvidence(jobs).read(run_id,sample.sample_id,dict(sample_id=sample.sample_id)).evidence_id for sample in samples[:2]]
+    originals=[AuditEvidence(jobs).read(run_id,sample.sample_id,dict(sample_id=sample.sample_id)).evidence_id for sample in samples[:3]]
     master_observed(jobs,run_id,{},originals)
     capability=dict(tag='low_contrast_defect',coverage_status='candidate',reason='较淡亮线与较清晰边缘形成可见度对照。',
-        evidence_refs=[dict(sample_id=sample.sample_id,result_revision=1,kind='image') for sample in samples[:2]],
+        evidence_refs=[dict(sample_id=sample.sample_id,result_revision=1,kind='image') for sample in samples[:3]],
         representatives=[dict(sample_id=samples[0].sample_id,role='representative',reason='典型原图保留较淡亮线及周围背景。'),
-            dict(sample_id=samples[1].sample_id,role='counter',reason='对照原图中相似位置边缘较清晰，不代表已确认良品。')],missing_conditions=[])
+            dict(sample_id=samples[1].sample_id,role='counter',reason='对照原图中相似位置边缘较清晰，不代表已确认良品。'),
+            dict(sample_id=samples[2].sample_id,role='representative',reason='另一原图补充周围背景和亮线的对照。')],missing_conditions=[])
     reports.commit(run_id,report_submission(capabilities=[capability]))
     gallery=AuditQueries(jobs.db).report(run_id).evidence_groups['capability:low_contrast_defect']
-    assert [item.role for item in gallery]==['representative','counter']
+    assert [item.role for item in gallery]==['representative','counter','representative']
     assert all(item.image.is_whole_image and item.image.representation=='raw' for item in gallery)
 
 

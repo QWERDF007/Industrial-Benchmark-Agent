@@ -1,39 +1,61 @@
 import time
+import threading
+from pathlib import Path
 import pytest
 
 from iad_core.consistency.models import ConsistencyStart
+from iad_core.duplicate.index import PixelIndex
+from iad_core.storage.repositories import SampleRepository
 from iad_core.workbench.runtime import WorkbenchRuntime
 
 
-@pytest.mark.parametrize('mode', ['exact', 'combined', 'visual', 'index'])
-def test_missing_pixel_index_rejects_batch_before_creating_jobs(dataset, tmp_path, mode):
-    from iad_core.consistency.errors import ConsistencyError
-    from iad_core.consistency.models import ImageIndexPrepare
-    from tests.feature_fixtures import configure_test_encoder
+@pytest.fixture
+def block_image(monkeypatch):
+    original = Path.open
+    blocked, releases = {}, []
 
-    db, registry, config = dataset
+    def open_image(path, *args, **kwargs):
+        if path in blocked:
+            entered, release = blocked[path]
+            entered.set()
+            assert release.wait(15)
+        return original(path, *args, **kwargs)
+
+    def block(path):
+        entered, release = threading.Event(), threading.Event()
+        blocked[Path(path)] = entered, release
+        releases.append(release)
+        return entered, release
+
+    monkeypatch.setattr(Path, 'open', open_image)
+    yield block
+    for release in releases:
+        release.set()
+
+
+@pytest.mark.parametrize('mode', ['exact', 'combined', 'visual', 'index'])
+def test_missing_pixel_index_is_prepared_before_checking(dataset, tmp_path, monkeypatch, mode):
+    from iad_core.consistency.models import ImageIndexPrepare
+    from tests.feature_fixtures import configure_test_encoder, MockFeatureExtractor
+
+    db, _, config = dataset
     configure_test_encoder(db, tmp_path)
-    with db.connection() as connection:
-        connection.execute('DELETE FROM sample_pixel_index WHERE sample_id=?', (config.dataset.id + ':dent.png',))
     runtime = WorkbenchRuntime(db)
+    monkeypatch.setattr(runtime.images, 'encode', lambda selection, images: MockFeatureExtractor(profile=selection.profile).encode_batch(images))
     try:
-        with pytest.raises(ConsistencyError, match='重扫') as failure:
-            if mode == 'index':
-                runtime.consistency.prepare(ImageIndexPrepare(request_id='missing-pixels'))
-            else:
-                runtime.consistency.start(ConsistencyStart(subjects={'kind': 'all_registered'}, mode=mode, request_id='missing-pixels'))
-        assert failure.value.code == 'INDEX_NOT_READY'
-        assert runtime.consistency.list().items == []
-        registry.rescan(config.dataset.id)
-        started = runtime.consistency.start(ConsistencyStart(subjects={'kind': 'all_registered'}, mode='exact', request_id='after-rescan'))
+        if mode == 'index':
+            started = runtime.consistency.prepare(ImageIndexPrepare(request_id='missing-pixels'))
+        else:
+            started = runtime.consistency.start(ConsistencyStart(subjects={'kind': 'all_registered'}, mode=mode, request_id='missing-pixels'))
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
             batch = runtime.consistency.status(started.batch_id)
             if batch.status not in ('PENDING', 'RUNNING'):
                 break
             time.sleep(.01)
-        assert batch.status == 'COMPLETED'
+        assert batch.status == 'COMPLETED', batch.model_dump()
         assert (batch.completed, batch.failed, batch.unprocessed) == (4, 0, 0)
+        assert batch.children[0].job_type == 'PIXEL_INDEX'
     finally:
         runtime.close()
 
@@ -58,8 +80,8 @@ def test_exact_batch_uses_real_dataset_children_and_frozen_pair_evidence(dataset
             time.sleep(.01)
         assert batch.status=='COMPLETED'
         assert (batch.completed,batch.failed,batch.unprocessed,batch.total)==(4,0,0,4)
-        assert len(batch.children)==1
-        child=runtime.jobs.status(batch.children[0].run_id)
+        assert [child.job_type for child in batch.children] == ['PIXEL_INDEX', 'DATA_CONSISTENCY']
+        child=runtime.jobs.status(batch.children[-1].run_id)
         assert child['dataset_id']==config.dataset.id and child['task_id']==config.task.task_id
         assert child['job_type']=='DATA_CONSISTENCY' and child['model_calls']==[]
         results=runtime.consistency.results(batch.batch_id)
@@ -83,8 +105,12 @@ def test_invalid_annotations_do_not_report_a_missing_image_index(dataset):
     runtime = WorkbenchRuntime(db)
     try:
         started = runtime.consistency.start(ConsistencyStart(subjects={'kind':'all_registered'}, mode='exact', request_id='invalid-annotation'))
-        runtime.jobs.wait(runtime.consistency.status(started.batch_id).children[0].run_id, 10)
-        batch = runtime.consistency.status(started.batch_id)
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            batch = runtime.consistency.status(started.batch_id)
+            if batch.status not in ('PENDING', 'RUNNING'):
+                break
+            time.sleep(.01)
         assert (batch.status, batch.completed, batch.failed, batch.unprocessed) == ('PARTIAL', 2, 2, 0)
         errors = [error for child in batch.children for error in child.errors]
         assert errors and all(error.code == 'ANNOTATION_UNREADABLE' for error in errors)
@@ -133,6 +159,7 @@ def test_combined_batch_prepares_corpus_and_dataset_deletion_removes_its_history
     from iad_core.storage.repositories import SampleRepository
     db,registry,config=dataset
     encoder=configure_test_encoder(db,tmp_path)
+    PixelIndex(db).prepare(sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id))
     ContentFeatureCache(db).prepare([sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id)],
         encoder,extractor=MockFeatureExtractor(profile=encoder.profile))
     runtime=WorkbenchRuntime(db)
@@ -145,10 +172,10 @@ def test_combined_batch_prepares_corpus_and_dataset_deletion_removes_its_history
             time.sleep(.01)
         assert batch.status=='COMPLETED',batch.model_dump()
         assert (batch.completed,batch.failed,batch.unprocessed)==(4,0,0)
-        assert [child.job_type for child in batch.children]==['IMAGE_INDEX','DATA_CONSISTENCY']
+        assert [child.job_type for child in batch.children]==['PIXEL_INDEX','IMAGE_INDEX','DATA_CONSISTENCY']
         assert runtime.indexes.stats().search_batches == 1
         assert runtime.indexes.stats().queries == 3
-        assert batch.children[0].finished_at<=batch.children[1].started_at
+        assert batch.children[1].finished_at<=batch.children[2].started_at
         results=runtime.consistency.results(batch.batch_id)
         assert len(results)==6
         from iad_core.consistency.result_queries import ConsistencyQuery,ResultQueries
@@ -176,70 +203,57 @@ def test_combined_batch_prepares_corpus_and_dataset_deletion_removes_its_history
     finally:runtime.close()
 
 
-def test_cancelling_a_blocked_source_keeps_unprocessed_items_and_stops_new_children(dataset,tmp_path):
-    import os,threading
-    from pathlib import Path
+def test_cancelling_a_blocked_source_keeps_unprocessed_items_and_stops_new_children(dataset, tmp_path, block_image):
     from PIL import Image
-    from iad_core.dataset.registry import DatasetImport,DatasetRegistry
+    from iad_core.dataset.registry import DatasetImport
 
-    db,_,config=dataset
-    other=tmp_path/'other';other.mkdir();Image.new('RGB',(320,240),'blue').save(other/'copy.png')
-    DatasetRegistry(db).import_labelme(DatasetImport(format='labelme',name='另一个集',image_dir=str(other),annotation_dir=str(other)))
-    source=Path(config.root)/'dent.png';payload=source.read_bytes();source.unlink();os.mkfifo(source)
-    runtime=WorkbenchRuntime(db)
-    released=False
+    db, registry, config = dataset
+    other = tmp_path / 'other'; other.mkdir(); Image.new('RGB', (320, 240), 'blue').save(other / 'copy.png')
+    imported = registry.import_labelme(DatasetImport(format='labelme', name='另一个集', image_dir=str(other), annotation_dir=str(other)))
+    PixelIndex(db).prepare(sample.sample_id for task_id in (config.task.task_id, imported.task.task_id)
+        for sample in SampleRepository(db).list_by_task(task_id))
+    entered, release = block_image(Path(config.root) / 'dent.png')
+    runtime = WorkbenchRuntime(db)
     try:
-        started=runtime.consistency.start(ConsistencyStart(subjects={'kind':'all_registered'},request_id='cancel-blocked-source'))
-        deadline=time.monotonic()+5
-        while True:
-            try:descriptor=os.open(source,os.O_WRONLY|os.O_NONBLOCK);break
-            except OSError:
-                if time.monotonic()>=deadline:raise
-                time.sleep(.01)
-        cancelled=runtime.consistency.cancel(started.batch_id)
+        started = runtime.consistency.start(ConsistencyStart(subjects={'kind': 'all_registered'}, request_id='cancel-blocked-source'))
+        assert entered.wait(5)
+        cancelled = runtime.consistency.cancel(started.batch_id)
         assert cancelled.cancel_requested
-        os.write(descriptor,payload);os.close(descriptor);released=True
-        deadline=time.monotonic()+10
-        while time.monotonic()<deadline:
-            batch=runtime.consistency.status(started.batch_id)
-            if batch.status=='CANCELLED':break
+        release.set()
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            batch = runtime.consistency.status(started.batch_id)
+            if batch.status == 'CANCELLED':
+                break
             time.sleep(.01)
-        assert batch.status=='CANCELLED'
-        assert batch.completed+batch.failed+batch.unprocessed==5
-        assert batch.unprocessed>0 and len(batch.children)==1
-        assert runtime.consistency.status(started.batch_id).children[0].cancel_requested
+        assert batch.status == 'CANCELLED'
+        assert batch.completed + batch.failed + batch.unprocessed == 5
+        assert batch.unprocessed > 0
+        comparisons = [child for child in batch.children if child.job_type == 'DATA_CONSISTENCY']
+        assert len(comparisons) == 1 and comparisons[0].cancel_requested
     finally:
-        if not released:threading.Thread(target=lambda:source.write_bytes(payload),daemon=True).start()
-        runtime.close();source.unlink();source.write_bytes(payload)
+        release.set()
+        runtime.close()
 
 
-def test_batch_shows_the_query_being_read_before_its_outcome_is_available(dataset):
-    import os, threading
-    from pathlib import Path
+def test_batch_shows_the_query_being_read_before_its_outcome_is_available(dataset, block_image):
     db, _, config = dataset
     identity = config.dataset.id + ':dent.png'
-    source = Path(config.root) / 'dent.png'
-    payload = source.read_bytes(); source.unlink(); os.mkfifo(source)
+    PixelIndex(db).prepare(sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id))
+    entered, release = block_image(Path(config.root) / 'dent.png')
     runtime = WorkbenchRuntime(db)
-    released = False
     try:
         started = runtime.consistency.start(ConsistencyStart(subjects={'kind': 'samples', 'sample_ids': [identity]}, request_id='show-active-query'))
-        deadline = time.monotonic() + 5
-        while True:
-            try:
-                descriptor = os.open(source, os.O_WRONLY | os.O_NONBLOCK); break
-            except OSError:
-                if time.monotonic() >= deadline: raise
-                time.sleep(.01)
+        assert entered.wait(5)
         state = runtime.consistency.status(started.batch_id)
-        shown = state.children[0].current_sample
+        shown = next(child for child in state.children if child.job_type == 'DATA_CONSISTENCY').current_sample
         runtime.consistency.cancel(started.batch_id)
-        os.write(descriptor, payload); os.close(descriptor); released = True
+        release.set()
         assert shown is not None and shown.sample_id == identity
         assert state.completed == 0 and state.unprocessed == 1
     finally:
-        if not released: threading.Thread(target=lambda: source.write_bytes(payload), daemon=True).start()
-        runtime.close(); source.unlink(); source.write_bytes(payload)
+        release.set()
+        runtime.close()
 
 
 def test_empty_and_reused_request_ids_are_explicit(dataset):
@@ -265,6 +279,7 @@ def test_index_preparation_uses_the_selected_profile_and_reuses_cached_content(d
     db,_,config=dataset
     encoder=configure_test_encoder(db,tmp_path)
     sample_ids=[sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id)]
+    PixelIndex(db).prepare(sample_ids)
     prepared=ContentFeatureCache(db).prepare(sample_ids,encoder,extractor=MockFeatureExtractor(profile=encoder.profile))
     assert prepared.encoded_content_count==3
     runtime=WorkbenchRuntime(db)
@@ -276,7 +291,8 @@ def test_index_preparation_uses_the_selected_profile_and_reuses_cached_content(d
             if batch.status not in ('PENDING','RUNNING'):break
             time.sleep(.01)
         assert batch.status=='COMPLETED' and batch.completed==batch.total==4
-        assert all(child.job_type=='IMAGE_INDEX' and child.model_profile is None and child.model_calls==[] for child in batch.children)
+        assert [child.job_type for child in batch.children] == ['PIXEL_INDEX', 'IMAGE_INDEX']
+        assert all(child.model_profile is None and child.model_calls==[] for child in batch.children)
         with runtime.indexes.acquire(batch.scopes.corpus,encoder.profile.profile_id) as index:
             assert index.info.vector_count==3 and index.info.member_count==4
     finally:runtime.close()
@@ -293,7 +309,7 @@ def test_batch_waits_in_existing_runner_queue_and_can_be_cancelled_before_start(
         assert release.wait(10)
         context.record(sample_id)
     try:
-        previous=runtime.jobs.start('DATA_CONSISTENCY',config.task.task_id,
+        previous=runtime.jobs.start('PIXEL_INDEX',config.task.task_id,
             {'dataset_id':config.dataset.id,'sample_ids':[sample_id]},occupied,'已有任务')
         assert entered.wait(5)
         started=runtime.consistency.start(ConsistencyStart(subjects={'kind':'samples','sample_ids':[sample_id]},request_id='queued-batch'))
@@ -306,97 +322,91 @@ def test_batch_waits_in_existing_runner_queue_and_can_be_cancelled_before_start(
     finally:release.set();runtime.close()
 
 
-def test_retry_keeps_original_denominator_and_only_runs_unprocessed_samples(dataset):
-    import os,threading
-    from pathlib import Path
-    db,_,config=dataset
-    runtime=WorkbenchRuntime(db)
-    source=Path(config.root)/'normal2.png';payload=source.read_bytes();source.unlink();os.mkfifo(source)
-    released=False
-    first=config.dataset.id+':normal.png';second=config.dataset.id+':normal2.png'
+def test_retry_keeps_original_denominator_and_only_runs_unprocessed_samples(dataset, block_image):
+    db, _, config = dataset
+    PixelIndex(db).prepare(sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id))
+    entered, release = block_image(Path(config.root) / 'normal2.png')
+    runtime = WorkbenchRuntime(db)
+    first = config.dataset.id + ':normal.png'; second = config.dataset.id + ':normal2.png'
     try:
-        started=runtime.consistency.start(ConsistencyStart(subjects={'kind':'samples','sample_ids':[first,second]},request_id='retry-parent'))
-        deadline=time.monotonic()+5
-        while True:
-            try:descriptor=os.open(source,os.O_WRONLY|os.O_NONBLOCK);break
-            except OSError:
-                if time.monotonic()>=deadline:raise
-                time.sleep(.01)
-        assert runtime.consistency.status(started.batch_id).completed==1
+        started = runtime.consistency.start(ConsistencyStart(subjects={'kind': 'samples', 'sample_ids': [first, second]}, request_id='retry-parent'))
+        assert entered.wait(5)
+        assert runtime.consistency.status(started.batch_id).completed == 1
         runtime.consistency.cancel(started.batch_id)
-        os.write(descriptor,payload);os.close(descriptor);released=True
-        deadline=time.monotonic()+5
-        while time.monotonic()<deadline and runtime.consistency.status(started.batch_id).status!='CANCELLED':time.sleep(.01)
-        source.unlink();source.write_bytes(payload)
-        retried=runtime.consistency.retry(started.batch_id,request_id='retry-child')
-        assert runtime.consistency.retry(started.batch_id,request_id='retry-child').batch_id==retried.batch_id
-        deadline=time.monotonic()+10
-        while time.monotonic()<deadline:
-            batch=runtime.consistency.status(retried.batch_id)
-            if batch.status not in ('PENDING','RUNNING'):break
+        release.set()
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and runtime.consistency.status(started.batch_id).status != 'CANCELLED':
             time.sleep(.01)
-        assert batch.status=='COMPLETED' and batch.completed==batch.total==2
-        assert batch.parent_batch_id==started.batch_id and batch.root_batch_id==started.batch_id
-        assert batch.children[0].sample_ids==[second]
-        assert runtime.consistency.status(started.batch_id).status=='CANCELLED'
+        retried = runtime.consistency.retry(started.batch_id, request_id='retry-child')
+        assert runtime.consistency.retry(started.batch_id, request_id='retry-child').batch_id == retried.batch_id
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            batch = runtime.consistency.status(retried.batch_id)
+            if batch.status not in ('PENDING', 'RUNNING'):
+                break
+            time.sleep(.01)
+        assert batch.status == 'COMPLETED' and batch.completed == batch.total == 2
+        assert batch.parent_batch_id == started.batch_id and batch.root_batch_id == started.batch_id
+        assert next(child for child in batch.children if child.job_type == 'DATA_CONSISTENCY').sample_ids == [second]
+        assert runtime.consistency.status(started.batch_id).status == 'CANCELLED'
     finally:
-        if not released:threading.Thread(target=lambda:source.write_bytes(payload),daemon=True).start()
+        release.set()
         runtime.close()
-        if source.exists():source.unlink()
-        source.write_bytes(payload)
 
 
 def test_killed_batch_stays_interrupted_until_explicit_retry_with_original_scope(dataset):
-    import os,select,subprocess,sys
-    from pathlib import Path
-    db,registry,config=dataset
-    source=Path(config.root)/'normal2.png';payload=source.read_bytes();source.unlink();os.mkfifo(source)
-    script='''import json,sys
+    import select, subprocess, sys
+    db, registry, config = dataset
+    PixelIndex(db).prepare(sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id))
+    script = r"""import sys,time
+from pathlib import Path
 from iad_core.storage.database import Database
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.consistency.models import ConsistencyStart
+original=Path.open
+def blocked(path,*args,**kwargs):
+    if path.name=='normal2.png':
+        print('READING',flush=True)
+        sys.stdin.read(1)
+    return original(path,*args,**kwargs)
+Path.open=blocked
 runtime=WorkbenchRuntime(Database(sys.argv[1]))
 started=runtime.consistency.start(ConsistencyStart(subjects={'kind':'samples','sample_ids':[sys.argv[2]]},request_id='killed-batch'))
 print(started.batch_id,flush=True)
-runtime.jobs.wait(runtime.consistency.status(started.batch_id).children[0].run_id,120)
-'''
-    process=subprocess.Popen([sys.executable,'-c',script,db.db_path,config.dataset.id+':normal2.png'],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
-    runtime=None;descriptor=None
+while True:time.sleep(1)
+"""
+    process = subprocess.Popen([sys.executable, '-u', '-c', script, db.db_path, config.dataset.id + ':normal2.png'],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    runtime = None
     try:
-        assert select.select([process.stdout],[],[],10)[0]
-        batch_id=process.stdout.readline().strip();assert batch_id.startswith('batch_')
-        deadline=time.monotonic()+5
-        while True:
-            try:descriptor=os.open(source,os.O_WRONLY|os.O_NONBLOCK);break
-            except OSError:
-                if time.monotonic()>=deadline:raise
-                time.sleep(.01)
-        process.kill();process.wait(timeout=5)
-        os.close(descriptor);descriptor=None
-        source.unlink();source.write_bytes(payload)
-        runtime=WorkbenchRuntime(db)
-        interrupted=runtime.consistency.status(batch_id)
-        assert interrupted.status=='INTERRUPTED' and interrupted.unprocessed==1
-        assert interrupted.children[0].status=='INTERRUPTED'
-        restored=runtime.consistency.start(ConsistencyStart(subjects={'kind':'samples','sample_ids':[config.dataset.id+':normal2.png']},request_id='killed-batch'))
-        assert restored.batch_id==batch_id and restored.status=='INTERRUPTED'
-        retried=runtime.consistency.retry(batch_id,request_id='recover-killed')
-        deadline=time.monotonic()+10
-        while time.monotonic()<deadline:
-            state=runtime.consistency.status(retried.batch_id)
-            if state.status not in ('PENDING','RUNNING'):break
+        assert select.select([process.stdout], [], [], 10)[0]
+        batch_id = process.stdout.readline().strip(); assert batch_id.startswith('batch_')
+        assert select.select([process.stdout], [], [], 10)[0]
+        assert process.stdout.readline().strip() == 'READING'
+        process.kill(); process.wait(timeout=5)
+        runtime = WorkbenchRuntime(db)
+        interrupted = runtime.consistency.status(batch_id)
+        assert interrupted.status == 'INTERRUPTED' and interrupted.unprocessed == 1
+        assert interrupted.children[-1].status == 'INTERRUPTED'
+        restored = runtime.consistency.start(ConsistencyStart(subjects={'kind':'samples','sample_ids':[config.dataset.id+':normal2.png']}, request_id='killed-batch'))
+        assert restored.batch_id == batch_id and restored.status == 'INTERRUPTED'
+        retried = runtime.consistency.retry(batch_id, request_id='recover-killed')
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            state = runtime.consistency.status(retried.batch_id)
+            if state.status not in ('PENDING', 'RUNNING'):
+                break
             time.sleep(.01)
-        assert state.status=='COMPLETED' and state.completed==state.total==1
+        assert state.status == 'COMPLETED' and state.completed == state.total == 1
         registry.rescan(config.dataset.id)
-        import pytest
         from iad_core.consistency.errors import ConsistencyError
-        with pytest.raises(ConsistencyError,match='scan changed'):
-            runtime.consistency.retry(batch_id,request_id='obsolete-scan')
+        with pytest.raises(ConsistencyError, match='scan changed'):
+            runtime.consistency.retry(batch_id, request_id='obsolete-scan')
     finally:
-        if process.poll() is None:process.kill();process.wait(timeout=5)
-        if descriptor is not None:os.close(descriptor)
-        if runtime is not None:runtime.close()
-        source.unlink();source.write_bytes(payload)
+        if process.poll() is None:
+            process.kill(); process.wait(timeout=5)
+        if runtime is not None:
+            runtime.close()
 
 
 def test_index_batch_counts_supported_samples_separately_from_unsupported_content(dataset,tmp_path):
@@ -410,6 +420,7 @@ def test_index_batch_counts_supported_samples_separately_from_unsupported_conten
     Image.new('F',(20,20),.5).save(Path(config.root)/'float.tiff')
     registry.rescan(config.dataset.id)
     encoder=configure_test_encoder(db,tmp_path)
+    PixelIndex(db).prepare(sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id))
     ContentFeatureCache(db).prepare([sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id)],
         encoder,extractor=MockFeatureExtractor(profile=encoder.profile))
     runtime=WorkbenchRuntime(db)
@@ -475,6 +486,8 @@ def test_eighty_identical_members_reuse_pixel_proof_without_losing_last_annotati
     db=Database(str(tmp_path/'groups.db'))
     DatasetRegistry(db).import_labelme(DatasetImport(format='labelme',name='80同图',image_dir=str(images),annotation_dir=str(images),
         annotation_policy={'policy_id':'same','annotation_role':'REFERENCE','annotation_coverage':'EXHAUSTIVE'}))
+    PixelIndex(db).prepare(sample.sample_id for sample in SampleRepository(db).list_by_task(
+        DatasetRegistry(db).list()[0].task.task_id))
     comparisons=0;guard=threading.Lock()
     def profile(frame,event,arg):
         nonlocal comparisons

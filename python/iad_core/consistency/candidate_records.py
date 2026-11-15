@@ -24,9 +24,8 @@ class CandidatePhaseRecord(AnalysisModel):
 class CandidateRecords:
     @staticmethod
     def enabled(connection, run_id):
-        row = connection.execute("SELECT json_extract(payload_json,'$.request.consistency_check.review_pipeline') FROM job_runs WHERE job_id=?",
-            (run_id,)).fetchone()
-        return row is not None and row[0] in ('identity-v5', 'identity-v7', 'identity-v8')
+        from iad_core.consistency.check_snapshots import CheckSnapshots
+        return CheckSnapshots.read(connection, run_id).review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8')
 
     @staticmethod
     def gates(connection, run_id, anchor_id):
@@ -70,17 +69,22 @@ class CandidateRecords:
     def append(cls, connection, run_id, anchor_id, candidate_id, phase, expected_revision, request_id, record):
         if not connection.in_transaction:
             connection.execute('BEGIN IMMEDIATE')
-        version = connection.execute("""SELECT json_extract(payload_json,'$.request.consistency_check.review_pipeline'),
-            json_extract(payload_json,'$.request.consistency_check.prompt_version') FROM job_runs WHERE job_id=?""", (run_id,)).fetchone()
-        if version is None or tuple(version) != (IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION):
+        from iad_core.consistency.check_snapshots import CheckSnapshots
+        snapshot = CheckSnapshots.read(connection, run_id)
+        if (snapshot.review_pipeline, snapshot.prompt_version) != (IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION):
             raise ValueError('历史一致性作业只读保留')
         raw = record.model_dump(mode='json', exclude={'revision', 'gate_id', 'gate_status'} if phase == 'gate' else set())
         digest = hashlib.sha256(json.dumps([candidate_id, phase, expected_revision, raw], sort_keys=True, ensure_ascii=False).encode()).hexdigest()
         if saved := cls.replay(connection, run_id, anchor_id, request_id, digest):
             return saved
-        anchor = connection.execute('SELECT state,candidates_json FROM consistency_anchor_runs WHERE job_id=? AND anchor_id=?',
+        anchor = connection.execute('''SELECT anchor.state,anchor.result_json,anchor.candidates_json,job.status job_state
+            FROM consistency_anchor_runs anchor JOIN job_runs job ON job.job_id=anchor.job_id
+            WHERE anchor.job_id=? AND anchor.anchor_id=?''',
             (run_id, anchor_id)).fetchone()
-        if anchor is None or anchor['state'] != 'RUNNING':
+        shared_revocation = (phase == 'gate' and record.execution_status == 'pending' and record.pair_key is not None)
+        if anchor is None or (anchor['state'] != 'RUNNING' and not (
+                anchor['state'] == 'FAILED' and anchor['job_state'] == 'RUNNING'
+                and anchor['result_json'] is None and shared_revocation)):
             raise ValueError('主图已停止，不能保存候选记录')
         frozen = AnchorCandidates.model_validate_json(anchor['candidates_json'])
         if record.fingerprint != frozen.fingerprint:
@@ -93,6 +97,8 @@ class CandidateRecords:
             raise ValueError('候选资格版本已变化，请重新读取上下文')
         if phase == 'gate' and record.execution_status == 'pending' and (gate is None or gate.gate_status != 'eligible'):
             raise ValueError('只有当前合格候选可以因审核疑点重新验证')
+        if shared_revocation and gate.pair_key != record.pair_key:
+            raise ValueError('共享资格撤销必须引用当前图像对')
         if phase == 'audit' and (gate is None or gate.gate_status != 'eligible'):
             raise ValueError('只有当前资格有效的候选可以保存标注审核')
         revision = connection.execute('''SELECT COALESCE(MAX(revision),0)+1 FROM consistency_candidate_records
@@ -107,7 +113,7 @@ class CandidateRecords:
             current if phase == 'audit' else revision, request_id, digest, json.dumps(raw, ensure_ascii=False))).fetchone()
         if phase == 'gate':
             connection.execute('''UPDATE consistency_anchor_runs SET visual_plan_json=NULL,
-                phase=CASE WHEN ?='pending' THEN 'VERIFYING_CONTENT' ELSE phase END WHERE job_id=? AND anchor_id=?''',
+                phase=CASE WHEN ?='pending' AND state='RUNNING' THEN 'VERIFYING_CONTENT' ELSE phase END WHERE job_id=? AND anchor_id=?''',
                 (record.execution_status, run_id, anchor_id))
         return row
 

@@ -30,7 +30,7 @@ def test_path_authorization_is_frozen_only_for_one_operation(knowledge_dataset, 
     assert AuthorizedDatasetPaths(db.db_path).image(external) == '/etc/hostname'
 
 
-def test_frozen_registration_preparation_rechecks_source_content_after_each_request(knowledge_dataset):
+def test_frozen_registration_preparation_reuses_registered_source_identity(knowledge_dataset):
     db, config = knowledge_dataset
     frozen = AnalysisManifests(db).freeze([config.dataset.id])
     assert len(frozen.records) == 6
@@ -44,13 +44,13 @@ def test_frozen_registration_preparation_rechecks_source_content_after_each_requ
         image.putpixel((1, 1), (255, 0, 0))
         image.save(path)
     changed = images.prepare(record, None)
-    assert changed.error == '源图或标注版本与冻结清单不一致'
-    assert changed.images == []
+    assert changed.error is None and len(changed.images) == 1
+    assert changed.images[0].image.source_sha256 == initial.images[0].image.source_sha256
     path.write_bytes(original)
     assert images.prepare(record, None) == initial
 
 
-def test_audit_input_batch_matches_individual_sources_and_rechecks_content(knowledge_dataset):
+def test_audit_input_batch_matches_individual_sources_and_reuses_cached_identity(knowledge_dataset):
     db, config = knowledge_dataset
     identities = [config.dataset.id + ':part-0.png', config.dataset.id + ':part-1.png']
     expected = [SampleContent.capture(db, identity) for identity in identities]
@@ -61,4 +61,4 @@ def test_audit_input_batch_matches_individual_sources_and_rechecks_content(knowl
         image.save(path)
     changed = SampleContent.capture_many(db, identities)
     assert changed[0] == expected[0]
-    assert changed[1].sha256 != expected[1].sha256
+    assert changed == expected

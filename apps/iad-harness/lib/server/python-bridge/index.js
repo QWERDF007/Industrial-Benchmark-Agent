@@ -40,6 +40,7 @@ class PythonWorker {
     worker = null;
     pendingRequests = new Map();
     stderrAccum = "";
+    disposed = false;
     constructor(config, role) {
         this.role = role;
         this.cwd = config.cwd ? path.resolve(config.cwd) : findWorkspaceRoot();
@@ -112,6 +113,11 @@ class PythonWorker {
                 return;
             this.handleWorkerExit(new Error(`Python process error: ${err.message}`));
         });
+        child.stdin.on("error", (err) => {
+            if (this.worker !== child)
+                return;
+            this.handleWorkerExit(new Error(`Python input pipe error: ${err.message}`));
+        });
         child.on("close", (code) => {
             if (this.worker !== child)
                 return;
@@ -130,6 +136,8 @@ class PythonWorker {
         this.pendingRequests.clear();
     }
     async execute(operation, argumentsPayload = {}, signal, options = {}) {
+        if (this.disposed)
+            throw new Error('Python bridge was disposed');
         const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
         const worker = this.ensureWorker();
         return new Promise((resolve, reject) => {
@@ -186,15 +194,17 @@ class PythonWorker {
             }
         });
     }
-    destroy() {
-        if (this.worker) {
-            try {
-                this.worker.kill("SIGTERM");
-            }
-            catch { }
-            this.worker = null;
-        }
+    async destroy() {
+        this.disposed = true;
+        const worker = this.worker;
+        this.worker = null;
         this.handleWorkerExit(new Error("Python bridge was disposed"));
+        if (!worker || worker.exitCode !== null || worker.signalCode !== null)
+            return;
+        await new Promise(resolve => {
+            worker.once('close', () => resolve());
+            worker.stdin?.end();
+        });
     }
 }
 export class PythonBridge {
@@ -220,8 +230,7 @@ export class PythonBridge {
         const dispatch = (name, values = {}, cancellation) => (queryOperationNames.has(name) ? this.queries : this.workbench).execute(name, values, cancellation, options);
         return this.modelRouting ? this.modelRouting.execute(operation, args, signal, dispatch) : dispatch(operation, args, signal);
     }
-    destroy() {
-        this.queries.destroy();
-        this.workbench.destroy();
+    async destroy() {
+        await Promise.all([this.queries.destroy(), this.workbench.destroy()]);
     }
 }

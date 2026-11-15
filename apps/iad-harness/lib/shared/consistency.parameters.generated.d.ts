@@ -1,3 +1,5 @@
+export declare const pairReviewBatchSize: 32;
+export declare const pairReviewMinBatchSize: 8;
 export declare const conflictCategoryDefaults: {
     readonly labelme: readonly ["类别不一致", "位置差异", "多类别", "少类别", "拆分", "合并"];
     readonly folder_classification: readonly ["类别不一致"];
@@ -446,6 +448,12 @@ export declare const consistencyCompareParameters: {
         readonly type: "string";
         readonly title: "Sample B";
         readonly required: true;
+    };
+    readonly purpose: {
+        readonly type: "string";
+        readonly enum: readonly ["full", "annotations"];
+        readonly title: "Purpose";
+        readonly default: "full";
     };
     readonly matching: {
         readonly type: "object";

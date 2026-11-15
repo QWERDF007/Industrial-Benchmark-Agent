@@ -7,7 +7,7 @@ export interface ChartSeries {label:string;unit:string;tone?:ChartTone}
 export interface HistogramSeries {id:string;label:string;data:Pick<AuditHistogram,'edges'|'counts'>}
 
 export type ChartSpec=
-  | {type:'bar';rows:readonly {id:string;label:string;values:readonly number[]}[];series:readonly ChartSeries[];maximum?:number}
+  | {type:'bar';rows:readonly {id:string;label:string;values:readonly number[]}[];series:readonly ChartSeries[];maximum?:number;legendSelectable?:boolean}
   | {type:'donut';rows:readonly ChartDatum[];unit:string}
   | {type:'distribution';series:readonly HistogramSeries[];xLabel:string;unit:string;format?:ChartFormat}
   | {type:'heatmap';data:AuditHeatmap;xLabel:string;yLabel:string;format?:ChartFormat;reverseY?:boolean}

@@ -23,6 +23,7 @@ export declare class JobSessionHost {
     private readonly sessions;
     private readonly stop;
     private readonly active;
+    private readonly notices;
     private constructor();
     static open(root: string, locate: SessionLocator, evidenceOnDemand?: boolean): Promise<JobSessionHost>;
     create(id: string): Promise<void>;

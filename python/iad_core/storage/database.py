@@ -8,7 +8,7 @@ from weakref import finalize
 from contextlib import contextmanager, closing
 from pathlib import Path
 from typing import cast
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from filelock import FileLock
 from sqlalchemy.pool import QueuePool, PoolProxiedConnection
@@ -66,13 +66,15 @@ class Database:
         self._pool = None
 
     @contextmanager
-    def connection(self, *, temporary: bool = False) -> Iterator[sqlite3.Connection]:
+    def connection(self, *, temporary: bool = False, after_commit: Callable[[], None] | None = None) -> Iterator[sqlite3.Connection]:
         with closing(self.get_connection()) as lease:
             conn = self._connect(self.db_path) if temporary else cast(sqlite3.Connection, lease.driver_connection)
             changes = conn.total_changes
             try:
                 yield conn
                 conn.commit()
+                if after_commit is not None:
+                    after_commit()
                 if conn.total_changes != changes:
                     self.call_payloads.collect(conn)
             except Exception:

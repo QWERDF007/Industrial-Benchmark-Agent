@@ -15,7 +15,7 @@ import { AnnotatedImageStage } from './AnnotatedImageStage.js';
 import { FullscreenViewer } from './FullscreenViewer.js';
 import { ConsistencyGroupReviewForm } from './ConsistencyGroupReviewForm.js';
 import { ConsistencyModelAnalysis } from './ConsistencyModelAnalysis.js';
-export function ConsistencyConflictDialog({ conflict: currentConflict, items: visibleConflicts, onSelect, onClose, onReviewed }) {
+export function ConsistencyConflictDialog({ conflict: currentConflict, items: visibleConflicts, onSelect, onMove, onClose, onReviewed }) {
     const currentConflictId = currentConflict.id;
     const catalog = useDatasetCatalog();
     const [candidateIndex, setCandidateIndex] = useState(0);
@@ -44,7 +44,7 @@ export function ConsistencyConflictDialog({ conflict: currentConflict, items: vi
     const candidates = useResource(jobId ?
         `/consistency/checks/${encodeURIComponent(jobId)}/anchors/${encodeURIComponent(currentConflictId)}/candidates` : null);
     const modelConclusion = ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType, modelResult?.overall.verdict);
-    const displayModelConclusion = modelConclusion ? modelConclusionLabels[modelConclusion] : '';
+    const displayModelConclusion = modelConclusion ? modelConclusionLabels[modelConclusion] : currentConflict.model.label || '';
     const groupConclusion = currentConflict.type;
     const displayGroupConclusion = groupConclusion in conflictCategoryLabels
         ? conflictCategoryLabels[groupConclusion] : groupConclusion;
@@ -62,6 +62,10 @@ export function ConsistencyConflictDialog({ conflict: currentConflict, items: vi
     const anchorAnnotations = anchorSource ? datasetImageAnnotations(catalog.data?.datasets.find(dataset => dataset.dataset_id === anchorSource.sample.dataset_id)?.format, anchorSource.sample, anchorSource.annotations.annotations) : {};
     const candidateAnnotations = candidateSource ? datasetImageAnnotations(catalog.data?.datasets.find(dataset => dataset.dataset_id === candidateSource.sample.dataset_id)?.format, candidateSource.sample, candidateSource.annotations.annotations) : {};
     const handlePrevConflict = useCallback(() => {
+        if (onMove) {
+            onMove(-1);
+            return;
+        }
         const list = visibleConflicts;
         const idx = list.findIndex(c => c.id === currentConflictId);
         if (idx > 0) {
@@ -69,8 +73,12 @@ export function ConsistencyConflictDialog({ conflict: currentConflict, items: vi
             onSelect(prev.id);
             setCandidateIndex(0);
         }
-    }, [visibleConflicts, currentConflictId, onSelect]);
+    }, [visibleConflicts, currentConflictId, onSelect, onMove]);
     const handleNextConflict = useCallback(() => {
+        if (onMove) {
+            onMove(1);
+            return;
+        }
         const list = visibleConflicts;
         const idx = list.findIndex(c => c.id === currentConflictId);
         if (idx >= 0 && idx < list.length - 1) {
@@ -78,7 +86,7 @@ export function ConsistencyConflictDialog({ conflict: currentConflict, items: vi
             onSelect(next.id);
             setCandidateIndex(0);
         }
-    }, [visibleConflicts, currentConflictId, onSelect]);
+    }, [visibleConflicts, currentConflictId, onSelect, onMove]);
     return _jsxs(_Fragment, { children: [_jsxs(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4", id: "dc-compare-mask", className: "dc-dialog dc-conflict-dialog", header: false, onClose: onClose, children: [_jsxs("header", { className: "dc-dialog-head", children: [_jsx("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }), _jsxs("div", { className: "dc-dialog-head-actions", children: [_jsx(Button, { type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }), _jsx(Button, { type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }), _jsx(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: onClose })] })] }), _jsxs(ConsistencyGroupReviewForm, { jobId: jobId, anchorId: currentConflictId, onClose: onClose, onReviewed: onReviewed, children: [_jsxs("div", { className: "dc-compare", children: [_jsxs("div", { className: "dc-compare-cell", children: [_jsx("div", { className: "dc-compare-photo", role: "button", tabIndex: 0, "data-dc": "zoom-anchor", "aria-label": "\u67E5\u770B\u4E3B\u56FE\u5927\u56FE", title: currentConflict.filename, onClick: () => setZoomItem({
                                                     id: currentConflict.id + '_anchor',
                                                     title: currentConflict.filename,

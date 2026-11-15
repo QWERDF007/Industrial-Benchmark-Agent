@@ -9,11 +9,16 @@ def analysis_start(args, db_path):
 
 
 def analysis_list(args, db_path):
-    return {'jobs': AnalysisJobViews(Database(db_path)).list(args['dataset_id'], args['analysis_kind'])}
+    import json
+    dataset_ids = args.get('dataset_ids')
+    if isinstance(dataset_ids, str):
+        dataset_ids = json.loads(dataset_ids)
+    return {'jobs': AnalysisJobViews(Database(db_path)).list(dataset_ids or args['dataset_id'], args['analysis_kind'],
+        summary=args.get('summary') in (True, 'true'))}
 
 
 def analysis_status(args, db_path):
-    return AnalysisJobViews(Database(db_path)).view(args['run_id'])
+    return AnalysisJobViews(Database(db_path)).view(args['run_id'], summary=args.get('summary') in (True, 'true'))
 
 
 def analysis_node(args, db_path):

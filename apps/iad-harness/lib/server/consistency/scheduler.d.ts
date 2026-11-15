@@ -18,7 +18,7 @@ export declare class ConsistencyCheckScheduler implements ModelRouting {
     private readonly review;
     private readonly onError;
     private readonly tasks;
-    constructor(bridge: PythonBridge, host: JobSessionHost, providers: NativeProviders, review: (task: AnchorReviewTask) => Promise<void>, onError: (error: unknown) => void);
+    constructor(bridge: PythonBridge, host: JobSessionHost, providers: NativeProviders, review: (task: AnchorReviewTask) => Promise<boolean>, onError: (error: unknown) => void);
     execute(operation: string, args: Record<string, any>, signal: AbortSignal | undefined, dispatch: BridgeDispatch): Promise<any>;
     start(request: Record<string, unknown>): Promise<JobView>;
     private launch;

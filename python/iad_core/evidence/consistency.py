@@ -10,7 +10,7 @@ from iad_core.consistency.annotations import AnnotationMatcher, AnnotationSet
 from iad_core.consistency.annotation_inventory import AnnotationObservation
 from iad_core.consistency.comparison_domain import ComparisonDomain
 from iad_core.consistency.errors import ConsistencyError
-from iad_core.consistency.models import ConsistencyScopesSnapshot
+from iad_core.consistency.models import ConsistencyScopesSnapshot, PixelComparison
 from iad_core.consistency.evidence_models import (ConsistencyCompare, ConsistencyResult, EvidenceBundle,
     EvidenceSources, EvidenceSourceStates, FrozenEvidence)
 from iad_core.consistency.repository import ConsistencyRepository
@@ -62,14 +62,21 @@ class ConsistencyEvidence:
                 if sample.is_excluded:raise ConsistencyError('INVALID_SCOPE','Excluded samples cannot be compared')
                 captured.append((sample,AnnotationSet.capture(self.db,identity,connection),
                     ReviewRepository(self.db).get_decision(identity,connection=connection),PixelIndex(self.db).get(identity,connection=connection)))
+        from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
+        annotation_only = request.purpose == 'annotations' and AnnotationEvaluation.empty_annotations(
+            [annotations for _, annotations, _, _ in captured])
         frozen=[]
         for source in captured:
             if checkpoint:checkpoint()
-            frozen.append(self.sources.freeze(*source))
+            frozen.append(self.sources.freeze(*source, pixels_required=not annotation_only))
         (left,a),(right,b)=frozen
         bound=[self.sources.annotations(source) for source in (left,right)]
-        raw=PairVerifier(request.near).verify_pixels(a,b)
-        comparison=VerificationResult.model_validate({**raw.model_dump(),'local':ComparisonDomain.pixel_statistics(bound,a,b)})
+        if annotation_only:
+            comparison=VerificationResult(verified=False,relation='UNCHECKED',
+                pixel=PixelComparison(status='NOT_REQUESTED',reason='两图均无标注，直接比较空标注，无需核对像素。'))
+        else:
+            raw=PairVerifier(request.near).verify_pixels(a,b)
+            comparison=VerificationResult.model_validate({**raw.model_dump(),'local':ComparisonDomain.pixel_statistics(bound,a,b)})
         annotation=AnnotationMatcher(request.matching).compare(*bound,relation=comparison.relation)
         sources=EvidenceSources(left=left,right=right)
         facts={'sources':sources.model_dump(mode='json'),'comparison':comparison.model_dump(mode='json'),

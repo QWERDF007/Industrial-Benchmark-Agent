@@ -9,22 +9,20 @@ import {promptDefaults} from '../../shared/prompt-defaults.generated.js';
 import {useResource} from '../useResource.js';
 import {Button} from './Button.js';
 import {AgentPromptEditors,PromptTextEditor} from './AgentPromptEditors.js';
-import {Pagination} from './Pagination.js';
 import {Select} from './Select.js';
 import {KnowledgeEntryDialog} from './KnowledgeEntryDialog.js';
-import {ConsistencyStatisticsDialog} from './ConsistencyStatisticsDialog.js';
-import {IconButton} from './IconButton.js';
+import {ConsistencyStatisticsDrawer} from './ConsistencyStatisticsDrawer.js';
 import {ConsistencyView} from '../consistency-view.js';
 import {queryClient} from '../query-client.js';
+import {JobList} from './JobList.js';
+import {useJobList} from '../useJobList.js';
+import {KnowledgeEntryList} from './KnowledgeEntryList.js';
+import {JobStatusDrawer} from './JobStatusDrawer.js';
+import {AnalysisPromptDrawer} from './AnalysisPromptDrawer.js';
+import {ConsistencyPromptDrawer} from './ConsistencyPromptDrawer.js';
 
-function sourceDuration(job: {started_at:string|null;finished_at:string|null}): string {
-  if (!job.started_at || !job.finished_at) return '—';
-  const seconds=Math.max(0,Math.round((Date.parse(job.finished_at)-Date.parse(job.started_at))/1000));
-  return `${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(seconds%60).padStart(2,'0')}`;
-}
-
-export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBusyChange}: {
-  datasets:Dataset[];jobs:JobSnapshot[];revision:number;
+export function AuditSetup({datasets, availableDatasets, jobs, revision, onStarted, onCancel, onBusyChange}: {
+  datasets:Dataset[];availableDatasets:Dataset[];jobs:JobSnapshot[];revision:number;
   onStarted(jobs:JobSnapshot[]):void;onCancel():void;onBusyChange(busy:boolean):void;
 }) {
   const model=useModuleSettings('audit');
@@ -37,7 +35,7 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
   const statistics=useQuery({queryKey:['iad','consistency-statistics',statisticsId],enabled:!!statisticsId,
     queryFn:({signal})=>ConsistencyView.statistics(statisticsId,signal)},queryClient);
   const [benchmarkId,setBenchmarkId]=useState('');
-  const [knowledgePage,setKnowledgePage]=useState(1),[entryPage,setEntryPage]=useState(1),[consistencyPage,setConsistencyPage]=useState(1);
+  const [statusJob,setStatusJob]=useState<JobSnapshot|null>(null),[promptJob,setPromptJob]=useState<JobSnapshot|null>(null);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const [systemPrompt,setSystemPrompt]=useState<string>(promptDefaults.system.audit);
   const [userPrompt,setUserPrompt]=useState<string>(promptDefaults.audit);
@@ -46,6 +44,9 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
   const [reportPrompt,setReportPrompt]=useState<string>(promptDefaults.auditReport);
   const submission=useRef<{identity:string;id:string}>();
   const knowledgeJobs=catalog.data?.knowledge_jobs || [], consistencyJobs=catalog.data?.consistency_jobs || [];
+  const sourceJobs=catalog.data?.jobs||[];
+  const knowledgeList=useJobList(sourceJobs.filter(job=>knowledgeJobs.some(source=>source.job_id===job.run_id)),scope);
+  const consistencyList=useJobList(sourceJobs.filter(job=>consistencyJobs.some(source=>source.job_id===job.run_id)),scope);
   const chosen=knowledgeJobs.find(item=>item.version_id===versionId);
   const selectedEntries=chosen?.entries.filter(item=>entryIds.has(item.check_id)) || [];
   const selectedConsistency=consistencyJobs.find(item=>item.job_id===consistencyId);
@@ -53,9 +54,8 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
     !selectedConsistency?'请选择一个已完成的一致性作业':!model.settings?.model?model.error || '请先配置模型审计分析模型':
     jobs.some(job=>['PENDING','RUNNING'].includes(job.status))?'当前范围仍有审计作业执行中':
     !masterSystem.trim()||!masterUser.trim()?'请填写主 Agent 提示词':!systemPrompt.trim()||!userPrompt.trim()?'请填写子 Agent 提示词':!reportPrompt.trim()?'请填写报告用户提示词':'');
-  function selectKnowledge(job:AuditKnowledgeSource) {
-    if (job.version_id===versionId) return;
-    setVersionId(job.version_id);setEntryIds(new Set());setEntryPage(1);setError('');
+  function selectKnowledge(job:AuditKnowledgeSource|null) {
+    setVersionId(job?.version_id||'');setEntryIds(new Set());setDetail(null);setError('');
   }
   async function start() {
     if (reason || !selectedConsistency || busy) return;
@@ -71,45 +71,33 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
     finally{setBusy(false);onBusyChange(false);}
   }
   return <div className="audit-create-page" id="audit-create-view" aria-busy={busy}>
-    <section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>知识挖掘</h2></header>
-      <div id="audit-create-knowledge-jobs">{knowledgeJobs.length?<>
-        <div className="audit-source-table"><table className="audit-table"><colgroup><col style={{width:64}}/><col style={{width:'35%'}}/><col style={{width:'12%'}}/><col style={{width:'11%'}}/><col style={{width:'21%'}}/><col/></colgroup><thead><tr><th>选择</th><th>作业 ID</th><th>状态</th><th>判据数</th><th>提交时间</th><th>耗时</th></tr></thead>
-          <tbody>{knowledgeJobs.slice((knowledgePage-1)*6,knowledgePage*6).map(job=><tr key={job.version_id} data-version-id={job.version_id} aria-selected={job.version_id===versionId}
-            onClick={()=>!busy&&selectKnowledge(job)}><td><input type="radio" name="audit-knowledge-source" aria-label={`选择知识作业 ${job.job_id}`} checked={job.version_id===versionId} disabled={busy}
-              onChange={()=>selectKnowledge(job)} /></td><td title={job.job_id}>{job.job_id}</td><td><span className="audit-status done">{job.publication_status==='partial'?'部分成果':'已完成'}</span></td>
-            <td>{job.entries.length}</td><td>{new Date(job.submitted_at).toLocaleString('zh-CN',{hour12:false})}</td><td>{sourceDuration(job)}</td></tr>)}</tbody></table></div>
-        <Pagination total={knowledgeJobs.length} page={knowledgePage} size={6} label="知识挖掘来源" hideSinglePage onPage={setKnowledgePage} />
-      </>:<p className="iad-result-empty" role="status">{catalog.loading?'正在读取来源作业…':'当前没有已发布的挖掘知识'}</p>}</div>
-      {chosen&&<div id="audit-create-entries" className="audit-entry-area"><header className="audit-entry-header"><h3>知识条目</h3>
-        <label className="audit-pick-all"><input id="audit-entries-all" type="checkbox" disabled={busy}
+    <JobList id="audit-create-knowledge-jobs" title="知识挖掘" list={knowledgeList} datasets={availableDatasets} loading={catalog.loading}
+      actions={{status:setStatusJob,prompt:setPromptJob}}
+      selection={{name:'audit-knowledge-source',label:'选择知识作业',selectedIds:new Set(chosen?[chosen.job_id]:[]),disabled:busy,onChange:ids=>{
+        const added=[...ids].find(id=>id!==chosen?.job_id);
+        const job=sourceJobs.find(job=>job.run_id===added);
+        selectKnowledge(added?(knowledgeJobs.find(source=>source.job_id===added&&source.version_id===job?.knowledge_version_id)
+          ||knowledgeJobs.find(source=>source.job_id===added)!) :null);
+      }}}/>
+    {chosen&&<section id="audit-create-entries" className="audit-panel audit-source-panel">
+      <KnowledgeEntryList key={chosen.version_id} source={{kind:'published',versionId:chosen.version_id}} revision={revision}
+        actions={{view:entry=>setDetail({source:{kind:'published',versionId:chosen.version_id},checkId:entry.check_id})}}
+        selection={{name:'audit-knowledge-entry',label:'选择知识条目',selectedIds:entryIds,onChange:setEntryIds,disabled:busy}}
+        headerActions={<label className="audit-pick-all"><input id="audit-entries-all" type="checkbox" disabled={busy}
           checked={!!selectedEntries.length&&selectedEntries.length===chosen.entries.length}
-          onChange={event=>setEntryIds(event.target.checked?new Set(chosen.entries.map(item=>item.check_id)):new Set())} />全选</label></header>
-        <div className="audit-source-table"><table className="audit-table"><colgroup><col style={{width:64}}/><col style={{width:'27%'}}/><col/><col style={{width:'14%'}}/></colgroup><thead><tr><th>选择</th><th>知识条目</th><th>描述</th><th>支持/反对</th></tr></thead><tbody>
-          {chosen.entries.slice((entryPage-1)*8,entryPage*8).map(entry=><tr key={entry.check_id} className="audit-entry-row" aria-selected={entryIds.has(entry.check_id)}
-            onClick={()=>!busy&&setDetail({source:{kind:'published',versionId:chosen.version_id},checkId:entry.check_id})}>
-            <td><input type="checkbox" aria-label={`选择知识条目 ${entry.title}`} checked={entryIds.has(entry.check_id)} disabled={busy}
-              onClick={event=>event.stopPropagation()}
-              onChange={event=>setEntryIds(previous=>{const next=new Set(previous);event.target.checked?next.add(entry.check_id):next.delete(entry.check_id);return next;})} /></td>
-            <td><button type="button" className="audit-entry-title" disabled={busy} aria-label={`查看知识条目 ${entry.title}`}>{entry.title}</button></td><td className="audit-description">{entry.criterion}</td><td>{entry.support_count}/{entry.counter_count}</td>
-          </tr>)}</tbody></table></div>
-        <Pagination total={chosen.entries.length} page={entryPage} size={8} label="知识条目" hideSinglePage onPage={setEntryPage} />
-      </div>}
-    </section>
-    <section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>数据一致性</h2></header>
-      <div id="audit-create-consistency-jobs">{consistencyJobs.length?<>
-        <div className="audit-source-table"><table className="audit-table"><colgroup><col style={{width:64}}/><col style={{width:'18%'}}/><col style={{width:'10%'}}/><col style={{width:'21%'}}/><col style={{width:'10%'}}/><col style={{width:'19%'}}/><col/><col style={{width:64}}/></colgroup><thead><tr><th>选择</th><th>作业</th><th>状态</th><th>检查范围</th><th>冲突总数</th><th>提交时间</th><th>耗时</th><th>操作</th></tr></thead><tbody>
-          {consistencyJobs.slice((consistencyPage-1)*7,consistencyPage*7).map(job=><tr key={job.job_id} aria-selected={consistencyId===job.job_id}>
-            <td><input type="radio" name="audit-consistency-source" aria-label={`选择一致性检查 ${new Date(job.submitted_at).toLocaleString('zh-CN',{hour12:false})}`} checked={consistencyId===job.job_id} disabled={busy}
-              onChange={()=>setConsistencyId(job.job_id)} /></td>
-            <td>一致性检查</td><td><span className="audit-status done">已完成</span></td>
-            <td title={job.dataset_ids.map(id=>datasets.find(dataset=>dataset.dataset_id===id)?.name || id).join('、')}>
-              {job.dataset_ids.map(id=>datasets.find(dataset=>dataset.dataset_id===id)?.name || id).join('、')}</td>
-            <td>{job.conflict_count}</td><td>{new Date(job.submitted_at).toLocaleString('zh-CN',{hour12:false})}</td><td>{sourceDuration(job)}</td>
-            <td><IconButton icon="stats" label="查看一致性统计" title="统计" onClick={()=>setStatisticsId(job.job_id)}/></td>
-          </tr>)}</tbody></table></div>
-        <Pagination total={consistencyJobs.length} page={consistencyPage} size={7} label="一致性来源" hideSinglePage onPage={setConsistencyPage} />
-      </>:<p className="iad-result-empty" role="status">{catalog.loading?'正在读取来源作业…':'当前没有已完成的数据一致性检查作业'}</p>}</div>
-    </section>
+          ref={node=>{if(node)node.indeterminate=selectedEntries.length>0&&selectedEntries.length<chosen.entries.length;}}
+          onChange={event=>setEntryIds(event.target.checked?new Set(chosen.entries.map(entry=>entry.check_id)):new Set())}/>全选</label>}>
+        {knowledgeJobs.filter(source=>source.job_id===chosen.job_id).length>1&&<label className="iad-knowledge-version">结果版本
+          <Select aria-label="知识结果版本" value={chosen.version_id} disabled={busy} onChange={event=>selectKnowledge(knowledgeJobs.find(source=>source.version_id===event.target.value)!)}>
+            {knowledgeJobs.filter(source=>source.job_id===chosen.job_id).map(source=><option key={source.version_id} value={source.version_id}>知识版本 {source.version_id.slice(-8)}</option>)}
+          </Select>
+        </label>}
+      </KnowledgeEntryList>
+    </section>}
+    <JobList id="audit-create-consistency-jobs" title="数据一致性" list={consistencyList} datasets={availableDatasets} loading={catalog.loading}
+      actions={{status:setStatusJob,prompt:setPromptJob,additional:[{id:'statistics',label:'统计',icon:'stats',onClick:job=>setStatisticsId(job.run_id)}]}}
+      selection={{name:'audit-consistency-source',label:'选择一致性作业',selectedIds:new Set(selectedConsistency?[selectedConsistency.job_id]:[]),disabled:busy,
+        onChange:ids=>setConsistencyId([...ids].find(id=>id!==consistencyId)||'')}}/>
     {!!catalog.data?.benchmark_builds.length&&<section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>已有 Benchmark 成果</h2></header>
       <Select aria-label="已有 Benchmark 成果" value={benchmarkId} disabled={busy} onChange={event=>setBenchmarkId(event.target.value)}>
         <option value="">不关联</option>{catalog.data.benchmark_builds.map(build=><option key={build.build_id} value={build.build_id}>
@@ -133,8 +121,11 @@ export function AuditSetup({datasets, jobs, revision, onStarted, onCancel, onBus
         <Button id="audit-create-submit" variant="primary" disabled={busy||!!reason} title={reason} onClick={()=>void start()}>{busy?'启动中…':'开始审计'}</Button></div></div>
       {error&&<p className="audit-source-error" role="alert">{error}</p>}{catalog.error&&<p className="audit-source-error" role="alert">{catalog.error}</p>}
     </section>
+    {statusJob&&<JobStatusDrawer job={statusJob} onClose={()=>setStatusJob(null)}/>}
+    {promptJob&&(promptJob.analysis_kind==='knowledge'?<AnalysisPromptDrawer title="知识挖掘提示词" jobId={promptJob.run_id} onClose={()=>setPromptJob(null)}/>
+      :<ConsistencyPromptDrawer job={promptJob} onClose={()=>setPromptJob(null)}/>)}
     {detail&&<KnowledgeEntryDialog {...detail} onClose={()=>setDetail(null)}/>}
-    {statisticsId&&<ConsistencyStatisticsDialog statistics={statistics.data} loading={statistics.isPending}
+    {statisticsId&&<ConsistencyStatisticsDrawer statistics={statistics.data} loading={statistics.isPending}
       error={statistics.error?.message} onClose={()=>setStatisticsId('')}/>}
   </div>;
 }

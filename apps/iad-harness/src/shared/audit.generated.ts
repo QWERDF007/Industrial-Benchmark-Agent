@@ -93,6 +93,7 @@ export const auditAssessmentLabels = {
 export const auditConsistencyLabels = {
   "NO_CANDIDATES": "无候选",
   "NO_ELIGIBLE_CANDIDATES": "无有效候选",
+  "PROGRAM_REVIEWED:EQUIVALENT": "无标注一致",
   "MODEL_REVIEWED:EQUIVALENT": "标注一致",
   "MODEL_REVIEWED:MATERIAL": "标注冲突",
   "MODEL_REVIEWED:UNCERTAIN": "待核实"
@@ -100,6 +101,7 @@ export const auditConsistencyLabels = {
 export const auditConsistencyDescriptions = {
   "NO_CANDIDATES": "检索没有找到可作对照的其他图像。",
   "NO_ELIGIBLE_CANDIDATES": "找到了候选图，但内容不同，或看不清是否拍的是相同内容，因此没有进入标注比较。",
+  "PROGRAM_REVIEWED:EQUIVALENT": "主图与所比较的候选均无标注，由程序直接判定标注一致。",
   "MODEL_REVIEWED:EQUIVALENT": "已有内容相同的对照图，比较后，双方标注的类别、数量和覆盖关系相符。",
   "MODEL_REVIEWED:MATERIAL": "已有内容相同的对照图，比较后发现至少一处标注不同，具体差别按下面的类型归类。",
   "MODEL_REVIEWED:UNCERTAIN": "已有内容相同的对照图，但部分标注关系还需要复看，例如目标的边缘看不清。"

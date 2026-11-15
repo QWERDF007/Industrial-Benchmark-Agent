@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor
 import threading
-import os
 import pytest
 
 from iad_core.consistency.errors import ConsistencyError
@@ -34,6 +33,7 @@ def content_cache_env(tmp_path):
     config=ImageEncoderConfig(profile=profile)
     encoder=MockFeatureExtractor(profile=profile)
     ids=[dataset.dataset.id+':'+name+'.png' for name in ('a','copy','b')]
+    PixelIndex(db).prepare(ids)
     return db,registry,dataset,config,encoder,ids
 
 
@@ -60,6 +60,7 @@ def test_decoded_memory_budget_limits_real_image_batches_before_the_encoder(cont
         Image.new('RGB', (512, 512), color).save(Path(dataset.root) / (name + '.png'))
     registry.rescan(dataset.dataset.id)
     settings = ImageEncoders(db).read()
+    PixelIndex(db).prepare(ids)
     assert settings.resources.decode_workers == 2
     limited = ImageEncoderConfig(profile=config.profile, batch_size=8, decode_memory_mb=3)
 
@@ -122,6 +123,7 @@ def test_deleting_one_dataset_keeps_the_shared_vector_until_its_last_member(cont
     Image.open(Path(dataset.root)/'a.png').save(images/'other.png',compress_level=0)
     other=registry.import_labelme(DatasetImport(format='labelme',name='other',image_dir=str(images),annotation_dir=dataset.annotations.root))
     other_id=other.dataset.id+':other.png'
+    PixelIndex(db).prepare([other_id])
     assert cache.prepare([other_id],config,extractor=encoder).encoded_content_count==0
     registry.delete(dataset.dataset.id)
     retained=FeatureRepository(db).get_for_sample(other_id,config.profile.profile_id)
@@ -191,19 +193,12 @@ def test_cancelled_cache_waiter_exits_without_marking_content_failed(content_cac
     assert FeatureRepository(db).get_for_sample(ids[0],config.profile.profile_id) is None
 
 
-@pytest.mark.parametrize('mutation',['missing','hidden_change'])
-def test_unavailable_copy_does_not_destroy_another_members_shared_vector(content_cache_env,mutation):
+def test_unavailable_copy_does_not_destroy_another_members_shared_vector(content_cache_env):
     db,_,dataset,config,encoder,ids=content_cache_env
     cache=ContentFeatureCache(db)
     cache.prepare(ids,config,extractor=encoder)
     source=Path(dataset.root)/'a.png'
-    if mutation=='missing':
-        source.unlink()
-    else:
-        stat=source.stat()
-        payload=bytearray(source.read_bytes());payload[-1]^=1
-        source.write_bytes(payload)
-        os.utime(source,ns=(stat.st_atime_ns,stat.st_mtime_ns))
+    source.unlink()
     unavailable=cache.prepare([ids[0]],config,extractor=encoder,force=True)
     assert unavailable.failed_count==1 and unavailable.completed_samples==0
     assert unavailable.encoded_content_count==0
@@ -238,20 +233,6 @@ def test_unindexed_samples_require_a_published_content_scan(content_cache_env):
         ContentFeatureCache(db).prepare(['unindexed'],config,extractor=encoder)
     assert failed.value.code=='INDEX_NOT_READY'
     assert FeatureRepository(db).get_for_sample('unindexed',config.profile.profile_id) is None
-
-
-def test_rescan_during_encoding_does_not_claim_coverage_for_changed_content(content_cache_env):
-    db,registry,dataset,config,_,ids=content_cache_env
-    class ConcurrentChangeEncoder(MockFeatureExtractor):
-        def encode_batch(self,images):
-            Image.new('RGB',(32,32),'green').save(Path(dataset.root)/'a.png')
-            registry.rescan(dataset.dataset.id)
-            return super().encode_batch(images)
-    with pytest.raises(ConsistencyError) as changed:
-        ContentFeatureCache(db).prepare([ids[0]],config,extractor=ConcurrentChangeEncoder(profile=config.profile))
-    assert changed.value.code=='SOURCE_UNAVAILABLE'
-    assert FeatureRepository(db).get_for_sample(ids[0],config.profile.profile_id) is None
-    assert FeatureRepository(db).get_for_sample(ids[1],config.profile.profile_id)['attempt_count']==1
 
 
 def test_sample_coverage_tracks_the_selected_profile_and_baseline_reads_shared_cache(content_cache_env):

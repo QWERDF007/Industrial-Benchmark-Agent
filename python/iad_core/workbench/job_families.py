@@ -3,7 +3,7 @@ from sqlite3 import Connection
 from typing import Sequence
 
 from iad_core.storage.database import Database
-from iad_core.workbench.job_models import JobKind, JobSnapshot
+from iad_core.workbench.job_models import JobKind, JobSnapshot, JobView
 from iad_core.workbench.job_snapshots import JobSnapshots
 
 
@@ -13,22 +13,25 @@ class JobFamilies:
     def __init__(self, db: Database):
         self.db, self.snapshots = db, JobSnapshots(db)
 
-    def snapshot(self, run_id: str, job_types: Sequence[JobKind], *, connection: Connection | None = None) -> JobSnapshot:
+    @staticmethod
+    def _values(snapshot: JobView) -> dict:
+        return snapshot.model_dump(include=set(JobView.model_fields), exclude_computed_fields=True) | (snapshot.model_extra or {})
+
+    def snapshot(self, run_id: str, job_types: Sequence[JobKind], *, connection: Connection | None = None,
+                 include_calls: bool = True, include_request: bool = True) -> JobSnapshot | JobView:
         with nullcontext(connection) if connection is not None else self.db.connection() as conn:
             if connection is None:
                 conn.execute('BEGIN')
-            snapshot = self.snapshots.snapshot(run_id, job_types, connection=conn)
-            if 'request' not in snapshot.model_extra:
-                return snapshot
-            current = snapshot.model_dump(exclude_computed_fields=True)
-            root = current if current['root_run_id']==run_id else self.snapshots.snapshot(
-                current['root_run_id'], job_types, connection=conn).model_dump(exclude_computed_fields=True)
+            snapshot = self.snapshots.snapshot(run_id, job_types, connection=conn, include_calls=include_calls, include_request=include_request)
+            current = self._values(snapshot)
+            root = current if current['root_run_id']==run_id else self._values(self.snapshots.snapshot(
+                current['root_run_id'], job_types, connection=conn, include_calls=include_calls, include_request=include_request))
             ids = [row[0] for row in conn.execute('''SELECT job_id FROM job_runs
                 WHERE job_type=? AND json_extract(payload_json,'$.root_run_id')=? ORDER BY id''',
                 (current['job_type'], root['run_id']))]
             known = {current['run_id']:current, root['run_id']:root}
-            attempts = [known[identity] if identity in known else self.snapshots.snapshot(
-                identity, job_types, connection=conn).model_dump(exclude_computed_fields=True) for identity in ids]
+            attempts = [known[identity] if identity in known else self._values(self.snapshots.snapshot(
+                identity, job_types, connection=conn, include_calls=include_calls, include_request=include_request)) for identity in ids]
         latest = attempts[-1]
         completed = {sid for attempt in attempts for sid in attempt['completed_sample_ids']}
         failed = set()
@@ -46,14 +49,17 @@ class JobFamilies:
         if status not in ('PENDING', 'RUNNING', 'CANCELLED', 'INTERRUPTED'):
             from iad_core.workbench.jobs import JobRunner
             status = JobRunner.terminal_status({**latest, 'completed':len(completed), 'failed':len(failed), 'total_samples':total})
-        return JobSnapshot.model_validate(dict(latest, request=root['request'], sample_ids=root['sample_ids'], total_samples=total,
+        values = dict(latest, sample_ids=root['sample_ids'], total_samples=total,
             completed=len(completed), completed_sample_ids=sorted(completed), failed=len(failed),
             failed_sample_ids=sorted(failed), errors=list(errors.values()), unprocessed=total-len(completed)-len(failed),
             progress=len(completed)/total, dataset_results=list(results.values()),
             submitted_at=root['submitted_at'], started_at=root['started_at'], status=status,
             phase_timings=[timing for attempt in attempts for timing in attempt['phase_timings']],
             batch_runs=list(dict.fromkeys(rid for attempt in attempts for rid in attempt['batch_runs'])),
-            model_calls=[call for attempt in attempts for call in attempt['model_calls']]))
+            model_calls=[call for attempt in attempts for call in attempt['model_calls']])
+        if include_request:
+            values['request'] = root['request']
+        return (JobSnapshot if include_request else JobView).model_validate(values)
 
     def list(self, dataset_id: str, job_types: Sequence[JobKind]) -> list[JobSnapshot]:
         roots = dict.fromkeys(self.snapshots.identities(dataset_id, job_types).values())

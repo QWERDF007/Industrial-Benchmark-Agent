@@ -152,7 +152,7 @@ class AuditSampleRun(AnalysisModel):
     @property
     def source_status(self) -> str:
         reason = self.consistency.reason
-        return reason+':'+(self.consistency.verdict or 'UNCERTAIN') if reason=='MODEL_REVIEWED' else reason
+        return reason+':'+(self.consistency.verdict or 'UNCERTAIN') if reason in ('MODEL_REVIEWED','PROGRAM_REVIEWED') else reason
 
 
 class AuditResultVersion(AnalysisModel):

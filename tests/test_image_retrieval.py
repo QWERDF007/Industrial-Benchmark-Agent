@@ -20,8 +20,8 @@ from iad_core.storage.models import FeatureRecord
 
 
 @pytest.fixture
-def retrieval_vectors(dataset, tmp_path):
-    db, registry, config = dataset
+def retrieval_vectors(indexed_dataset, tmp_path):
+    db, registry, config = indexed_dataset
     weights = tmp_path / 'index-math.pt'
     weights.write_bytes(b'Known retrieval-ranking vectors; not a model-effectiveness test')
     profile = EmbeddingProfile.create('sscd_disc_mixup', str(weights))
@@ -76,6 +76,7 @@ def test_similarity_retrieval_caps_qualifying_groups_at_top_k(retrieval_vectors,
     for index in range(72):
         Image.new('RGB',(16,16),(index,index*3,40)).save(root/f'{index:03}.png')
     corpus=registry.import_labelme(DatasetImport(format='labelme',name='阈值检索',image_dir=str(root),annotation_dir=str(root)))
+    PixelIndex(db).prepare(corpus.dataset.id + f':{index:03}.png' for index in range(72))
     for index in range(72):
         vector=np.zeros(profile.dim,dtype=np.float32)
         vector[:2]=(.96,.28) if index<70 else (.8,.6)
@@ -138,6 +139,7 @@ def test_exact_retrieval_checks_the_eightieth_member_before_pagination(tmp_path)
                 'shapes': [{'label': 'dent', 'shape_type': 'rectangle', 'points': [[2, 2], [10, 10]]}]}))
         configs.append(registry.import_labelme(DatasetImport(format='labelme', name=name,
             image_dir=str(root), annotation_dir=str(root), annotation_policy=policy)))
+        PixelIndex(db).prepare(configs[-1].dataset.id + f':{index:03}.png' for index in range(count))
     service = ConsistencyService(db)
     request = ImageRetrieve(query={'kind': 'sample', 'sample_id': configs[0].dataset.id + ':000.png'},
         corpus_scope={'kind': 'datasets', 'dataset_ids': [configs[1].dataset.id]}, mode='exact', top_k=1)
@@ -163,10 +165,10 @@ def test_exact_retrieval_checks_the_eightieth_member_before_pagination(tmp_path)
     assert result.visual.status == 'NOT_REQUESTED'
 
 
-def test_combined_retrieval_preserves_exact_matches_when_no_profile_is_configured(dataset):
+def test_combined_retrieval_preserves_exact_matches_when_no_profile_is_configured(indexed_dataset):
     from iad_core.consistency.service import ConsistencyService
 
-    db, _, config = dataset
+    db, _, config = indexed_dataset
     result = ConsistencyService(db).retrieve(ImageRetrieve(
         query={'kind': 'sample', 'sample_id': config.dataset.id + ':dent.png'}, mode='combined'))
     assert {member.sample_id for group in result.exact.groups for member in group.members} == {config.dataset.id + ':scratch.png'}
@@ -220,13 +222,13 @@ def test_retrieval_retains_original_region_statistics_and_near_processing(retrie
     assert reference.annotation is None
 
 
-def test_managed_temporary_image_is_owner_scoped_releasable_and_never_imported(dataset):
+def test_managed_temporary_image_is_owner_scoped_releasable_and_never_imported(indexed_dataset):
     from iad_core.consistency.errors import ConsistencyError
     from iad_core.consistency.service import ConsistencyService
     from iad_core.workbench.query import SampleQuery, WorkbenchQuery
     from iad_core.workbench.runtime import close_workbenches, workbench
 
-    db, _, config = dataset
+    db, _, config = indexed_dataset
     source = Path(config.root) / 'dent.png'
     runtime = workbench(db.db_path)
     try:
@@ -338,11 +340,11 @@ def test_group_cursors_are_independent_and_stale_or_invalid_cursors_are_rejected
     assert stale.value.code == 'SOURCE_UNAVAILABLE'
 
 
-def test_temporary_images_enforce_capacity_expiry_and_close(dataset):
+def test_temporary_images_enforce_capacity_expiry_and_close(indexed_dataset):
     from iad_core.consistency.errors import ConsistencyError
     from iad_core.consistency.temporary_images import TemporaryImageLimits, TemporaryImages
 
-    _, _, config = dataset
+    _, _, config = indexed_dataset
     payload = (Path(config.root) / 'dent.png').read_bytes()
     images = TemporaryImages(TemporaryImageLimits(max_images=1, ttl_seconds=.05))
     image = images.accept(payload, owner_id='owner')
@@ -371,8 +373,8 @@ def test_visual_search_validates_the_requested_budget_before_applying_result_fil
             filter_quality_status='PASS', db_path=db.db_path)
 
 
-def test_exact_service_in_a_fresh_process_does_not_load_models_or_faiss(dataset):
-    db, _, config = dataset
+def test_exact_service_in_a_fresh_process_does_not_load_models_or_faiss(indexed_dataset):
+    db, _, config = indexed_dataset
     script = '''
 import sys
 from iad_core.storage.database import Database
@@ -389,23 +391,6 @@ print('exact retrieval without model or FAISS imports')
         capture_output=True, text=True, timeout=20)
     assert completed.returncode == 0, completed.stderr
     assert 'without model or FAISS imports' in completed.stdout
-
-
-def test_preserving_file_size_and_mtime_cannot_reuse_a_stale_query_vector(retrieval_vectors):
-    from iad_core.consistency.errors import ConsistencyError
-    from iad_core.consistency.service import ConsistencyService
-
-    db, _, config, profile = retrieval_vectors
-    path = Path(config.root) / 'dent.png'
-    stat = path.stat()
-    payload = bytearray(path.read_bytes())
-    payload[-1] ^= 1
-    path.write_bytes(payload)
-    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
-    with pytest.raises(ConsistencyError) as changed:
-        ConsistencyService(db).retrieve(ImageRetrieve(query={'kind': 'sample',
-            'sample_id': config.dataset.id + ':dent.png'}, mode='combined', profile_id=profile.profile_id))
-    assert changed.value.code == 'SOURCE_UNAVAILABLE'
 
 
 def test_visual_tool_preserves_partial_verification_and_unchecked_relationships(retrieval_vectors):
@@ -435,18 +420,19 @@ def test_unsupported_raw_pixels_remain_unknown_in_exact_mode(retrieval_vectors):
     assert result.exact.status == 'UNSUPPORTED' and result.exact.error_code == 'UNSUPPORTED_IMAGE'
     assert result.coverage.verification.completed == result.member_count == 0
     assert result.retrieval_completeness == 'PARTIAL'
-def test_exact_retrieval_reports_a_decode_budget_limit_without_claiming_equal_pixels(dataset, tmp_path):
+def test_exact_retrieval_reports_a_decode_budget_limit_without_claiming_equal_pixels(indexed_dataset, tmp_path):
     from tests.feature_fixtures import configure_test_encoder
     from iad_core.consistency.models import ImageRetrieve
     from iad_core.consistency.service import ConsistencyService
     from PIL import Image
     from pathlib import Path
 
-    db, registry, config = dataset
+    db, registry, config = indexed_dataset
     for name in ('dent', 'scratch'):
         Image.new('RGB', (512, 512), 'blue').save(Path(config.root) / (name + '.png'))
     registry.rescan(config.dataset.id)
     encoder = configure_test_encoder(db, tmp_path).model_copy(update={'decode_memory_mb': 1})
+    PixelIndex(db).prepare([config.dataset.id + ':' + name + '.png' for name in ('dent', 'scratch')])
     page = ConsistencyService(db).retrieve_full(ImageRetrieve(query={'kind': 'sample', 'sample_id': config.dataset.id + ':dent.png'},
         corpus_scope={'kind': 'datasets', 'dataset_ids': [config.dataset.id]}, mode='exact'), encoder=encoder)
     assert page.exact.status == 'PARTIAL'

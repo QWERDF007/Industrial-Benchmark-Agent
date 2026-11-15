@@ -4,10 +4,11 @@ from iad_core.consistency.candidate_records import CandidateRecords
 
 class CandidateIdentityRecords:
     @staticmethod
-    def read(connection, run_id, anchor_id, candidates):
+    def read(connection, run_id, anchor_id, candidates, *, records_enabled=None):
         if candidates is None:
             raise ValueError('图像验证要求已冻结的召回候选')
-        gates = CandidateRecords.gates(connection, run_id, anchor_id) if CandidateRecords.enabled(connection, run_id) else [CandidateIdentityRecord.model_validate_json(row[0]) for row in connection.execute(
+        enabled = CandidateRecords.enabled(connection, run_id) if records_enabled is None else records_enabled
+        gates = CandidateRecords.gates(connection, run_id, anchor_id) if enabled else [CandidateIdentityRecord.model_validate_json(row[0]) for row in connection.execute(
             'SELECT record_json FROM consistency_candidate_identity WHERE job_id=? AND anchor_id=? ORDER BY rowid',
             (run_id, anchor_id))]
         expected = {item.sample_id for item in candidates.candidates}

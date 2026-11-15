@@ -117,6 +117,11 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
     reviews.submit(KnowledgeCheckReviewSubmission(submission_id=uuid4(),version_id=publication_id,check_id='C1',
         expected_revision=0,status='rejected',note='人工认为证据尚不成立。'))
     catalog = AuditSources(jobs.db).catalog([dataset_id])
+    assert {job.run_id for job in catalog.jobs} == {run_id, consistency_job_id}
+    knowledge_job = next(job for job in catalog.jobs if job.run_id == run_id)
+    assert knowledge_job.status == 'CANCELLED'
+    assert knowledge_job.completed == 5
+    assert knowledge_job.total_samples == 6
     source = next(item for item in catalog.knowledge_jobs if item.version_id == publication_id)
     assert source.job_id == run_id
     assert 'name' not in source.model_dump()

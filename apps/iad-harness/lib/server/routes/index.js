@@ -78,7 +78,7 @@ export function createIadHttpHandler(bridge) {
                 return await call('consistency_agent_review_submit', { run_id: decodeURIComponent(anchorResult[1]),
                     anchor_id: decodeURIComponent(anchorResult[2]), request: body });
             }
-            const check = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/(config|anchors|report|gallery|images|export\.jsonl)$/);
+            const check = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/(config|anchors|report|gallery|images|statistics|export\.jsonl)$/);
             if (check && method === 'GET') {
                 const run_id = decodeURIComponent(check[1]);
                 if (check[2] === 'export.jsonl')
@@ -154,7 +154,7 @@ export function createIadHttpHandler(bridge) {
             }
             const analysis = pathname.match(/^\/api\/iad\/analysis\/(status|node|results|cancel|retry|delete)\/([^/]+)$/);
             if (analysis && ((['status', 'node', 'results'].includes(analysis[1]) && method === 'GET') || (!['status', 'node', 'results'].includes(analysis[1]) && method === 'POST')))
-                return await call('analysis_' + analysis[1], { run_id: decodeURIComponent(analysis[2]) });
+                return await call('analysis_' + analysis[1], { ...query, run_id: decodeURIComponent(analysis[2]) });
             const modelBatch = pathname.match(/^\/api\/iad\/consistency\/model-batches\/([^/]+)(?:\/(cancel))?$/);
             if (modelBatch && ((!modelBatch[2] && method === 'GET') || (modelBatch[2] && method === 'POST')))
                 return await call('consistency_model_' + (modelBatch[2] || 'status'), { run_id: decodeURIComponent(modelBatch[1]) });

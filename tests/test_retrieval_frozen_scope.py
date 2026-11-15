@@ -10,8 +10,8 @@ from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.workbench.runtime import WorkbenchRuntime
 
 
-def test_a_supplied_frozen_corpus_is_validated_once_for_a_zero_candidate_query(dataset, monkeypatch):
-    db, _, config = dataset
+def test_a_supplied_frozen_corpus_is_validated_once_for_a_zero_candidate_query(indexed_dataset, monkeypatch):
+    db, _, config = indexed_dataset
     scope = ConsistencyScopes(db).resolve({'kind': 'datasets', 'dataset_ids': [config.dataset.id]})
     resolve = ConsistencyScopes.resolve
     scans = []

@@ -7,7 +7,7 @@ from iad_core.advisory.analysis import RegionOrigin
 from iad_core.advisory.repository import AuditSuggestionRepository
 from iad_core.advisory.schemas import AuditSuggestion
 from iad_core.dataset.path_safety import validate_sample_image_path
-from iad_core.evidence.images import file_sha256
+from iad_core.evidence.files import file_sha256
 from iad_core.knowledge.models import FindingTarget, KnowledgeSource
 from iad_core.storage.database import Database
 from iad_core.storage.models import Sample

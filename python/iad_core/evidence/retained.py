@@ -19,20 +19,12 @@ class RetainedImages:
         self.lock=threading.RLock()
 
     def capture(self,source: SourceImage,published: PixelIndexEntry | None) -> tuple[EvidenceBlob,PixelContent]:
-        """Reuse published array-comparison facts only for unchanged source bytes."""
-        if published is not None and source.sha256!=published.image_sha256:
-            raise ConsistencyError('SOURCE_UNAVAILABLE','Image source changed after the published pixel comparison')
+        """Reuse decoded pixels by their published content group."""
         group=published.content_group_id if published is not None else None
         with self.lock:
             content=self.decoded.get(group) if group else None
             if content is not None:
-                fields=('compare_profile','width','height','channel_semantics','dtype','bit_depth','pixel_key')
-                if any(getattr(content.descriptor,name)!=getattr(published.descriptor,name) for name in fields):
-                    raise ConsistencyError('SOURCE_UNAVAILABLE','Published group pixel representations disagree')
                 blob=self.blobs[group]
-                if self.files.find(blob.sha256,blob.byte_count) is None:
-                    blob=self.pixels(content)
-                    self.blobs[group]=blob
                 return blob,content.with_annotation_coordinates(published.descriptor.annotation_coordinates)
             content=source.pixels()
             blob=self.pixels(content)
@@ -48,9 +40,7 @@ class RetainedImages:
             self.blobs.clear()
 
     def path(self, blob: EvidenceBlob) -> str:
-        try:return self.files.path(blob.sha256,blob.byte_count)
-        except (OSError,ValueError) as error:
-            raise ConsistencyError('SOURCE_UNAVAILABLE','Retained original or mask is unavailable; historical proof cannot be restored') from error
+        return self.files.path(blob.sha256)
 
     def store(self, payload: bytes) -> EvidenceBlob:
         _,sha=self.files.store(payload)
@@ -62,7 +52,7 @@ class RetainedImages:
             rows=connection.execute('SELECT sha256,byte_count FROM consistency_pixel_evidence WHERE pixel_key=?',(content.descriptor.pixel_key,)).fetchall()
         for row in rows:
             blob=EvidenceBlob(**dict(row))
-            path=self.files.find(blob.sha256,blob.byte_count)
+            path=self.files.find(blob.sha256)
             if path is None:
                 with self.db.connection() as connection:
                     connection.execute('DELETE FROM consistency_pixel_evidence WHERE pixel_key=? AND sha256=? AND byte_count=?',

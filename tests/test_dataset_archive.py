@@ -35,7 +35,7 @@ def test_uploaded_labelme_archive_preserves_images_annotations_and_mask_pixels(d
         assert mask.size == (320, 240)
         assert mask.getpixel((90, 110)) == 255
         assert mask.getpixel((80, 90)) == 0
-    with pytest.raises(ValueError, match='already been imported'):
+    with pytest.raises(ValueError, match='already imported'):
         dataset_import({'format': 'labelme', 'name': '重复附件', 'archive_path': str(archive_path),
             'image_dir': '产品/images', 'annotation_dir': '产品/labels'}, db.db_path)
     assert sample_get({'sample_id': original['sample']['sample_id']}, db.db_path) == original

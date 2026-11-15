@@ -1,4 +1,3 @@
-import hashlib
 import io
 from pathlib import Path
 from typing import List, Optional, Protocol
@@ -35,12 +34,10 @@ class MaskImages:
         if not annotation.mask_path or not annotation.mask_sha256:
             raise ValueError("Mask pixels or their fingerprint are missing; rescan the annotation")
         payload = Path(annotation.mask_path).read_bytes()
-        return MaskImages.decode(payload,annotation.mask_sha256,sample)
+        return MaskImages.decode(payload,sample)
 
     @staticmethod
-    def decode(payload: bytes, expected_sha256: str, sample: ImageDimensions) -> Image.Image:
-        if hashlib.sha256(payload).hexdigest() != expected_sha256:
-            raise ValueError("Mask pixels changed after import")
+    def decode(payload: bytes, sample: ImageDimensions) -> Image.Image:
         with Image.open(io.BytesIO(payload)) as image:
             if image.format != "PNG" or image.mode != "L" or image.size != (sample.width, sample.height):
                 raise ValueError("Mask pixels do not match the sample dimensions")

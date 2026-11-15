@@ -2,6 +2,7 @@ from uuid import uuid4
 import json
 
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+from iad_core.duplicate.preparation import PixelPreparation
 from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.storage.database import Database
@@ -16,10 +17,15 @@ def test_historical_missing_agent_call_logging_is_unknown_while_no_candidates_pr
         run = checks.start({'submission_id': str(uuid4()), 'mode': 'exact', 'dataset_ids': [config.dataset.id],
             'subjects': {'kind': 'samples', 'sample_ids': [normal, nonempty]}})['run_id']
         with db.connection() as connection:
-            payload = json.loads(connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run,)).fetchone()[0])
-            payload['request']['consistency_check'].pop('model_call_logging')
-            payload['request']['consistency_check'].pop('phase_logging')
-            connection.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?', (json.dumps(payload), run))
+            request = json.loads(connection.execute('SELECT request_json FROM job_requests WHERE job_id=?', (run,)).fetchone()[0])
+        request['consistency_check'].pop('model_call_logging')
+        request['consistency_check'].pop('phase_logging')
+        request['submission']['submission_id'] = str(uuid4())
+        def persist(connection, run_id):
+            connection.executemany('''INSERT INTO consistency_anchor_runs(job_id,anchor_id,ordinal,session_id,state,phase)
+                VALUES(?,?,?,?,?,?)''', [(run_id, identity, ordinal, 'historical-'+uuid4().hex, 'PENDING', 'CREATING_SESSION')
+                    for ordinal, identity in enumerate(request['sample_ids'])])
+        run = runtime.jobs.start('ANALYSIS_WORKFLOW', config.task.task_id, request, None, '历史审核', persist=persist)['run_id']
         results = ConsistencyAgentResults(db)
         historical = results.diagnostics(run, nonempty)
         assert historical.phase_recording == 'UNAVAILABLE'
@@ -28,6 +34,7 @@ def test_historical_missing_agent_call_logging_is_unknown_while_no_candidates_pr
         assert historical.roles.agent.failed_requests is None
         assert historical.roles.agent.total_tokens is None
         assert historical.roles.agent.recorded_requests == 0
+        PixelPreparation(db).prepare([sample.sample_id for sample in checks.snapshot(run).scopes.corpus.samples])
         checks.session_created(run, normal)
         checks.retrieve(run, normal)
         checks.submit_empty(run, normal)
@@ -56,6 +63,7 @@ def test_anchor_phase_intervals_survive_cancel_resume_and_database_reopen(datase
         assert before <= pending.phases[0].started_at <= datetime.now(timezone.utc)
         assert pending.phases[0].ended_at is None
         assert pending.phases[0].duration_seconds is None
+        PixelPreparation(db).prepare([sample.sample_id for sample in checks.snapshot(run).scopes.corpus.samples])
         checks.session_created(run, anchor_id)
         checks.retrieve(run, anchor_id)
         checks.phase(run, anchor_id, 'RULE_READY')
@@ -89,6 +97,7 @@ def test_resuming_without_a_recorded_stop_preserves_unknown_stage_end(dataset):
         checks = ConsistencyAgentJobs(runtime)
         run = checks.start({'submission_id': str(uuid4()), 'mode': 'exact', 'dataset_ids': [config.dataset.id],
             'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})['run_id']
+        PixelPreparation(db).prepare([sample.sample_id for sample in checks.snapshot(run).scopes.corpus.samples])
         checks.session_created(run, anchor_id)
         checks.retrieve(run, anchor_id)
         runtime.jobs.interrupt_external(run)

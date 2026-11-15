@@ -1,14 +1,13 @@
 import logging
 import io
 import os
-import hashlib
 import math
+import json
 from pathlib import Path
 from typing import Optional, List
 from collections import defaultdict
 from PIL import Image
 from pydantic import BaseModel
-from filelock import FileLock
 
 from iad_core.task.config import DatasetConfig, load_config
 from iad_core.storage.models import (
@@ -22,7 +21,9 @@ from iad_core.storage.database import Database
 from iad_core.storage.repositories import AnnotationRepository
 from iad_core.dataset.adapters import get_adapter
 from iad_core.dataset.scan_snapshot import ScanSnapshot
+from iad_core.dataset.reading import DatasetReading
 from iad_core.evidence.masks import MaskImages
+from iad_core.evidence.revisions import FileRevision, SourceRevision
 from iad_core.evidence.sources import SampleContent
 from iad_core.duplicate.index import PixelScanSummary
 
@@ -46,7 +47,6 @@ def scan_dataset(
     config: Optional[DatasetConfig] = None,
     preview_fingerprint: Optional[str] = None,
     force_pixels: bool = False,
-    pixel_cache_bytes: int = 256 * 1024 * 1024,
 ) -> ScanResult:
     """Scan configured sources and atomically publish current samples, annotations and issues."""
     if config is not None and config_path is not None:
@@ -61,8 +61,8 @@ def scan_dataset(
         with os.scandir(root):
             pass
     db = Database(db_path)
-    with FileLock(str(Path(db_path).resolve()) + '.pixels.lock'), db.connection(temporary=True) as conn:
-        snapshot = ScanSnapshot(conn, config, force_pixels=force_pixels, pixel_cache_bytes=pixel_cache_bytes)
+    with db.connection(temporary=True) as conn:
+        snapshot = ScanSnapshot(conn, config, force_pixels=force_pixels)
 
         # 2. Get adapter
         adapter = get_adapter(config)
@@ -71,7 +71,7 @@ def scan_dataset(
         ann_batch: List[Annotation] = []
         issue_batch: List[ImportIssue] = []
         sample_ids_batch: List[str] = []
-        source_hashes: dict[str, str] = {}
+        source_files: dict[str, FileRevision] = {}
 
         total_images = 0
         total_annotations = 0
@@ -92,13 +92,25 @@ def scan_dataset(
                 by_sample = defaultdict(list)
                 for annotation in ann_batch:
                     by_sample[annotation.sample_id].append(annotation)
+                cached = {row['sample_id']: row for row in cursor.execute('''SELECT sample_id,source_sha256,source_file_json,
+                    source_revision,source_fingerprint FROM main.samples WHERE sample_id IN (SELECT value FROM json_each(?))''',
+                    (json.dumps([sample.sample_id for sample in sample_batch]),))}
+                revisions = {sample.sample_id: SourceRevision.describe(sample, by_sample[sample.sample_id], source_files[sample.sample_id]).fingerprint
+                    for sample in sample_batch}
+                digests = {sample.sample_id: cached[sample.sample_id]['source_sha256']
+                    if sample.sample_id in cached and cached[sample.sample_id]['source_file_json'] == source_files[sample.sample_id].model_dump_json()
+                    else None for sample in sample_batch}
+                fingerprints = {sample.sample_id: SampleContent.describe(sample, by_sample[sample.sample_id], digests[sample.sample_id]).fingerprint
+                    if digests[sample.sample_id] else cached[sample.sample_id]['source_fingerprint']
+                    if sample.sample_id in cached and cached[sample.sample_id]['source_revision'] == revisions[sample.sample_id]
+                    else None for sample in sample_batch}
                 cursor.executemany("""
                     INSERT INTO samples (
                         sample_id, task_id, dataset_id, image_path, relative_path,
                         data_origin, physical_sample_id, capture_sequence_id,
                         batch_id, station, camera, width, height, quality_status, quality_source, source_fingerprint,
-                        annotation_availability_json, is_excluded
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                        annotation_availability_json, source_revision, source_file_json, source_sha256, is_excluded
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                     ON CONFLICT(dataset_id, relative_path) DO UPDATE SET
                         task_id = excluded.task_id,
                         image_path = excluded.image_path,
@@ -113,6 +125,9 @@ def scan_dataset(
                         quality_status = excluded.quality_status,
                         quality_source = excluded.quality_source,
                         source_fingerprint = excluded.source_fingerprint,
+                        source_revision = excluded.source_revision,
+                        source_file_json = excluded.source_file_json,
+                        source_sha256 = excluded.source_sha256,
                         annotation_availability_json = excluded.annotation_availability_json,
                         updated_at = (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
                 """, [
@@ -123,8 +138,11 @@ def scan_dataset(
                         s.station, s.camera, s.width, s.height,
                         s.quality_status.value if hasattr(s.quality_status, "value") else str(s.quality_status),
                         s.quality_source,
-                        SampleContent.describe(s, by_sample[s.sample_id], source_hashes[s.sample_id]).fingerprint,
+                        fingerprints[s.sample_id],
                         s.annotation_availability.model_dump_json(),
+                        revisions[s.sample_id],
+                        source_files[s.sample_id].model_dump_json(),
+                        digests[s.sample_id],
                     )
                     for s in sample_batch
                 ])
@@ -144,25 +162,18 @@ def scan_dataset(
             ann_batch.clear()
             issue_batch.clear()
             sample_ids_batch.clear()
-            source_hashes.clear()
+            source_files.clear()
 
         # 3. Stream images and process in batches
-        for raw_img in adapter.scan_images():
+        for read in DatasetReading(adapter, batch_size).scan():
+            raw_img = read.source
             total_images += 1
             sample_id = f"{config.dataset.id}:{raw_img.relative_path}"
             sample_ids_batch.append(sample_id)
             conn.execute("INSERT INTO scan_seen(sample_id) VALUES(?)", (sample_id,))
 
-            payload = None
-            try:
-                with open(raw_img.image_path, 'rb') as source:
-                    payload = source.read()
-                source_hashes[sample_id] = hashlib.sha256(payload).hexdigest()
-                with Image.open(io.BytesIO(payload)) as img:
-                    width, height = img.size
-            except Exception as e:
-                logger.error(f"Cannot decode image: {raw_img.relative_path} ({e})")
-                snapshot.pixels.stage(sample_id, raw_img.image_path, source_hashes.get(sample_id), unavailable_reason=str(e))
+            if read.image_error:
+                logger.error(f"Cannot read image header: {raw_img.relative_path} ({read.image_error})")
                 issue_batch.append(
                     ImportIssue(
                         task_id=config.task.task_id,
@@ -170,20 +181,18 @@ def scan_dataset(
                         sample_id=sample_id,
                         issue_type="INVALID_IMAGE",
                         severity="ERROR",
-                        message=f"Corrupted or unreadable image: {e}",
+                        message=f"Corrupted or unreadable image: {read.image_error}",
                     )
                 )
                 total_issues += 1
                 if len(sample_batch) >= batch_size or len(issue_batch) >= batch_size:
                     flush_batch()
                 continue
-
-            with Image.open(io.BytesIO(payload)) as img:
-                snapshot.pixels.stage(sample_id, raw_img.image_path, source_hashes[sample_id], image=img)
-
-            quality_info = adapter.load_quality(raw_img)
-            data_origin = adapter.load_origin(raw_img)
-            meta = adapter.load_metadata(raw_img)
+            width, height = read.width, read.height
+            source_files[sample_id] = read.revision
+            quality_info = read.quality
+            data_origin = read.origin
+            meta = read.metadata
 
             sample = Sample(
                 sample_id=sample_id,
@@ -204,12 +213,12 @@ def scan_dataset(
             )
             sample_batch.append(sample)
 
-            try:
-                document = adapter.load_annotations(raw_img, width, height)
+            if read.document is not None:
+                document = read.document
                 sample.annotation_availability = document.availability
                 raw_anns = document.annotations
-            except Exception as e:
-                logger.error(f"Failed to load annotations for {raw_img.relative_path}: {e}")
+            else:
+                logger.error(f"Failed to load annotations for {raw_img.relative_path}: {read.annotation_error}")
                 issue_batch.append(
                     ImportIssue(
                         task_id=config.task.task_id,
@@ -217,7 +226,7 @@ def scan_dataset(
                         sample_id=sample_id,
                         issue_type="ANNOTATION_PARSE_ERROR",
                         severity="ERROR",
-                        message=f"Annotation parse failure: {e}",
+                        message=f"Annotation parse failure: {read.annotation_error}",
                     )
                 )
                 total_issues += 1

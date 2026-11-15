@@ -37,14 +37,16 @@ class AuditSuggestionRepository:
 
         with (nullcontext(connection) if connection else self.db.connection()) as conn:
             cursor = conn.cursor()
+            source = cursor.execute('SELECT source_revision FROM samples WHERE sample_id=? AND source_fingerprint=?',
+                (suggestion.sample_id, suggestion.source_fingerprint)).fetchone()
             cursor.execute(
                 """
                 INSERT INTO audit_suggestions (
                     suggestion_id, task_id, sample_id, session_id, model_route,
                     observations_json, hypotheses_json, evidence_refs_json,
                     conclusion_status, recommended_action, input_modalities_json, created_at,
-                    confidence, reference_sample_ids_json, audit_run_id, analysis_json, source_fingerprint
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    confidence, reference_sample_ids_json, audit_run_id, analysis_json, source_fingerprint, source_revision
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     suggestion.suggestion_id,
@@ -64,6 +66,7 @@ class AuditSuggestionRepository:
                     suggestion.audit_run_id,
                     suggestion.analysis.model_dump_json() if suggestion.analysis else None,
                     suggestion.source_fingerprint,
+                    source['source_revision'] if source else None,
                 ),
             )
         return suggestion

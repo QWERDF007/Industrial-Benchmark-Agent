@@ -74,7 +74,7 @@ export function AuditPage({ dataset, datasets, groups, refreshRevision, onDatase
                 }, childDatasets: children, selectedChildIds: ids, onChildToggle: id => {
                     setSelectedIds(previous => previous.includes(id) ? previous.filter(value => value !== id) : [...previous, id]);
                     workspace.updateView('industrial-audit', { job: '' });
-                }, disabled: createOpen, className: "audit-scope", groupId: "audit-dataset", childId: "audit-child-trigger", childMenuId: "audit-child-menu", children: _jsx(RefreshIconButton, { onClick: refresh }) }), jobs.error && _jsx("p", { role: "alert", children: jobs.error }), createOpen ? _jsx(AuditSetup, { datasets: setupDatasets, jobs: jobs.jobs, revision: revision + refreshRevision, onBusyChange: setCreatingBusy, onCancel: () => setCreateOpen(false), onStarted: started => {
+                }, disabled: createOpen, className: "audit-scope", groupId: "audit-dataset", childId: "audit-child-trigger", childMenuId: "audit-child-menu", children: _jsx(RefreshIconButton, { onClick: refresh }) }), jobs.error && _jsx("p", { role: "alert", children: jobs.error }), createOpen ? _jsx(AuditSetup, { datasets: setupDatasets, availableDatasets: datasets, jobs: jobs.jobs, revision: revision + refreshRevision, onBusyChange: setCreatingBusy, onCancel: () => setCreateOpen(false), onStarted: started => {
                     workspace.updateView('industrial-audit', { job: started[0]?.run_id || '' });
                     selection.clear();
                     setCreateOpen(false);

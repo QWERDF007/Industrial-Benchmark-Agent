@@ -1,4 +1,3 @@
-import sqlite3
 from collections import deque
 from contextlib import ExitStack
 from pathlib import Path
@@ -91,18 +90,11 @@ class ContentFeatureCache:
                     group=source['content_group_id']
                     if group is None:
                         continue
-                    groups.setdefault(group,[])
-                    try:
-                        stat=Path(source['image_path']).stat()
-                        if (stat.st_size,stat.st_mtime_ns)==(source['file_size'],source['mtime_ns']):
-                            groups[group].append(source)
-                            valid_samples.add(source['sample_id'])
-                    except OSError:
-                        pass
+                    groups.setdefault(group,[]).append(source)
+                    valid_samples.add(source['sample_id'])
                 existing={row['content_group_id']:row for row in self.repository.records(list(groups),profile.profile_id)}
-                hits={group for group,row in existing.items() if row['status']=='COMPLETE' and groups[group] and not force}
-                missing=[group for group in groups if group not in hits
-                    and (groups[group] or existing.get(group,{}).get('status')!='COMPLETE')]
+                hits={group for group,row in existing.items() if row['status']=='COMPLETE' and not force}
+                missing=[group for group in groups if group not in hits]
                 decoder=locks.enter_context(ImageDecoding(config.decode_workers,config.decode_memory_mb*1024**2))
                 requests={group:DecodeGroup(group,tuple(DecodeSource(source['image_path'],PixelIndex.entry(source))
                     for source in groups[group])) for group in missing}
@@ -152,26 +144,12 @@ class ContentFeatureCache:
                                 middle=len(ready)//2
                                 pending.appendleft([requests[group] for group in ready[middle:]]);pending.appendleft([requests[group] for group in ready[:middle]])
                                 continue
-                            if isinstance(error,sqlite3.IntegrityError):
-                                raise ConsistencyError('SOURCE_UNAVAILABLE','Content index changed during encoding; prepare the current scope again') from error
                             code=error.code if isinstance(error,ConsistencyError) else 'ENCODER_UNAVAILABLE'
                             self.repository.upsert_batch([FeatureRecord(content_group_id=group,profile_id=profile.profile_id,
                                 dim=profile.dim,dtype=profile.storage_dtype,status='FAILED',error_code=code,error_message=str(error)) for group in ready])
                             if code!='UNSUPPORTED_IMAGE':
                                 raise ConsistencyError(code,str(error)) from error
-                current_sources=self.repository.sources(sample_ids)
                 if checkpoint:checkpoint()
-                if {(source['sample_id'],source['content_group_id']) for source in current_sources}!={(source['sample_id'],source['content_group_id']) for source in sources}:
-                    raise ConsistencyError('SOURCE_UNAVAILABLE','Content subjects changed during encoding; prepare the current scope again')
-                for source in sources:
-                    if source['sample_id'] not in valid_samples:
-                        continue
-                    try:
-                        stat=Path(source['image_path']).stat()
-                    except OSError as error:
-                        raise ConsistencyError('SOURCE_UNAVAILABLE','Source became unavailable during encoding; rescan the dataset') from error
-                    if (stat.st_size,stat.st_mtime_ns)!=(source['file_size'],source['mtime_ns']):
-                        raise ConsistencyError('SOURCE_UNAVAILABLE','Source changed during encoding; rescan the dataset')
                 records=self.repository.records(list(groups),profile.profile_id)
                 complete={row['content_group_id'] for row in records if row['status']=='COMPLETE'
                     and any(source['sample_id'] in valid_samples for source in groups[row['content_group_id']])}

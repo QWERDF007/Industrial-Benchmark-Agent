@@ -84,7 +84,7 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
       <RefreshIconButton onClick={refresh} />
     </DatasetScopeSelector>
     {jobs.error && <p role="alert">{jobs.error}</p>}
-    {createOpen ? <AuditSetup key={scope} datasets={setupDatasets} jobs={jobs.jobs}
+    {createOpen ? <AuditSetup key={scope} datasets={setupDatasets} availableDatasets={datasets} jobs={jobs.jobs}
         revision={revision + refreshRevision} onBusyChange={setCreatingBusy} onCancel={()=>setCreateOpen(false)} onStarted={started => {
           workspace.updateView('industrial-audit', {job: started[0]?.run_id || ''});
           selection.clear(); setCreateOpen(false); setTab('audit'); refresh();

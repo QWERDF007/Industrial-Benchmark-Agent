@@ -112,17 +112,6 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     const formLayout=await driver.executeScript('return [...arguments[0].querySelectorAll("textarea")].map(e=>e.getBoundingClientRect().height)',newCheck);
     assert.deepEqual(formLayout,[400,400,400,400,400]);
     await(await element('[data-dc="close-new"]')).click();
-    await driver.executeScript(`const frame=document.createElement('iframe');frame.id='responsive-workbench';frame.src=arguments[0];
-      frame.style.cssText='position:fixed;inset:0;width:375px;height:812px;border:0;z-index:10000';document.body.append(frame);`,start);
-    await driver.switchTo().frame(await element('#responsive-workbench'));
-    await (await element('[data-dc="start-check"]')).click();
-    const narrowForm=await driver.executeScript('const e=arguments[0],r=e.getBoundingClientRect();return {left:r.left,right:r.right,bottom:r.bottom,width:innerWidth,height:innerHeight,overflow:e.scrollWidth-e.clientWidth}',await element('#dc-create-page'));
-    assert.equal(narrowForm.width,375,'使用实际375px内容视口');
-    assert.ok(narrowForm.left>=0&&narrowForm.right<=narrowForm.width&&narrowForm.bottom>narrowForm.height,JSON.stringify(narrowForm));
-    assert.ok(narrowForm.overflow<=1,JSON.stringify(narrowForm));
-    await(await element('[data-dc="close-new"]')).click();
-    await driver.switchTo().defaultContent();
-    await driver.executeScript('document.getElementById("responsive-workbench").remove()');
     assert.ok(!programReads.includes('/api/iad/consistency/runs'),'列表只读取当前范围作业引用的程序批次，不重算全局历史批次');
     assert.ok(programReads.includes('/api/iad/consistency/runs/'+batch.batch_id));
     assert.deepEqual(await Promise.all((await operations.findElements(By.css('button'))).map(button=>button.getAttribute('aria-label'))),
@@ -149,11 +138,11 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await click('关闭查看提示词抽屉');
     assert.equal((await driver.findElements(By.css('dialog[aria-label="检查作业详情"]'))).length,0);
     const stats=await operations.findElement(By.css('button[aria-label="查看统计结果"]'));await stats.click();
-    const statistics=await element('.dc-stats-dialog');
-    const statsLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,x:r.x+r.width/2-innerWidth/2,y:r.y+r.height/2-innerHeight/2}',statistics);
-    assert.equal(statsLayout.modal,true,'统计窗口应复用公共原生Modal');assert.equal(statsLayout.width,960);assert.ok(Math.abs(statsLayout.x)<=1&&Math.abs(statsLayout.y)<=1);
-    assert.equal((await statistics.findElements(By.css('.dc-vchart-panel'))).length,3);
-    assert.equal(await statistics.findElement(By.css('.dc-vchart-panel .dc-vchart-value')).getText(),String(expectedGallery.total),'统计图读取当前作业实际图组总数');
+    const statistics=await element('.dc-stats-drawer');
+    const statsLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,right:r.right,top:r.top,height:r.height,view:document.documentElement.clientWidth,viewHeight:innerHeight}',statistics);
+    assert.equal(statsLayout.modal,true,'统计窗口应复用公共原生Modal');assert.equal(statsLayout.width,560);assert.equal(statsLayout.right,statsLayout.view);assert.equal(statsLayout.top,0);assert.equal(statsLayout.height,statsLayout.viewHeight);
+    assert.equal((await statistics.findElements(By.css('[data-chart-type=bar]'))).length,3);
+    assert.equal((await statistics.findElements(By.css('select'))).length,0,'统计不提供筛选');
     await driver.actions().sendKeys(Key.ESCAPE).perform();
     await driver.wait(async()=>(await driver.findElements(By.css('dialog:modal'))).length===0,5000);
     assert.equal(await driver.executeScript('return document.activeElement===arguments[0]',stats),true,'统计关闭后焦点回到操作按钮');

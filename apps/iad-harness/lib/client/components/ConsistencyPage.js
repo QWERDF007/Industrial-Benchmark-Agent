@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '../query-client.js';
 import { JOB_POLL_INTERVAL, jobIsActive } from '../../shared/job-display.js';
 import { SectionHeading } from './layout/SectionHeading.js';
-import { PromptDrawer } from './PromptDrawer.js';
+import { ConsistencyPromptDrawer } from './ConsistencyPromptDrawer.js';
 import { conflictCategoryDefaults, conflictCategoryLabels, modelConclusionLabels } from '../../shared/consistency.parameters.generated.js';
 import { WorkbenchHeader } from './layout/WorkbenchHeader.js';
-import { ConsistencyStatisticsDialog } from './ConsistencyStatisticsDialog.js';
+import { ConsistencyStatisticsDrawer } from './ConsistencyStatisticsDrawer.js';
 import { ConsistencyConflictDialog } from './ConsistencyConflictDialog.js';
 import { ConsistencyImages } from './ConsistencyImages.js';
 import { useConsistencyImages } from '../useConsistencyImages.js';
@@ -29,9 +29,8 @@ import { message, request } from '../api.js';
 import { workbenchStyles } from '../styles.js';
 import { consistencyTaskCategories } from '../../shared/prompt-defaults.generated.js';
 import { ConsistencyCheckCreate } from './ConsistencyCheckCreate.js';
-import { identityPromptFields } from '../consistency-prompts.js';
 import { usePagePosition } from '../usePagePosition.js';
-import { ConsistencyView, consistencyImageGroups, initialConsistencyFilters } from '../consistency-view.js';
+import { ConsistencyView, consistencyImageGroups } from '../consistency-view.js';
 import { useJobs } from '../useJobs.js';
 import { useDatasetCatalog } from '../useDatasetCatalog.js';
 export function ConsistencyPage() {
@@ -81,16 +80,17 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
     const batches = polling.jobs;
     const jobList = useJobList(batches, polling.identity, selectedJobId, job => selectJob(job.root_run_id));
     const selectedJob = jobList.selected;
-    const images = useConsistencyImages(selectedJob?.consistency_check_version === 1 ? selectedJob.run_id : undefined, `${revision}:${selectedJob?.status}`, !!selectedJob && ['PENDING', 'RUNNING'].includes(selectedJob.status));
-    const imageGroup = kind === 'images' || Object.hasOwn(consistencyImageGroups, kind)
-        ? kind : null;
-    const conflictQuery = useQuery({ queryKey: ['iad', 'consistency-conflicts', selectedJob?.run_id], enabled: !!selectedJob,
-        queryFn: ({ signal }) => selectedJob.consistency_check_version === 1 ? ConsistencyView.loadCheck(selectedJob.run_id, signal) : ConsistencyView.load(selectedJob.program_batch_id, signal),
+    const images = useConsistencyImages(selectedJob?.consistency_check_version === 1 ? selectedJob.run_id : undefined, `${revision}:${selectedJob?.status}`, !!selectedJob && ['PENDING', 'RUNNING'].includes(selectedJob.status), { group: kind, search, model: modelFilter, agreement, review: reviewFilter }, page);
+    const conflictQuery = useQuery({ queryKey: ['iad', 'consistency-conflicts', selectedJob?.run_id], enabled: !!selectedJob && selectedJob.consistency_check_version !== 1,
+        queryFn: ({ signal }) => ConsistencyView.load(selectedJob.program_batch_id, signal),
         refetchInterval: jobIsActive(selectedJob) ? JOB_POLL_INTERVAL : false, refetchOnWindowFocus: true, }, queryClient);
+    const statistics = useQuery({ queryKey: ['iad', 'consistency-statistics', statsModalJobId], enabled: !!statsModalJobId,
+        queryFn: ({ signal }) => request(`/consistency/checks/${encodeURIComponent(statsModalJobId)}/statistics`, undefined, undefined, signal),
+        refetchInterval: jobIsActive(selectedJob) ? JOB_POLL_INTERVAL : false }, queryClient);
     const jobConflicts = conflictQuery.data?.items || [];
-    const conflictsLoading = !!selectedJob && conflictQuery.isPending;
+    const conflictsLoading = !!selectedJob && (selectedJob.consistency_check_version === 1 ? images.pending : conflictQuery.isPending);
     useEffect(() => {
-        if (selectedJob)
+        if (selectedJob && selectedJob.consistency_check_version !== 1)
             void conflictQuery.refetch({ cancelRefetch: false });
     }, [selectedJob?.run_id, selectedJob?.status, revision]);
     const visibleConflicts = useMemo(() => ConsistencyView.filter(jobConflicts, { search, model: modelFilter, agreement, review: reviewFilter })
@@ -158,37 +158,6 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
         if (modelFilter !== 'all' && !modelTypes.some(option => option.value === modelFilter))
             setModelFilter('all');
     }, [conflictTabs, taskType, kind, modelFilter]);
-    const handleStatClick = useCallback((action, id) => {
-        if (action === 'stat-category') {
-            setKind(id);
-            setModelFilter('all');
-            setAgreement('all');
-            setReviewFilter('all');
-            setPage(1);
-            setStatsModalJobId('');
-        }
-        else if (action === 'stat-model') {
-            setModelFilter(ConsistencyView.modelConclusion(id) || 'all');
-            setKind('images');
-            setAgreement('all');
-            setReviewFilter('all');
-            setPage(1);
-            setStatsModalJobId('');
-        }
-        else if (action === 'stat-agreement') {
-            setAgreement(id === 'same' ? 'same' : 'different');
-            setKind('images');
-            setModelFilter('all');
-            setReviewFilter('all');
-            setPage(1);
-            setStatsModalJobId('');
-        }
-        setTimeout(() => {
-            const el = document.querySelector('.dc-results-section');
-            if (el)
-                el.scrollIntoView({ behavior: 'smooth' });
-        }, 50);
-    }, []);
     const surface = usePagePosition(createOpen ? 'consistency:create' : `consistency:results:${selectedParentId}:${selectedJobId}`, createOpen || !conflictsLoading);
     return (_jsxs("div", { ref: surface, className: "iad-workbench iad-business-page iad-consistency", "data-page": "industrial-consistency", children: [_jsx("style", { children: workbenchStyles }), createOpen ? _jsx(ConsistencyCheckCreate, { datasets: datasets, groups: groups, parentId: selectedParentId, datasetIds: selectedChildIds, onCancel: () => workspace.updateConsistency({ view: undefined }), onStarted: (job, parentId, datasetIds) => {
                     workspace.updateConsistency({ view: undefined, parentId, datasetIds, batchId: job.root_run_id }, true);
@@ -206,9 +175,7 @@ function ConsistencyIntegratedWorkspace({ datasets, groups }) {
                             status: job => setStatusJobId(job.root_run_id), prompt: setPromptJob,
                             delete: async (job) => { await request(`/analysis/delete/${encodeURIComponent(job.run_id)}`, {}); polling.refresh(); setRevision(value => value + 1); },
                             additional: [{ id: 'statistics', label: '统计', icon: 'stats', onClick: job => { selectJob(job.root_run_id); setStatsModalJobId(job.root_run_id); } }],
-                        } }), _jsxs("section", { className: "dc-section dc-results-section", children: [_jsx(SectionHeading, { title: "\u6807\u6CE8\u51B2\u7A81" }), _jsx("div", { className: "dc-results-body", children: !selectedJob ? (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" })) : (_jsxs(_Fragment, { children: [_jsx(ConsistencyFilters, { value: { search, model: modelFilter, agreement, review: reviewFilter }, modelTypes: modelTypes, onChange: value => { setSearch(value.search); setModelFilter(value.model); setAgreement(value.agreement); setReviewFilter(value.review); setPage(1); } }), _jsx(TabBar, { label: "\u539F\u59CB\u6807\u6CE8\u51B2\u7A81\u7C7B\u578B", value: kind, onChange: value => { setKind(value); setPage(1); }, items: conflictTabs.map(tab => ({ id: tab.value, label: _jsxs(_Fragment, { children: [_jsx("span", { children: tab.label }), _jsx("span", { className: "iad-tab-count", children: tab.value === 'images' ? selectedJob.total_samples : Object.hasOwn(consistencyImageGroups, tab.value)
-                                                                ? ConsistencyView.filter(images.items, initialConsistencyFilters, tab.value).length : jobConflicts.filter(conflict => conflict.types.some(type => type === tab.value)).length })] }), buttonProps: { 'data-dc': 'raw-tab', 'data-id': tab.value } })) }), _jsx("div", { className: "dc-result-panel", role: "tabpanel", "aria-label": conflictTabs.find(tab => tab.value === kind)?.label, children: imageGroup ? _jsx(ConsistencyImages, { jobId: selectedJob.run_id, images: images, group: imageGroup, filters: { search, model: modelFilter, agreement, review: reviewFilter }, onReviewed: () => setRevision(value => value + 1) }, selectedJob.run_id) : conflictsLoading ? _jsx("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u7ED3\u679C\u2026" })
-                                                : !jobConflicts.length ? _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : _jsxs(_Fragment, { children: [paginatedConflicts.length ? (_jsx("div", { className: "iad-thumbnail-grid dc-conflict-grid", children: paginatedConflicts.map(c => (_jsx(ConsistencyResultCard, { item: c, action: "open-conflict", onOpen: () => { setCurrentConflictId(c.id); setModal('compare'); } }, c.id))) })) : (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" })), _jsx(Pagination, { total: visibleConflicts.length, page: currentPage, size: 18, unit: "\u7EC4", onPage: setPage })] }) })] })) })] })] }), modal === 'compare' && currentConflict && _jsx(ConsistencyConflictDialog, { conflict: currentConflict, items: visibleConflicts, onSelect: setCurrentConflictId, onClose: () => setModal(''), onReviewed: () => setRevision(value => value + 1) }, `${currentConflict.checkId}:${currentConflict.id}`), promptJob && _jsx(PromptDrawer, { title: "\u67E5\u770B\u63D0\u793A\u8BCD", text: promptJob.consistency_prompt || '该作业没有保存提示词。', systemText: promptJob.system_prompt, additionalSections: promptJob.consistency_identity_prompts ? identityPromptFields.map(({ name, label }) => ({
-                    title: label, text: promptJob.consistency_identity_prompts[name]
-                })) : [], onClose: () => setPromptJob(null) }), !!statsModalJobId && _jsx(ConsistencyStatisticsDialog, { statistics: conflictQuery.data?.statistics, onFilter: handleStatClick, loading: conflictsLoading, error: conflictQuery.error?.message, onClose: () => setStatsModalJobId('') }), statusJobId && batches.some(job => job.root_run_id === statusJobId) && _jsx(JobStatusDrawer, { job: batches.find(job => job.root_run_id === statusJobId), onClose: () => setStatusJobId('') })] }));
+                        } }), _jsxs("section", { className: "dc-section dc-results-section", children: [_jsx(SectionHeading, { title: "\u6807\u6CE8\u51B2\u7A81" }), _jsx("div", { className: "dc-results-body", children: !selectedJob ? (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" })) : (_jsxs(_Fragment, { children: [_jsx(ConsistencyFilters, { value: { search, model: modelFilter, agreement, review: reviewFilter }, modelTypes: modelTypes, onChange: value => { setSearch(value.search); setModelFilter(value.model); setAgreement(value.agreement); setReviewFilter(value.review); setPage(1); } }), _jsx(TabBar, { label: "\u539F\u59CB\u6807\u6CE8\u51B2\u7A81\u7C7B\u578B", value: kind, onChange: value => { setKind(value); setPage(1); }, items: conflictTabs.map(tab => ({ id: tab.value, label: _jsxs(_Fragment, { children: [_jsx("span", { children: tab.label }), _jsx("span", { className: "iad-tab-count", children: selectedJob.consistency_check_version === 1 ? images.counts[tab.value] ?? (tab.value === 'images' ? selectedJob.total_samples : 0) : Object.hasOwn(consistencyImageGroups, tab.value)
+                                                                ? images.counts[tab.value] || 0 : jobConflicts.filter(conflict => conflict.types.some(type => type === tab.value)).length })] }), buttonProps: { 'data-dc': 'raw-tab', 'data-id': tab.value } })) }), _jsx("div", { className: "dc-result-panel", role: "tabpanel", "aria-label": conflictTabs.find(tab => tab.value === kind)?.label, children: selectedJob.consistency_check_version === 1 ? _jsx(ConsistencyImages, { jobId: selectedJob.run_id, images: images, group: kind, page: page, onPage: setPage, filters: { search, model: modelFilter, agreement, review: reviewFilter }, onReviewed: () => setRevision(value => value + 1) }, selectedJob.run_id) : conflictsLoading ? _jsx("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u7ED3\u679C\u2026" })
+                                                : !jobConflicts.length ? _jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : _jsxs(_Fragment, { children: [paginatedConflicts.length ? (_jsx("div", { className: "iad-thumbnail-grid dc-conflict-grid", children: paginatedConflicts.map(c => (_jsx(ConsistencyResultCard, { item: c, action: "open-conflict", onOpen: () => { setCurrentConflictId(c.id); setModal('compare'); } }, c.id))) })) : (_jsx("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" })), _jsx(Pagination, { total: visibleConflicts.length, page: currentPage, size: 18, unit: "\u7EC4", onPage: setPage })] }) })] })) })] })] }), modal === 'compare' && currentConflict && _jsx(ConsistencyConflictDialog, { conflict: currentConflict, items: visibleConflicts, onSelect: setCurrentConflictId, onClose: () => setModal(''), onReviewed: () => setRevision(value => value + 1) }, `${currentConflict.checkId}:${currentConflict.id}`), promptJob && _jsx(ConsistencyPromptDrawer, { job: promptJob, onClose: () => setPromptJob(null) }), !!statsModalJobId && _jsx(ConsistencyStatisticsDrawer, { statistics: statistics.data, loading: statistics.isPending, error: statistics.error?.message, onClose: () => setStatsModalJobId('') }), statusJobId && batches.some(job => job.root_run_id === statusJobId) && _jsx(JobStatusDrawer, { job: batches.find(job => job.root_run_id === statusJobId), onClose: () => setStatusJobId('') })] }));
 }

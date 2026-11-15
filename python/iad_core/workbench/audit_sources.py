@@ -3,10 +3,10 @@ from typing import Literal
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.analysis.queries import AnalysisQueries
-from iad_core.consistency.agent_results import ConsistencyAgentResults
 from iad_core.knowledge.models import KnowledgeCheckSummary
 from iad_core.storage.database import Database
 from iad_core.workbench.job_families import JobFamilies
+from iad_core.workbench.job_models import JobView
 from iad_core.storage.repositories import BenchmarkRepository
 from iad_core.dataset.registry import DatasetRegistry
 from pathlib import Path
@@ -16,21 +16,12 @@ class AuditKnowledgeSource(AnalysisModel):
     job_id: str
     dataset_id: str
     version_id: str
-    submitted_at: str
-    started_at: str | None
-    finished_at: str | None
     entries: list[KnowledgeCheckSummary]
     publication_status: Literal['complete','partial'] = 'complete'
 
 
 class AuditConsistencySource(AnalysisModel):
     job_id: str
-    dataset_ids: list[str]
-    submitted_at: str
-    started_at: str | None
-    finished_at: str | None
-    conflict_count: int
-    batch_id: str | None = None
 
 
 class AuditBenchmarkChoice(AnalysisModel):
@@ -41,6 +32,7 @@ class AuditBenchmarkChoice(AnalysisModel):
 
 
 class AuditSourceCatalog(AnalysisModel):
+    jobs: list[JobView]
     knowledge_jobs: list[AuditKnowledgeSource]
     consistency_jobs: list[AuditConsistencySource]
     benchmark_builds: list[AuditBenchmarkChoice]
@@ -63,11 +55,10 @@ class AuditSources:
             required = {row[0] for row in connection.execute('SELECT sample_id FROM samples WHERE dataset_id IN (SELECT value FROM json_each(?))',(json.dumps(dataset_ids),))}
         queries = AnalysisQueries(self.db)
         native_versions = {version.version_id:version for dataset_id in dataset_ids for version in queries.versions(dataset_id,'knowledge')}
-        for job in sorted(jobs.values(), key=lambda job: job.submitted_at, reverse=True):
+        ordered_jobs = sorted(jobs.values(), key=lambda job: job.submitted_at, reverse=True)
+        for job in ordered_jobs:
             if job.deleted_at:
                 continue
-            metadata = dict(job_id=job.run_id, submitted_at=job.submitted_at,
-                started_at=job.started_at, finished_at=job.finished_at)
             request = job.model_extra.get('request', {})
             if job.analysis_kind == 'knowledge':
                 versions = {identity:version for identity,version in native_versions.items() if version.source_run_id == job.run_id}
@@ -75,7 +66,7 @@ class AuditSources:
                     view = queries.view(version_id)
                     if not view.catalog.checks:
                         continue
-                    knowledge.append(AuditKnowledgeSource(**metadata,dataset_id=version.dataset_id,version_id=version_id,
+                    knowledge.append(AuditKnowledgeSource(job_id=job.run_id,dataset_id=version.dataset_id,version_id=version_id,
                         entries=queries.check_summaries(view),
                         publication_status='complete' if view.coverage.completed == view.coverage.total else 'partial'))
             elif job.status != 'COMPLETED':
@@ -85,8 +76,7 @@ class AuditSources:
                     covered = {row[0] for row in connection.execute("SELECT anchor_id FROM consistency_anchor_runs WHERE job_id=? AND state='COMPLETED'",(job.run_id,))}
                 if not required <= covered:
                     continue
-                count = ConsistencyAgentResults(self.db).report(job.run_id).original_conflicts
-                consistency.append(AuditConsistencySource(**metadata,dataset_ids=job.dataset_ids,conflict_count=count))
+                consistency.append(AuditConsistencySource(job_id=job.run_id))
         builds=[]
         repository=BenchmarkRepository(self.db)
         tasks={DatasetRegistry(self.db).get(identity).task.task_id for identity in dataset_ids}
@@ -100,4 +90,6 @@ class AuditSources:
                 if covered:
                     builds.append(AuditBenchmarkChoice(build_id=build.build_id,name=f'Benchmark 成果 {len(builds)+1}',
                         source_images=len(assignments),covered_images=covered))
-        return AuditSourceCatalog(knowledge_jobs=knowledge, consistency_jobs=consistency,benchmark_builds=builds)
+        source_ids = {source.job_id for source in [*knowledge, *consistency]}
+        return AuditSourceCatalog(jobs=[JobView.from_snapshot(job) for job in ordered_jobs if job.run_id in source_ids],
+            knowledge_jobs=knowledge, consistency_jobs=consistency,benchmark_builds=builds)

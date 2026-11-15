@@ -1,4 +1,4 @@
-import type {AnchorImageItem, AnchorImagePage, ConsistencyAnchorRun, ConsistencyReport, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference,GalleryStatistics} from '../shared/domain.generated.js';
+import type {AnchorImageItem, AnchorImagePage, AnchorImageQuery, ConsistencyAnchorRun, ConsistencyReport, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference,GalleryStatistics} from '../shared/domain.generated.js';
 import {conflictCategories,modelConclusionLabels} from '../shared/consistency.parameters.generated.js';
 import {mediaUrl,request} from './api.js';
 
@@ -17,7 +17,7 @@ export interface ConsistencyComparisonItem {
   reason?:AnchorImageItem['summary']['reason'];
   reference:ConsistencyAnalysisReference;
   image?:GalleryItem['anchor'];
-  model:{status:'conflict'|'no_conflict'|'unknown';modelType:keyof typeof modelConclusionLabels|''};
+  model:{status:'conflict'|'no_conflict'|'unknown';modelType:keyof typeof modelConclusionLabels|'';label?:string};
   review:GalleryItem['review_state'];
   agreement:'same'|'different'|null;
 }
@@ -62,7 +62,7 @@ export class ConsistencyView {
   }
 
   static media(image:GalleryItem['anchor'],thumbnail=false):string {
-    return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-original${thumbnail?'?max_side=480':''}`;
+    return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-${thumbnail?'preview?max_side=480':'original'}`;
   }
 
   static async load(batchId:string,signal:AbortSignal):Promise<{queryId:string;items:ConflictCardItem[];statistics:GalleryStatistics}> {
@@ -77,28 +77,14 @@ export class ConsistencyView {
     }
   }
 
-  static async loadCheck(runId:string,signal:AbortSignal):Promise<{queryId:string;items:ConflictCardItem[];statistics:GalleryStatistics}> {
-    const items:GalleryItem[]=[];
-    for(let page=1;;page++){
-      const result=await request<GalleryPage>(`/consistency/checks/${encodeURIComponent(runId)}/gallery?page=${page}&page_size=200`,undefined,undefined,signal);
-      items.push(...result.items);
-      if(items.length>=result.total)return {queryId:runId,items:this.cards(items,{job_id:runId}),statistics:result.statistics};
-    }
-  }
-
   static async statistics(runId:string,signal:AbortSignal):Promise<GalleryStatistics> {
-    const result=await request<GalleryPage>(`/consistency/checks/${encodeURIComponent(runId)}/gallery?page=1&page_size=1`,undefined,undefined,signal);
-    return result.statistics;
+    return request<GalleryStatistics>(`/consistency/checks/${encodeURIComponent(runId)}/statistics`,undefined,undefined,signal);
   }
 
-  static async loadImages(runId:string,signal:AbortSignal):Promise<ConsistencyComparisonItem[]> {
-    const items:AnchorImageItem[]=[];
-    for(let page=1;;page++) {
-      const result=await request<AnchorImagePage>(`/consistency/checks/${encodeURIComponent(runId)}/images?page=${page}&page_size=200`,undefined,undefined,signal);
-      items.push(...result.items);
-      if(items.length>=result.total)break;
-    }
-    return this.imageCards(runId,items);
+  static async loadImagePage(runId:string,query:AnchorImageQuery,page:number,signal:AbortSignal) {
+    const search=new URLSearchParams({...query,page:String(page),page_size:'18'});
+    const result=await request<AnchorImagePage>(`/consistency/checks/${encodeURIComponent(runId)}/images?${search}`,undefined,undefined,signal);
+    return {items:this.imageCards(runId,result.items),total:result.total,counts:result.counts||{}};
   }
 
   private static cards(items:GalleryItem[],source:{job_id:string}|{query_id:string}):ConflictCardItem[] {
@@ -116,16 +102,16 @@ export class ConsistencyView {
   }
 
   static imageCards(runId:string,items:AnchorImageItem[]):ConsistencyComparisonItem[] {
-    return items.map(({sample,summary,image,review_state})=>({id:sample.sample_id,type:summary.program_conclusion,reason:summary.reason,
+    return items.map(({sample,summary,image,review_state,model_filter,agreement})=>({id:sample.sample_id,type:summary.program_conclusion,reason:summary.reason,
       filename:(image?.sample.relative_path || sample.sample_id.slice(sample.sample_id.indexOf(':')+1)).split('/').pop()!,
       url:image?this.media(image,true):mediaUrl(sample,'thumbnail'),fullUrl:image?this.media(image):mediaUrl(sample),
       sourceWidth:image?.sample.width,sourceHeight:image?.sample.height,image:image??undefined,
       candidateCount:summary.outcome?.candidate_stats?.eligible??((summary.selected_exact??0)+(summary.selected_similar??0)),
       reference:{job_id:runId,anchor_id:sample.sample_id},
       review:review_state,
-      agreement:this.agreement(summary.program_conclusion,summary.reason==='MODEL_REVIEWED'?this.modelConclusion(summary.model_conclusion,summary.verdict):''),
+      agreement,
       model:{status:summary.reason==='MODEL_REVIEWED'&&summary.verdict==='MATERIAL'?'conflict':summary.reason==='MODEL_REVIEWED'&&summary.verdict==='EQUIVALENT'?'no_conflict':'unknown',
-        modelType:summary.reason==='MODEL_REVIEWED'?this.modelConclusion(summary.model_conclusion,summary.verdict):''},
+        modelType:model_filter||'',label:summary.annotation_review_label},
     }));
   }
 

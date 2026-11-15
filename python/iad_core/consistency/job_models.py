@@ -14,7 +14,7 @@ class BatchStep(AnalysisModel):
     dataset_id: Identifier
     task_id: Identifier
     sample_ids: list[Identifier] = Field(min_length=1)
-    kind: Literal['IMAGE_INDEX','DATA_CONSISTENCY']
+    kind: Literal['PIXEL_INDEX','IMAGE_INDEX','DATA_CONSISTENCY']
 
 
 @dataclass(frozen=True)
@@ -39,8 +39,12 @@ class BatchPlan(AnalysisModel):
     root_batch_id: Identifier
     parent_batch_id: Identifier | None = None
 
+    @property
+    def progress_kind(self) -> JobKind:
+        return ('IMAGE_INDEX' if self.encoder else 'PIXEL_INDEX') if self.kind == 'index' else 'DATA_CONSISTENCY'
+
     def partition(self,children: list[JobSnapshot]) -> SamplePartition:
-        kind='IMAGE_INDEX' if self.kind=='index' else 'DATA_CONSISTENCY'
+        kind=self.progress_kind
         selected=set(self.selected_ids)
         completed=(set(self.inherited_completed_ids) | {identity for child in children if child.job_type==kind for identity in child.completed_sample_ids}) & selected
         failed={identity for child in children if child.job_type==kind for identity in child.failed_sample_ids} & selected-completed

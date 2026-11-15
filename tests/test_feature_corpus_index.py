@@ -34,6 +34,7 @@ def corpus_vectors(tmp_path):
     profile=EmbeddingProfile.create('sscd_disc_mixup',str(weights))
     ImageEncoders(db).register(profile)
     ids=[datasets[0].dataset.id+':a.png',datasets[0].dataset.id+':b.png',datasets[1].dataset.id+':c.png']
+    PixelIndex(db).prepare([*ids, datasets[1].dataset.id + ':copy.png'])
     groups=[PixelIndex(db).get(sample).content_group_id for sample in ids]
     for group,values in zip(groups,[(1,0),(.8,.6),(0,1)]):
         vector=np.zeros(512,dtype=np.float32);vector[:2]=values

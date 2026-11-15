@@ -1,6 +1,7 @@
+import type {JobView as JobSnapshot} from '../../shared/domain.generated.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import type { JobSnapshot, InspectionSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
+import type { InspectionSnapshot, Dataset, ReviewDecisionRecord, SampleDetail, VisualEvidence } from "../../shared/contracts.js";
 import { AnnotatedImage, ImageViewer, type ImageSource } from "./ImageViewer.js";
 import { ImageCanvas } from "./ImageCanvas.js";
 import { ReviewWorkspace } from "./ReviewWorkspace.js";

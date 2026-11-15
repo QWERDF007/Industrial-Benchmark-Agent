@@ -81,6 +81,7 @@ class PythonWorker {
   private worker: ChildProcess | null = null;
   private pendingRequests: Map<string, PendingRequest> = new Map();
   private stderrAccum = "";
+  private disposed = false;
 
   constructor(config: PythonBridgeConfig, private readonly role: "workbench" | "query") {
     this.cwd = config.cwd ? path.resolve(config.cwd) : findWorkspaceRoot();
@@ -153,6 +154,11 @@ class PythonWorker {
       this.handleWorkerExit(new Error(`Python process error: ${err.message}`));
     });
 
+    child.stdin.on("error", (err: Error) => {
+      if (this.worker !== child) return;
+      this.handleWorkerExit(new Error(`Python input pipe error: ${err.message}`));
+    });
+
     child.on("close", (code: number | null) => {
       if (this.worker !== child) return;
       this.handleWorkerExit(
@@ -175,6 +181,7 @@ class PythonWorker {
 
   async execute<T = any>(operation: string, argumentsPayload: Record<string, any> = {}, signal?: AbortSignal,
                          options: BridgeExecutionOptions = {}): Promise<T> {
+    if(this.disposed)throw new Error('Python bridge was disposed');
     const requestId = `req_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const worker = this.ensureWorker();
 
@@ -237,14 +244,16 @@ class PythonWorker {
     });
   }
 
-  destroy() {
-    if (this.worker) {
-      try {
-        this.worker.kill("SIGTERM");
-      } catch {}
-      this.worker = null;
-    }
+  async destroy():Promise<void> {
+    this.disposed=true;
+    const worker=this.worker;
+    this.worker=null;
     this.handleWorkerExit(new Error("Python bridge was disposed"));
+    if(!worker||worker.exitCode!==null||worker.signalCode!==null)return;
+    await new Promise<void>(resolve=>{
+      worker.once('close',()=>resolve());
+      worker.stdin?.end();
+    });
   }
 }
 
@@ -277,8 +286,7 @@ export class PythonBridge {
     return this.modelRouting ? this.modelRouting.execute(operation, args, signal, dispatch) : dispatch(operation, args, signal);
   }
 
-  destroy() {
-    this.queries.destroy();
-    this.workbench.destroy();
+  async destroy():Promise<void> {
+    await Promise.all([this.queries.destroy(),this.workbench.destroy()]);
   }
 }

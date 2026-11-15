@@ -6,10 +6,10 @@ from iad_core.workbench.module_settings import ModuleSettings
 from iad_core.workbench.runtime import WorkbenchRuntime
 
 
-def test_session_registration_preserves_the_job_payload_and_rejects_stopped_attempts(dataset):
+def test_session_registration_preserves_the_job_payload_and_rejects_stopped_attempts(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
@@ -31,10 +31,10 @@ def test_session_registration_preserves_the_job_payload_and_rejects_stopped_atte
         runtime.close()
 
 
-def test_a_late_failure_after_cancellation_preserves_the_stopped_anchor(dataset):
+def test_a_late_failure_after_cancellation_preserves_the_stopped_anchor(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
@@ -49,10 +49,10 @@ def test_a_late_failure_after_cancellation_preserves_the_stopped_anchor(dataset)
         runtime.close()
 
 
-def test_check_freezes_validated_concurrency_independently_of_later_settings(dataset):
+def test_check_freezes_validated_concurrency_independently_of_later_settings(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     modules = ModuleSettings(database)
     audit_before = modules.read('audit')
     assert modules.read('consistency').settings.concurrency == 1
@@ -75,10 +75,10 @@ def test_check_freezes_validated_concurrency_independently_of_later_settings(dat
         runtime.close()
 
 
-def test_check_requires_a_stable_submission_id(dataset):
+def test_check_requires_a_stable_submission_id(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     runtime = WorkbenchRuntime(database)
     try:
         missing_submission = {'dataset_ids': [config.dataset.id]}
@@ -88,10 +88,10 @@ def test_check_requires_a_stable_submission_id(dataset):
         runtime.close()
 
 
-def test_new_check_freezes_five_exact_and_ten_similar_at_ninety_eight_percent(dataset):
+def test_new_check_freezes_five_exact_and_ten_similar_at_ninety_eight_percent(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
@@ -105,10 +105,10 @@ def test_new_check_freezes_five_exact_and_ten_similar_at_ninety_eight_percent(da
         runtime.close()
 
 
-def test_check_submission_freezes_the_configuration_once_without_requiring_models(dataset):
+def test_check_submission_freezes_the_configuration_once_without_requiring_models(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     modules = ModuleSettings(database)
     modules.save({'module': 'consistency', 'expected_revision': 0,
         'settings': {'mode': 'exact', 'min_similarity': .90, 'max_exact_candidates': 3, 'max_similar_candidates': 7}})
@@ -142,10 +142,10 @@ def test_check_submission_freezes_the_configuration_once_without_requiring_model
         runtime.close()
 
 
-def test_an_empty_anchor_result_is_submitted_once_through_the_existing_job_progress(dataset):
+def test_an_empty_anchor_result_is_submitted_once_through_the_existing_job_progress(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
@@ -171,10 +171,10 @@ def test_an_empty_anchor_result_is_submitted_once_through_the_existing_job_progr
         runtime.close()
 
 
-def test_check_uses_the_single_server_configuration_resolved_for_its_submission(dataset):
+def test_check_uses_the_single_server_configuration_resolved_for_its_submission(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     modules = ModuleSettings(database)
     modules.save({'module': 'consistency', 'expected_revision': 0, 'settings': {
         'mode': 'exact', 'max_exact_candidates': 3,
@@ -195,10 +195,10 @@ def test_check_uses_the_single_server_configuration_resolved_for_its_submission(
         runtime.close()
 
 
-def test_continue_keeps_the_frozen_check_and_session_but_rejects_a_cancelled_attempt(dataset):
+def test_continue_keeps_the_frozen_check_and_session_but_rejects_a_cancelled_attempt(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
-    database, _, config = dataset
+    database, _, config = indexed_dataset
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)

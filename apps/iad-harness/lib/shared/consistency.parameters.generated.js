@@ -1,4 +1,6 @@
 /* Generated from Python consistency models by scripts/generate-contracts.js. */
+export const pairReviewBatchSize = 32;
+export const pairReviewMinBatchSize = 8;
 export const conflictCategoryDefaults = {
     "labelme": [
         "类别不一致",
@@ -610,6 +612,15 @@ export const consistencyCompareParameters = {
         "type": "string",
         "title": "Sample B",
         "required": true
+    },
+    "purpose": {
+        "type": "string",
+        "enum": [
+            "full",
+            "annotations"
+        ],
+        "title": "Purpose",
+        "default": "full"
     },
     "matching": {
         "type": "object",

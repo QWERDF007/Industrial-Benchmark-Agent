@@ -7,7 +7,8 @@ export const jobsStyles = `
 .iad-jobs-table td{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-top:1px solid var(--iad-border)}
 .iad-jobs-table tr[aria-selected=true]{background:var(--iad-surface-muted)}
 .iad-jobs-table tbody tr{cursor:pointer}.iad-jobs-table tbody tr:hover{background:var(--iad-hover)}.iad-jobs-table tbody tr:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}
-.iad-jobs-table th:last-child{text-align:right}.iad-jobs-table td:is(:nth-child(4),:nth-child(6)){font-variant-numeric:tabular-nums}
+.iad-jobs-table th:last-child{text-align:right}.iad-jobs-table td{font-variant-numeric:tabular-nums}
+.iad-row-selection-col{width:64px}.iad-jobs-table input[type=checkbox]{width:16px;height:16px;accent-color:var(--iad-primary);cursor:pointer}
 .iad-job-col-id{width:27%}.iad-job-col-status{width:10%}.iad-job-col-dataset{width:17%}.iad-job-col-progress{width:9%}
 .iad-job-col-submitted{width:16%}.iad-job-col-elapsed{width:8%}.iad-job-col-actions{width:156px}
 .iad-job-actions{display:flex;gap:4px;align-items:center;justify-content:flex-end}

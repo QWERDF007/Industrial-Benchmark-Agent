@@ -1,6 +1,5 @@
 import json
 from dataclasses import dataclass
-from pathlib import Path
 from sqlite3 import Connection
 
 from iad_core.consistency.batch_repository import BatchRepository
@@ -41,7 +40,7 @@ class QueryCoverage:
         desired={sample.sample_id:sample for sample in targets}
         scans={scan.dataset_id:scan.scan_ref for scan in scopes.subjects.scans}
         identities={sample.sample_id for sample in (*scopes.subjects.samples,*scopes.corpus.samples)}
-        rows=connection.execute('''SELECT s.sample_id,s.image_path,p.file_size,p.mtime_ns,
+        rows=connection.execute('''SELECT s.sample_id,
             json_extract(p.descriptor_json,'$.decode_status') decode_status,f.status feature_status,f.error_code
             FROM samples s LEFT JOIN sample_pixel_index p ON p.sample_id=s.sample_id
             LEFT JOIN feature_records f ON f.content_group_id=p.content_group_id AND f.profile_id=? AND f.view_key='full'
@@ -49,10 +48,6 @@ class QueryCoverage:
         clean=set();raw={};vectors={}
         for row in rows:
             state=row['decode_status'] or 'PENDING'
-            try:
-                stat=Path(row['image_path']).stat()
-                if state=='COMPLETE' and (stat.st_size,stat.st_mtime_ns)!=(row['file_size'],row['mtime_ns']):state='PENDING'
-            except OSError:state='UNAVAILABLE'
             if state=='COMPLETE':clean.add(row['sample_id'])
             raw[row['sample_id']]=state
             vectors[row['sample_id']]=state if state!='COMPLETE' else ('COMPLETE' if row['feature_status']=='COMPLETE'

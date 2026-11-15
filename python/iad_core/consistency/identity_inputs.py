@@ -1,67 +1,98 @@
 import hashlib
 import json
 
+import numpy as np
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.identity_geometry import ImageCorrespondence
 from iad_core.consistency.annotation_views import annotation_views
 from iad_core.consistency.identity_regions import IdentityRegionPair, IdentityRegionSource
+from iad_core.consistency.identity_models import candidate_pair_key
+from iad_core.consistency.pair_locks import CandidatePairLocks
 from iad_core.duplicate.verification_models import Registration
 from iad_core.evidence.images import EvidenceImages
+from iad_core.evidence.retained import RetainedImages
+from iad_core.storage.models import sample_uuid
 
 
 class IdentityInputPlan(AnalysisModel):
     geometry: Registration
     region_pairs: list[IdentityRegionPair]
 
+    def inverted(self) -> 'IdentityInputPlan':
+        geometry = self.geometry
+        if geometry.candidate_to_main is not None:
+            geometry = ImageCorrespondence(np.asarray(geometry.candidate_to_main), geometry).inverted().facts
+        pairs = [pair.model_copy(update={'main_window': pair.candidate_window, 'candidate_window': pair.main_window,
+            'main_media': pair.candidate_media, 'candidate_media': pair.main_media,
+            'source_annotations': [origin.model_copy(update={
+                'side': 'candidate' if origin.side == 'main' else 'main'}) for origin in pair.source_annotations]})
+            for pair in self.region_pairs]
+        return IdentityInputPlan(geometry=geometry, region_pairs=pairs)
+
 
 class IdentityInputs:
     def __init__(self, db):
         self.db = db
 
-    def freeze(self, run_id, anchor_id, candidate_id, sources, samples, prompts):
-        fingerprint = hashlib.sha256(json.dumps([prompts, [source.model_dump(mode='json') for source in sources]],
-            sort_keys=True).encode()).hexdigest()
-        with self.db.connection() as connection:
-            saved = connection.execute('''SELECT fingerprint,plan_json FROM consistency_identity_inputs
-                WHERE job_id=? AND anchor_id=? AND candidate_id=?''', (run_id, anchor_id, candidate_id)).fetchone()
-        if saved:
-            if saved['fingerprint'] != fingerprint:
-                raise ValueError('图像内容验证的冻结来源或提示词发生变化')
-            return IdentityInputPlan.model_validate_json(saved['plan_json'])
-        geometry = ImageCorrespondence.estimate(*(sample.image_path for sample in samples))
-        sizes = [(sample.width, sample.height) for sample in samples]
-        pairs = {}
-        images = EvidenceImages(self.db.db_path)
-        for side, source in enumerate(sources):
-            if source.annotations.dataset_format != 'labelme':
-                continue
-            source.annotations.require_task('bbox_defect')
-            originals = {item.annotation_id: item for item in source.annotations.annotations}
-            for region in annotation_views(samples[side], source.annotations.annotations):
-                box, mapped = tuple(region.crop_bbox), None
-                if geometry.matrix is not None:
-                    try:
-                        projected = geometry.map_bounds(box, sizes[side], sizes[1 - side], to_main=side == 1)
-                        if projected[0] < projected[2] and projected[1] < projected[3]:
-                            mapped = tuple(projected)
-                    except ValueError:
-                        mapped = None
-                main, candidate = (box, mapped) if side == 0 else (mapped, box)
-                key = (main, candidate)
-                origins = [IdentityRegionSource(side=('main','candidate')[side], annotation_id=origin.annotation_id,
-                    original_bbox=originals[origin.annotation_id].bbox) for origin in region.origins]
-                if key in pairs:
-                    pairs[key].source_annotations.extend(origins)
+    def freeze(self, run_id, anchor_id, candidate_id, sources, prompts):
+        with CandidatePairLocks.exclusive(self.db.db_path, run_id, candidate_pair_key(anchor_id, candidate_id)):
+            fingerprint = hashlib.sha256(json.dumps([prompts, [source.model_dump(mode='json') for source in sources]],
+                sort_keys=True).encode()).hexdigest()
+            with self.db.connection() as connection:
+                saved = connection.execute('''SELECT fingerprint,plan_json FROM consistency_identity_inputs
+                    WHERE job_id=? AND anchor_id=? AND candidate_id=?''', (run_id, anchor_id, candidate_id)).fetchone()
+                reverse = connection.execute('''SELECT fingerprint,plan_json FROM consistency_identity_inputs
+                    WHERE job_id=? AND anchor_id=? AND candidate_id=?''', (run_id, candidate_id, anchor_id)).fetchone()
+            if saved:
+                if saved['fingerprint'] != fingerprint:
+                    raise ValueError('图像内容验证的冻结来源或提示词发生变化')
+                return IdentityInputPlan.model_validate_json(saved['plan_json'])
+            if reverse:
+                reverse_fingerprint = hashlib.sha256(json.dumps([
+                    prompts, [source.model_dump(mode='json') for source in reversed(sources)]],
+                    sort_keys=True).encode()).hexdigest()
+                if reverse['fingerprint'] != reverse_fingerprint:
+                    raise ValueError('图像内容验证的反向冻结来源或提示词发生变化')
+                plan = IdentityInputPlan.model_validate_json(reverse['plan_json']).inverted()
+                return self.save(run_id, anchor_id, candidate_id, sources, prompts, plan)
+            retained = RetainedImages(self.db)
+            samples = [source.sample.model_copy(update={'sample_id': sample_uuid(source.sample.sample_id),
+                'image_path': retained.path(source.image), 'relative_path': 'main' if index == 0 else 'candidate'})
+                for index, source in enumerate(sources)]
+            geometry = ImageCorrespondence.estimate(*(sample.image_path for sample in samples))
+            sizes = [(sample.width, sample.height) for sample in samples]
+            pairs = {}
+            images = EvidenceImages(self.db.db_path)
+            for side, source in enumerate(sources):
+                if source.annotations.dataset_format != 'labelme':
                     continue
-                identity = 'rp_' + hashlib.sha256(json.dumps([fingerprint, main, candidate]).encode()).hexdigest()
-                pairs[key] = IdentityRegionPair(region_pair_id=identity, source_annotations=origins,
-                    main_window=main, candidate_window=candidate, mapping='registered' if mapped else 'unverified',
-                    limitation=None if mapped else '无法可靠定位另一侧的对应关注区域。',
-                    main_media=images.capture(samples[0], 'roi', 'annotation', list(main), full_resolution=True).evidence if main else None,
-                    candidate_media=images.capture(samples[1], 'roi', 'annotation', list(candidate), full_resolution=True).evidence if candidate else None)
-        plan = IdentityInputPlan(geometry=geometry.facts, region_pairs=list(pairs.values()))
-        return self.save(run_id, anchor_id, candidate_id, sources, prompts, plan)
+                source.annotations.require_task('bbox_defect')
+                originals = {item.annotation_id: item for item in source.annotations.annotations}
+                for region in annotation_views(samples[side], source.annotations.annotations):
+                    box, mapped = tuple(region.crop_bbox), None
+                    if geometry.matrix is not None:
+                        try:
+                            projected = geometry.map_bounds(box, sizes[side], sizes[1 - side], to_main=side == 1)
+                            if projected[0] < projected[2] and projected[1] < projected[3]:
+                                mapped = tuple(projected)
+                        except ValueError:
+                            mapped = None
+                    main, candidate = (box, mapped) if side == 0 else (mapped, box)
+                    key = (main, candidate)
+                    origins = [IdentityRegionSource(side=('main','candidate')[side], annotation_id=origin.annotation_id,
+                        original_bbox=originals[origin.annotation_id].bbox) for origin in region.origins]
+                    if key in pairs:
+                        pairs[key].source_annotations.extend(origins)
+                        continue
+                    identity = 'rp_' + hashlib.sha256(json.dumps([fingerprint, main, candidate]).encode()).hexdigest()
+                    pairs[key] = IdentityRegionPair(region_pair_id=identity, source_annotations=origins,
+                        main_window=main, candidate_window=candidate, mapping='registered' if mapped else 'unverified',
+                        limitation=None if mapped else '无法可靠定位另一侧的对应关注区域。',
+                        main_media=images.capture(samples[0], 'roi', 'annotation', list(main), full_resolution=True).evidence if main else None,
+                        candidate_media=images.capture(samples[1], 'roi', 'annotation', list(candidate), full_resolution=True).evidence if candidate else None)
+            plan = IdentityInputPlan(geometry=geometry.facts, region_pairs=list(pairs.values()))
+            return self.save(run_id, anchor_id, candidate_id, sources, prompts, plan)
 
     def save(self, run_id, anchor_id, candidate_id, sources, prompts, plan):
         fingerprint = hashlib.sha256(json.dumps([prompts, [source.model_dump(mode='json') for source in sources]],
@@ -78,6 +109,19 @@ class IdentityInputs:
 
     def validate_record(self, run_id, anchor_id, record):
         if record.execution_status != 'completed' or record.relation == 'pixel_identical':
+            return
+        if record.basis == 'empty_annotations':
+            from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
+            from iad_core.consistency.evidence_models import FrozenEvidence
+            with self.db.connection() as connection:
+                row = connection.execute('''SELECT r.snapshot_json FROM consistency_anchor_evidence e
+                    JOIN consistency_results r USING(evidence_id) WHERE e.job_id=? AND e.anchor_id=? AND e.candidate_id=?''',
+                    (run_id, anchor_id, record.candidate_id)).fetchone()
+            if row is None:
+                raise ValueError('程序无标注判定缺少本场冻结证据')
+            saved = FrozenEvidence.model_validate_json(row[0])
+            if not AnnotationEvaluation.empty_pair((saved.sources.left, saved.sources.right)):
+                raise ValueError('程序无标注判定要求冻结的主图和候选图均无标注')
             return
         with self.db.connection() as connection:
             saved = connection.execute('''SELECT plan_json FROM consistency_identity_inputs

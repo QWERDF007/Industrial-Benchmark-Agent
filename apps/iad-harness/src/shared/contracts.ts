@@ -5,7 +5,7 @@ export type { AuditAnalysis, AuditFinding, VisualEvidence, VlmResult, GlobalAnal
 export type { AnalysisPublicationView } from "./domain.generated.js";
 export type { KnowledgeCheck, KnowledgeCorrection } from "./domain.generated.js";
 export type { KnowledgeQuery, KnowledgeFreshness } from "./domain.generated.js";
-export type { JobView as JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
+export type { JobSummary as JobSnapshot, JobSample, JobRetryOptions, ModelCallSummary } from "./domain.generated.js";
 export type { InspectionReference, InspectionSnapshot } from "./domain.generated.js";
 export type { KnowledgeVersion, KnowledgeSourcePage } from "./domain.generated.js";
 export type { ScanResult } from "./domain.generated.js";

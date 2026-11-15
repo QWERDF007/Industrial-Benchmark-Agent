@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from iad_core.feature.index import CorpusIndexes
     from iad_core.consistency.jobs import ConsistencyJobs
     from iad_core.consistency.service import ConsistencyService
+    from iad_core.consistency.candidate_retrieval import CandidateRetrieval
 
 
 class WorkbenchRuntime:
@@ -28,6 +29,15 @@ class WorkbenchRuntime:
         self._temporary_images: Optional[TemporaryImages] = None
         self._consistency: Optional[ConsistencyJobs] = None
         self._consistency_service: Optional[ConsistencyService] = None
+        self._candidate_retrieval: Optional[CandidateRetrieval] = None
+
+    @property
+    def candidate_retrieval(self) -> CandidateRetrieval:
+        with self._resource_lock:
+            if self._candidate_retrieval is None:
+                from iad_core.consistency.candidate_retrieval import CandidateRetrieval
+                self._candidate_retrieval = CandidateRetrieval(self)
+            return self._candidate_retrieval
 
     @property
     def consistency_service(self) -> ConsistencyService:
@@ -84,7 +94,9 @@ def workbench(db_path: str) -> WorkbenchRuntime:
 
 
 def close_workbenches():
+    from iad_core.duplicate.preparation import PixelPreparation
     with _service_lock:
         for runtime in _workbenches.values():
             runtime.close()
         _workbenches.clear()
+        PixelPreparation.close()

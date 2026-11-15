@@ -59,8 +59,6 @@ class AnchorCandidates(AnalysisModel):
         anchor_id = result.query.sample_id
         exact = {member.sample_id: group.content_group_id for group in result.exact.groups
             for member in group.members if member.sample_id != anchor_id and member.pixel.exact_equal is True}
-        selected = [SelectedCandidate(sample_id=sample_id, content_group_id=exact[sample_id], kind='exact', rank=rank)
-            for rank, sample_id in enumerate(sorted(exact)[:settings.max_exact_candidates], 1)]
         similar = {}
         if settings.mode == 'combined':
             for group in result.visual.groups:
@@ -70,12 +68,20 @@ class AnchorCandidates(AnalysisModel):
                 for member in group.members:
                     if member.sample_id != anchor_id and member.sample_id not in exact and member.pixel.exact_equal is not True:
                         similar[member.sample_id] = (origin.score, group.content_group_id)
+        return cls.from_matches(anchor_id, result.scope_id, settings, exact, similar)
+
+    @classmethod
+    def from_matches(cls, anchor_id: str, scope_id: str, settings: ConsistencyRetrievalSettings,
+                     exact: dict[str, str], similar: dict[str, tuple[float, str]]) -> 'AnchorCandidates':
+        selected = [SelectedCandidate(sample_id=sample_id, content_group_id=exact[sample_id], kind='exact', rank=rank)
+            for rank, sample_id in enumerate(sorted(exact)[:settings.max_exact_candidates], 1)]
+        similar = {identity: value for identity, value in similar.items() if identity != anchor_id and identity not in exact}
         ordered = sorted(similar, key=lambda sample_id: (-similar[sample_id][0], sample_id))
         similar_limit = settings.max_similar_candidates if settings.mode == 'combined' else 0
         selected.extend(SelectedCandidate(sample_id=sample_id, content_group_id=similar[sample_id][1],
             kind='similar', rank=rank, score=similar[sample_id][0])
             for rank, sample_id in enumerate(ordered[:similar_limit], 1))
-        return cls(anchor_id=anchor_id, scope_id=result.scope_id, mode=settings.mode,
+        return cls(anchor_id=anchor_id, scope_id=scope_id, mode=settings.mode,
             min_similarity=settings.min_similarity if settings.mode == 'combined' else None,
             exact=CandidateBranch(state='done', limit=settings.max_exact_candidates, matched=len(exact),
                 selected=min(len(exact), settings.max_exact_candidates), truncated=len(exact) > settings.max_exact_candidates),

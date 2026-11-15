@@ -14,7 +14,6 @@ from iad_core.consistency.job_worker import ConsistencyWorker
 from iad_core.consistency.models import ConsistencyCoverage,ConsistencyScopesSnapshot,ConsistencyStart,CoverageCount,ImageIndexPrepare
 from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.feature.profiles import ImageEncoderConfig,ImageEncoders
-from iad_core.duplicate.index import PixelIndex
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -36,17 +35,12 @@ class ConsistencyJobs:
             existing=self.repository.request(request.request_id,fingerprint)
             if existing:return self._start_result(existing)
             scopes=ConsistencyScopes(self.db).freeze(request.subjects,request.corpus_scope)
-            if scopes.subjects.samples:
-                PixelIndex(self.db).assert_indexed(sample.sample_id for scope in (scopes.subjects,scopes.corpus) for sample in scope.samples)
             steps=[]
             encoder=None
             if scopes.subjects.samples and request.mode!='exact':
                 encoder=self.encoder(request.profile_id)
-                indexed={sample.sample_id:sample for scope in (scopes.corpus,scopes.subjects) for sample in scope.samples}
-                for dataset_id in sorted(set(scopes.corpus.dataset_ids) | set(scopes.subjects.dataset_ids)):
-                    selected=sorted((sample for sample in indexed.values() if sample.dataset_id==dataset_id),key=lambda sample:sample.sample_id)
-                    if selected:steps.append(BatchStep(dataset_id=dataset_id,task_id=selected[0].task_id,
-                        sample_ids=[sample.sample_id for sample in selected],kind='IMAGE_INDEX'))
+            if scopes.subjects.samples:
+                steps=self.preparation_steps(scopes,encoder)
             for dataset_id in scopes.subjects.dataset_ids:
                 selected=[sample for sample in scopes.subjects.samples if sample.dataset_id==dataset_id]
                 if selected:steps.append(BatchStep(dataset_id=dataset_id,task_id=selected[0].task_id,
@@ -70,31 +64,36 @@ class ConsistencyJobs:
             existing=self.repository.request(request.request_id,fingerprint)
             if existing:return self._start_result(existing)
             scopes=ConsistencyScopes(self.db).freeze(request.corpus_scope,request.corpus_scope)
-            PixelIndex(self.db).assert_indexed(sample.sample_id for sample in scopes.corpus.samples)
             encoder=self.encoder(request.profile_id) if scopes.corpus.samples else None
             return self._prepare(request,fingerprint,scopes,encoder)
 
-    def prepare_frozen(self,scopes: ConsistencyScopesSnapshot,encoder: ImageEncoderConfig,*,request_id: str) -> StartResult:
-        request=ImageIndexPrepare(corpus_scope=scopes.corpus.selector,profile_id=encoder.profile.profile_id,request_id=request_id)
+    def prepare_frozen(self,scopes: ConsistencyScopesSnapshot,encoder: ImageEncoderConfig | None,*,request_id: str) -> StartResult:
+        request=ImageIndexPrepare(corpus_scope=scopes.corpus.selector,profile_id=encoder.profile.profile_id if encoder else None,request_id=request_id)
         fingerprint=hashlib.sha256(json.dumps({'request':request.model_dump(mode='json'),
-            'scopes':scopes.model_dump(mode='json'),'encoder':encoder.model_dump(mode='json')},sort_keys=True).encode()).hexdigest()
+            'scopes':scopes.model_dump(mode='json'),'encoder':encoder.model_dump(mode='json') if encoder else None},sort_keys=True).encode()).hexdigest()
         with self.lock:
             existing=self.repository.request(request.request_id,fingerprint)
             if existing:return self._start_result(existing)
             with self.db.connection() as connection:
                 connection.execute('BEGIN')
                 for scope in (scopes.subjects,scopes.corpus):ConsistencyScopes(self.db).assert_current(scope,connection)
-            PixelIndex(self.db).assert_indexed(sample.sample_id for scope in (scopes.subjects,scopes.corpus) for sample in scope.samples)
             return self._prepare(request,fingerprint,scopes,encoder)
+
+    @staticmethod
+    def preparation_steps(scopes: ConsistencyScopesSnapshot, encoder: ImageEncoderConfig | None) -> list[BatchStep]:
+        indexed = {sample.sample_id: sample for scope in (scopes.corpus, scopes.subjects) for sample in scope.samples}
+        steps = []
+        for kind in (('PIXEL_INDEX', 'IMAGE_INDEX') if encoder else ('PIXEL_INDEX',)):
+            for dataset_id in sorted({sample.dataset_id for sample in indexed.values()}):
+                selected = sorted((sample for sample in indexed.values() if sample.dataset_id == dataset_id), key=lambda sample: sample.sample_id)
+                steps.append(BatchStep(dataset_id=dataset_id, task_id=selected[0].task_id,
+                    sample_ids=[sample.sample_id for sample in selected], kind=kind))
+        return steps
 
     def _prepare(self,request: ImageIndexPrepare,fingerprint: str,scopes: ConsistencyScopesSnapshot,
                  encoder: ImageEncoderConfig | None) -> StartResult:
         indexed={sample.sample_id:sample for scope in (scopes.corpus,scopes.subjects) for sample in scope.samples}
-        steps=[]
-        for dataset_id in sorted({sample.dataset_id for sample in indexed.values()}):
-            selected=sorted((sample for sample in indexed.values() if sample.dataset_id==dataset_id),key=lambda sample:sample.sample_id)
-            steps.append(BatchStep(dataset_id=dataset_id,task_id=selected[0].task_id,
-                sample_ids=[sample.sample_id for sample in selected],kind='IMAGE_INDEX'))
+        steps=self.preparation_steps(scopes,encoder)
         identity='batch_'+uuid4().hex
         plan=self.repository.save(BatchPlan(batch_id=identity,request=request,fingerprint=fingerprint,kind='index',scopes=scopes,
             encoder=encoder,selected_ids=sorted(indexed),steps=steps,created_at=datetime.now(timezone.utc),root_batch_id=identity))
@@ -118,11 +117,14 @@ class ConsistencyJobs:
                 if index in children:
                     status=self.runtime.jobs.status(children[index])
                     if status['status'] in ('PENDING','RUNNING','CANCELLED','INTERRUPTED'):return
+                    if step.kind in ('PIXEL_INDEX','IMAGE_INDEX') and status['status']=='FAILED':
+                        self.repository.fail(batch_id,BatchFailure(code='INDEX_NOT_READY',message=status['message']))
+                        return
                     continue
                 try:
                     child=self.runtime.jobs.start(step.kind,step.task_id,
                         {'dataset_id':step.dataset_id,'sample_ids':step.sample_ids,'batch_id':batch_id,
-                            'embedding_profile':plan.encoder.profile.model_dump(mode='json') if plan.encoder else None},
+                            'embedding_profile':plan.encoder.profile.model_dump(mode='json') if plan.encoder and step.kind=='IMAGE_INDEX' else None},
                         lambda context:self.worker.execute(plan,step,context),'准备一致性检查',
                         persist=lambda connection,run_id:self.repository.link(batch_id,index,run_id,connection))
                 except (LookupError,ValueError) as failure:
@@ -193,7 +195,7 @@ class ConsistencyJobs:
                 connection.execute('BEGIN')
                 for scope in (parent.scopes.subjects,parent.scopes.corpus):ConsistencyScopes(self.db).assert_current(scope,connection)
             completed=set(parent.inherited_completed_ids)
-            progress_kind='IMAGE_INDEX' if parent.kind=='index' else 'DATA_CONSISTENCY'
+            progress_kind=parent.progress_kind
             for relative in self.repository.lineage(parent.root_batch_id):
                 state=self.status(relative)
                 if state.status in ('PENDING','RUNNING'):raise ConsistencyError('INVALID_SCOPE','A retry of this batch is already active')
@@ -206,7 +208,7 @@ class ConsistencyJobs:
                 remaining=set(sample_ids)
             steps=[]
             for step in parent.steps if remaining else []:
-                selected=step.sample_ids if step.kind=='IMAGE_INDEX' and parent.kind=='consistency' else [identity for identity in step.sample_ids if identity in remaining]
+                selected=step.sample_ids if step.kind in ('PIXEL_INDEX','IMAGE_INDEX') and parent.kind=='consistency' else [identity for identity in step.sample_ids if identity in remaining]
                 if selected:steps.append(step.model_copy(update={'sample_ids':selected}))
             identity='batch_'+uuid4().hex
             plan=self.repository.save(BatchPlan(**{**parent.model_dump(),'batch_id':identity,'parent_batch_id':batch_id,

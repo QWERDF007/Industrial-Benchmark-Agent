@@ -1,5 +1,6 @@
+import type { JobView as JobSnapshot } from '../../shared/domain.generated.js';
 import React from "react";
-import type { JobSnapshot, Dataset, ReviewDecisionRecord } from "../../shared/contracts.js";
+import type { Dataset, ReviewDecisionRecord } from "../../shared/contracts.js";
 import { type ModalPresentation, type ModalProps } from "./Modal.js";
 import type { SampleNavigation } from "../useSampleNavigation.js";
 export declare function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation, queue, filters, advanceOnSubmit, panel }: {

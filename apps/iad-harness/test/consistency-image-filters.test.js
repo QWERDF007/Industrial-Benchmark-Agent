@@ -1,16 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import http from 'node:http';
+import React from 'react';
+import {renderToStaticMarkup} from 'react-dom/server';
+import {ConsistencyResultCard} from '../lib/client/components/ConsistencyResultCard.js';
 import {ConsistencyView} from '../lib/client/consistency-view.js';
 
 const image=(filename,summary={},review_state='pending')=>({
   sample:{sample_id:`dataset:${filename}`,task_id:'dataset'},image:null,review_state,
   summary:{program_conclusion:'未完成',model_conclusion:null,verdict:null,reason:'PENDING',...summary},
+  model_filter:summary.reason==='MODEL_REVIEWED'?(summary.verdict==='EQUIVALENT'?'EQUIVALENT':summary.model_conclusion):null,
+  agreement:summary.reason==='MODEL_REVIEWED'&&(summary.model_conclusion||summary.verdict==='EQUIVALENT')?
+    summary.program_conclusion===(summary.verdict==='EQUIVALENT'?'一致':summary.model_conclusion)?'same':'different':null,
 });
 const reviewed=(program,model,verdict='MATERIAL')=>({
   reason:'MODEL_REVIEWED',program_conclusion:program,model_conclusion:model,verdict,
 });
 const filters={search:'',model:'all',agreement:'all',review:'all'};
+
+test('cards explain why no annotation model verdict is needed instead of leaving an empty conclusion',()=>{
+  const [card]=ConsistencyView.imageCards('job',[image('no-eligible.png',{
+    reason:'NO_ELIGIBLE_CANDIDATES',program_conclusion:'无有效候选',annotation_review_label:'无需标注审核',
+  })]);
+  const html=renderToStaticMarkup(React.createElement(ConsistencyResultCard,{item:card,action:'job-image',onOpen(){}}));
+  assert.match(html,/无有效候选/);
+  assert.match(html,/无需标注审核/);
+  assert.equal(card.model.modelType,'');
+});
 
 test('all-image filters combine filename, model, agreement and review without treating unreviewed images as consistent',()=>{
   const cards=ConsistencyView.imageCards('job',[
@@ -30,23 +46,24 @@ test('all-image filters combine filename, model, agreement and review without tr
   assert.deepEqual(ids({search:'missing.png'}),[]);
 });
 
-test('all-image loading includes matches beyond the first API page before filtering and display pagination',async()=>{
+test('image pages send combined filters and return the current page without reading the entire job',async()=>{
   const originals=Array.from({length:201},(_,index)=>image(index===200?'target-last.png':`sample-${index}.png`));
   const server=http.createServer((req,res)=>{
     const url=new URL(req.url,'http://localhost');
     const page=Number(url.searchParams.get('page')),size=Number(url.searchParams.get('page_size'));
+    assert.equal(page,1);assert.equal(size,18);assert.equal(url.searchParams.get('search'),'target-last');
     assert.equal(url.pathname,'/api/iad/consistency/checks/job/images');
     assert.ok(size>=18&&size<=1000);
     res.setHeader('content-type','application/json');
-    res.end(JSON.stringify({job_id:'job',total:201,items:originals.slice((page-1)*size,page*size)}));
+    res.end(JSON.stringify({job_id:'job',total:1,items:originals.filter(item=>item.sample.sample_id.includes('target-last'))}));
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   const nativeFetch=globalThis.fetch;
   globalThis.fetch=(url,options)=>nativeFetch(new URL(url,`http://127.0.0.1:${server.address().port}`),options);
   try {
-    const cards=await ConsistencyView.loadImages('job',new AbortController().signal);
-    assert.equal(cards.length,201);
-    assert.equal(new Set(cards.map(card=>card.id)).size,201);
+    const result=await ConsistencyView.loadImagePage('job',{...filters,search:'target-last',group:'images'},1,new AbortController().signal);
+    const cards=result.items;
+    assert.equal(cards.length,1);assert.equal(result.total,1);
     assert.deepEqual(ConsistencyView.filter(cards,{...filters,search:'target-last'}).map(card=>card.filename),['target-last.png']);
   }finally{
     globalThis.fetch=nativeFetch;

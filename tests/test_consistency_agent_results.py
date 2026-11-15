@@ -5,6 +5,203 @@ import pytest
 
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.workbench.runtime import WorkbenchRuntime
+from tests.test_consistency_identity import similar_job
+
+
+def test_native_commands_publish_result_pages_before_returning(indexed_dataset):
+    from iad_core.consistency import agent_operations as operations
+    from iad_core.consistency.agent_results import ConsistencyAgentResults
+    from iad_core.consistency.result_index import ConsistencyResultIndex
+    from iad_core.workbench.runtime import close_workbenches
+
+    database, _, config = indexed_dataset
+    try:
+        job = operations.consistency_agent_start({'request': {'submission_id': str(uuid4()),
+            'dataset_ids': [config.dataset.id], 'mode': 'exact'}}, database.db_path)
+        run_id, anchors = job['run_id'], job['sample_ids']
+        results = ConsistencyAgentResults(database)
+        with database.connection() as connection:
+            assert ConsistencyResultIndex(connection, run_id).current(), '新作业返回时首页数据应已就绪'
+        operations.consistency_agent_retrieve_many({'run_id': run_id, 'anchor_ids': anchors}, database.db_path)
+        for anchor in anchors:
+            arguments = {'run_id': run_id, 'anchor_id': anchor}
+            operations.consistency_agent_session_created(arguments, database.db_path)
+            prepared = operations.consistency_agent_verify(arguments, database.db_path)
+            with database.connection() as writer:
+                assert ConsistencyResultIndex(writer, run_id).current(), '正常结果写入不能积累到下次打开页面才刷新'
+                writer.execute('BEGIN IMMEDIATE')
+                page = results.images(run_id)
+                assert page.total == len(anchors)
+                item = next(item for item in page.items if item.sample.sample_id == anchor)
+                assert item.summary.state == ('COMPLETED' if prepared['completed'] else 'RUNNING')
+    finally:
+        close_workbenches()
+
+
+def test_result_publication_failure_preserves_the_original_command_error(indexed_dataset, caplog):
+    from iad_core.consistency import agent_operations as operations
+    from iad_core.workbench.runtime import close_workbenches
+
+    database, _, config = indexed_dataset
+    try:
+        job = operations.consistency_agent_start({'request': {'submission_id': str(uuid4()),
+            'dataset_ids': [config.dataset.id], 'mode': 'exact'}}, database.db_path)
+        run_id, anchor = job['run_id'], job['sample_ids'][0]
+        with database.connection() as connection:
+            connection.execute('DELETE FROM consistency_result_index WHERE job_id=?', (run_id,))
+        with database.connection() as writer:
+            writer.execute('BEGIN IMMEDIATE')
+            with pytest.raises(ValueError, match='过期的主图审核 attempt'):
+                operations.consistency_agent_verify({'run_id': run_id, 'anchor_id': anchor,
+                    'attempt': 999}, database.db_path)
+            assert '结果索引刷新失败' in caplog.text and 'database is locked' in caplog.text
+    finally:
+        close_workbenches()
+
+
+def test_successful_command_does_not_hide_result_publication_failure(indexed_dataset):
+    import sqlite3
+    from iad_core.consistency import agent_operations as operations
+    from iad_core.workbench.analysis_job_views import AnalysisJobViews
+    from iad_core.workbench.runtime import close_workbenches
+
+    database, _, config = indexed_dataset
+    try:
+        job = operations.consistency_agent_start({'request': {'submission_id': str(uuid4()),
+            'dataset_ids': [config.dataset.id], 'mode': 'exact'}}, database.db_path)
+        run_id = job['run_id']
+        with database.connection() as connection:
+            connection.execute('DELETE FROM consistency_result_index WHERE job_id=?', (run_id,))
+            connection.execute("""CREATE TRIGGER reject_result_publication BEFORE INSERT ON consistency_result_index
+                BEGIN SELECT RAISE(ABORT, '投影写入被拒绝'); END""")
+        with pytest.raises(sqlite3.IntegrityError, match='投影写入被拒绝'):
+            operations.consistency_agent_cancel({'run_id': run_id}, database.db_path)
+        assert AnalysisJobViews(database).view(run_id)['status'] == 'CANCELLED'
+    finally:
+        close_workbenches()
+
+
+def test_job_list_summary_combines_scopes_without_call_payloads(dataset):
+    from iad_core.workbench.analysis_job_views import AnalysisJobViews
+
+    database, _, config = dataset
+    runtime = WorkbenchRuntime(database)
+    try:
+        job = ConsistencyAgentJobs(runtime).start({'submission_id': str(uuid4()),
+            'dataset_ids': [config.dataset.id], 'mode': 'exact'})
+        runtime.jobs.update(job['run_id'], current_sample_id=job['sample_ids'][0])
+        listed = AnalysisJobViews(database).list([config.dataset.id, config.dataset.id], 'consistency', summary=True)
+        assert len(listed) == 1
+        assert listed[0]['run_id'] == job['run_id']
+        assert listed[0]['total_samples'] == job['total_samples']
+        assert listed[0]['current_sample']['sample_id'] == job['sample_ids'][0]
+        assert not {'model_calls', 'sample_ids', 'completed_sample_ids', 'failed_sample_ids'} & listed[0].keys()
+        assert len(AnalysisJobViews(database).view(job['run_id'])['sample_ids']) == job['total_samples']
+        checks = ConsistencyAgentJobs(runtime)
+        checks.snapshot(job['run_id'])
+        checks.cancel(job['run_id'])
+        runtime.jobs.delete(job['run_id'], ('ANALYSIS_WORKFLOW',), family=True)
+        with pytest.raises(LookupError):
+            checks.snapshot(job['run_id'])
+    finally:
+        runtime.close()
+
+
+def test_changing_phase_or_cancelling_keeps_image_pages_readable_while_another_writer_is_active(dataset):
+    from iad_core.consistency.agent_results import ConsistencyAgentResults
+
+    database, _, config = dataset
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact'})
+        run_id, anchor = job['run_id'], job['sample_ids'][0]
+        results = ConsistencyAgentResults(database)
+        checks.session_created(run_id, anchor)
+        results.images(run_id)
+        checks.phase(run_id, anchor, 'VERIFYING_CONTENT')
+        with database.connection() as writer:
+            writer.execute('BEGIN IMMEDIATE')
+            page = results.images(run_id)
+            item = next(item for item in page.items if item.sample.sample_id == anchor)
+            assert item.summary.phase == 'VERIFYING_CONTENT'
+            assert item.summary.program_conclusion == '内容核对中'
+        checks.cancel(run_id)
+        with database.connection() as writer:
+            writer.execute('BEGIN IMMEDIATE')
+            assert all(item.summary.state == 'CANCELLED' for item in results.images(run_id).items)
+            assert all(item.summary.program_conclusion == '已取消' for item in results.images(run_id).items)
+    finally:
+        runtime.close()
+
+
+def test_retrieval_publishes_candidate_counts_and_page_projections_in_the_same_transaction(dataset):
+    from iad_core.consistency.agent_results import ConsistencyAgentResults
+    from iad_core.consistency.result_index import ConsistencyResultIndex
+    from iad_core.duplicate.index import PixelIndex
+
+    database, _, config = dataset
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact'})
+        run_id, anchors = job['run_id'], job['sample_ids']
+        PixelIndex(database).prepare(anchors)
+        results = ConsistencyAgentResults(database)
+        results.prepare_indexes(run_id)
+        selected = checks.retrieve_many(run_id, anchors)
+        with database.connection() as writer:
+            writer.execute('BEGIN IMMEDIATE')
+            assert ConsistencyResultIndex(writer, run_id).current(), '候选发布后不能让首个读者重建整批投影'
+            page = results.images(run_id)
+            summaries = {item.summary.anchor_id: item.summary for item in page.items}
+            for item in selected:
+                summary = summaries[item.anchor_id]
+                assert summary.selected_exact == item.candidates.exact.selected
+                assert summary.outcome.candidate_stats.retrieved == len(item.candidates.candidates)
+            assert page.counts['NO_CANDIDATES'] == sum(not item.candidates.candidates for item in selected)
+    finally:
+        runtime.close()
+
+
+@pytest.mark.parametrize('cancelled', [False, True])
+@pytest.mark.parametrize('similar_job', ['original_resolution'], indirect=True)
+def test_finished_content_checks_without_eligible_candidates_are_not_shown_as_unfinished(similar_job, cancelled):
+    import httpx
+    from iad_core.consistency.identity import CandidateIdentity
+    from iad_core.consistency.agent_results import ConsistencyAgentResults
+    from iad_core.workbench.vision import VlmClient
+    from tests.test_consistency_identity import identity_response
+
+    runtime, checks, run_id, anchor = similar_job
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        body = json.loads(request.content)
+        context = json.loads(body['messages'][-1]['content'][1]['text'])
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(
+            identity_response(context, 'content_different', '两图胶线中央的形状不同。'))}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    try:
+        identity = CandidateIdentity(runtime, client).verify(run_id, anchor)
+        assert identity.completed and not identity.eligible_ids
+        if cancelled:
+            checks.cancel(run_id)
+        results = ConsistencyAgentResults(runtime.db)
+        detail = results.detail(run_id, anchor)
+        assert detail.program_conclusion == '无有效候选'
+        assert detail.reason == 'NO_ELIGIBLE_CANDIDATES'
+        assert detail.annotation_review_status == 'not_required'
+        assert detail.annotation_review_label == '无需标注审核'
+        assert detail.model_conclusion is None and detail.result is None
+        assert detail.state == ('CANCELLED' if cancelled else 'RUNNING')
+        page = results.images(run_id, query={'group': 'NO_ELIGIBLE_CANDIDATES'})
+        assert page.total == 1 and page.items[0].summary.program_conclusion == detail.program_conclusion
+        assert page.counts['NO_ELIGIBLE_CANDIDATES'] == 1
+    finally:
+        client.close()
 
 
 def test_business_results_export_every_frozen_anchor_in_order_with_real_terminal_states(dataset, tmp_path):
@@ -15,9 +212,11 @@ def test_business_results_export_every_frozen_anchor_in_order_with_real_terminal
     try:
         checks = ConsistencyAgentJobs(runtime)
         identities = [config.dataset.id + ':' + name + '.png' for name in ['normal', 'dent', 'scratch']]
+        from iad_core.duplicate.preparation import PixelPreparation
         job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': identities}})
         job_id = job['run_id']
+        PixelPreparation(database).prepare([sample.sample_id for sample in checks.snapshot(job_id).scopes.corpus.samples])
         checks.session_created(job_id, identities[0])
         checks.retrieve(job_id, identities[0])
         checks.submit_empty(job_id, identities[0])
@@ -88,7 +287,7 @@ def test_business_results_export_every_frozen_anchor_in_order_with_real_terminal
         assert detail.model_conclusion is None
         assert indexed_images[identities[0]].image is None
         assert indexed_images[identities[1]].summary.state == 'FAILED'
-        assert indexed_images[identities[1]].summary.program_conclusion == '未完成'
+        assert indexed_images[identities[1]].summary.program_conclusion == '核对失败'
         assert indexed_images[identities[2]].summary.state == 'CANCELLED'
     finally:
         runtime.close()

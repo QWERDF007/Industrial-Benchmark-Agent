@@ -1,5 +1,3 @@
-import hashlib
-import io
 import json
 import uuid
 from collections.abc import Iterable
@@ -8,7 +6,7 @@ from contextlib import nullcontext
 from datetime import datetime, timezone
 from pathlib import Path
 from sqlite3 import Connection
-from typing import Optional
+from typing import Callable, Optional
 
 from PIL import Image
 from pydantic import AwareDatetime, Field
@@ -18,6 +16,7 @@ from iad_core.consistency.models import Count, CoverageCount, Identifier, PixelD
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.duplicate.pixels import PixelContent
 from iad_core.storage.database import Database
+from iad_core.evidence.revisions import FileRevision
 
 
 class PixelIndexEntry(AnalysisModel):
@@ -29,6 +28,7 @@ class PixelIndexEntry(AnalysisModel):
     file_size: Optional[Count]
     mtime_ns: Optional[Count]
     indexed_at: AwareDatetime
+    file_revision_json: Optional[str] = None
 
 
 class PixelMembers(AnalysisModel):
@@ -77,13 +77,24 @@ class PixelIndex:
     def __init__(self, db: Database):
         self.db = db
 
+    def prepare(self, sample_ids: Iterable[str], *, checkpoint: Callable[[], None] | None = None,
+                record: Callable[[list[str], ConsistencyError | None], None] | None = None,
+                memory_bytes: int = 512 * 1024 * 1024) -> PixelScanSummary:
+        from iad_core.duplicate.preparation import PixelPreparation
+        return PixelPreparation(self.db).prepare(list(sample_ids), checkpoint=checkpoint,
+            record=record, memory_bytes=memory_bytes)
+
     def assert_indexed(self, sample_ids: Iterable[str]) -> None:
         with self.db.connection() as connection:
             missing = connection.execute('''SELECT COUNT(*) FROM json_each(?) requested
+                LEFT JOIN samples s ON s.sample_id=requested.value
                 LEFT JOIN sample_pixel_index pixels ON pixels.sample_id=requested.value
-                WHERE pixels.sample_id IS NULL''', (json.dumps(sorted(set(sample_ids))),)).fetchone()[0]
+                WHERE pixels.sample_id IS NULL OR pixels.compare_profile<>?
+                    OR pixels.file_revision_json IS NULL
+                    OR (s.source_file_json IS NOT NULL AND pixels.file_revision_json<>s.source_file_json)''',
+                (json.dumps(sorted(set(sample_ids))), PixelContent.COMPARE_PROFILE)).fetchone()[0]
         if missing:
-            raise ConsistencyError('INDEX_NOT_READY', f'原始像素索引未就绪：{missing} 张图片尚未扫描。请在数据集管理中重扫相关数据集，再开始检查或准备索引。')
+            raise ConsistencyError('INDEX_NOT_READY', f'原始像素索引未就绪：{missing} 张图片尚未准备。请先完成检查准备。')
 
     def get(self, sample_id: str, connection: Optional[Connection] = None) -> Optional[PixelIndexEntry]:
         with nullcontext(connection) if connection is not None else self.db.connection() as connection:
@@ -116,7 +127,7 @@ class PixelIndex:
 
 
 class PixelScan:
-    """Build privately alongside ScanSnapshot; publish within its source transaction."""
+    """Stage prepared pixels privately and publish their content groups atomically."""
 
     def __init__(self, connection: Connection, *, cache_bytes: int = 256 * 1024 * 1024, force: bool = False):
         self.connection = connection
@@ -131,20 +142,29 @@ class PixelScan:
         connection.execute('CREATE INDEX temp.scan_pixel_group ON sample_pixel_index(content_group_id)')
 
     def stage(self, sample_id: str, image_path: str, image_sha256: Optional[str],
-              image: Optional[Image.Image] = None, unavailable_reason: Optional[str] = None) -> None:
+              image: Optional[Image.Image] = None, unavailable_reason: Optional[str] = None,
+              descriptor: Optional[PixelDescriptor] = None, scan_ref: Optional[str] = None,
+              file_revision: Optional[FileRevision] = None) -> None:
         conn = self.connection
         group_id = None
         old = conn.execute('SELECT * FROM main.sample_pixel_index WHERE sample_id=?', (sample_id,)).fetchone()
         if unavailable_reason is not None:
             descriptor = PixelDescriptor(decode_status='UNAVAILABLE', reason=unavailable_reason)
-        elif old is not None and image_sha256 and old['image_sha256'] == image_sha256 and not self.force:
-            descriptor = PixelDescriptor.model_validate_json(old['descriptor_json'])
+        elif (old is not None and image_sha256 and old['image_sha256'] == image_sha256 and not self.force
+              and ((descriptor is None and old['compare_profile'] == PixelContent.COMPARE_PROFILE)
+                   or (descriptor is not None and descriptor.decode_status == 'COMPLETE' and old['content_group_id'] is not None))):
+            if descriptor is None:
+                descriptor = PixelDescriptor.model_validate_json(old['descriptor_json'])
+                self.reused_samples += 1
+            else:
+                self.decoded_images += 1
             group_id = old['content_group_id']
-            self.reused_samples += 1
         else:
-            content = PixelContent.read(image if image is not None else image_path)
+            content = None
+            if descriptor is None:
+                content = PixelContent.read(image if image is not None else image_path)
+                descriptor = content.descriptor
             self.decoded_images += 1
-            descriptor = content.descriptor
             if descriptor.decode_status == 'COMPLETE':
                 candidates = conn.execute('''SELECT content_group_id FROM temp.sample_pixel_index
                     WHERE compare_profile=? AND pixel_key=? AND content_group_id IS NOT NULL
@@ -152,6 +172,9 @@ class PixelScan:
                     WHERE compare_profile=? AND pixel_key=? AND content_group_id IS NOT NULL''',
                     (descriptor.compare_profile, descriptor.pixel_key) * 2).fetchall()
                 for candidate in candidates:
+                    if content is None:
+                        content = PixelContent.read(image_path)
+                        self.decoded_images += 1
                     representative = self.cache.get(candidate[0])
                     if representative is None:
                         members = conn.execute('''SELECT image_path,image_sha256 FROM temp.sample_pixel_index
@@ -164,10 +187,7 @@ class PixelScan:
                         for member in members:
                             try:
                                 payload = Path(member['image_path']).read_bytes()
-                                if hashlib.sha256(payload).hexdigest() != member['image_sha256']:
-                                    continue
-                                with Image.open(io.BytesIO(payload)) as original:
-                                    representative = PixelContent.read(original)
+                                representative = PixelContent.read_bytes(payload)
                                 self.decoded_images += 1
                             except (OSError, ValueError):
                                 continue
@@ -183,23 +203,22 @@ class PixelScan:
                             break
                 if group_id is None:
                     group_id = 'content_' + uuid.uuid4().hex
-                    self.cache.put(group_id, content)
+                    if content is not None:
+                        self.cache.put(group_id, content)
         try:
-            stat = Path(image_path).stat()
-            file_size, mtime_ns = stat.st_size, stat.st_mtime_ns
+            file_revision = file_revision or FileRevision.read(image_path)
+            file_size, mtime_ns = file_revision.size, file_revision.mtime_ns
         except OSError:
             file_size = mtime_ns = None
-        conn.execute('''INSERT INTO temp.sample_pixel_index VALUES(?,?,?,?,?,?,?,?,?,?,?)''',
-            (sample_id, self.scan_ref, image_sha256, group_id, descriptor.compare_profile,
-             descriptor.pixel_key, descriptor.model_dump_json(), file_size, mtime_ns, self.indexed_at, image_path))
+        conn.execute('''INSERT INTO temp.sample_pixel_index
+            (sample_id,scan_ref,image_sha256,content_group_id,compare_profile,pixel_key,descriptor_json,
+             file_size,mtime_ns,indexed_at,file_revision_json,image_path) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''',
+            (sample_id, scan_ref or self.scan_ref, image_sha256, group_id, descriptor.compare_profile,
+             descriptor.pixel_key, descriptor.model_dump_json(), file_size, mtime_ns, self.indexed_at,
+             file_revision.model_dump_json() if file_revision else None, image_path))
 
     def publish(self, dataset_id: str) -> PixelScanSummary:
         conn = self.connection
-        missing = conn.execute('''SELECT s.sample_id,s.image_path FROM main.samples s WHERE s.dataset_id=?
-            AND s.is_excluded=0 AND NOT EXISTS (SELECT 1 FROM temp.sample_pixel_index p WHERE p.sample_id=s.sample_id)''',
-            (dataset_id,)).fetchall()
-        for row in missing:
-            self.stage(row['sample_id'], row['image_path'], None, unavailable_reason='Source image is absent from the published scan')
         conn.execute('''INSERT INTO image_content_groups(group_id,created_at)
             SELECT DISTINCT p.content_group_id,? FROM temp.sample_pixel_index p
             JOIN main.samples s ON s.sample_id=p.sample_id
@@ -215,9 +234,8 @@ class PixelScan:
         conn.execute('''DELETE FROM main.sample_pixel_index WHERE sample_id IN
             (SELECT sample_id FROM main.samples WHERE dataset_id=? AND is_excluded=1)''', (dataset_id,))
         PixelIndex.collect_unused_groups(conn)
-        conn.execute('UPDATE datasets SET scan_ref=? WHERE dataset_id=?', (self.scan_ref, dataset_id))
         counts = dict(conn.execute('''SELECT json_extract(p.descriptor_json,'$.decode_status'),count(*)
-            FROM main.sample_pixel_index p JOIN main.samples s ON s.sample_id=p.sample_id
+            FROM temp.sample_pixel_index p JOIN main.samples s ON s.sample_id=p.sample_id
             WHERE s.dataset_id=? GROUP BY json_extract(p.descriptor_json,'$.decode_status')''', (dataset_id,)).fetchall())
         return PixelScanSummary(scan_ref=self.scan_ref, coverage=CoverageCount(total=sum(counts.values()),
             completed=counts.get('COMPLETE', 0), unsupported=counts.get('UNSUPPORTED', 0), failed=counts.get('UNAVAILABLE', 0)),

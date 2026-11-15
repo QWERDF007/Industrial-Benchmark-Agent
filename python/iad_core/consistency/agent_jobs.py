@@ -102,10 +102,8 @@ class ConsistencyAgentJobs:
         return self.results.anchor(run_id, anchor_id)
 
     def attempt(self, run_id: str, anchor_id: str, attempt: int) -> ConsistencyAnchorRun:
-        with self.db.connection() as connection:
-            version = connection.execute("""SELECT json_extract(payload_json,'$.request.consistency_check.review_pipeline'),
-                json_extract(payload_json,'$.request.consistency_check.prompt_version') FROM job_runs WHERE job_id=?""", (run_id,)).fetchone()
-        if version is None or tuple(version) != (IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION):
+        snapshot = self.snapshot(run_id)
+        if (snapshot.review_pipeline, snapshot.prompt_version) != (IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION):
             raise ValueError('历史一致性作业只读保留，请新建检查')
         anchor = self.anchor(run_id, anchor_id)
         if anchor.attempt != attempt:
@@ -114,6 +112,7 @@ class ConsistencyAgentJobs:
 
     def cancel(self, run_id: str) -> dict:
         self.snapshot(run_id)
+        self.stop_preparation(run_id)
         self.jobs.cancel(run_id, ('ANALYSIS_WORKFLOW',))
         with self.db.connection() as connection:
             connection.execute("""UPDATE consistency_anchor_runs SET state='CANCELLED',phase='CANCELLED'
@@ -147,11 +146,16 @@ class ConsistencyAgentJobs:
 
     def interrupt(self, run_id: str) -> dict:
         self.snapshot(run_id)
+        self.stop_preparation(run_id)
         self.jobs.interrupt_external(run_id)
         with self.db.connection() as connection:
             connection.execute("""UPDATE consistency_anchor_runs SET state='INTERRUPTED',phase='INTERRUPTED'
                 WHERE job_id=? AND state IN ('PENDING','RUNNING') AND result_json IS NULL""", (run_id,))
         return AnalysisJobViews(self.db).view(run_id)
+
+    def stop_preparation(self, run_id: str) -> None:
+        if batch_id := self.jobs.status(run_id).get('index_batch_id'):
+            self.runtime.consistency.cancel(batch_id)
 
     def session_created(self, run_id: str, anchor_id: str, *, attempt: int = 1) -> ConsistencyAnchorRun:
         with self.jobs.lock, self.db.connection() as connection:
@@ -175,32 +179,53 @@ class ConsistencyAgentJobs:
                 (phase, run_id, anchor_id))
 
     def retrieve(self, run_id: str, anchor_id: str) -> AnchorCandidates:
-        anchor = self.anchor(run_id, anchor_id)
-        if anchor.candidates is not None:
-            return anchor.candidates
-        if not anchor.session_created:
-            raise ValueError('主图内部会话尚未创建')
-        snapshot = self.snapshot(run_id)
-        self.phase(run_id, anchor_id, 'RETRIEVING_ANCHOR')
-        values = snapshot.retrieval.model_dump()
-        if snapshot.retrieval.mode == 'exact':
-            settings = ConsistencyRetrievalSettings(mode='exact', max_exact_candidates=snapshot.retrieval.max_exact_candidates)
-            request = ImageRetrieve(query={'kind': 'sample', 'sample_id': anchor_id},
-                corpus_scope=snapshot.scopes.corpus.selector, mode='exact')
-        else:
-            if snapshot.image_encoder is None:
-                raise ConsistencyError('PROFILE_NOT_CONFIGURED', '作业未配置整图编码器')
-            settings = ConsistencyRetrievalSettings.model_validate(values)
-            request = ImageRetrieve(query={'kind': 'sample', 'sample_id': anchor_id},
-                corpus_scope=snapshot.scopes.corpus.selector, mode='combined', top_k=settings.max_similar_candidates,
-                min_similarity=settings.min_similarity, profile_id=snapshot.image_encoder.profile.profile_id)
-        retrieved = self.runtime.consistency_service.retrieve_full(request, frozen_scope=snapshot.scopes.corpus,
-            encoder=snapshot.image_encoder)
-        selected = AnchorCandidates.select(retrieved, settings)
+        result = self.retrieve_many(run_id, [anchor_id])[0]
+        if result.error:
+            raise ConsistencyError(result.error.code, result.error.message)
+        return result.candidates
+
+    def retrieve_many(self, run_id: str, anchor_ids: list[str]):
+        import json
+        from iad_core.consistency.candidate_retrieval import AnchorRetrievalResult
+
+        if not anchor_ids or len(set(anchor_ids)) != len(anchor_ids):
+            raise ValueError('候选检索要求非空且不重复的主图清单')
+        context, snapshot = self.jobs.context(run_id), self.snapshot(run_id)
         with self.db.connection() as connection:
-            connection.execute('''UPDATE consistency_anchor_runs SET candidates_json=?,phase=? WHERE job_id=? AND anchor_id=?''',
-                (selected.model_dump_json(), 'AWAITING_REVIEW' if selected.candidates else 'RULE_READY', run_id, anchor_id))
-        return selected
+            rows = connection.execute('''SELECT anchor_id,candidates_json FROM consistency_anchor_runs
+                WHERE job_id=? AND anchor_id IN (SELECT value FROM json_each(?))''',
+                (run_id, json.dumps(anchor_ids))).fetchall()
+        if len(rows) != len(anchor_ids):
+            raise ValueError('主图不属于当前作业')
+        selected = {row['anchor_id']: AnchorRetrievalResult(anchor_id=row['anchor_id'],
+            candidates=AnchorCandidates.model_validate_json(row['candidates_json'])) for row in rows if row['candidates_json']}
+        pending = [identity for identity in anchor_ids if identity not in selected]
+        if pending:
+            if snapshot.retrieval.mode == 'combined' and snapshot.image_encoder is None:
+                raise ConsistencyError('PROFILE_NOT_CONFIGURED', '作业未配置整图编码器')
+            context.update(phase='RETRIEVING_ANCHOR', current_sample_id=pending[0])
+            with self.db.connection() as connection:
+                connection.execute('''UPDATE consistency_anchor_runs SET phase='RETRIEVING_ANCHOR'
+                    WHERE job_id=? AND anchor_id IN (SELECT value FROM json_each(?))''', (run_id, json.dumps(pending)))
+            from iad_core.feature.index_models import IndexLimits
+            limit = self.runtime.indexes.limits.query_batch_size if snapshot.retrieval.mode == 'combined' else IndexLimits().query_batch_size
+            for offset in range(0, len(pending), limit):
+                items = list(self.runtime.candidate_retrieval.select(snapshot, pending[offset:offset+limit], context.checkpoint))
+                with self.db.connection() as connection:
+                    for item in items:
+                        context.checkpoint()
+                        if item.candidates is None:
+                            continue
+                        updated = connection.execute('''UPDATE consistency_anchor_runs SET candidates_json=?,phase=?
+                            WHERE job_id=? AND anchor_id=? AND state IN ('PENDING','RUNNING')
+                            AND EXISTS(SELECT 1 FROM job_runs WHERE job_id=? AND status='RUNNING')''',
+                            (item.candidates.model_dump_json(), 'AWAITING_REVIEW' if item.candidates.candidates else 'RULE_READY',
+                                run_id, item.anchor_id, run_id))
+                        if updated.rowcount != 1:
+                            raise InterruptedError('作业已停止')
+                    self.results.refresh_index(run_id, connection=connection)
+                selected.update((item.anchor_id, item) for item in items)
+        return [selected[identity] for identity in anchor_ids]
 
     def submit_empty(self, run_id: str, anchor_id: str, *, attempt: int = 1) -> NoCandidateResult:
         anchor = self.attempt(run_id, anchor_id, attempt)
@@ -272,6 +297,12 @@ class ConsistencyAgentJobs:
             self.jobs.record(run_id, anchor_id, JobExecutionError(message, source_run_id=source_run_id or run_id,
                 source_phase=source_phase or anchor.phase, code=code), persist=persist)
             return self.anchor(run_id, anchor_id)
+
+    def fail_preparation(self, run_id: str, error: Exception) -> None:
+        pending = [anchor.anchor_id for anchor in self.anchors(run_id) if anchor.state in ('PENDING', 'RUNNING')]
+        self.jobs.record(run_id, pending, error, phase='FAILED', persist=lambda connection: connection.execute(
+            "UPDATE consistency_anchor_runs SET state='FAILED',phase='FAILED' WHERE job_id=? AND state IN ('PENDING','RUNNING')", (run_id,)))
+        self.jobs.finish_external(run_id)
 
     def trace_event(self, run_id: str, anchor_id: str) -> AnchorTraceEvent:
         anchor = self.anchor(run_id, anchor_id)

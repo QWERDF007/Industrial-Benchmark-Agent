@@ -1,0 +1,1 @@
+{"version":3,"file":"row-selection.d.ts","sourceRoot":"","sources":["../../src/client/row-selection.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,YAAY;IAC3B,IAAI,EAAE,MAAM,CAAC;IACb,KAAK,EAAE,MAAM,CAAC;IACd,WAAW,EAAE,WAAW,CAAC,MAAM,CAAC,CAAC;IACjC,QAAQ,CAAC,GAAG,EAAE,GAAG,CAAC,MAAM,CAAC,GAAG,IAAI,CAAC;IACjC,QAAQ,CAAC,EAAE,OAAO,CAAC;CACpB"}

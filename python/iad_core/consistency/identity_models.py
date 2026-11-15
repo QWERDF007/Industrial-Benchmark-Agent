@@ -1,4 +1,6 @@
 from typing import Literal
+import hashlib
+import json
 
 from pydantic import Field, computed_field, model_validator
 
@@ -11,6 +13,14 @@ from iad_core.consistency.identity_regions import IdentityRegionPair, IdentityRe
 
 
 ContentRelation = Literal['pixel_identical', 'transformed_same_content', 'content_different', 'unverified']
+PAIR_REVIEW_BATCH_SIZE = 32
+PAIR_REVIEW_MIN_BATCH_SIZE = 8
+PAIR_REVIEW_MEDIA_BYTES = 48 * 1024 * 1024
+PAIR_REVIEW_REGION_BUDGET = 96
+
+
+def candidate_pair_key(anchor_id: str, candidate_id: str) -> str:
+    return 'pair_' + hashlib.sha256(json.dumps(sorted((anchor_id, candidate_id))).encode()).hexdigest()
 
 
 class CandidateIdentityRecord(AnalysisModel):
@@ -20,6 +30,7 @@ class CandidateIdentityRecord(AnalysisModel):
     execution_status: Literal['pending', 'completed', 'failed']
     revision: int = Field(default=0, ge=0)
     relation: ContentRelation | None
+    basis: Literal['image_content', 'empty_annotations'] = 'image_content'
     reason: NonBlankText
     limitations: list[NonBlankText] = Field(default_factory=list)
     media: list[VisualEvidence] = Field(default_factory=list)
@@ -37,13 +48,15 @@ class CandidateIdentityRecord(AnalysisModel):
 
     @model_validator(mode='after')
     def validate_execution(self):
-        if self.execution_status == 'completed' and (self.relation is None or len(self.media) < 2 or self.error_code):
+        if self.basis == 'empty_annotations' and (self.source != 'program' or self.relation is not None or self.observation_call_ids):
+            raise ValueError('双侧无标注只记录程序依据，不能声称图像内容相同或模型已观察')
+        if self.execution_status == 'completed' and ((self.relation is None and self.basis != 'empty_annotations') or len(self.media) < 2 or self.error_code):
             raise ValueError('成功的资格验证必须有内容关系和实际双侧图证，不能携带执行错误')
         if self.execution_status == 'failed' and (self.relation is not None or not self.error_code):
             raise ValueError('执行失败不能伪造内容关系，必须保留错误码')
         if self.execution_status == 'pending' and (self.relation is not None or self.error_code):
             raise ValueError('待核验的候选不能携带内容结论或执行错误')
-        expected = (None if self.execution_status != 'completed' else {
+        expected = (None if self.execution_status != 'completed' else 'eligible' if self.basis == 'empty_annotations' else {
             'pixel_identical': 'eligible', 'transformed_same_content': 'eligible',
             'content_different': 'rejected', 'unverified': 'unverified'}[self.relation])
         if self.gate_status is not None and self.gate_status != expected:
@@ -79,6 +92,22 @@ class AnchorIdentityState(AnalysisModel):
     @property
     def completed(self) -> bool:
         return len(self.gates) == self.retrieved and all(gate.execution_status == 'completed' for gate in self.gates)
+
+    @property
+    def terminal_reason(self) -> Literal['NO_CANDIDATES', 'NO_ELIGIBLE_CANDIDATES'] | None:
+        if not self.completed:
+            return None
+        if self.retrieved == 0:
+            return 'NO_CANDIDATES'
+        return 'NO_ELIGIBLE_CANDIDATES' if not self.eligible_ids else None
+
+
+class CandidateObservationRequest(AnalysisModel):
+    anchor_id: Identifier
+    candidate_id: Identifier
+    expected_revision: int = Field(ge=0)
+    request_id: Identifier
+    attempt: int = Field(default=1, ge=1)
 
 
 class CandidateStats(AnalysisModel):

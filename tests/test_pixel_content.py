@@ -5,6 +5,19 @@ import pytest
 from PIL import Image, PngImagePlugin
 
 
+def test_png_preparation_has_a_versioned_blake3_key_and_preserves_raw_pixels(tmp_path):
+    from iad_core.duplicate.pixels import PixelContent
+
+    path = tmp_path / 'raw.png'
+    pixels = np.arange(9 * 13 * 4, dtype=np.uint8).reshape(9, 13, 4)
+    Image.fromarray(pixels).save(path)
+
+    content = PixelContent.read(path)
+
+    assert content.descriptor.compare_profile == 'raw-decoded-blake3-v1'
+    np.testing.assert_array_equal(np.asarray(content.image()), pixels)
+
+
 def test_lossless_encoding_metadata_and_palette_preserve_the_strict_pixel_relation(tmp_path):
     from iad_core.duplicate.pixels import PixelContent
 

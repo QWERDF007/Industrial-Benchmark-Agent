@@ -28,8 +28,10 @@ def completed_groups(tmp_path):
         'preview_fingerprint': preview.preview_fingerprint})
     runtime = WorkbenchRuntime(db)
     try:
+        from iad_core.duplicate.preparation import PixelPreparation
         checks = ConsistencyAgentJobs(runtime)
         anchors = [config.dataset.id + ':' + rule.path + '/part.png' for rule in rules]
+        PixelPreparation(db).prepare(anchors)
         run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': anchors}})['run_id']
         review = ConsistencyAgentReview(runtime)
@@ -155,7 +157,40 @@ def test_all_images_are_frozen_job_subjects_with_real_pagination_and_unfinished_
     assert before.total == 1 and before.items[0].sample.sample_id == anchors[0]
     assert before.items[0].image is None
     assert before.items[0].summary.state == 'PENDING'
-    assert before.items[0].summary.program_conclusion == '未完成'
+    assert before.items[0].summary.program_conclusion == '等待处理'
     ConsistencyAgentJobs(runtime).cancel(second)
     assert results.images(second).items[0].summary.state == 'CANCELLED'
-    assert results.images(second).items[0].summary.program_conclusion == '未完成'
+    assert results.images(second).items[0].summary.program_conclusion == '已取消'
+
+
+def test_result_pages_filter_before_pagination_and_follow_review_changes(completed_groups):
+    from iad_core.consistency.group_review import ConsistencyGroupReview
+
+    db, _, run_id, anchors = completed_groups
+    results = ConsistencyAgentResults(db)
+    first = results.images(run_id, page_size=1, query={'group': '类别不一致'})
+    assert first.total == 3 and len(first.items) == 1
+    assert first.counts['images'] == first.counts['类别不一致'] == 3
+    assert results.images(run_id, query={'group': 'NO_CANDIDATES'}).total == 0
+    assert results.images(run_id, query={'search': 'part'}).total == 3
+    assert results.images(run_id, query={'search': 'different/'}).total == 0
+    reviews = ConsistencyGroupReview(db)
+    context = reviews.context(run_id, anchors[0])
+    reviews.submit(run_id, anchors[0], {'client_request_id': str(uuid4()),
+        'result_fingerprint': context.result_fingerprint, 'reviewer': 'user',
+        'comment': '核对整组标签', 'action': {'kind': 'CONFIRM_DIFFERENCE'}})
+    confirmed = results.images(run_id, query={'review': 'confirmed', 'group': '类别不一致'})
+    assert confirmed.total == 1
+    assert confirmed.items[0].sample.sample_id == anchors[0]
+    assert confirmed.items[0].review_state == 'confirmed'
+    assert results.images(run_id, query={'review': 'pending'}).total == 2
+    assert results.statistics(run_id).total == 3
+
+
+def test_warm_result_pages_do_not_reserve_the_database_writer(completed_groups):
+    db, _, run_id, _ = completed_groups
+    results = ConsistencyAgentResults(db)
+    results.images(run_id)
+    with db.connection() as writer:
+        writer.execute('BEGIN IMMEDIATE')
+        assert results.images(run_id, page_size=1).total == 3

@@ -71,6 +71,7 @@ class FrozenSample(AnalysisModel):
     dataset_id: Identifier
     task_id: Identifier
     source_fingerprint: Optional[str]
+    source_revision: Optional[str] = None
     quality_status: QualityStatus
     quality_source: Optional[str]
 
@@ -174,8 +175,12 @@ class ConsistencyCoverage(AnalysisModel):
     annotation: CoverageCount
 
 
+RawPixelProfile = Literal['raw-decoded-v1', 'raw-decoded-blake3-v1']
+CURRENT_PIXEL_PROFILE: RawPixelProfile = 'raw-decoded-blake3-v1'
+
+
 class PixelDescriptor(AnalysisModel):
-    compare_profile: Literal['raw-decoded-v1'] = 'raw-decoded-v1'
+    compare_profile: RawPixelProfile = CURRENT_PIXEL_PROFILE
     width: Optional[Count] = None
     height: Optional[Count] = None
     channel_semantics: Optional[Literal['L', 'LA', 'RGB', 'RGBA']] = None
@@ -188,8 +193,8 @@ class PixelDescriptor(AnalysisModel):
 
 
 class PixelComparison(AnalysisModel):
-    status: Literal['COMPLETE', 'INCOMPATIBLE', 'UNAVAILABLE', 'UNSUPPORTED', 'PENDING']
-    compare_profile: Literal['raw-decoded-v1'] = 'raw-decoded-v1'
+    status: Literal['COMPLETE', 'INCOMPATIBLE', 'UNAVAILABLE', 'UNSUPPORTED', 'PENDING', 'NOT_REQUESTED']
+    compare_profile: RawPixelProfile = CURRENT_PIXEL_PROFILE
     exact_equal: Optional[bool] = None
     compared_pixels: Count = 0
     changed_pixels: Optional[Count] = None

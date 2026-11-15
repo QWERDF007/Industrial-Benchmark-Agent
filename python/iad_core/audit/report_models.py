@@ -14,10 +14,12 @@ from iad_core.audit.delegation_models import AuditResultReference, AuditReviewRe
 AUDIT_ISSUE_LABELS = {kind:CONFLICT_CATEGORY_LABELS[category] for kind,category in ISSUE_CATEGORIES.items()}
 AUDIT_ASSESSMENT_LABELS = {'supported':'支持为疑点','unsupported':'不支持为疑点','insufficient':'证据不足'}
 AUDIT_CONSISTENCY_LABELS = {'NO_CANDIDATES':'无候选','NO_ELIGIBLE_CANDIDATES':'无有效候选',
+    'PROGRAM_REVIEWED:EQUIVALENT':'无标注一致',
     'MODEL_REVIEWED:EQUIVALENT':'标注一致','MODEL_REVIEWED:MATERIAL':'标注冲突','MODEL_REVIEWED:UNCERTAIN':'待核实'}
 AUDIT_CONSISTENCY_DESCRIPTIONS = {
     'NO_CANDIDATES':'检索没有找到可作对照的其他图像。',
     'NO_ELIGIBLE_CANDIDATES':'找到了候选图，但内容不同，或看不清是否拍的是相同内容，因此没有进入标注比较。',
+    'PROGRAM_REVIEWED:EQUIVALENT':'主图与所比较的候选均无标注，由程序直接判定标注一致。',
     'MODEL_REVIEWED:EQUIVALENT':'已有内容相同的对照图，比较后，双方标注的类别、数量和覆盖关系相符。',
     'MODEL_REVIEWED:MATERIAL':'已有内容相同的对照图，比较后发现至少一处标注不同，具体差别按下面的类型归类。',
     'MODEL_REVIEWED:UNCERTAIN':'已有内容相同的对照图，但部分标注关系还需要复看，例如目标的边缘看不清。',
@@ -237,7 +239,7 @@ class AuditConsistencyAnalysis(AuditEvidenceAnalysis):
 
 
 class AuditConsistencyScope(AnalysisModel):
-    source_status: Literal['NO_CANDIDATES','NO_ELIGIBLE_CANDIDATES','MODEL_REVIEWED:EQUIVALENT','MODEL_REVIEWED:MATERIAL','MODEL_REVIEWED:UNCERTAIN']
+    source_status: Literal['NO_CANDIDATES','NO_ELIGIBLE_CANDIDATES','PROGRAM_REVIEWED:EQUIVALENT','MODEL_REVIEWED:EQUIVALENT','MODEL_REVIEWED:MATERIAL','MODEL_REVIEWED:UNCERTAIN']
     analysis: NonBlankText = Field(description='只讲这组能否找到可比较的图、相同内容的标注是否一致及具体差异；用日常语言说明。')
     evidence_refs: list[AuditResultReference] = Field(default_factory=list,
         description='每张精选原图都须关联其当前有效图级版本；通常kind为image，sample_id与representatives中的原图一致。')

@@ -38,6 +38,6 @@ export declare class PythonBridge {
     get dbPath(): string | undefined;
     useModelRouting(routing: ModelRouting): () => void;
     execute<T = any>(operation: string, args?: Record<string, any>, signal?: AbortSignal, options?: BridgeExecutionOptions): Promise<T>;
-    destroy(): void;
+    destroy(): Promise<void>;
 }
 //# sourceMappingURL=index.d.ts.map

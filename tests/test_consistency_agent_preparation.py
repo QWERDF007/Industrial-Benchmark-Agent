@@ -83,8 +83,9 @@ def test_combined_prepares_frozen_subjects_and_corpus_once_and_reuses_shared_vec
         assert prepared.total == prepared.completed == 4
         assert runtime.jobs.status(job['run_id'])['prepared_sources'] == 4
         assert len(encoded) == 3
-        assert all(child.job_type == 'IMAGE_INDEX' and child.model_calls == [] for child in prepared.children)
-        assert all(child.embedding_profile == encoder.profile for child in prepared.children)
+        assert {child.job_type for child in prepared.children} == {'PIXEL_INDEX', 'IMAGE_INDEX'}
+        assert all(child.model_calls == [] for child in prepared.children)
+        assert all(child.embedding_profile == encoder.profile for child in prepared.children if child.job_type == 'IMAGE_INDEX')
         assert ConsistencyAgentPreparation(runtime).prepare(job['run_id']).batch_id == prepared.batch_id
         assert len(encoded) == 3
         checks.session_created(job['run_id'], anchor)
@@ -126,7 +127,7 @@ def test_preparation_cancellation_keeps_cached_content_and_resumes_only_unfinish
         batch_id = pending.batch_id
         checks.cancel(run)
         release.set()
-        for child in pending.children:
+        for child in runtime.consistency.status(batch_id).children:
             runtime.jobs.wait(child.run_id, 5)
         assert runtime.consistency.status(batch_id).status == 'CANCELLED'
         checks.resume(run)
@@ -193,17 +194,44 @@ def test_index_failure_does_not_retry_encoding_until_the_job_is_explicitly_resum
         checks = ConsistencyAgentJobs(runtime)
         run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'combined'})['run_id']
         preparation = ConsistencyAgentPreparation(runtime)
-        for _ in range(2):
-            with pytest.raises(JobExecutionError) as failure:
-                wait_for_preparation(preparation, run)
-            assert failure.value.code == 'ENCODER_UNAVAILABLE'
-            assert len(calls) == 1
-        checks.cancel(run)
+        with pytest.raises(JobExecutionError) as failure:
+            wait_for_preparation(preparation, run)
+        assert failure.value.code == 'ENCODER_UNAVAILABLE'
+        assert len(calls) == 1
+        assert runtime.jobs.status(run)['status'] == 'FAILED'
         checks.resume(run)
         fail = False
         result = wait_for_preparation(preparation, run)
         assert result.status == 'COMPLETED'
         assert len(calls) == 2
         assert ConsistencyAgentResults(db).diagnostics(run, checks.anchors(run)[0].anchor_id).calls == []
+    finally:
+        runtime.close()
+
+
+def test_failed_pixel_preparation_stops_before_encoding_and_finishes_the_master_job(dataset, tmp_path, monkeypatch):
+    from iad_core.workbench.job_models import JobExecutionError
+
+    db, _, config = dataset
+    configure_test_encoder(db, tmp_path)
+    with db.connection() as connection:
+        connection.execute("""CREATE TRIGGER reject_pixel_publication BEFORE INSERT ON sample_pixel_index
+            BEGIN SELECT RAISE(ABORT, 'Pixel index storage failed'); END""")
+    runtime = WorkbenchRuntime(db)
+    encoded = []
+    monkeypatch.setattr(runtime.images, 'encode', lambda selection, images: encoded.extend(images))
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'combined'})['run_id']
+        with pytest.raises(JobExecutionError):
+            wait_for_preparation(ConsistencyAgentPreparation(runtime), run)
+        assert encoded == []
+        state = runtime.jobs.status(run)
+        assert state['status'] == 'FAILED'
+        assert state['failed'] == state['total_samples'] == 4
+        assert state['completed'] == 0
+        assert len(state['batch_runs']) == 1
+        assert runtime.jobs.status(state['batch_runs'][0])['job_type'] == 'PIXEL_INDEX'
+        assert all(anchor.state == 'FAILED' and not anchor.session_created for anchor in checks.anchors(run))
     finally:
         runtime.close()

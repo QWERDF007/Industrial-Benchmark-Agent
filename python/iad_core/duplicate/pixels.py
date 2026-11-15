@@ -1,21 +1,25 @@
-import hashlib
 import io
 import json
 import math
+import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import ClassVar, Literal, Sequence
 
 import numpy as np
+import pyspng
+from blake3 import blake3
 from PIL import Image, UnidentifiedImageError
 
-from iad_core.consistency.models import PixelComparison, PixelDescriptor
+from iad_core.consistency.models import CURRENT_PIXEL_PROFILE, PixelComparison, PixelDescriptor
 from iad_core.duplicate.verification_models import RegionPixelStatistics
+from iad_core.duplicate.png import PngMetadata
 
 
 @dataclass(frozen=True)
 class PixelContent:
     MAX_COMPARE_PIXELS: ClassVar[int] = 256*1024
+    COMPARE_PROFILE: ClassVar[str] = CURRENT_PIXEL_PROFILE
     descriptor: PixelDescriptor
     _pixels: np.ndarray | None = field(default=None, repr=False, compare=False)
 
@@ -27,10 +31,13 @@ class PixelContent:
     def read(cls, source: str | Path | Image.Image, *, max_decoded_bytes: int = 256 * 1024 * 1024) -> 'PixelContent':
         if max_decoded_bytes < 1:
             raise ValueError('Decoded image budget must be positive')
-        owned = not isinstance(source, Image.Image)
-        image = None
+        if not isinstance(source, Image.Image):
+            try:
+                return cls.read_bytes(Path(source).read_bytes(), max_decoded_bytes=max_decoded_bytes)
+            except OSError as error:
+                return cls(PixelDescriptor(decode_status='UNAVAILABLE', reason=str(error)))
+        image = source
         try:
-            image = Image.open(source) if owned else source
             width, height = image.size
             mode = image.mode
             if getattr(image, 'n_frames', 1) != 1:
@@ -47,18 +54,38 @@ class PixelContent:
             pixels = np.asarray(image.convert(mode) if image.mode == 'P' else image)
             pixels = np.ascontiguousarray(pixels, dtype='<u2' if integer16 else np.uint8)
             pixels.setflags(write=False)
-            metadata = dict(compare_profile='raw-decoded-v1', width=width, height=height,
-                channel_semantics='L' if integer16 else mode, dtype='uint16' if integer16 else 'uint8',
-                bit_depth=16 if integer16 else 8)
-            digest = hashlib.sha256(json.dumps(metadata, sort_keys=True).encode())
-            digest.update(memoryview(pixels).cast('B'))
-            return cls(PixelDescriptor(**metadata, decode_status='COMPLETE', pixel_key=digest.hexdigest(),
-                annotation_coordinates='RAW' if orientation == 1 else 'EXIF_AMBIGUOUS'), pixels)
+            return cls._decoded(pixels, 'L' if integer16 else mode, orientation)
         except (OSError, ValueError, UnidentifiedImageError, Image.DecompressionBombError) as error:
             return cls(PixelDescriptor(decode_status='UNAVAILABLE', reason=str(error)))
-        finally:
-            if owned and image is not None:
-                image.close()
+
+    @classmethod
+    def read_bytes(cls, payload: bytes, *, max_decoded_bytes: int = 256 * 1024 * 1024) -> 'PixelContent':
+        if max_decoded_bytes < 1:
+            raise ValueError('Decoded image budget must be positive')
+        try:
+            if payload.startswith(b'\x89PNG\r\n\x1a\n'):
+                png = PngMetadata.read(payload)
+                if png.bit_depth == 8 and png.color_type in (2, 6) and not png.animated:
+                    mode = 'RGB' if png.color_type == 2 else 'RGBA'
+                    if png.width * png.height * len(mode) > max_decoded_bytes:
+                        return cls(PixelDescriptor(decode_status='UNSUPPORTED', reason='RESOURCE_LIMIT: decoded image exceeds byte budget'))
+                    pixels = pyspng.load(payload, format=mode)
+                    pixels.setflags(write=False)
+                    return cls._decoded(pixels, mode, png.orientation)
+            with Image.open(io.BytesIO(payload)) as image:
+                return cls.read(image, max_decoded_bytes=max_decoded_bytes)
+        except (OSError, ValueError, RuntimeError, struct.error, Image.DecompressionBombError) as error:
+            return cls(PixelDescriptor(decode_status='UNAVAILABLE', reason=str(error)))
+
+    @classmethod
+    def _decoded(cls, pixels: np.ndarray, mode: str, orientation: int) -> 'PixelContent':
+        integer16 = pixels.dtype == np.dtype('<u2')
+        metadata = dict(compare_profile=cls.COMPARE_PROFILE, width=pixels.shape[1], height=pixels.shape[0],
+            channel_semantics=mode, dtype='uint16' if integer16 else 'uint8', bit_depth=16 if integer16 else 8)
+        digest = blake3(json.dumps(metadata, sort_keys=True).encode(), max_threads=1)
+        digest.update(memoryview(pixels).cast('B'))
+        return cls(PixelDescriptor(**metadata, decode_status='COMPLETE', pixel_key=digest.hexdigest(),
+            annotation_coordinates='RAW' if orientation == 1 else 'EXIF_AMBIGUOUS'), pixels)
 
     def compare(self, other: 'PixelContent', *, block_rows: int = 128) -> PixelComparison:
         if block_rows < 1:

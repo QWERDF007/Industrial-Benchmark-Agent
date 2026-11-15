@@ -110,14 +110,14 @@ class NoEligibleResult(NoCandidateResult):
     conclusion: Literal['通过（无有效候选）'] = '通过（无有效候选）'
 
 
-class ModelReviewedResult(GroupAnalysisDraft, IdentityResultFields):
+class ReviewedResult(GroupAnalysisDraft, IdentityResultFields):
     schema_version: Literal[1, '4.0', '5.0', '7.0', '8.0'] = 1
-    reason: Literal['MODEL_REVIEWED'] = 'MODEL_REVIEWED'
+    reason: Literal['MODEL_REVIEWED', 'PROGRAM_REVIEWED'] = 'MODEL_REVIEWED'
     fingerprint: Digest
     observation_ids: dict[Identifier, list[Identifier]]
 
 
-AnchorResult = Annotated[NoCandidateResult | NoEligibleResult | ModelReviewedResult, Field(discriminator='reason')]
+AnchorResult = Annotated[NoCandidateResult | NoEligibleResult | ReviewedResult, Field(discriminator='reason')]
 AnchorState = Literal['PENDING', 'RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED', 'INTERRUPTED']
 
 

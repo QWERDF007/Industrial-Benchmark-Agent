@@ -9,6 +9,28 @@ from iad_core.consistency.geometry import bbox_iou
 
 class AnnotationEvaluation:
     @staticmethod
+    def empty_pair(sources) -> bool:
+        return AnnotationEvaluation.empty_annotations([source.annotations for source in sources])
+
+    @staticmethod
+    def empty_annotations(annotations) -> bool:
+        return len(annotations) == 2 and all(item.dataset_format == 'labelme'
+            and not item.annotations and not item.errors for item in annotations)
+
+    @staticmethod
+    def deterministic(sources) -> bool:
+        return sources[0].annotations.dataset_format == 'folder_classification' or AnnotationEvaluation.empty_pair(sources)
+
+    @staticmethod
+    def programmatic(sources, candidate_id, media_ids):
+        if sources[0].annotations.dataset_format == 'folder_classification':
+            return AnnotationEvaluation.labels(sources, candidate_id, media_ids)
+        if AnnotationEvaluation.empty_pair(sources):
+            return GroupPairAssessment(candidate_id=candidate_id, verdict='EQUIVALENT', conclusion='一致',
+                categories=[], explanation='主图和候选图均无标注，程序判定标注一致。', findings=[], issues=[])
+        return None
+
+    @staticmethod
     def labels(sources, candidate_id, media_ids):
         main, candidate = (source.sample.quality_status for source in sources)
         if main not in ('PASS', 'FAIL') or candidate not in ('PASS', 'FAIL'):
@@ -25,8 +47,8 @@ class AnnotationEvaluation:
     @staticmethod
     def validate(assessment, sources, media_ids, *, observations=(), matching=None, gate=None):
         main, candidate = sources
-        if main.annotations.dataset_format == 'folder_classification':
-            expected = AnnotationEvaluation.labels(sources, assessment.candidate_id, media_ids)
+        expected = AnnotationEvaluation.programmatic(sources, assessment.candidate_id, media_ids)
+        if expected is not None:
             if assessment != expected:
                 raise ValueError('图像级标签审核必须使用程序依据导入分类生成的完整结果')
             return

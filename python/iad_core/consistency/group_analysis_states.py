@@ -42,24 +42,24 @@ class GroupAnalysisStates:
             grouped.setdefault((identity.kind,identity.group_id),[]).append(identity)
         with self.db.connection() as connection:
             owner = connection.execute('''SELECT json_extract(payload_json,'$.root_run_id') root
-                FROM job_runs WHERE job_type='ANALYSIS_WORKFLOW'
+                FROM job_run_requests WHERE job_type='ANALYSIS_WORKFLOW'
                     AND json_extract(payload_json,'$.program_batch_id')=? ORDER BY id DESC LIMIT 1''',
                 (selection.batch_id,)).fetchone() if isinstance(selection,BatchSelection) else None
             if owner:
-                clause = "json_extract(payload_json,'$.request.analysis_request_id')=wanted.value"
+                clause = "json_extract(request_json,'$.analysis_request_id')=wanted.value"
                 args = [json.dumps(sorted({owner['root']+'_gallery_'+identity.group_id for identity in facts}))]
             else:
-                clause = "json_extract(payload_json,'$.request.frozen_group.group_id')=wanted.value"
+                clause = "json_extract(request_json,'$.frozen_group.group_id')=wanted.value"
                 args = [json.dumps(sorted({identity.group_id for identity in facts}))]
                 if isinstance(selection,BatchSelection):
-                    clause += " AND json_extract(payload_json,'$.request.analysis_selection.kind')='batch' AND json_extract(payload_json,'$.request.analysis_selection.batch_id')=?"
+                    clause += " AND json_extract(request_json,'$.analysis_selection.kind')='batch' AND json_extract(request_json,'$.analysis_selection.batch_id')=?"
                     args.append(selection.batch_id)
             rows = connection.execute('''SELECT job_id,status,
-                json_extract(payload_json,'$.request.frozen_group.kind') kind,
-                json_extract(payload_json,'$.request.frozen_group.group_id') group_id,
-                json_extract(payload_json,'$.request.frozen_group.facts_state') facts_state,
-                json_extract(payload_json,'$.request.group_fingerprint') fingerprint,
-                json_extract(payload_json,'$.request.analysis_schema') schema,
+                json_extract(request_json,'$.frozen_group.kind') kind,
+                json_extract(request_json,'$.frozen_group.group_id') group_id,
+                json_extract(request_json,'$.frozen_group.facts_state') facts_state,
+                json_extract(request_json,'$.group_fingerprint') fingerprint,
+                json_extract(request_json,'$.analysis_schema') schema,
                 json_extract(payload_json,'$.group_analysis.overall.verdict') verdict,
                 json_extract(payload_json,'$.group_analysis.overall.text') conclusion,
                 json_extract(payload_json,'$.group_analysis.assessments') assessments

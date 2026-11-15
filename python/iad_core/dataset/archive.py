@@ -9,7 +9,7 @@ from zipfile import BadZipFile, ZipFile
 from filelock import FileLock
 
 from iad_core.advisory.analysis import AnalysisModel
-from iad_core.evidence.images import file_sha256
+from iad_core.evidence.files import file_sha256
 from iad_core.dataset.files import DEFAULT_IMAGE_GLOBS, ImageFiles
 
 
@@ -104,7 +104,5 @@ class DatasetArchive:
                                 path.parent.mkdir(parents=True, exist_ok=True)
                                 with archive.open(item) as source, path.open('xb') as destination:
                                     shutil.copyfileobj(source, destination, length=1024 * 1024)
-                    if file_sha256(str(self.path)) != self.sha256:
-                        raise ValueError('Dataset archive changed during extraction; inspect it again')
                     staging.rename(target)
         return tuple(target / path for path in selected)

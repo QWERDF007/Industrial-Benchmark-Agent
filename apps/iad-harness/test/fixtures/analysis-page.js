@@ -103,7 +103,7 @@ export async function verifyAnalysisPage(base, module, {partialVersionId,emptyCa
         const versions = await element('select[aria-label="知识结果版本"]');
         await (await versions.findElement(By.css(`option[value="${partialVersionId}"]`))).click();
         await driver.wait(() => driver.executeScript('return document.querySelectorAll(".knowledge-row").length===3'), 10000);
-        assert.ok(!(await driver.findElement(By.css('#knowledge-body')).getText()).includes('表面关系'),
+        assert.ok(!(await driver.findElement(By.css('#knowledge-panel')).getText()).includes('表面关系'),
           'the selected partial version keeps its three checks after the job resumes');
         await fs.writeFile(path.join(output, 'knowledge-partial-version.png'), await driver.takeScreenshot(), 'base64');
       } else {

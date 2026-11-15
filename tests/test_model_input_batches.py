@@ -12,6 +12,30 @@ from iad_core.storage.database import Database
 from iad_core.exploration.models import DirectionDraft
 
 
+@pytest.mark.parametrize('bundled', [False, True])
+def test_model_image_context_keeps_pixels_and_coordinates_without_internal_checksums(dataset, bundled):
+    import hashlib
+    from iad_core.evidence.images import EvidenceImages, PreparedImageBundle
+    from iad_core.storage.repositories import SampleRepository
+
+    database, _, config = dataset
+    sample = SampleRepository(database).get(config.dataset.id + ':dent.png')
+    prepared = EvidenceImages(database.db_path).capture(sample, 'overview', 'coverage', full_resolution=True)
+    inputs = [PreparedImageBundle(prepared.evidence.evidence_id, {'side': 'main'}, (prepared,)) if bundled else prepared]
+    with httpx.Client(transport=httpx.MockTransport(lambda request: httpx.Response(200,
+            json={'count': 100, 'max_model_len': 65536}))) as http:
+        plan = VlmClient(http_client=http).plan(DirectionDraft, '观察图片中实际可见的差别。', inputs, 'fixture-model')
+    parts = plan.body['messages'][0]['content']
+    metadata = next(json.loads(part['text'].split('：', 1)[1]) for part in parts
+        if part['type'] == 'text' and part['text'].startswith(('图像视图：', '视觉证据：')))
+    assert not {'sha256', 'source_sha256', 'annotation_sha256', 'media_type'} & metadata.keys()
+    assert metadata['original_size'] == metadata['sent_size'] == [sample.width, sample.height]
+    assert metadata['crop_bbox'] == [0, 0, sample.width, sample.height] and metadata['representation'] == 'raw'
+    image = next(part for part in parts if part['type'] == 'image_url')
+    assert hashlib.sha256(base64.b64decode(image['image_url']['url'].split(',', 1)[1])).hexdigest() == prepared.evidence.sha256
+    assert prepared.evidence.source_sha256 and prepared.evidence.media_type == 'image/png'
+
+
 @pytest.mark.parametrize('explicit_schema',[False,True])
 def test_model_transport_preserves_the_complete_editable_prompt(explicit_schema):
     prompt='只比较轮廓，保留证据不足；这是用户编辑的完整提示词。'
@@ -22,7 +46,11 @@ def test_model_transport_preserves_the_complete_editable_prompt(explicit_schema)
         client=VlmClient(http_client=http)
         plan=client.plan(DirectionDraft,prompt,[],'fixture-model')
     expected=prompt.replace('{{response_schema}}',json.dumps(DirectionDraft.model_json_schema(),ensure_ascii=False)) if explicit_schema else prompt
-    assert plan.body['messages'][0]['content']==[{'type':'text','text':expected}]
+    content=plan.body['messages'][0]['content']
+    assert content[0]=={'type':'text','text':expected}
+    assert len(content)==(1 if explicit_schema else 2)
+    if not explicit_schema:
+        assert json.dumps(DirectionDraft.model_json_schema(),ensure_ascii=False) in content[1]['text']
     assert plan.body['response_format']['json_schema']['name']=='DirectionDraft'
 
 

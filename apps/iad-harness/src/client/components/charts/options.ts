@@ -52,6 +52,7 @@ export function chartOptions(spec:ChartSpec,theme:ChartTheme):EChartsOption {
     graphic:{type:'text',left:'center',top:'middle',style:{text:'暂无统计数据',fill:theme.muted,fontSize:14,fontFamily:theme.font}},series:[]};
   switch(spec.type){
     case 'bar':return {...common,
+      legend:{...common.legend,selectedMode:spec.legendSelectable},
       xAxis:{...axis,type:'category',data:spec.rows.map(row=>row.label),splitLine:{show:false},
         axisLabel:{...axis.axisLabel,width:110,overflow:'truncate'}},
       yAxis:{...axis,type:'value',min:0,max:spec.maximum,minInterval:1},

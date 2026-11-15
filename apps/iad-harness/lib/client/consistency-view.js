@@ -22,7 +22,7 @@ export class ConsistencyView {
             && (filters.review === 'all' || item.review === filters.review));
     }
     static media(image, thumbnail = false) {
-        return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-original${thumbnail ? '?max_side=480' : ''}`;
+        return `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-${thumbnail ? 'preview?max_side=480' : 'original'}`;
     }
     static async load(batchId, signal) {
         const report = await request('/consistency/report', {
@@ -36,28 +36,13 @@ export class ConsistencyView {
                 return { queryId, items: this.cards(items, { query_id: queryId }), statistics: result.statistics };
         }
     }
-    static async loadCheck(runId, signal) {
-        const items = [];
-        for (let page = 1;; page++) {
-            const result = await request(`/consistency/checks/${encodeURIComponent(runId)}/gallery?page=${page}&page_size=200`, undefined, undefined, signal);
-            items.push(...result.items);
-            if (items.length >= result.total)
-                return { queryId: runId, items: this.cards(items, { job_id: runId }), statistics: result.statistics };
-        }
-    }
     static async statistics(runId, signal) {
-        const result = await request(`/consistency/checks/${encodeURIComponent(runId)}/gallery?page=1&page_size=1`, undefined, undefined, signal);
-        return result.statistics;
+        return request(`/consistency/checks/${encodeURIComponent(runId)}/statistics`, undefined, undefined, signal);
     }
-    static async loadImages(runId, signal) {
-        const items = [];
-        for (let page = 1;; page++) {
-            const result = await request(`/consistency/checks/${encodeURIComponent(runId)}/images?page=${page}&page_size=200`, undefined, undefined, signal);
-            items.push(...result.items);
-            if (items.length >= result.total)
-                break;
-        }
-        return this.imageCards(runId, items);
+    static async loadImagePage(runId, query, page, signal) {
+        const search = new URLSearchParams({ ...query, page: String(page), page_size: '18' });
+        const result = await request(`/consistency/checks/${encodeURIComponent(runId)}/images?${search}`, undefined, undefined, signal);
+        return { items: this.imageCards(runId, result.items), total: result.total, counts: result.counts || {} };
     }
     static cards(items, source) {
         const checkId = 'job_id' in source ? source.job_id : undefined;
@@ -73,16 +58,16 @@ export class ConsistencyView {
             agreement: this.agreement(item.annotation_conclusion, this.modelConclusion(item.model_conclusion, item.model_state)) }));
     }
     static imageCards(runId, items) {
-        return items.map(({ sample, summary, image, review_state }) => ({ id: sample.sample_id, type: summary.program_conclusion, reason: summary.reason,
+        return items.map(({ sample, summary, image, review_state, model_filter, agreement }) => ({ id: sample.sample_id, type: summary.program_conclusion, reason: summary.reason,
             filename: (image?.sample.relative_path || sample.sample_id.slice(sample.sample_id.indexOf(':') + 1)).split('/').pop(),
             url: image ? this.media(image, true) : mediaUrl(sample, 'thumbnail'), fullUrl: image ? this.media(image) : mediaUrl(sample),
             sourceWidth: image?.sample.width, sourceHeight: image?.sample.height, image: image ?? undefined,
             candidateCount: summary.outcome?.candidate_stats?.eligible ?? ((summary.selected_exact ?? 0) + (summary.selected_similar ?? 0)),
             reference: { job_id: runId, anchor_id: sample.sample_id },
             review: review_state,
-            agreement: this.agreement(summary.program_conclusion, summary.reason === 'MODEL_REVIEWED' ? this.modelConclusion(summary.model_conclusion, summary.verdict) : ''),
+            agreement,
             model: { status: summary.reason === 'MODEL_REVIEWED' && summary.verdict === 'MATERIAL' ? 'conflict' : summary.reason === 'MODEL_REVIEWED' && summary.verdict === 'EQUIVALENT' ? 'no_conflict' : 'unknown',
-                modelType: summary.reason === 'MODEL_REVIEWED' ? this.modelConclusion(summary.model_conclusion, summary.verdict) : '' }, }));
+                modelType: model_filter || '', label: summary.annotation_review_label }, }));
     }
     static async members(reference, signal) {
         if ('job_id' in reference) {

@@ -86,7 +86,8 @@ try:
                 directions=[dict(direction_ref=direction.ref,status='applicable',reason='表面可见。') for direction in context.selected_directions]) for page in pages],
             checks=[check,{**check,'check_id':'C2','title':'暂定外观','status':'provisional','counter_evidence_ids':[],
                 'key_evidence':check['key_evidence'][:1]},
-                {**check,'check_id':'C3','title':'未选条目哨兵','direction_refs':[context.selected_directions[1].ref]}],
+                {**check,'check_id':'C3','title':'未选条目哨兵','direction_refs':[context.selected_directions[1].ref]},
+                *[{**check,'check_id':f'C{index}','title':f'外观判据{index}'} for index in range(4,(int(sys.argv[5]) if len(sys.argv)>5 else 3)+1)]],
             summary='未选全局摘要哨兵。',limitations=['未选全局限制哨兵。'],unresolved_questions=['未选全局疑问哨兵。']))
         runtime.jobs.finish_external(run_id)
         version_id = AnalysisPublications(db).publish(run_id).version_id

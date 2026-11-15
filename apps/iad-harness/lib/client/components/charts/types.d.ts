@@ -26,6 +26,7 @@ export type ChartSpec = {
     }[];
     series: readonly ChartSeries[];
     maximum?: number;
+    legendSelectable?: boolean;
 } | {
     type: 'donut';
     rows: readonly ChartDatum[];

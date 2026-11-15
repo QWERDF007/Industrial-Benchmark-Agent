@@ -108,6 +108,15 @@ def defect_dataset(tmp_path):
 
 
 @pytest.fixture
+def indexed_dataset(dataset):
+    from iad_core.duplicate.index import PixelIndex
+    from iad_core.storage.repositories import SampleRepository
+    db, _, config = dataset
+    PixelIndex(db).prepare(sample.sample_id for sample in SampleRepository(db).list_by_task(config.task.task_id))
+    return dataset
+
+
+@pytest.fixture
 def dataset(tmp_path):
     images = tmp_path / "images"
     labels = tmp_path / "labels"
@@ -209,6 +218,9 @@ def native_audit(knowledge_dataset):
     runtime = WorkbenchRuntime(db)
     checks = ConsistencyAgentJobs(runtime)
     upstream = checks.start({'submission_id':str(uuid4()), 'dataset_ids':[config.dataset.id], 'mode':'exact'})
+    from iad_core.consistency.agent_preparation import ConsistencyAgentPreparation
+    from tests.test_consistency_agent_preparation import wait_for_preparation
+    wait_for_preparation(ConsistencyAgentPreparation(runtime), upstream['run_id'])
     for anchor in checks.anchors(upstream['run_id']):
         checks.session_created(upstream['run_id'], anchor.anchor_id)
         assert checks.retrieve(upstream['run_id'], anchor.anchor_id).candidates == []

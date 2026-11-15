@@ -112,7 +112,8 @@ class AnchorVisualInput:
                 if item.gate_dispute is not None:
                     gate = gates[item.candidate_id]
                     if gate.relation == 'pixel_identical' or not set(item.gate_dispute.region_pair_ids) <= set(gate.required_region_pair_ids):
-                        raise repairable_output_error('visual_gate_dispute', '资格争议须引用真实关注区域，不能撤销程序确认的像素一致事实。')
+                        raise repairable_output_error('visual_gate_dispute',
+                            '局部争议须引用本次提供的真实区域编号；原图其他位置的内容差别无需区域编号。不能撤销像素完全一致的程序事实。')
             return result
 
         response_type = type('AnchorVisualResult', (AnchorVisualResult,), {'validate_observations': validate_observations})

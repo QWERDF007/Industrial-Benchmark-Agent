@@ -49,6 +49,7 @@ export const queryOperations = [
   "consistency_agent_review",
   "consistency_agent_session_location",
   "consistency_agent_snapshot",
+  "consistency_agent_statistics",
   "consistency_context",
   "consistency_evidence",
   "consistency_evidence_export",

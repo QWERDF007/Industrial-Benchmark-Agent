@@ -9,7 +9,7 @@ from iad_core.consistency.models import ImageRetrieve
 from iad_core.consistency.batch_repository import BatchRepository
 from iad_core.workbench.jobs import JobContext
 from iad_core.feature.cache import ContentFeatureCache
-from iad_core.consistency.scopes import ConsistencyScopes
+from iad_core.duplicate.index import PixelIndex
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
@@ -23,9 +23,12 @@ class ConsistencyWorker:
         self.service=runtime.consistency_service
 
     def execute(self, plan: BatchPlan, step: BatchStep, context: JobContext) -> None:
-        with self.db.connection() as connection:
-            connection.execute('BEGIN')
-            for scope in (plan.scopes.subjects,plan.scopes.corpus):ConsistencyScopes(self.db).assert_current(scope,connection)
+        if step.kind == 'PIXEL_INDEX':
+            context.update(phase='PREPARING_PIXELS')
+            PixelIndex(self.db).prepare(context.payload['sample_ids'], checkpoint=context.checkpoint,
+                record=lambda identities, error: context.record(identities, error=error),
+                memory_bytes=(plan.encoder.decode_memory_mb if plan.encoder else 512) * 1024 * 1024)
+            return
         if step.kind=='IMAGE_INDEX':
             self.prepare(plan,step,context)
             return
@@ -69,9 +72,9 @@ class ConsistencyWorker:
         if encoder is None:raise ConsistencyError('PROFILE_NOT_CONFIGURED','Index preparation requires a frozen image encoder')
         context.update(phase='ENCODING')
         sample_ids=context.payload['sample_ids']
-        for offset in range(0,len(sample_ids),encoder.batch_size):
+        for offset in range(0,len(sample_ids),256):
             context.checkpoint()
-            chunk=sample_ids[offset:offset+encoder.batch_size]
+            chunk=sample_ids[offset:offset+256]
             failure=None
             prepared=None
             try:
@@ -84,11 +87,14 @@ class ConsistencyWorker:
                     with self.runtime.indexes.acquire(plan.scopes.corpus,encoder.profile.profile_id,device=encoder.index_device):pass
                 except ConsistencyError as error:failure=error
             outcomes={sample.sample_id:sample for sample in prepared.samples} if prepared else {}
+            completed=[]
             for sample_id in chunk:
                 outcome=outcomes.get(sample_id)
                 error=failure
                 if error is None and (outcome is None or outcome.status!='COMPLETE'):
                     code=(outcome.error_code or {'UNINDEXED':'UNSUPPORTED_IMAGE','UNAVAILABLE':'SOURCE_UNAVAILABLE','FAILED':'INDEX_NOT_READY'}[outcome.status]) if outcome else 'INDEX_NOT_READY'
                     error=ConsistencyError(code,outcome.error_message or 'Image content could not be prepared' if outcome else 'Image feature is unavailable')
-                context.record(sample_id,error=error)
+                if error is None:completed.append(sample_id)
+                else:context.record(sample_id,error=error)
+            if completed:context.record(completed)
 

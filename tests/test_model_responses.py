@@ -13,6 +13,7 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.evidence.images import EvidenceImages
 from iad_core.storage.repositories import SampleRepository
+from iad_core.storage.call_payloads import PreparedCallPayload
 from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.model_profile import ModelProfile
 from iad_core.workbench.vision import VlmClient
@@ -25,6 +26,78 @@ class Observation(AnalysisModel):
 class CompleteObservation(Observation):
     limitations: list[str] = Field(default_factory=list)
     overview: str | None = None
+
+
+@pytest.mark.parametrize('outcome', ['recovers', 'fails', 'cancelled', 'cancelled_during_recording'])
+@pytest.mark.parametrize(('error_code', 'message'), [
+    ('upstream_error', 'Upstream request failed'),
+    ('upstream_stream_read_error', 'Upstream response stream was interrupted'),
+])
+def test_responses_upstream_failure_retries_the_same_images_and_records_each_attempt(
+    dataset, outcome, monkeypatch, error_code, message
+):
+    db, _, config = dataset
+    run_id = 'responses-upstream-retry'
+    with db.connection() as connection:
+        connection.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES(?,?,'ANALYSIS_WORKFLOW','RUNNING','{}')",
+            (run_id, config.task.task_id))
+    image = EvidenceImages(db.db_path).capture(SampleRepository(db).get(config.dataset.id + ':dent.png'),
+        'overview', 'coverage', full_resolution=True)
+    requests = []
+    cancelled_during_recording = False
+    publish = PreparedCallPayload.publish
+
+    def record_payload(prepared):
+        nonlocal cancelled_during_recording
+        result = publish(prepared)
+        if outcome == 'cancelled_during_recording' and prepared.path.suffix == '.request' and requests:
+            cancelled_during_recording = True
+        return result
+
+    monkeypatch.setattr(PreparedCallPayload, 'publish', record_payload)
+
+    def checkpoint():
+        if outcome == 'cancelled' and requests or cancelled_during_recording:
+            raise InterruptedError('用户已取消作业')
+
+    def respond(request):
+        requests.append(json.loads(request.content))
+        failed = outcome != 'recovers' or len(requests) == 1
+        body = {'id': 'resp_attempt_' + str(len(requests)), 'object': 'response',
+            'status': 'failed' if failed else 'completed', 'output': [] if failed else [
+                {'type': 'message', 'role': 'assistant', 'content': [{'type': 'output_text',
+                    'text': '{"description":"原始图像可见。"}', 'annotations': []}]}],
+            **({'error': {'code': error_code, 'message': message}} if failed else {})}
+        return httpx.Response(200, headers={'Content-Type': 'text/event-stream'},
+            text='event: response.' + body['status'] + '\ndata: ' + json.dumps(
+                {'type': 'response.' + body['status'], 'response': body}) + '\n\n')
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)),
+        profile=ModelProfile(endpoint='http://model.invalid/v1', api='openai-responses', model_id='gpt-6.1-sol',
+            capacity_mode='provider_managed', context_tokens=32768))
+    try:
+        with ModelCalls(db).bind(run_id, checkpoint, role='vision'):
+            plan = client.plan(Observation, '逐一核对原图及全部局部。', [image], client.resolve_model())
+            if outcome == 'recovers':
+                assert client.generate(plan).description == '原始图像可见。'
+            elif outcome.startswith('cancelled'):
+                with pytest.raises(InterruptedError, match='已取消'):
+                    client.generate(plan)
+            else:
+                with pytest.raises(ValueError, match=message):
+                    client.generate(plan)
+        assert len(requests) == {'recovers': 2, 'fails': 3, 'cancelled': 1, 'cancelled_during_recording': 1}[outcome]
+        assert all(body == requests[0] for body in requests)
+        calls = ModelCalls(db).list(run_id)
+        assert len(calls) == len(requests) + int(outcome == 'cancelled_during_recording')
+        failures = calls[:-1] if outcome in ('recovers', 'cancelled_during_recording') else calls
+        assert all(call.error and call.finish_reason == 'failed' for call in failures)
+        if outcome == 'cancelled_during_recording':
+            assert calls[-1].error.type == 'InterruptedError' and calls[-1].http_status is None
+        if outcome == 'recovers':
+            assert calls[-1].error is None and calls[-1].finish_reason == 'completed'
+    finally:
+        client.close()
 
 
 def test_chat_model_receives_the_output_contract_when_server_ignores_response_format():

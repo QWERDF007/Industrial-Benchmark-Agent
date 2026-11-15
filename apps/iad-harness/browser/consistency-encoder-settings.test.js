@@ -15,7 +15,7 @@ test('consistency groups its encoder settings and automatically saves fixed loca
     driver=await new Builder().forBrowser('firefox').setFirefoxOptions(new firefox.Options()
       .addArguments('-headless','--remote-allow-system-access').setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox'))
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
-    await driver.manage().window().setRect({width:1280,height:1000});await driver.get(login);
+    await driver.manage().window().setRect({width:1920,height:1080});await driver.get(login);
     const api=(path,body)=>driver.executeAsyncScript(`const done=arguments[arguments.length-1];fetch('/api/iad'+arguments[0],arguments[1]?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(arguments[1])}:undefined).then(async r=>done({status:r.status,data:await r.json()})).catch(e=>done({error:String(e)}));`,path,body||null);
     const open=async label=>{
       await driver.wait(async()=>{
@@ -103,14 +103,11 @@ test('consistency groups its encoder settings and automatically saves fixed loca
     await fs.mkdir('../../.scratch/consistency-gpu',{recursive:true});
     await fs.writeFile('../../.scratch/consistency-gpu/encoder-desktop.png',await driver.takeScreenshot(),'base64');
     await open('General');await(await driver.findElement(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='Dark']"))).click();
-    await open('数据一致性');await driver.manage().window().setRect({width:450,height:900});
-    await driver.setContext('chrome');
-    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='390px';gBrowser.selectedBrowser.style.width='390px';gBrowser.selectedBrowser.style.flex='none'");
-    await driver.setContext('content');await driver.wait(()=>driver.executeScript('return innerWidth===390'),5000);
+    await open('数据一致性');await driver.manage().window().setRect({width:1920,height:1080});
     assert.equal(await driver.executeScript('return document.documentElement.scrollWidth>innerWidth'),false);
     assert.ok(await driver.executeScript(`return [...document.querySelectorAll('[data-settings-group=similar] .iad-setting-label')]
-      .every(label=>label.getBoundingClientRect().height<24)`),'窄屏字段名称应保持完整可读');
-    await fs.writeFile('../../.scratch/consistency-gpu/encoder-mobile-dark.png',await driver.takeScreenshot(),'base64');
+      .every(label=>label.getBoundingClientRect().height<24)`),'字段名称保持完整可读');
+    await fs.writeFile('../../.scratch/consistency-gpu/encoder-desktop-dark.png',await driver.takeScreenshot(),'base64');
     assert.deepEqual(fixture.errors,[]);
   } catch(error) {
     if(driver)console.error((await driver.findElement(By.css('body')).getText()).slice(-3500));

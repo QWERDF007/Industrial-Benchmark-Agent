@@ -21,6 +21,7 @@ AnalysisBatchSize = Annotated[int, Field(strict=True, ge=1)]
 class AnalysisRegistration(AnalysisModel):
     sample: Sample
     source_fingerprint: str | None
+    source_revision: str | None = None
     annotations: list[Annotation]
     dataset_format: Literal['labelme', 'folder_classification']
     sampling_group: SamplingGroup | None = None
@@ -107,7 +108,7 @@ class AnalysisManifests:
                 raise LookupError('所选子数据集不存在')
             if module == 'exploration' and len({config['dataset']['format'] for config in configs.values()}) != 1:
                 raise ValueError('方向探索只接受同一标注类型的子数据集组合')
-            rows = connection.execute('''SELECT s.sample_id,s.source_fingerprint FROM json_each(?) selection
+            rows = connection.execute('''SELECT s.sample_id,s.source_fingerprint,s.source_revision FROM json_each(?) selection
                 JOIN samples s ON s.dataset_id=selection.value
                 ORDER BY CAST(selection.key AS INTEGER),s.relative_path,s.sample_id''', (json.dumps(dataset_ids),)).fetchall()
             if not rows:
@@ -125,6 +126,6 @@ class AnalysisManifests:
                     role = AnalysisSourceRoles.resolve(dataset_format, sample.quality_status,
                         sample.annotation_availability.status, len(items))
                     group = {'normal':'normal', 'defect':'abnormal'}.get(role, 'unclassified')
-                records.append(AnalysisRegistration(sample=sample, source_fingerprint=row['source_fingerprint'],
+                records.append(AnalysisRegistration(sample=sample, source_fingerprint=row['source_fingerprint'], source_revision=row['source_revision'],
                     sampling_group=group, dataset_format=dataset_format, annotations=items))
             return AnalysisManifest(dataset_ids=dataset_ids, frozen_at=datetime.now(timezone.utc), records=records)

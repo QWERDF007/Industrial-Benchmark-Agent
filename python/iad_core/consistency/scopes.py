@@ -43,11 +43,12 @@ class ConsistencyScopes:
             raise ConsistencyError('SOURCE_UNAVAILABLE','Frozen dataset scan changed; start a new batch')
 
     def assert_samples(self,samples: Sequence[FrozenSample],connection: Connection) -> None:
-        expected={sample.sample_id:sample for sample in samples}
+        expected={sample.sample_id:sample.model_dump(exclude={'source_fingerprint'}) for sample in samples}
         fields=','.join(FrozenSample.model_fields)
         rows=connection.execute(f'''SELECT {fields},is_excluded FROM samples
             WHERE sample_id IN (SELECT value FROM json_each(?))''',(json.dumps(list(expected)),)).fetchall()
-        current={row['sample_id']:FrozenSample.model_validate({name:row[name] for name in FrozenSample.model_fields}) for row in rows if not row['is_excluded']}
+        current={row['sample_id']:FrozenSample.model_validate({name:row[name] for name in FrozenSample.model_fields}).model_dump(
+            exclude={'source_fingerprint'}) for row in rows if not row['is_excluded']}
         if current!=expected:raise ConsistencyError('SOURCE_UNAVAILABLE','Frozen sample facts changed; start a new batch')
 
     def resolve(self, selector: ScopeSelector | dict, connection: Optional[Connection] = None) -> FrozenScope:
@@ -78,7 +79,7 @@ class ConsistencyScopes:
                 dataset_ids = sorted({row['dataset_id'] for row in rows})
             if any(dataset_id not in registered for dataset_id in dataset_ids):
                 raise ConsistencyError('REFERENCE_NOT_FOUND', 'One or more datasets are not registered')
-            source_rows = conn.execute('''SELECT sample_id,dataset_id,task_id,source_fingerprint,
+            source_rows = conn.execute('''SELECT sample_id,dataset_id,task_id,source_fingerprint,source_revision,
                 quality_status,quality_source,is_excluded,updated_at FROM samples
                 WHERE dataset_id IN (SELECT value FROM json_each(?)) ORDER BY sample_id''',
                 (json.dumps(dataset_ids),)).fetchall()
@@ -94,5 +95,6 @@ class ConsistencyScopes:
             content = {'selector': selector.model_dump(mode='json'), 'dataset_ids': dataset_ids,
                 'samples': [sample.model_dump(mode='json') for sample in samples],
                 'scans': [scan.model_dump() for scan in scans]}
-            scope_id = 'scope_' + hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
+            identity = {**content, 'samples': [sample.model_dump(mode='json', exclude={'source_fingerprint'}) for sample in samples]}
+            scope_id = 'scope_' + hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()
             return FrozenScope(**content, scope_id=scope_id, sample_count=len(samples), frozen_at=datetime.now(timezone.utc))

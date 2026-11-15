@@ -1,7 +1,8 @@
 from collections.abc import Iterable, Mapping
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, computed_field, create_model
+from copy import deepcopy
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.storage.models import sample_uuid
@@ -16,7 +17,7 @@ from iad_core.consistency.identity_prompts import IdentityPrompts
 JobStatus = Literal['PENDING', 'RUNNING', 'COMPLETED', 'PARTIAL', 'FAILED', 'CANCELLED', 'INTERRUPTED']
 
 
-JobKind = Literal['ANALYSIS_WORKFLOW', 'MODEL_AUDIT', 'MODEL_AUDIT_SAMPLE', 'KNOWLEDGE', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'KNOWLEDGE_BATCH', 'DIRECTION_EXPLORATION', 'EXPLORATION_BATCH', 'IMAGE_INDEX', 'DATA_CONSISTENCY', 'CONSISTENCY_ANALYSIS', 'CONSISTENCY_MODEL_BATCH']
+JobKind = Literal['ANALYSIS_WORKFLOW', 'MODEL_AUDIT', 'MODEL_AUDIT_SAMPLE', 'KNOWLEDGE', 'NORMAL_KNOWLEDGE', 'DEFECT_KNOWLEDGE', 'KNOWLEDGE_BATCH', 'DIRECTION_EXPLORATION', 'EXPLORATION_BATCH', 'PIXEL_INDEX', 'IMAGE_INDEX', 'DATA_CONSISTENCY', 'CONSISTENCY_ANALYSIS', 'CONSISTENCY_MODEL_BATCH']
 
 
 class JobRetry(BaseModel):
@@ -131,6 +132,11 @@ class JobView(AnalysisModel):
 
 class JobSnapshot(JobView):
     model_config = ConfigDict(extra='allow')
+
+
+JobSummary = create_model('JobSummary', __base__=AnalysisModel, **{
+    name: (field.annotation, deepcopy(field)) for name, field in JobView.model_fields.items()
+    if name not in {'sample_ids', 'completed_sample_ids', 'failed_sample_ids', 'model_calls'}})
 
 
 class DatasetAnalysisResult(AnalysisModel):

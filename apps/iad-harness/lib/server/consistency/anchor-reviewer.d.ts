@@ -7,6 +7,6 @@ export declare class ConsistencyAnchorReviewer {
     private readonly host;
     private readonly providers;
     constructor(bridge: PythonBridge, host: JobSessionHost, providers: Pick<NativeProviders, 'credentialsFor'>);
-    review(task: AnchorReviewTask): Promise<void>;
+    review(task: AnchorReviewTask): Promise<boolean>;
 }
 //# sourceMappingURL=anchor-reviewer.d.ts.map

@@ -28,8 +28,9 @@ class IdentityRegionCheck(AnalysisModel):
     main_media_id: Identifier
     candidate_media_id: Identifier
     visual_relation: Literal['same', 'different', 'unverified']
-    main_description: NonBlankText
-    candidate_description: NonBlankText
+    observation: NonBlankText | None = None
+    main_description: NonBlankText | None = None
+    candidate_description: NonBlankText | None = None
     reason: NonBlankText | None = None
 
 

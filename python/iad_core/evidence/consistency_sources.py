@@ -16,27 +16,29 @@ class EvidenceSourcesCapture:
         self.images=images
 
     def freeze(self, sample: Sample, annotations: AnnotationSet, review: ReviewDecisionRecord | None,
-               published: PixelIndexEntry | None) -> tuple[FrozenEvidenceSource,PixelContent]:
-        source=SourceImage.read(sample.image_path,published)
-        blob,pixels=self.images.capture(source,published)
-        if pixels.descriptor.decode_status!='COMPLETE':raise ConsistencyError('UNSUPPORTED_IMAGE',pixels.descriptor.reason)
-        if (sample.width,sample.height)!=(pixels.descriptor.width,pixels.descriptor.height):
-            raise ConsistencyError('SOURCE_UNAVAILABLE','Original dimensions changed; rescan before comparison')
+               published: PixelIndexEntry | None, *, pixels_required: bool = True) -> tuple[FrozenEvidenceSource,PixelContent | None]:
+        source=SourceImage.read(sample.image_path)
+        if not pixels_required and published is not None and source.payload.startswith(b'\x89PNG\r\n\x1a\n'):
+            blob,pixels,descriptor=self.images.store(source.payload),None,published.descriptor
+        else:
+            blob,pixels=self.images.capture(source,published)
+            descriptor=pixels.descriptor
+        if descriptor.decode_status!='COMPLETE':raise ConsistencyError('UNSUPPORTED_IMAGE',descriptor.reason)
         masks,issues={},[]
         for annotation in annotations.annotations:
             if annotation.annotation_type!='mask' or annotation.geometry_status=='INVALID':continue
             try:
                 if not annotation.mask_path or not annotation.mask_sha256:raise ValueError('Mask pixels are unavailable')
                 payload=Path(annotation.mask_path).read_bytes()
-                MaskImages.decode(payload,annotation.mask_sha256,sample)
+                MaskImages.decode(payload,sample)
                 masks[annotation.annotation_id]=self.images.store(payload)
             except (OSError,ValueError) as error:
                 issues.append(f'{annotation.annotation_id}: {error}')
         return FrozenEvidenceSource(sample=sample,annotations=annotations.model_copy(update={
-            'annotation_coordinates':pixels.descriptor.annotation_coordinates}),review=review,
+            'annotation_coordinates':descriptor.annotation_coordinates}),review=review,
             source_sha256=source.sha256,scan_ref=published.scan_ref if published else None,
             content_group_id=published.content_group_id if published else None,
-            descriptor=pixels.descriptor,image=blob,masks=masks,issues=issues),pixels
+            descriptor=descriptor,image=blob,masks=masks,issues=issues),pixels
 
     def annotations(self, source: FrozenEvidenceSource) -> AnnotationSet:
         annotations=[]

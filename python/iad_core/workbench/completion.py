@@ -32,6 +32,10 @@ class ModelOutputError(ValueError):
         self.issues, self.response = issues, response
 
 
+class RetryableModelError(ValueError):
+    pass
+
+
 @dataclass(frozen=True)
 class CompletionResponse:
     body: dict

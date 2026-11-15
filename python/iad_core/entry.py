@@ -26,16 +26,16 @@ from iad_core.workbench.review import HumanReview, ReviewSubmission, ReviewHisto
 from iad_core.workbench.runtime import workbench, close_workbenches
 from iad_core.workbench.analysis_operations import analysis_start, analysis_list, analysis_status, analysis_node, analysis_prompts, analysis_results, analysis_cancel, analysis_retry, analysis_delete
 from iad_core.consistency.agent_operations import (consistency_agent_start, consistency_agent_snapshot,
-    consistency_agent_anchors, consistency_agent_anchor, consistency_agent_session_created, consistency_agent_retrieve,
+    consistency_agent_anchors, consistency_agent_anchor, consistency_agent_session_created, consistency_agent_retrieve, consistency_agent_retrieve_many,
     consistency_agent_submit_empty, consistency_agent_failure, consistency_agent_finish,
     consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit, consistency_agent_configuration, consistency_agent_verify,
     consistency_agent_trace_event, consistency_agent_trace_status, consistency_agent_cancel, consistency_agent_resume,
     consistency_agent_interrupt, consistency_agent_detail, consistency_agent_results, consistency_agent_report,
-    consistency_agent_export, consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
+    consistency_agent_export, consistency_agent_gallery, consistency_agent_images, consistency_agent_statistics, consistency_agent_index, consistency_agent_members, consistency_agent_candidates,
     consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis, consistency_agent_plan,
     consistency_agent_diagnostics, consistency_agent_prepare,
     consistency_agent_session_location, consistency_agent_media,
-    consistency_agent_pair_tasks, consistency_agent_pair_review, consistency_agent_audit, consistency_agent_finalize)
+    consistency_agent_pair_tasks, consistency_agent_pair_prepare_many, consistency_agent_pair_review, consistency_agent_pair_review_many, consistency_agent_audit, consistency_agent_finalize)
 from iad_core.exploration.operations import (direction_exploration_evidence, direction_exploration_remove_direction,
     direction_exploration_presets, direction_exploration_preset_save)
 
@@ -73,7 +73,7 @@ def dataset_list(args, db_path):
 def dataset_get(args, db_path):
     registry = DatasetRegistry(Database(db_path))
     config = registry.resolve(**args)
-    return next(item for item in WorkbenchQuery(registry.db).datasets()["datasets"] if item["dataset_id"] == config.dataset.id)
+    return WorkbenchQuery(registry.db).dataset(config.dataset.id)
 
 
 def dataset_import(args, db_path):
@@ -203,26 +203,15 @@ def sample_image_path(args, db_path):
 
 
 def sample_thumbnail(args, db_path):
-    from PIL import Image
+    from iad_core.evidence.thumbnails import ThumbnailImages
     size = int(args.get("size", 240))
     if not 32 <= size <= 1024:
         raise ValueError("Thumbnail size must be between 32 and 1024")
     info = sample_image_path(args, db_path)
     source = Path(info["path"])
     stat = source.stat()
-    fingerprint = f"{args['sample_id']}:{stat.st_size}:{stat.st_mtime_ns}:{size}"
-    cache = Path(db_path).resolve().parent / "cache" / "thumbnails"
-    cache.mkdir(parents=True, exist_ok=True)
-    thumb = cache / (hashlib.sha256(fingerprint.encode()).hexdigest() + ".jpg")
-    cached = thumb.is_file()
-    if not cached:
-        with Image.open(source) as image:
-            image = image.convert("RGB")
-            image.thumbnail((size, size), Image.Resampling.LANCZOS)
-            output = thumb.with_suffix(f".{threading.get_ident()}.tmp")
-            image.save(output, "JPEG", quality=85)
-            output.replace(thumb)
-    return {"sample_id": args["sample_id"], "path": str(thumb), "media_type": "image/jpeg", "cached": cached}
+    fingerprint = f"{args['sample_id']}:{stat.st_size}:{stat.st_mtime_ns}"
+    return {'sample_id': args['sample_id'], **ThumbnailImages(db_path).read(source, fingerprint, size)}
 
 
 def sample_mask_path(args, db_path):
@@ -293,8 +282,9 @@ def report_get(args, db_path):
 
 
 def workbench_initialize(args, db_path):
-    workbench(db_path)
-    return {}
+    from iad_core.consistency.agent_results import ConsistencyAgentResults
+    runtime = workbench(db_path)
+    return {"consistency_results": ConsistencyAgentResults(runtime.db).prepare_indexes()}
 
 
 def audit_sources(args, db_path):
@@ -449,8 +439,8 @@ def model_call_get(args, db_path):
 
 OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_start, consistency_agent_snapshot, consistency_agent_anchors, consistency_agent_anchor,
-    consistency_agent_pair_tasks, consistency_agent_pair_review, consistency_agent_audit, consistency_agent_finalize,
-    consistency_agent_session_created, consistency_agent_retrieve, consistency_agent_submit_empty,
+    consistency_agent_pair_tasks, consistency_agent_pair_prepare_many, consistency_agent_pair_review, consistency_agent_pair_review_many, consistency_agent_audit, consistency_agent_finalize,
+    consistency_agent_session_created, consistency_agent_retrieve, consistency_agent_retrieve_many, consistency_agent_submit_empty,
     consistency_agent_failure, consistency_agent_finish,
     consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit,
     consistency_agent_configuration, consistency_agent_verify,
@@ -458,7 +448,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_cancel, consistency_agent_resume,
     consistency_agent_interrupt,
     consistency_agent_detail, consistency_agent_results, consistency_agent_report, consistency_agent_export,
-    consistency_agent_gallery, consistency_agent_images, consistency_agent_members, consistency_agent_candidates,
+    consistency_agent_gallery, consistency_agent_images, consistency_agent_statistics, consistency_agent_index, consistency_agent_members, consistency_agent_candidates,
     consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis,
     consistency_agent_plan,
     consistency_agent_diagnostics,
@@ -497,7 +487,7 @@ QUERY_OPERATIONS = frozenset({
     'analysis_agent_arguments', 'analysis_agent_claims',
     'consistency_agent_snapshot', 'consistency_agent_anchors', 'consistency_agent_anchor',
     'consistency_agent_detail', 'consistency_agent_results', 'consistency_agent_report', 'consistency_agent_export',
-    'consistency_agent_gallery', 'consistency_agent_images', 'consistency_agent_members', 'consistency_agent_candidates', 'consistency_agent_review', 'consistency_agent_analysis',
+    'consistency_agent_gallery', 'consistency_agent_images', 'consistency_agent_statistics', 'consistency_agent_members', 'consistency_agent_candidates', 'consistency_agent_review', 'consistency_agent_analysis',
     'consistency_agent_diagnostics',
     'consistency_agent_session_location',
     'consistency_agent_media',
@@ -559,7 +549,7 @@ def main():
         dispatch_request(json.loads(sys.argv[1]))
         return
     try:
-        with ThreadPoolExecutor(max_workers=4) as executor, ThreadPoolExecutor(max_workers=1) as controls:
+        with ThreadPoolExecutor(max_workers=4) as executor, ThreadPoolExecutor(max_workers=4) as models, ThreadPoolExecutor(max_workers=1) as controls:
             for line in sys.stdin:
                 if not line.strip():
                     continue
@@ -567,7 +557,10 @@ def main():
                     request = json.loads(line)
                     if not isinstance(request, dict):
                         raise ValueError("Expected a JSON object")
-                    target = controls if request.get('operation') in {'consistency_agent_cancel', 'consistency_agent_interrupt'} else executor
+                    operation = request.get('operation')
+                    target = (controls if operation in {'consistency_agent_cancel', 'consistency_agent_interrupt'} else
+                        models if operation in {'consistency_agent_pair_review', 'consistency_agent_pair_review_many',
+                            'consistency_agent_audit', 'consistency_agent_observe', 'consistency_agent_plan'} else executor)
                     target.submit(dispatch_request, request, DEFAULT_DB_PATH, query_only)
                 except (ValueError, TypeError) as error:
                     emit({"event": "error", "request_id": "decode", "error": {"code": "JSON_DECODE_ERROR", "message": str(error)}})
