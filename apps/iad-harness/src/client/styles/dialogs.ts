@@ -19,8 +19,8 @@ dialog.iad-detail-dialog {text-align:left;}
   --iba-dialog-gap: var(--iad-dialog-gutter);
 
   --iad-modal-backdrop: rgba(23, 34, 51, 0.68);
-  --iad-dialog-gutter: clamp(12px, 2.5vw, 32px);
-  --iad-dialog-vgutter: clamp(12px, 2.5vw, 32px);
+  --iad-dialog-gutter: 32px;
+  --iad-dialog-vgutter: 32px;
 
   /* Dimensions */
   --iad-dialog-max-width: 1380px;
@@ -50,19 +50,9 @@ dialog:is(.iad-detail-dialog,.iad-fullscreen-dialog) {
   --iad-dialog-muted-color: var(--iad-muted);
 }
 
-@media (max-width: 850px) {
-  :root {
-    --iad-dialog-gutter: 18px;
-    --iad-dialog-vgutter: 18px;
-  }
-}
 
-@media (max-width: 560px) {
-  :root {
-    --iad-dialog-gutter: 12px;
-    --iad-dialog-vgutter: 12px;
-  }
-}
+
+
 
 
 .overlay:not(.show),
@@ -205,7 +195,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 .exp-direction-dialog .exp-evidence-viewport:focus-visible {outline:2px solid #2458d5;outline-offset:-2px}
 
 .detail-preview {
-  height: clamp(310px, 46dvh, 500px) !important;
+  height: 500px !important;
 }
 
 /* ==========================================================================
@@ -226,8 +216,7 @@ dialog.iad-detail-dialog.iad-dialog-form {
   height: fit-content !important;
 }
 
-#knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
-.dc-stats-dialog .dc-stats-body {
+#knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;
   flex: 0 1 auto !important;

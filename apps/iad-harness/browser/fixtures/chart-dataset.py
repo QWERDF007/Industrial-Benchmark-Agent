@@ -56,6 +56,7 @@ try:
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=ids, consistency_job_id=upstream), agent=role)['run_id']
     jobs.cancel(run_id)
     AuditReports(runtime.db).finalize(run_id)
+    empty_query = ResultQueries(runtime.db).query(ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}}))
 
     directory = root / 'comparison'
     directory.mkdir()
@@ -66,6 +67,7 @@ try:
     ConsistencyService(runtime.db).compare(ConsistencyCompare(sample_a=ids[0] + ':part-0.png', sample_b=reference.dataset.id + ':reference.png'))
     query = ResultQueries(runtime.db).query(ConsistencyQuery(selection={'kind': 'scope', 'subjects': {'kind': 'all_registered'}}))
     statistics = GalleryQueries(runtime.db).query(GalleryQuery(query_id=query.query_id, kind='conflicts')).statistics
-    print(json.dumps(dict(run_id=run_id, dataset_ids=ids, query_id=query.query_id, statistics=statistics.model_dump(mode='json'))))
+    print(json.dumps(dict(run_id=run_id, dataset_ids=ids, query_id=query.query_id,
+        empty_query_id=empty_query.query_id, statistics=statistics.model_dump(mode='json'))))
 finally:
     runtime.close()

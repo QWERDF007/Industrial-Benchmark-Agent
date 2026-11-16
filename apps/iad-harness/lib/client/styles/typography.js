@@ -275,19 +275,6 @@ export const typographyStyles = `
   opacity: 0.65 !important;
 }
 
-/* ==========================================================================
-   V51 Responsive Layout for Narrow Viewports
-   ========================================================================== */
-@media (max-width: 820px) {
-  :is(.filter-bar .filter-item, .dc-results-section .dc-refined-filterbar .dc-filter-field, .exp-job-list-actions .exp-filter-control, .kb-v45 .filterset > .f) {
-    flex: 1 1 180px !important;
-    width: auto !important;
-    max-width: none !important;
-  }
-  :is(.kb-v45 .context .control:first-child, .kb-v45 .context .control:nth-child(2)) {
-    flex: 1 1 240px !important;
-    width: auto !important;
-    max-width: none !important;
-  }
-}
+
+
 `;

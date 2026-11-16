@@ -7,5 +7,5 @@ export const tabStyles = `
 .iad-tabs .iad-tab-count {font-size:12px;color:inherit;font-weight:500;opacity:.85;font-variant-numeric:tabular-nums;}
 .iad-tab-panel {min-width:0;}
 .iad-tab-panel:focus-visible {outline:2px solid var(--iad-primary);outline-offset:2px;}
-@media(max-width:640px) {.iad-tabs[role=tablist] {gap:15px;}}
+
 `;

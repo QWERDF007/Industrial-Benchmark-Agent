@@ -6,7 +6,7 @@ export const reportStyles = `
 .iad-report-data>div{display:grid;grid-template-columns:105px minmax(0,1fr);gap:14px;min-width:0}
 .iad-report-data dt,.iad-report-data dd{margin:0;overflow-wrap:anywhere}
 .iad-dataset-report .iad-thumbnail-grid>div{min-width:0;display:grid;justify-items:start;gap:8px}
-@media(max-width:600px){.iad-report-body{padding:16px}}
+
 
 .iad-audit-document{--iba-unified-body-size:14px;width:100%;min-width:0;color:var(--audit-ink,#172338);background:#fff;font-size:14px;line-height:1.85}
 #audit-page .iad-audit-document h1{font-size:28px;line-height:1.45;margin:0 0 10px;font-weight:700}
@@ -31,7 +31,7 @@ export const reportStyles = `
 .iad-audit-gallery .iad-thumbnail-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .iad-audit-gallery button.iad-thumbnail-card{max-width:none;height:174px;padding:5px}
 .iad-audit-document ul{margin:0;padding-left:22px}
-@media(max-width:900px){.iad-audit-gallery .iad-thumbnail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){#audit-page .iad-audit-document h1{font-size:25px}#audit-page .iad-audit-document h2{font-size:21px}#audit-page .iad-audit-document h3{font-size:18px}#audit-page .iad-audit-document h4{font-size:16px}.iad-audit-document>.iad-report-section{padding:24px 0}}
+
+
 @media print{.iad-audit-gallery nav,.iad-fullscreen-dialog{display:none!important}.iad-audit-document>.iad-report-section{break-inside:auto}.iad-audit-gallery .iad-thumbnail-card{break-inside:avoid}}
 `;

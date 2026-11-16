@@ -21,18 +21,20 @@ test('six pages share content edges and job table rhythm while image filters and
  t.after(async()=>{await driver?.quit();if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}bridge?.destroy();await fs.rm(root,{recursive:true,force:true});});
  execFileSync(resolvePythonPath(),[path.join(app,'browser/fixtures/layout-dataset.py'),root,database],{cwd:workspace,env:{...process.env,PYTHONPATH:path.join(workspace,'python')}});
  bridge=new PythonBridge({cwd:workspace,dbPath:database});
- const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';import {apply} from './src/client/index.ts';
- const entries=[],mains=new Map(),listeners=new Set();let panel=null;
- const layout={panelInfo:{getSnapshot:()=>({activePanelId:panel}),subscribe:f=>{listeners.add(f);return()=>listeners.delete(f)}},selectPanel:id=>{panel=id;listeners.forEach(f=>f())}};
- apply({layout,slots:{inject:(_,f)=>f(),register:(o,c)=>{if(o.name==='main')mains.set(o.key,c);else if(o.name==='sidebar.panellist')entries.push({...o,c});return()=>{};}}});
- function App(){const[id,setId]=React.useState(panel||entries[0].id);React.useEffect(()=>layout.panelInfo.subscribe(()=>setId(panel)),[]);const Page=mains.get(id);return <><nav aria-label="主导航">{entries.map(e=><button key={e.id} onClick={()=>layout.selectPanel(e.id)}>{e.label}</button>)}</nav>{Page&&<Page/>}</>}
+ const bundle=await build({stdin:{contents:`import React from 'react';import {createRoot} from 'react-dom/client';
+ import {WorkbenchPage} from './src/client/WorkbenchPage.tsx';import {ConsistencyPage} from './src/client/components/ConsistencyPage.tsx';
+ import {Workspace} from './src/client/workspace.tsx';import {WorkbenchSession} from './src/client/workbench-session.ts';import {WorkbenchProviders} from './src/client/host/WorkbenchProviders.tsx';
+ const workspace=new Workspace(new WorkbenchSession({})),pages=${JSON.stringify(pages)};
+ function App(){const[page,setPage]=React.useState('datasets');return <WorkbenchProviders workspace={workspace}>
+ <nav aria-label="主导航">{pages.map(([id,label])=><button key={id} onClick={()=>{workspace.navigate('industrial-'+id);setPage(id)}}>{label}</button>)}</nav>
+ <div className="page-frame">{page==='consistency'?<ConsistencyPage/>:<WorkbenchPage key={page} pageId={'industrial-'+page}/>}</div></WorkbenchProviders>}
  createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,format:'iife',write:false,target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
  const writes=[],handler=createIadHttpHandler(bridge);
  server=http.createServer((req,res)=>{if(req.url==='/browser.js'){res.setHeader('Content-Type','application/javascript');res.end(bundle.outputFiles[0].contents);return;}
   if(req.url.startsWith('/api/iad')){if(req.method!=='GET')writes.push(req.url);return handler(req,res);}
-  res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{height:100%;margin:0}nav[aria-label="主导航"]{height:40px;display:flex;align-items:center}#root>.iad-workbench,#root>div>.iad-workbench{height:calc(100dvh - 40px)}</style><div id="root"></div><script src="/browser.js"></script>');});
+  res.setHeader('Content-Type','text/html;charset=utf-8');res.end('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{height:100%;margin:0;overflow:hidden}#root{display:flex;flex-direction:column}nav[aria-label="主导航"]{height:40px;display:flex;align-items:center;flex:none}.page-frame{flex:1;min-height:0}</style><div id="root"></div><script src="/browser.js"></script>');});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
- const options=new firefox.Options().addArguments('-headless');options.setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox');
+ const options=new firefox.Options().addArguments('-headless','--remote-allow-system-access');options.setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox');
  driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver').setEnvironment({...process.env,TZ:'Asia/Shanghai'})).build();
  await driver.get(`http://127.0.0.1:${server.address().port}`);await viewport(driver,1920,1080);
  const output=path.join(workspace,'runs/verification/v89-layout');await fs.mkdir(output,{recursive:true});
@@ -48,7 +50,7 @@ test('six pages share content edges and job table rhythm while image filters and
    const panels=[...root.querySelectorAll('section')].filter(e=>e.querySelector(':scope>.iad-section-heading'));
    const table=root.querySelector('.iad-jobs-table');
    const frame=table?.parentElement;
-   return {header:rect(header),scope:rect(scope),labels:[...scope?.querySelectorAll(':scope>div>label')||[]].map(rect),controls:[...scope?.querySelectorAll('select,button.iad-multiselect-trigger')||[]].map(rect),
+   return {surface:rect(root),viewport:[innerWidth,document.documentElement.clientWidth],scrollStyle:{overflow:getComputedStyle(root).overflow,height:getComputedStyle(root).height,gutter:getComputedStyle(root).scrollbarGutter},header:rect(header),scope:rect(scope),labels:[...scope?.querySelectorAll(':scope>div>label')||[]].map(rect),controls:[...scope?.querySelectorAll('select,button.iad-multiselect-trigger')||[]].map(rect),
     filter:rect(root.querySelector('.filter-bar,.iad-manager-search-wrap')),tabs:rect(root.querySelector('.audit-tabs')),panels:panels.map(e=>({rect:rect(e),header:rect(e.querySelector('.iad-section-heading'))})),
     columns:table?[...table.querySelectorAll('thead th')].map(node=>node.textContent):[],head:rect(table?.querySelector('thead tr')),headStyle:table?{background:getComputedStyle(table.querySelector('th')).backgroundColor,weight:getComputedStyle(table.querySelector('th')).fontWeight}:null,
     rows:[...table?.querySelectorAll('tbody tr')||[]].map(rect),frame:rect(frame),scroll:frame?{height:frame.clientHeight,total:frame.scrollHeight}:null,
@@ -99,10 +101,5 @@ test('six pages share content edges and job table rhythm while image filters and
  assert.equal(measured.audit.panels[0].rect.y-measured.audit.tabs.bottom,20,'audit tab to panel gap');
  await driver.findElement(By.xpath('//button[@role="tab" and normalize-space(.)="报告"]')).click();
  await driver.wait(until.elementLocated(By.id('audit-report')),10000);
- await viewport(driver,620,900);
- for(const [key,label]of pages){await(await driver.findElement(By.xpath(`//nav[@aria-label="主导航"]/button[normalize-space(.)="${label}"]`))).click();await driver.wait(()=>driver.executeScript('return document.querySelector(".iad-workbench h1")?.textContent===arguments[0]',label),10000);
-  const narrow=await driver.executeScript('const root=document.querySelector(".iad-workbench"),header=root.querySelector(".iad-header");return {overflow:root.scrollWidth-root.clientWidth,x:header.getBoundingClientRect().x}');
-  assert.equal(narrow.overflow,0,`${key} narrow page`);assert.equal(narrow.x,20,`${key} narrow inset`);
- }
  assert.deepEqual(writes,[],'layout inspection never starts or modifies jobs');
 });

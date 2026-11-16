@@ -156,11 +156,11 @@ test('picker combines fixed roles, filename, subset and LabelMe category filters
   }catch(error){await fs.writeFile('/tmp/exploration-picker-filters-failure.png',await driver.takeScreenshot(),'base64');throw error;}
 });
 
-test('picker keeps filters and actions reachable on narrow and short viewports with keyboard popovers',{timeout:60000},async t=>{
+test('desktop picker keeps filters and actions reachable with keyboard popovers',{timeout:60000},async t=>{
   const {driver,el,open,releaseSources}=await pickerBrowser(t);
   releaseSources();
   try{
-    for(const viewport of [{width:450,height:812},{width:750,height:600}]){
+    for(const viewport of [{width:1920,height:1080}]){
       await driver.manage().window().setRect(viewport);
       const dialog=await open('异常');
       await el('#exp-source-category');
@@ -186,5 +186,5 @@ test('picker keeps filters and actions reachable on narrow and short viewports w
       await driver.actions().sendKeys(Key.ESCAPE).perform();
       assert.equal(await driver.executeScript('return document.activeElement.getAttribute("aria-label")'),'继续添加异常图像');
     }
-  }catch(error){await fs.writeFile('/tmp/exploration-picker-responsive-failure.png',await driver.takeScreenshot(),'base64');throw error;}
+  }catch(error){await fs.writeFile('/tmp/exploration-picker-desktop-failure.png',await driver.takeScreenshot(),'base64');throw error;}
 });

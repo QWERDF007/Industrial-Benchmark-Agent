@@ -25,7 +25,7 @@ test('native settings preserve General and Models while business settings persis
     const options=new firefox.Options().addArguments('-headless','--remote-allow-system-access');
     if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
     driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
-    await viewport(driver,1440,1000);await driver.get(url.href);
+    await viewport(driver,1920,1080);await driver.get(url.href);
     const api=async(body,route)=>driver.executeAsyncScript(`const done=arguments[arguments.length-1];fetch('/api/iad'+arguments[1],arguments[0]?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(arguments[0])}:undefined).then(async r=>done({status:r.status,data:await r.json()})).catch(e=>done({error:String(e)}));`,body,route);
     const click=async text=>(await driver.wait(until.elementLocated(By.xpath(`//*[@data-shortcut-modal='settings']//button[normalize-space(.)='${text}' or @aria-label='${text}']`)),10000)).click();
     const open=async()=>{
@@ -36,7 +36,7 @@ test('native settings preserve General and Models while business settings persis
         if(rows.length&&await rows[0].isDisplayed())await rows[0].click();return false;
       },15000);
     };
-    const section=async label=>{await click(label);await driver.wait(until.elementLocated(By.css('[data-module-settings]')),10000);await driver.wait(until.elementLocated(By.css('button[aria-label="分析模型"]')),10000);};
+    const section=async label=>{await click(label);await driver.wait(until.elementLocated(By.css('[data-module-settings]')),10000);const model=await driver.wait(until.elementLocated(By.css('button[aria-label="分析模型"]')),10000);await driver.wait(until.elementIsEnabled(model),10000);};
     phase='single settings entrance';
     assert.equal((await driver.findElements(By.css('button[aria-label="模型设置"]'))).length,0,'侧栏只保留原生设置入口');
     assert.equal((await driver.findElements(By.css('button[aria-label="Settings"]'))).length,1);
@@ -46,7 +46,7 @@ test('native settings preserve General and Models while business settings persis
     await driver.wait(until.elementLocated(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='Light']")),5000);
     const catalog=await api(null,'/models/providers');assert.equal(catalog.status,200);
     assert.ok(catalog.data.providers.some(provider=>provider.provider_id==='first-service'));
-    await click('Models');await driver.wait(until.elementLocated(By.css('button[aria-label^="Edit First service"]')),10000);
+    await click('Models');await driver.wait(until.elementLocated(By.xpath("//*[@data-shortcut-modal='settings']//*[contains(text(),'Enter your API keys')]")),10000);
     assert.equal((await driver.findElements(By.css('[data-module-settings]'))).length,0);
     for(const label of ['方向探索','知识挖掘','数据一致性','模型审计'])assert.equal((await driver.findElements(By.xpath(`//*[@data-shortcut-modal='settings']//button[normalize-space(.)='${label}']`))).length,1);
     const shared=await api(null,'/models');
@@ -173,15 +173,15 @@ test('native settings preserve General and Models while business settings persis
     await driver.wait(()=>driver.executeScript("return document.body.hasAttribute('data-ds-dark-theme')"),5000);
     await fs.writeFile('/tmp/iad-v75-business-settings-dark.png',await driver.takeScreenshot(),'base64');
     assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector("[data-shortcut-modal=settings] > nav")).borderRightColor'),'rgb(76, 91, 110)','分割线跟随深色主题');
-    const dark=await driver.executeScript("const e=document.querySelector('[data-module-settings] button[aria-label="分析模型"]');return {text:getComputedStyle(e).color,background:getComputedStyle(e).backgroundColor}");
+    const dark=await driver.executeScript(`const e=document.querySelector('[data-module-settings] button[aria-label="分析模型"]');return {text:getComputedStyle(e).color,background:getComputedStyle(e).backgroundColor}`);
     assert.deepEqual(fixture.errors,[]);
     const rgb=value=>value.match(/\d+/g).slice(0,3).map(Number);
     assert.ok(contrast.rgb(rgb(dark.text),rgb(dark.background))>=4.5,'深色输入文字对比度达标');
     await click('General');await click('Light');await section('数据一致性');
     assert.equal(await driver.executeScript('return document.documentElement.scrollWidth>innerWidth'),false);
-    await viewport(driver,800,800);await fs.writeFile('/tmp/iad-v75-business-settings-compact.png',await driver.takeScreenshot(),'base64');
+    await viewport(driver,1920,1080);await fs.writeFile('/tmp/iad-v75-business-settings-desktop.png',await driver.takeScreenshot(),'base64');
     await click('General');await driver.wait(until.elementLocated(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='Light']")),5000);
-    await click('Models');await driver.wait(until.elementLocated(By.css('button[aria-label^="Edit First service"]')),10000);
+    await click('Models');await driver.wait(until.elementLocated(By.xpath("//*[@data-shortcut-modal='settings']//*[contains(text(),'Enter your API keys')]")),10000);
   }catch(error){
     if(driver){console.error(phase+'\n'+(await driver.findElement(By.css('body')).getText()).slice(-4000));await fs.writeFile('/tmp/iad-v75-module-failure.png',await driver.takeScreenshot(),'base64');}
     if(driver)console.error(JSON.stringify(await driver.executeAsyncScript("const done=arguments[arguments.length-1];Promise.all(['exploration','knowledge','consistency','audit'].map(async module=>{const r=await fetch('/api/iad/settings/modules/'+module);return [module,await r.json()]})).then(done)")));

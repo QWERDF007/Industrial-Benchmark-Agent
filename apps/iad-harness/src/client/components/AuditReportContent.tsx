@@ -18,7 +18,7 @@ export function AuditReportContent({report,imageUrl}:{report:AuditRunReport;imag
   const kinds=profile?auditIssueTypesByFormat[profile.dataset_format]:Object.keys(stats?.issue_types||{}) as (keyof typeof auditIssueLabels)[];
   const sources=stats?Object.entries(auditConsistencyLabels).map(([key,label])=>({key,label,
     value:Object.values(stats.consistency_cross[key]||{}).reduce((sum,count)=>sum+count,0)})):[];
-  const compared=sources.filter(item=>item.key.startsWith('MODEL_REVIEWED:')).reduce((sum,item)=>sum+item.value,0);
+  const compared=sources.filter(item=>item.key.startsWith('MODEL_REVIEWED:')||item.key.startsWith('PROGRAM_REVIEWED:')).reduce((sum,item)=>sum+item.value,0);
   const showReadiness=report.capabilities.some(item=>item.readiness_status!=='not_evaluated');
   const qualityCases=cases.filter(item=>item.evidence_refs.some(reference=>reference.kind==='finding'));
   return <article className="iad-audit-document">

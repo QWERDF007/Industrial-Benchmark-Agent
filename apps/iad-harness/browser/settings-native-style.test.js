@@ -17,7 +17,7 @@ test('all four business settings follow General controls, labels, hints and them
     driver=await new Builder().forBrowser('firefox').setFirefoxOptions(new firefox.Options()
       .addArguments('-headless','--remote-allow-system-access').setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox'))
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
-    await driver.manage().window().setRect({width:1280,height:1000});await driver.get(login);
+    await driver.manage().window().setRect({width:1920,height:1080});await driver.get(login);
     await driver.wait(async()=>{
       if((await driver.findElements(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='General']"))).length)return true;
       for(const text of ['Configure later','Continue']){const b=await driver.findElements(By.xpath(`//button[.='${text}']`));if(b.length&&await b[0].isDisplayed())await b[0].click();}
@@ -70,13 +70,11 @@ test('all four business settings follow General controls, labels, hints and them
       }
       assert.ok(reference.font);
     }
-    await driver.manage().window().setRect({width:450,height:900});await driver.setContext('chrome');
-    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='390px';gBrowser.selectedBrowser.style.width='390px';gBrowser.selectedBrowser.style.flex='none'");
-    await driver.setContext('content');await driver.wait(()=>driver.executeScript('return innerWidth===390'),4000);
+    await driver.manage().window().setRect({width:1920,height:1080});
     for(const [module,label] of Object.entries(modules)){
       await section(label);await driver.wait(until.elementLocated(By.css('[data-module-settings] input[type=number]')),7000);
-      assert.ok(await driver.executeScript('const root=document.querySelector("[data-module-settings]");return root.scrollWidth<=root.clientWidth+1&&document.documentElement.scrollWidth<=innerWidth'),label+' narrow layout');
-      await fs.writeFile(`${output}/${module}-mobile.png`,await driver.takeScreenshot(),'base64');
+      assert.ok(await driver.executeScript('const root=document.querySelector("[data-module-settings]");return root.scrollWidth<=root.clientWidth+1&&document.documentElement.scrollWidth<=innerWidth'),label+' PC layout');
+      await fs.writeFile(`${output}/${module}-desktop.png`,await driver.takeScreenshot(),'base64');
     }
     await fs.writeFile(output+'/proof.json',JSON.stringify(evidence,null,2));assert.deepEqual(fixture.errors,[]);
   }catch(error){

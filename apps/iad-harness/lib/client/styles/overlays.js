@@ -12,7 +12,6 @@ export const overlaysStyles = `.iad-viewer-hint{margin:0;padding:8px 20px;flex:n
 .iad-viewer-edge-button:is(:hover,:focus-visible)>.iad-viewer-edge-disc{background:var(--iad-viewer-edge-hover);border-color:var(--iad-viewer-edge-hover-border)}
 .iad-viewer-edge-button:disabled>.iad-viewer-edge-disc{opacity:.38}
 .iad-image-canvas .iad-viewer-edge-nav>button.iad-viewer-edge-button:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}
-@media(hover:none){.iad-image-canvas .iad-viewer-edge-nav>button.iad-viewer-edge-button:not(:disabled){opacity:1}}
 @media(prefers-reduced-motion:reduce){.iad-image-canvas .iad-viewer-edge-nav>button.iad-viewer-edge-button,.iad-viewer-edge-disc{transition:none}}
 .iad-viewer-media>.iad-media-loading {position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100% - 32px);padding:12px 16px;border-radius:var(--iad-radius);background:var(--iad-viewer);color:var(--iad-on-viewer);line-height:1.5;pointer-events:none;}
 .iad-viewer-media[aria-busy=true] .iad-viewer-world {visibility:hidden;}

@@ -76,21 +76,10 @@ export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#d
 #audit-page .audit-evidence-link span{min-width:0;line-height:1.7}
 #audit-page .audit-disclaimer{margin-top:20px;color:var(--audit-ink);font-size:13px}
 #audit-page .audit-create-page{display:grid;gap:16px;min-width:0}
+#audit-page .audit-create-page>.iad-job-list{margin:0}
 #audit-page .audit-source-panel{margin:0;min-width:0}
 #audit-page .audit-source-panel .audit-panel-head{padding:16px 20px}
 #audit-page .audit-source-panel .audit-panel-head h2{font-size:16px}
-#audit-page .audit-source-table{width:100%;overflow:auto;max-height:350px;scrollbar-width:thin}
-#audit-page .audit-source-table .audit-table{font-size:13px;min-width:720px;table-layout:fixed}
-#audit-create-consistency-jobs .audit-source-table .audit-table{min-width:900px}
-#audit-page .audit-source-table th{position:sticky;top:0;z-index:1;background:#f1f4f9}
-#audit-page .audit-source-table .audit-table :is(th,td){padding:11px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#audit-page .audit-source-table .audit-table .audit-description{white-space:normal;line-height:1.6;overflow-wrap:anywhere}
-#audit-page .audit-source-table input{width:16px;height:16px;accent-color:var(--audit-blue);cursor:pointer}
-#audit-page .audit-entry-row{cursor:pointer}
-#audit-page .audit-entry-title{border:0;background:none;padding:0;color:var(--iad-primary);font:inherit;text-align:left;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
-#audit-page .audit-entry-area{border-top:1px solid var(--audit-border)}
-#audit-page .audit-entry-header{padding:15px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-#audit-page .audit-entry-header h3{font-size:15px;margin:0}
 #audit-page .audit-pick-all{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
 #audit-page .audit-pick-all input{width:16px;height:16px;accent-color:var(--audit-blue)}
 #audit-page .audit-create-confirm{padding:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
@@ -121,5 +110,5 @@ export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#d
 #audit-page .audit-lightbox .prev{left:24px;top:50%}
 #audit-page .audit-lightbox .next{right:24px;top:50%}
 #audit-page .audit-lightbox .caption{position:absolute;bottom:20px;left:20px;right:20px;text-align:center;color:#fff;font-size:13px}
-@media(max-width:1100px){#audit-page .audit-report-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}#audit-page .audit-kpi:nth-child(3){border-right:0}#audit-page .audit-kpi:nth-child(n+4){border-top:1px solid var(--audit-border)}}
-@media(max-width:780px){#audit-page{padding:0 0 40px}#audit-page .audit-scope-parent,#audit-page .audit-scope-child{width:100%}#audit-page .audit-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-page .audit-kpi{border-top:1px solid var(--audit-border)}#audit-page .audit-report-columns{grid-template-columns:1fr}#audit-page .audit-overlay{padding:12px}#audit-page .audit-dialog{width:calc(100vw - 24px);height:calc(100dvh - 24px)}#audit-page .audit-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;padding:12px}#audit-page .audit-thumb{height:122px}#audit-page .audit-dialog-body{padding:16px}}`;
+
+`;

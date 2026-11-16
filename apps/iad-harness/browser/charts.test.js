@@ -12,6 +12,8 @@ import firefox from 'selenium-webdriver/firefox.js';
 import {PythonBridge,findWorkspaceRoot} from '../lib/server/python-bridge/index.js';
 import {createIadHttpHandler} from '../lib/server/routes/index.js';
 
+import {viewport} from './workbench-layout.js';
+
 const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
 test('all chart surfaces use real aggregates with filtering theme changes keyboard actions and offline rendering',{timeout:120000},async()=>{
@@ -26,13 +28,13 @@ test('all chart surfaces use real aggregates with filtering theme changes keyboa
     const bundle=await build({stdin:{contents:`
 import React,{useState} from 'react';import {createRoot} from 'react-dom/client';
 import {AuditReportContent} from './src/client/components/AuditReportContent.tsx';
-import {ConsistencyStatisticsDialog} from './src/client/components/ConsistencyStatisticsDialog.tsx';
+import {ConsistencyStatisticsDrawer} from './src/client/components/ConsistencyStatisticsDrawer.tsx';
 import {workbenchStyles} from './src/client/styles.ts';
 function App(){const [dialog,setDialog]=useState('');const [statistics,setStatistics]=useState();
-async function open(kind){const response=await fetch('/api/iad/consistency/gallery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query_id:window.fixture.query_id,kind:'conflicts',page_size:1})});setStatistics((await response.json()).statistics);setDialog(kind);}
-return <><style>{workbenchStyles}</style><main className="iad-workbench" id="audit-page"><button id="open-statistics" onClick={()=>open('filter')}>冲突统计</button><button id="open-source-statistics" onClick={()=>open('source')}>来源统计</button><span id="selected-filter"/>
+async function open(kind){const response=await fetch('/api/iad/consistency/gallery',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({query_id:kind==='empty'?window.fixture.empty_query_id:window.fixture.query_id,kind:'conflicts',page_size:1})});setStatistics((await response.json()).statistics);setDialog(kind);}
+return <><style>{workbenchStyles}</style><main className="iad-workbench" id="audit-page"><button id="open-statistics" onClick={()=>open('filter')}>冲突统计</button><button id="open-source-statistics" onClick={()=>open('source')}>来源统计</button><button id="open-empty-statistics" onClick={()=>open('empty')}>空作业统计</button>
 <section id="audit-report" style={{width:960,maxWidth:'100%'}}><AuditReportContent report={window.report} imageUrl={()=>''}/></section>
-{dialog&&<ConsistencyStatisticsDialog statistics={statistics} onClose={()=>setDialog('')} onFilter={dialog==='filter'?(action,id)=>{document.getElementById('selected-filter').textContent=action+':'+id;}:undefined}/>}</main></>};
+{dialog&&<ConsistencyStatisticsDrawer statistics={statistics} onClose={()=>setDialog('')}/>}</main></>};
 createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolveDir:app},bundle:true,write:false,format:'iife',target:'es2022',define:{'process.env.NODE_ENV':'"production"'}});
     const handler=createIadHttpHandler(bridge);
     server=http.createServer((req,res)=>{
@@ -45,7 +47,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     driver=await new Builder().forBrowser('firefox').setFirefoxOptions(new firefox.Options()
       .addArguments('-headless','--remote-allow-system-access').setBinary(process.env.FIREFOX_PATH||'/tmp/iad-firefox128/firefox/firefox'))
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
-    await driver.manage().window().setRect({width:1440,height:1080});
+    await driver.manage().window().setRect({width:1920,height:1080});
     const element=css=>driver.wait(until.elementLocated(By.css(css)),10000);
     const click=async css=>{const item=await element(css);await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',item);await item.click();};
     const toggleSubset=async(id,value)=>{
@@ -56,6 +58,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     };
     const readings=async id=>(await element(`[data-chart="${id}"] .iad-chart-plot`)).getAttribute('aria-label');
     await driver.get(`http://127.0.0.1:${server.address().port}/`);
+    await viewport(driver,1920,1080);
     await element('[data-chart="image-dimensions"] .iad-chart-plot svg');
     const categoryPositions=await driver.executeScript(`return [...document.querySelectorAll('[data-chart="class-distribution"] svg text')]
       .filter(node=>arguments[0].includes(node.textContent)).map(node=>{const box=node.getBoundingClientRect();return {x:box.x,y:box.y};})`,report.data_distribution.slices[0].classes.map(row=>row.category));
@@ -149,7 +152,13 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
 
     await driver.executeScript('document.body.setAttribute("data-ds-dark-theme","")');
     await click('#open-statistics');await element('dialog [data-chart="stat-category"] svg');
-    assert.equal((await driver.findElements(By.css('dialog .iad-chart'))).length,3);
+    assert.equal((await driver.findElements(By.css('dialog.iad-drawer'))).length,1,'统计应使用右侧抽屉');
+    assert.equal((await driver.findElements(By.css('dialog [data-chart-type="bar"]'))).length,3,'三张统计图均为柱状图');
+    assert.equal((await driver.findElements(By.css('select[aria-label="按统计结果筛选"]'))).length,0);
+    const frame=await driver.executeScript('const r=document.querySelector("dialog").getBoundingClientRect();return {width:r.width,right:r.right,top:r.top,height:r.height,viewport:document.documentElement.clientWidth,viewHeight:innerHeight}');
+    assert.deepEqual([frame.width,frame.right,frame.top,frame.height],[560,frame.viewport,0,frame.viewHeight]);
+    const labels=await driver.executeScript('return [...document.querySelectorAll("[data-chart=stat-agreement] svg text")].filter(node=>["一致","不一致"].includes(node.textContent)).map(node=>{const r=node.getBoundingClientRect();return {x:r.x,y:r.y}})');
+    assert.equal(labels.length,2);assert.ok(Math.abs(labels[0].y-labels[1].y)<1&&Math.abs(labels[0].x-labels[1].x)>20,'类别沿横轴排列，柱子向上');
     const colors=await driver.executeScript('const s=getComputedStyle(document.querySelector("dialog .iad-chart-plot"));return {ink:s.getPropertyValue("--iad-chart-ink").trim(),primary:s.getPropertyValue("--iad-chart-primary").trim()};');
     assert.equal(colors.ink,'#EDF2F8');
     assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector("dialog")).backgroundColor'),'rgb(32, 43, 58)','弹窗表面与深色图表应采用同一主题');
@@ -158,30 +167,45 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     assert.ok(bar,'分类图应有实际数据条形');
     await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',bar);
     await driver.actions().move({origin:bar}).click().perform();
-    await driver.wait(async()=>(await(await element('#selected-filter')).getText()).startsWith('stat-category:'),5000);
-    await driver.executeScript('document.getElementById("selected-filter").textContent=""');
-    const keyboard=await element('select[aria-label="按统计结果筛选"]');
-    await keyboard.sendKeys(Key.ARROW_DOWN);
-    await driver.wait(async()=>(await(await element('#selected-filter')).getText()).startsWith('stat-category:'),5000);
+    assert.equal((await driver.findElements(By.css('dialog[open]'))).length,1,'点击柱体保留抽屉');
+    const legend=await driver.executeScript('return [...document.querySelectorAll("dialog [data-chart=stat-category] svg text")].find(node=>node.textContent==="图组（组）")');
+    await driver.actions().move({origin:legend}).click().perform();
+    await driver.executeAsyncScript('const done=arguments[arguments.length-1];setTimeout(done,350)');
+    assert.ok(await driver.executeScript('return [...document.querySelectorAll("dialog [data-chart=stat-category] svg path")].some(node=>node.getAttribute("fill")===arguments[0]&&node.getBoundingClientRect().width>5&&node.getBoundingClientRect().height>5)',colors.primary),'统计图例不能筛选或隐藏柱体');
     await fs.writeFile(path.join(evidence,'consistency-dark.png'),await driver.takeScreenshot(),'base64');
     await click('button[aria-label="关闭标注冲突统计"]');await click('#open-source-statistics');
-    await element('dialog [data-chart="stat-agreement"][data-chart-type="donut"] svg');
+    await element('dialog [data-chart="stat-agreement"][data-chart-type="bar"] svg');
     assert.equal((await driver.findElements(By.css('select[aria-label="按统计结果筛选"]'))).length,0);
     const zeroSectors=await driver.executeScript(`return [...document.querySelectorAll('dialog [data-chart="stat-agreement"] svg path')].filter(node=>{
       const box=node.getBoundingClientRect();return box.width>40&&box.height>40&&[arguments[0],arguments[1]].includes(node.getAttribute('fill'));
     }).length`,colors.primary,await driver.executeScript('return getComputedStyle(document.querySelector("dialog .iad-chart-plot")).getPropertyValue("--iad-chart-success").trim()'));
-    assert.equal(zeroSectors,0,'零值占比不能绘制等分扇区');
+    assert.equal(zeroSectors,0,'零计数不能绘制非零柱体');
+    await click('button[aria-label="关闭标注冲突统计"]');
+    await click('#open-empty-statistics');await element('dialog [data-chart="stat-category"] svg');
+    const zeroCharts=await driver.executeScript(`return [...document.querySelectorAll('dialog .iad-chart')].map(figure=>({
+      id:figure.dataset.chart,type:figure.dataset.chartType,readings:figure.querySelector('.iad-chart-plot').getAttribute('aria-label'),
+      labels:[...figure.querySelectorAll('svg text')].map(node=>node.textContent)}))`);
+    assert.equal(zeroCharts.length,3);
+    for(const [index,labels] of [
+      ['类别不一致','位置差异','多标','少标','拆分','合并','对应关系差异'],
+      ['类别不一致','多标','少标','位置差异','拆分','合并','一致'],
+      ['一致','不一致'],
+    ].entries()){
+      const chart=zeroCharts[index];assert.equal(chart.type,'bar');
+      assert.ok(!chart.labels.includes('暂无统计数据'),`${chart.id}零计数仍应显示柱状图`);
+      assert.ok(chart.labels.includes('0'),`${chart.id}保留零刻度`);
+      for(const label of labels)assert.ok(chart.readings.includes(`${label}，图组（组）：0`),`${chart.id}保留${label}的零计数`);
+      assert.equal([...chart.readings.matchAll(/图组（组）：0/g)].length,labels.length);
+    }
+    await fs.writeFile(path.join(evidence,'consistency-zero.png'),await driver.takeScreenshot(),'base64');
     await click('button[aria-label="关闭标注冲突统计"]');
     await driver.executeScript('document.body.removeAttribute("data-ds-dark-theme")');
-    await driver.setContext('chrome');await driver.executeScript("gBrowser.selectedBrowser.style.width='390px';gBrowser.selectedBrowser.style.maxWidth='390px';gBrowser.selectedBrowser.style.flex='none'");await driver.setContext('content');
-    await driver.wait(()=>driver.executeScript('return document.documentElement.scrollWidth<=innerWidth+1'),5000);
-    assert.equal(await driver.executeScript('return getComputedStyle(document.querySelector(".iad-chart-grid")).gridTemplateColumns.split(" ").length'),1);
     const heatmapHeight=await driver.executeScript('return document.querySelector("[data-chart=image-dimensions]").getBoundingClientRect().height');
     for(const id of fixture.dataset_ids)await toggleSubset('image-dimensions',id);
-    assert.ok(Math.abs(await driver.executeScript('return document.querySelector("[data-chart=image-dimensions]").getBoundingClientRect().height')-heatmapHeight)<1,'窄屏清空热图仍保持占位高度');
+    assert.ok(Math.abs(await driver.executeScript('return document.querySelector("[data-chart=image-dimensions]").getBoundingClientRect().height')-heatmapHeight)<1,'PC页面清空热图仍保持占位高度');
     for(const id of fixture.dataset_ids)await toggleSubset('image-dimensions',id);
     await driver.executeScript('document.querySelector("[data-report-section=distribution]").scrollIntoView()');
-    await fs.writeFile(path.join(evidence,'distribution-mobile.png'),await driver.takeScreenshot(),'base64');
+    await fs.writeFile(path.join(evidence,'distribution-selection.png'),await driver.takeScreenshot(),'base64');
     assert.deepEqual(await driver.executeScript('return window.browserErrors'),[]);
 
     const exported=await bridge.execute('audit_job_export',{run_id:fixture.run_id});
@@ -196,8 +220,8 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await element('[data-chart="relative-area"][data-chart-type="distribution"] .iad-chart-plot svg');
     assert.doesNotMatch(await readings('box-centers'),/%/,'离线报告使用相同的小数坐标');
     assert.equal(await driver.executeScript('return performance.getEntriesByType("resource").filter(entry=>/^https?:/.test(entry.name)).length'),0);
-    await fs.writeFile(path.join(evidence,'offline-mobile.png'),await driver.takeScreenshot(),'base64');
-    await fs.writeFile(path.join(evidence,'proof.json'),JSON.stringify({images:6,boxes:7,statistics:fixture.statistics,theme:colors,heatmaps:heatmapColors,offlineNetworkRequests:0},null,2));
+    await fs.writeFile(path.join(evidence,'offline-desktop.png'),await driver.takeScreenshot(),'base64');
+    await fs.writeFile(path.join(evidence,'proof.json'),JSON.stringify({images:6,boxes:7,statistics:fixture.statistics,zeroCharts,theme:colors,heatmaps:heatmapColors,offlineNetworkRequests:0},null,2));
   }finally{
     await driver?.quit();bridge.destroy();
     if(server){server.closeAllConnections();await new Promise(resolve=>server.close(resolve));}

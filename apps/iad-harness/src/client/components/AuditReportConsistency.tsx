@@ -20,7 +20,7 @@ export function AuditReportConsistency({report,sources,imageUrl}:{report:AuditRu
     description:key==='MODEL_REVIEWED:EQUIVALENT'&&report.dataset_profile?.dataset_format==='folder_classification'
       ?'已有内容相同的对照图，双方的整图标签相同。':auditConsistencyDescriptions[key as keyof typeof auditConsistencyDescriptions]}))},
     {key:'conflict',title:'标注冲突类别',items:kinds.map(key=>({key,title:auditIssueLabels[key],description:auditIssueDescriptions[key]}))}];
-  const scopes=['NO_CANDIDATES','NO_ELIGIBLE_CANDIDATES','MODEL_REVIEWED:EQUIVALENT',
+  const scopes=['NO_CANDIDATES','NO_ELIGIBLE_CANDIDATES','PROGRAM_REVIEWED:EQUIVALENT','MODEL_REVIEWED:EQUIVALENT',
     ...sources.filter(item=>['MODEL_REVIEWED:MATERIAL','MODEL_REVIEWED:UNCERTAIN'].includes(item.key)&&item.value>0).map(item=>item.key)];
   return <AuditReportSection section="consistency">
     <p>{report.consistency_analysis}</p>

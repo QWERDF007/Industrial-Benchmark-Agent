@@ -58,7 +58,7 @@ export const formsStyles = `
 .iad-detail-dialog .iad-inspector {border:0;box-shadow:none;}
 .iad-browse {min-width:0;}
 
-@container workbench (max-width:959px){.iad-workbench{--iad-page-padding:var(--iad-space-6)}}
+
 
 @media(prefers-reduced-motion:reduce) {.iad-workbench * {scroll-behavior:auto;transition:none;animation:none;}}
 

@@ -18,5 +18,5 @@ export const selectStyles = `
 .iad-select-option span{min-width:0;overflow-wrap:anywhere;line-height:1.5}
 .iad-select-option:has(:disabled){cursor:default;color:var(--iad-muted)}
 .iad-select-empty{padding:10px;margin:0}
-@media(max-width:760px){.iba-scope-selector>.iad-scope-parent,.iba-scope-selector>.iad-scope-child{width:100%}}
+
 `;

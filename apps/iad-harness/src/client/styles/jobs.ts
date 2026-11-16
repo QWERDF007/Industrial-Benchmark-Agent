@@ -44,5 +44,5 @@ export const jobsStyles = `
 .iad-job-note{font-size:12px;color:var(--iad-muted);line-height:1.65;margin:12px 0 0}
 .iad-job-drawer-footer{border-top:1px solid var(--iad-border);display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;padding:13px 24px;flex:none}
 .iad-job-drawer-footer p{flex-basis:100%;margin:0}
-@media(max-width:680px){.iad-job-drawer-body{padding:18px 16px}.iad-job-drawer-footer{padding:12px 16px}}
+
 `;

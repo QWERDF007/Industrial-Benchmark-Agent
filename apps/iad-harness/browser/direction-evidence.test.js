@@ -74,12 +74,10 @@ test('direction prose omits image identities and keeps independent selected imag
     await driver.executeScript('window.showEvidenceVersion("legacy")');
     await driver.wait(async()=>(await driver.findElements(By.css('.exp-direction-evidence-card'))).length===5,3000,
       '旧版本没有精选字段时只使用其明确的历史引用');
-    await viewport(driver,800,844);await driver.setContext('chrome');
-    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='390px';gBrowser.selectedBrowser.style.width='390px';gBrowser.selectedBrowser.style.flex='none'");
-    await driver.setContext('content');await driver.wait(()=>driver.executeScript('return innerWidth===390'),5000);
+    await viewport(driver,1920,1080);
     assert.equal(await driver.executeScript('const d=document.querySelector("dialog.exp-direction-dialog");return d.scrollWidth>d.clientWidth+1'),false);
     assert.equal((await driver.findElements(By.css('[data-evidence-ref]'))).length,0);
-    await fs.writeFile(path.join(output,'selected-mobile.png'),await driver.takeScreenshot(),'base64');
+    await fs.writeFile(path.join(output,'selected-desktop.png'),await driver.takeScreenshot(),'base64');
   }finally{
     if(driver)await driver.quit();
     await new Promise(resolve=>server.close(resolve));

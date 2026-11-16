@@ -366,27 +366,8 @@ export const datasetsStyles = `
 .toast.hidden { display: none; }
 
 /* Responsive */
-@media(max-width: 1200px) {
-  .iad-dataset-page-wrap.has-drawer { padding-right: 0 !important; }
-  .drawer-root.open { pointer-events: auto; }
-  .drawer-root.open .drawer-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(15,25,43,.22);
-    pointer-events: auto;
-    z-index: 50;
-  }
-  .dataset-drawer {
-    width: min(540px, 95vw);
-    box-shadow: -8px 0 30px rgba(0,0,0,.17);
-    z-index: 51;
-  }
-}
 
-@media(max-width: 760px) {
-  .drawer-top { padding: 19px 15px; }
-  .drawer-body { padding: 15px; }
-}
+
+
 
 `;

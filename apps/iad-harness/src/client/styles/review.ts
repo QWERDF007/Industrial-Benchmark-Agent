@@ -23,23 +23,18 @@ export const reviewStyles = `.iad-workbench[data-page=industrial-review]:has(.ia
 .iad-review-submit {display:flex;flex-direction:column;gap:8px;padding-top:16px;flex:none;background:var(--iad-surface);}
 .iad-review-submit .iad-error {margin:0;max-height:100px;overflow:auto;}
 .iad-review-submit small {text-align:center;}
-.iad-review-tools {display:none;gap:8px;flex:none;}
-.iad-review-tools button {display:none;}
-.iad-detail-dialog.iad-review-drawer {width:min(440px,100%);height:100dvh;max-height:100dvh;margin:0 0 0 auto;border-radius:0;flex-direction:column;}.iad-detail-dialog.iad-review-drawer[open]{display:flex;}
-.iad-review-drawer>.iad-decision {flex:1;min-height:0;}
-.iad-review-drawer .iad-review-queue {overflow:auto;}
 .iad-embedded-canvas {position:relative;display:flex;flex-direction:column;flex:1;min-height:0;background:var(--iad-viewer);border-radius:var(--iad-radius);padding:12px;color:var(--iad-on-viewer);overflow:hidden;}
 .iad-embedded-canvas .iad-lightbox-toolbar {gap:8px;}
 .iad-embedded-canvas .iad-viewer-body {margin-top:12px;}
 .iad-embedded-evidence {position:absolute;right:12px;bottom:12px;z-index:2;max-width:calc(100% - 24px);width:340px;color:var(--iad-text);background:var(--iad-surface);border-radius:var(--iad-radius);}
 .iad-embedded-evidence>summary {cursor:pointer;padding:12px;min-height:44px;}
 .iad-embedded-evidence .iad-inspection-panel {max-height:260px;}
-@container workbench (max-width:1180px) {.iad-review-columns {grid-template-columns:minmax(0,1fr) 300px;}.iad-review-queue-slot {display:none;}.iad-review-tools {display:flex;}.iad-review-tools .iad-queue-trigger {display:block;}}
-@container workbench (max-width:900px) {.iad-review-columns {grid-template-columns:minmax(0,1fr);}.iad-review-decision-slot {display:none;}.iad-review-tools .iad-decision-trigger {display:block;}}
+
+
 .iad-conflict-workspace {display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:start;}
 .iad-conflict-detail {display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;min-width:0;}.iad-conflict-detail>article,.iad-conflict-detail>aside {min-width:0;}
 .iad-disposition-fields {border:0;min-width:0;margin:0;padding:0;}
-@container workbench (max-width:1180px){.iad-conflict-detail {grid-template-columns:minmax(0,1fr);}.iad-conflict-workspace {grid-template-columns:220px minmax(0,1fr);}}
-@container workbench (max-width:900px){.iad-conflict-workspace {grid-template-columns:minmax(0,1fr);}}
+
+
 
 `;

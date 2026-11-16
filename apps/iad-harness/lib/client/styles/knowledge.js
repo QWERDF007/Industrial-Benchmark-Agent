@@ -3,14 +3,14 @@ export const knowledgeStyles = `
 /* V49 Knowledge Mining Styles - Scoped to .kb-v45 and workbench */
 
 :root {
-  --iad-content-modal-gutter: var(--iba-dialog-gap, clamp(12px, 2.5vw, 32px));
+  --iad-content-modal-gutter: var(--iba-dialog-gap, 32px);
   --iad-content-modal-radius: 8px;
   --iad-content-modal-width: 1380px;
   --iad-content-modal-height: 820px;
 }
 
 #knowledge-page, .iad-knowledge-page {
-  --iad-content-modal-gutter: var(--iba-dialog-gap, clamp(12px, 2.5vw, 32px));
+  --iad-content-modal-gutter: var(--iba-dialog-gap, 32px);
   --iad-content-modal-radius: 8px;
   --iad-content-modal-width: 1380px;
   --iad-content-modal-height: 820px;
@@ -155,10 +155,6 @@ export const knowledgeStyles = `
   gap: 9px;
 }
 
-.kb-v45 .knowledge-entry-view:hover {
-  color: #285fc9 !important;
-  background: #edf2fa !important;
-}
 
 /* Status Badges */
 .status {
@@ -205,40 +201,9 @@ export const knowledgeStyles = `
 }
 
 /* Lower Panel: Knowledge Entries */
-.kb-v45 .knowledge-list {
-  width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: visible;
-}
 
-.kb-v45 .knowledge-head,
-.kb-v45 .knowledge-row {
-  display: grid;
-  grid-template-columns: minmax(200px, 28%) minmax(290px, 1fr) 112px 90px !important;
-  align-items: center;
-  gap: 14px !important;
-  min-width: 770px !important;
-}
 
-.kb-v45 .knowledge-entry-name,
-.kb-v45 .knowledge-entry-description {
-  display: block;
-  font-weight: 400 !important;
-  color: var(--iba-v50-ink, #172338) !important;
-  line-height: 1.55;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
 
-.kb-v45 .knowledge-row .knowledge-entry-description {
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  max-height: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
 
 .kb-v45 .jobtitle {
   font-weight: 400 !important;
@@ -251,79 +216,14 @@ export const knowledgeStyles = `
   display: none !important;
 }
 
-.kb-v45 .knowledge-head {
-  min-height: 43px;
-  padding: 0 20px;
-  background: #f1f4f9;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  border-bottom: 1px solid #dfe6f0;
-}
 
-.kb-v45 .knowledge-head > span:last-child {
-  text-align: right;
-}
 
-.kb-v45 .knowledge-row {
-  width: 100%;
-  min-height: 74px;
-  padding: 11px 20px;
-  border: 0;
-  border-bottom: 1px solid #e5eaf1;
-  text-align: left;
-  background: #fff;
-  color: #172338 !important;
-  cursor: pointer;
-  font-size: 13px !important;
-  border-radius: 0;
-  font-family: inherit;
-}
 
-.kb-v45 .knowledge-row:hover {
-  background: #f7faff;
-}
 
-.kb-v45 .knowledge-row:focus-visible {
-  outline: 2px solid #8caef1;
-  outline-offset: -2px;
-  background: #f3f7ff;
-}
 
-.kb-v45 .knowledge-row .row-title {
-  display: block;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  line-height: 1.5;
-}
 
-.kb-v45 .knowledge-row .row-desc {
-  display: block;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  line-height: 1.55;
-  margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.kb-v45 .knowledge-row .col-evidence-count {
-  text-align: left;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-variant-numeric: tabular-nums;
-}
 
-.kb-v45 .knowledge-row .col-action {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 7px;
-  min-width: 0;
-}
 
 /* Blank states */
 .kb-v45 .blank {
@@ -949,10 +849,6 @@ export const knowledgeStyles = `
   color: #a53b39;
   font-size: 13px;
 }
-@media (max-width: 700px) {
-  :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-confirm {
-    padding: 15px !important;
-  }
-}
+
 
 `;

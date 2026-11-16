@@ -10,7 +10,7 @@ import {viewport} from './workbench-layout.js';
 
 const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
-for(const compare of [false,true])test(`audit originals show filenames and inline evidence${compare?' with comparison tabs':' with responsive pagination'}`,{timeout:60000},async()=>{
+for(const compare of [false,true])test(`audit originals show filenames and inline evidence${compare?' with comparison tabs':''}`,{timeout:60000},async()=>{
   const items=Array.from({length:8},(_,index)=>({
     sample_id:`sample_${index}`,role:compare&&index>=4?'counter':'representative',caption:'原图',reason:`查看第${index+1}处边缘。`,
     image:{evidence_id:`evidence_${index}`,role:'overview',representation:'raw',crop_bbox:[0,0,160,100],original_size:[160,100],sent_size:[160,100]},
@@ -51,7 +51,7 @@ for(const compare of [false,true])test(`audit originals show filenames and inlin
       .setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver')).build();
     const element=css=>driver.wait(until.elementLocated(By.css(css)),10000);
     const click=async css=>{const node=await element(css);await driver.executeScript('arguments[0].scrollIntoView({block:"center"})',node);await node.click();};
-    await viewport(driver,1000,900);await driver.get(`http://127.0.0.1:${server.address().port}`);
+    await viewport(driver,1920,1080);await driver.get(`http://127.0.0.1:${server.address().port}`);
     await element('#audit-report img');
     assert.equal((await driver.findElements(By.css('#audit-report .iad-thumbnail-card'))).length,compare?4:8);
     assert.equal((await driver.findElements(By.css('#audit-report [role="tab"]'))).length,compare?2:0);
@@ -73,17 +73,16 @@ for(const compare of [false,true])test(`audit originals show filenames and inlin
       await click('#audit-report .iad-thumbnail-card');assert.equal(await(await element('#full-file-name')).getText(),'4.svg');await click('#full-close');
       await click('#audit-report [role="tab"]:first-child');
     }
-    await viewport(driver,800,844);await driver.setContext('chrome');
-    await driver.executeScript("gBrowser.selectedBrowser.style.maxWidth='390px';gBrowser.selectedBrowser.style.width='390px';gBrowser.selectedBrowser.style.flex='none'");
-    await driver.setContext('content');
-    await driver.wait(async()=>(await driver.findElements(By.css('#audit-report .iad-thumbnail-card'))).length===4,5000);
-    if(!compare){await click('#audit-report nav button[aria-label="第 2 页"]');assert.equal(await(await element('#audit-report img')).getAttribute('alt'),'4.svg');}
     await click('#few-images');
     await driver.wait(async()=>(await driver.findElements(By.css('#audit-report .iad-thumbnail-card'))).length===3,5000);
     assert.equal((await driver.findElements(By.css('#audit-report nav,#audit-report [role="tab"]'))).length,0);
     await click('#related-images');
     await element('#related-analysis .iad-audit-gallery img');
-    assert.equal((await driver.findElements(By.css('#related-analysis .iad-thumbnail-card'))).length,4,'相同原图在当前分析内去重');
+    assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("#related-analysis img")].map(image=>image.alt)'),(compare?['0.svg','1.svg','2.svg','3.svg']:['0.svg','1.svg','2.svg','3.svg','4.svg']),'相同原图在当前分析内去重');
+    if(compare){
+      await click('#related-analysis [role="tab"]:last-child');
+      assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("#related-analysis img")].map(image=>image.alt)'),['4.svg']);
+    }
     assert.equal((await driver.findElements(By.css('a[href^="#audit-"],table,.iad-thumbnail-caption'))).length,0);
     assert.equal(await driver.executeScript('return document.documentElement.scrollWidth<=innerWidth+1'),true);
   }finally{

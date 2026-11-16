@@ -38,16 +38,16 @@ var __IadClientBundle__ = (() => {
   ));
   var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-  // apps/iad-harness/src/client/index.ts
+  // src/client/index.ts
   var index_exports = {};
   __export(index_exports, {
     apply: () => apply,
     inject: () => inject,
     name: () => name
   });
-  var import_react89 = __toESM(__require("react"), 1);
+  var import_react88 = __toESM(__require("react"), 1);
 
-  // apps/iad-harness/src/client/AuditIcon.tsx
+  // src/client/AuditIcon.tsx
   var import_jsx_runtime = __require("react/jsx-runtime");
   function EditIcon() {
     return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("svg", { "aria-hidden": "true", width: "16", height: "16", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: "1.8", children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)("path", { d: "m16 3 5 5L8 21H3v-5L16 3Z M13 6l5 5" }) });
@@ -268,13 +268,13 @@ var __IadClientBundle__ = (() => {
     );
   }
 
-  // apps/iad-harness/src/client/components/Select.tsx
+  // src/client/components/Select.tsx
   var import_react3 = __require("react");
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.mjs
+  // ../../node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.mjs
   var React3 = __toESM(__require("react"), 1);
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs
+  // ../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.dom.mjs
   function hasWindow() {
     return typeof window !== "undefined";
   }
@@ -430,11 +430,11 @@ var __IadClientBundle__ = (() => {
     return win.parent && Object.getPrototypeOf(win.parent) ? win.frameElement : null;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.utils.mjs
+  // ../../node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.utils.mjs
   var React = __toESM(__require("react"), 1);
   var import_react = __require("react");
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
+  // ../../node_modules/.pnpm/@floating-ui+utils@0.2.12/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs
   var min = Math.min;
   var max = Math.max;
   var round = Math.round;
@@ -562,7 +562,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/tabbable@6.5.0/node_modules/tabbable/dist/index.esm.js
+  // ../../node_modules/.pnpm/tabbable@6.5.0/node_modules/tabbable/dist/index.esm.js
   var candidateSelectors = ["input:not([inert]):not([inert] *)", "select:not([inert]):not([inert] *)", "textarea:not([inert]):not([inert] *)", "a[href]:not([inert]):not([inert] *)", "area[href]:not([inert]):not([inert] *)", "button:not([inert]):not([inert] *)", "[tabindex]:not(slot):not([inert]):not([inert] *)", "audio[controls]:not([inert]):not([inert] *)", "video[controls]:not([inert]):not([inert] *)", '[contenteditable]:not([contenteditable="false"]):not([inert]):not([inert] *)', "details>summary:first-of-type:not([inert]):not([inert] *)", "details:not([inert]):not([inert] *)"];
   var candidateSelector = /* @__PURE__ */ candidateSelectors.join(",");
   var NoElement = typeof Element === "undefined";
@@ -878,7 +878,7 @@ var __IadClientBundle__ = (() => {
     return _sortByOrder(candidates);
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.utils.mjs
+  // ../../node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.utils.mjs
   function getPlatform() {
     const uaData = navigator.userAgentData;
     if (uaData != null && uaData.platform) {
@@ -1077,11 +1077,11 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.mjs
+  // ../../node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.mjs
   var import_jsx_runtime2 = __require("react/jsx-runtime");
   var ReactDOM2 = __toESM(__require("react-dom"), 1);
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/dist/floating-ui.core.mjs
+  // ../../node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/dist/floating-ui.core.mjs
   function computeCoordsFromPlacement(_ref, placement, rtl) {
     let {
       reference,
@@ -1592,7 +1592,7 @@ var __IadClientBundle__ = (() => {
     };
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+dom@1.8.0/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs
+  // ../../node_modules/.pnpm/@floating-ui+dom@1.8.0/node_modules/@floating-ui/dom/dist/floating-ui.dom.mjs
   function getCssDimensions(element) {
     const css = getComputedStyle2(element);
     let width = parseFloat(css.width) || 0;
@@ -2198,7 +2198,7 @@ var __IadClientBundle__ = (() => {
     });
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs
+  // ../../node_modules/.pnpm/@floating-ui+react-dom@2.1.9_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react-dom/dist/floating-ui.react-dom.mjs
   var React2 = __toESM(__require("react"), 1);
   var import_react2 = __require("react");
   var ReactDOM = __toESM(__require("react-dom"), 1);
@@ -2455,7 +2455,7 @@ var __IadClientBundle__ = (() => {
     };
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.mjs
+  // ../../node_modules/.pnpm/@floating-ui+react@0.27.20_react-dom@18.3.1_react@18.3.1__react@18.3.1/node_modules/@floating-ui/react/dist/floating-ui.react.mjs
   var FOCUSABLE_ATTRIBUTE2 = "data-floating-ui-focusable";
   var ACTIVE_KEY = "active";
   var SELECTED_KEY = "selected";
@@ -3841,7 +3841,7 @@ var __IadClientBundle__ = (() => {
     } : {}, [enabled, reference, floating, item]);
   }
 
-  // apps/iad-harness/src/client/components/Select.tsx
+  // src/client/components/Select.tsx
   var import_jsx_runtime3 = __require("react/jsx-runtime");
   var Select = (0, import_react3.forwardRef)(
     function Select2({ className = "", ...props }, ref) {
@@ -3920,7 +3920,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/IconButton.tsx
+  // src/client/components/IconButton.tsx
   var import_react5 = __require("react");
   var import_jsx_runtime4 = __require("react/jsx-runtime");
   var icons = {
@@ -3961,10 +3961,10 @@ var __IadClientBundle__ = (() => {
     );
   });
 
-  // apps/iad-harness/src/client/WorkbenchPage.tsx
-  var import_react67 = __require("react");
+  // src/client/WorkbenchPage.tsx
+  var import_react66 = __require("react");
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/QueryClientProvider.js
   var React6 = __toESM(__require("react"), 1);
   var import_jsx_runtime5 = __require("react/jsx-runtime");
   var QueryClientContext = React6.createContext(void 0);
@@ -3987,7 +3987,7 @@ var __IadClientBundle__ = (() => {
     });
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/timeoutManager.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/timeoutManager.js
   var defaultTimeoutProvider = {
     setTimeout: (callback, delay) => setTimeout(callback, delay),
     clearTimeout: (timeoutId) => clearTimeout(timeoutId),
@@ -4127,7 +4127,7 @@ var __IadClientBundle__ = (() => {
     setTimeout(callback, 0);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/utils.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/utils.js
   var isServer = typeof window === "undefined" || "Deno" in globalThis;
   function noop5() {
   }
@@ -4312,11 +4312,11 @@ var __IadClientBundle__ = (() => {
     return object;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/environmentManager.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/environmentManager.js
   var isServerFn = () => isServer;
   var isServer2 = () => isServerFn();
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/subscribable.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/subscribable.js
   var Subscribable = class {
     constructor() {
       this.listeners = /* @__PURE__ */ new Set();
@@ -4366,7 +4366,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/focusManager.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/focusManager.js
   var FocusManager = class extends Subscribable {
     #focused;
     #cleanup;
@@ -4470,7 +4470,7 @@ var __IadClientBundle__ = (() => {
   };
   var focusManager = new FocusManager();
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/notifyManager.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/notifyManager.js
   var defaultScheduler = systemSetTimeoutZero;
   function createNotifyManager() {
     let queue = [];
@@ -4585,7 +4585,7 @@ var __IadClientBundle__ = (() => {
   }
   var notifyManager = createNotifyManager();
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/onlineManager.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/onlineManager.js
   var OnlineManager = class extends Subscribable {
     #online = true;
     #cleanup;
@@ -4670,7 +4670,7 @@ var __IadClientBundle__ = (() => {
   };
   var onlineManager = new OnlineManager();
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/retryer.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/retryer.js
   function defaultRetryDelay(failureCount) {
     return Math.min(1e3 * 2 ** failureCount, 3e4);
   }
@@ -4785,7 +4785,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/removable.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/removable.js
   var Removable = class {
     #gcTimeout;
     /**
@@ -4825,7 +4825,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/infiniteQueryBehavior.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/infiniteQueryBehavior.js
   function infiniteQueryBehavior(pages2) {
     return { onFetch: (context, query) => {
       const options = context.options;
@@ -4905,7 +4905,7 @@ var __IadClientBundle__ = (() => {
     return pages2.length > 0 ? options.getPreviousPageParam?.(pages2[0], pages2, pageParams[0], pageParams) : void 0;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/query.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/query.js
   var Query = class extends Removable {
     #queryType;
     #initialState;
@@ -5485,7 +5485,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queryObserver.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queryObserver.js
   var QueryObserver = class extends Subscribable {
     #client;
     #currentQuery = void 0;
@@ -5941,7 +5941,7 @@ var __IadClientBundle__ = (() => {
     return resolveQueryValue(options.enabled, query) !== false && query.isStaleByTime(resolveQueryValue(options.staleTime, query));
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/mutation.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/mutation.js
   var Mutation = class extends Removable {
     #client;
     #observers;
@@ -6236,7 +6236,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/mutationCache.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/mutationCache.js
   var MutationCache = class extends Subscribable {
     #mutations;
     #scopes;
@@ -6441,7 +6441,7 @@ var __IadClientBundle__ = (() => {
     return mutation.options.scope?.id;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/mutationObserver.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/mutationObserver.js
   var MutationObserver2 = class extends Subscribable {
     #client;
     #currentResult = void 0;
@@ -6619,7 +6619,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queriesObserver.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queriesObserver.js
   function difference(array1, array2) {
     const excludeSet = new Set(array2);
     return array1.filter((x) => !excludeSet.has(x));
@@ -6850,7 +6850,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queryCache.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queryCache.js
   var QueryCache = class extends Subscribable {
     #queries;
     constructor(config = {}) {
@@ -7067,7 +7067,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queryClient.js
+  // ../../node_modules/.pnpm/@tanstack+query-core@5.106.1/node_modules/@tanstack/query-core/build/modern/queryClient.js
   var QueryClient = class {
     #queryCache;
     #mutationCache;
@@ -7771,13 +7771,13 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/IsRestoringProvider.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/IsRestoringProvider.js
   var React7 = __toESM(__require("react"), 1);
   var IsRestoringContext = React7.createContext(false);
   var useIsRestoring = () => React7.useContext(IsRestoringContext);
   var IsRestoringProvider = IsRestoringContext.Provider;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/QueryErrorResetBoundary.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/QueryErrorResetBoundary.js
   var React8 = __toESM(__require("react"), 1);
   var import_jsx_runtime6 = __require("react/jsx-runtime");
   function createValue() {
@@ -7807,7 +7807,7 @@ var __IadClientBundle__ = (() => {
   var QueryErrorResetBoundaryContext = React8.createContext(createValue());
   var useQueryErrorResetBoundary = () => React8.useContext(QueryErrorResetBoundaryContext);
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/errorBoundaryUtils.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/errorBoundaryUtils.js
   var React9 = __toESM(__require("react"), 1);
   var ensurePreventErrorBoundaryRetry = (options, errorResetBoundary, query) => {
     const throwOnError = query?.state.status === "error" && typeof options.throwOnError === "function" ? shouldThrowError(options.throwOnError, [query.state.error, query]) : options.throwOnError;
@@ -7824,7 +7824,7 @@ var __IadClientBundle__ = (() => {
     return result.isError && !errorResetBoundary.isReset() && !result.isFetching && query && (suspense && result.data === void 0 || shouldThrowError(throwOnError, [result.error, query]));
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/suspense.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/suspense.js
   var ensureSuspenseTimers = (defaultedOptions) => {
     if (defaultedOptions.suspense) {
       const MIN_SUSPENSE_TIME_MS = 1e3;
@@ -7839,7 +7839,7 @@ var __IadClientBundle__ = (() => {
     errorResetBoundary.clearReset();
   });
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useQueries.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useQueries.js
   var React10 = __toESM(__require("react"), 1);
   function useQueries({ queries, ...options }, queryClient2) {
     const client = useQueryClient(queryClient2);
@@ -7896,7 +7896,7 @@ var __IadClientBundle__ = (() => {
     return getCombinedResult(trackResult());
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useBaseQuery.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useBaseQuery.js
   var React11 = __toESM(__require("react"), 1);
   function useBaseQuery(options, Observer, queryClient2) {
     if (true) {
@@ -7937,12 +7937,12 @@ var __IadClientBundle__ = (() => {
     return !defaultedOptions.notifyOnChangeProps ? observer.trackResult(result) : result;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useQuery.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useQuery.js
   function useQuery(options, queryClient2) {
     return useBaseQuery(options, QueryObserver, queryClient2);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useMutationState.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useMutationState.js
   var React12 = __toESM(__require("react"), 1);
   function createSnapshotFactory() {
     let previousResult;
@@ -7968,7 +7968,7 @@ var __IadClientBundle__ = (() => {
     return React12.useSyncExternalStore(React12.useCallback((onStoreChange) => mutationCache.subscribe(notifyManager.batchCalls(onStoreChange)), [mutationCache]), getSnapshot, getSnapshot);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useMutation.js
+  // ../../node_modules/.pnpm/@tanstack+react-query@5.106.1_@types+react@18.3.31_react@18.3.1/node_modules/@tanstack/react-query/build/modern/useMutation.js
   var React13 = __toESM(__require("react"), 1);
   function useMutation(options, queryClient2) {
     const client = useQueryClient(queryClient2);
@@ -7988,7 +7988,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // apps/iad-harness/src/client/query-client.ts
+  // src/client/query-client.ts
   var queryClient = new QueryClient({ defaultOptions: { queries: {
     staleTime: 1e3,
     gcTime: 5 * 60 * 1e3,
@@ -7996,7 +7996,7 @@ var __IadClientBundle__ = (() => {
     refetchOnWindowFocus: false
   } } });
 
-  // apps/iad-harness/src/client/api.ts
+  // src/client/api.ts
   var ApiError = class extends Error {
     constructor(code, message2, status) {
       super(message2);
@@ -8043,7 +8043,7 @@ var __IadClientBundle__ = (() => {
   var regionSources = { annotation: "Labelme \u7EBF\u7D22", model: "MLLM \u5019\u9009", coverage: "\u7EC6\u8282\u8986\u76D6" };
   var auditImageIndex = (analysis) => new Map([analysis.overview, ...analysis.regions.map((region) => region.image), ...analysis.auxiliary_evidence, ...analysis.reference_evidence].map((image) => [image.evidence_id, image]));
 
-  // apps/iad-harness/src/client/clipboard.ts
+  // src/client/clipboard.ts
   async function copyText(text) {
     if (navigator.clipboard) {
       await navigator.clipboard.writeText(text);
@@ -8063,7 +8063,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // apps/iad-harness/src/client/components/Button.tsx
+  // src/client/components/Button.tsx
   var import_react6 = __require("react");
   var import_jsx_runtime7 = __require("react/jsx-runtime");
   var Button = (0, import_react6.forwardRef)(function Button2({ variant = "secondary", type = "button", className = "", ...props }, ref) {
@@ -8079,10 +8079,10 @@ var __IadClientBundle__ = (() => {
     );
   });
 
-  // apps/iad-harness/src/client/components/DatasetManager.tsx
+  // src/client/components/DatasetManager.tsx
   var import_react14 = __toESM(__require("react"), 1);
 
-  // apps/iad-harness/src/client/useFolderPreview.ts
+  // src/client/useFolderPreview.ts
   var import_react7 = __require("react");
   function useFolderPreview(root, rules, enabled) {
     const key2 = JSON.stringify({ root, rules });
@@ -8112,7 +8112,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // apps/iad-harness/src/shared/navigation.ts
+  // src/shared/navigation.ts
   var navigation = {
     "industrial-datasets": { label: "\u6570\u636E\u96C6\u7BA1\u7406", chapter: "\u6570\u636E\u51C6\u5907" },
     "industrial-images": { label: "\u56FE\u50CF\u6D4F\u89C8", chapter: "\u6570\u636E\u51C6\u5907" },
@@ -8126,7 +8126,7 @@ var __IadClientBundle__ = (() => {
   var pages = Object.fromEntries(Object.entries(navigation).map(([id, page]) => [id, page.label]));
   var consistencyTabs = [{ id: "conflicts", label: "\u6807\u6CE8\u51B2\u7A81" }, { id: "search", label: "\u56FE\u50CF\u68C0\u7D22" }, { id: "groups", label: "\u91CD\u590D\u56FE\u7EC4" }, { id: "jobs", label: "\u7D22\u5F15\u4E0E\u4F5C\u4E1A" }];
 
-  // apps/iad-harness/src/client/components/layout/WorkbenchHeader.tsx
+  // src/client/components/layout/WorkbenchHeader.tsx
   var import_jsx_runtime8 = __require("react/jsx-runtime");
   function WorkbenchHeader({ pageId, children, title, className = "" }) {
     const page = navigation[pageId];
@@ -8136,10 +8136,10 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/DirectoryPickerDialog.tsx
+  // src/client/components/DirectoryPickerDialog.tsx
   var import_react9 = __require("react");
 
-  // apps/iad-harness/src/client/components/Modal.tsx
+  // src/client/components/Modal.tsx
   var import_react8 = __require("react");
   var import_jsx_runtime9 = __require("react/jsx-runtime");
   function Modal({ id, title, onClose, children, className = "", size: size4 = "detail", frame = "dialog", restoreFocus, initialFocus, header = true, presentation = "modal", onKeyDown }) {
@@ -8216,7 +8216,7 @@ var __IadClientBundle__ = (() => {
     );
   }
 
-  // apps/iad-harness/src/client/components/DirectoryPickerDialog.tsx
+  // src/client/components/DirectoryPickerDialog.tsx
   var import_jsx_runtime10 = __require("react/jsx-runtime");
   function DirectoryPickerDialog({ label, initialPath, onClose, onPick }) {
     const id = (0, import_react9.useId)(), input = (0, import_react9.useRef)(null), pending = (0, import_react9.useRef)(null);
@@ -8277,7 +8277,7 @@ var __IadClientBundle__ = (() => {
     ] }) });
   }
 
-  // apps/iad-harness/src/client/components/DatasetCreateDialog.tsx
+  // src/client/components/DatasetCreateDialog.tsx
   var import_react10 = __require("react");
   var import_jsx_runtime11 = __require("react/jsx-runtime");
   function DatasetCreateDialog({ groups, parentId, onCreated, onClose }) {
@@ -8395,10 +8395,10 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/DeleteAction.tsx
+  // src/client/components/DeleteAction.tsx
   var import_react12 = __require("react");
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist/stringify.js
+  // ../../node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist/stringify.js
   var byteToHex = [];
   for (let i = 0; i < 256; ++i) {
     byteToHex.push((i + 256).toString(16).slice(1));
@@ -8407,7 +8407,7 @@ var __IadClientBundle__ = (() => {
     return (byteToHex[arr[offset4 + 0]] + byteToHex[arr[offset4 + 1]] + byteToHex[arr[offset4 + 2]] + byteToHex[arr[offset4 + 3]] + "-" + byteToHex[arr[offset4 + 4]] + byteToHex[arr[offset4 + 5]] + "-" + byteToHex[arr[offset4 + 6]] + byteToHex[arr[offset4 + 7]] + "-" + byteToHex[arr[offset4 + 8]] + byteToHex[arr[offset4 + 9]] + "-" + byteToHex[arr[offset4 + 10]] + byteToHex[arr[offset4 + 11]] + byteToHex[arr[offset4 + 12]] + byteToHex[arr[offset4 + 13]] + byteToHex[arr[offset4 + 14]] + byteToHex[arr[offset4 + 15]]).toLowerCase();
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist/rng.js
+  // ../../node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist/rng.js
   var getRandomValues;
   var rnds8 = new Uint8Array(16);
   function rng() {
@@ -8420,11 +8420,11 @@ var __IadClientBundle__ = (() => {
     return getRandomValues(rnds8);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist/native.js
+  // ../../node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist/native.js
   var randomUUID = typeof crypto !== "undefined" && crypto.randomUUID && crypto.randomUUID.bind(crypto);
   var native_default = { randomUUID };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist/v4.js
+  // ../../node_modules/.pnpm/uuid@13.0.0/node_modules/uuid/dist/v4.js
   function _v4(options, buf, offset4) {
     options = options || {};
     const rnds = options.random ?? options.rng?.() ?? rng();
@@ -8453,7 +8453,7 @@ var __IadClientBundle__ = (() => {
   }
   var v4_default = v4;
 
-  // apps/iad-harness/src/client/components/ConfirmationDialog.tsx
+  // src/client/components/ConfirmationDialog.tsx
   var import_react11 = __require("react");
   var import_jsx_runtime12 = __require("react/jsx-runtime");
   function ConfirmationDialog({ title, children, confirmLabel = "\u786E\u5B9A", danger = false, confirmDisabled = false, cancelAriaLabel, onConfirm, onClose, restoreFocus }) {
@@ -8484,7 +8484,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/DeleteAction.tsx
+  // src/client/components/DeleteAction.tsx
   var import_jsx_runtime13 = __require("react/jsx-runtime");
   function DeleteAction({ title, name: name2, description, confirmation, confirmLabel = "\u786E\u8BA4\u5220\u9664", confirmDisabled, onDelete, disabled, className = "", restoreFocus }) {
     const [open, setOpen] = (0, import_react12.useState)(false);
@@ -8534,7 +8534,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/CommonFilterControls.tsx
+  // src/client/components/CommonFilterControls.tsx
   var import_jsx_runtime14 = __require("react/jsx-runtime");
   function ClearFilterButton({ ariaLabel = "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", title = "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6", className = "", ...props }) {
     return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(IconButton, { ...props, icon: "clear", label: ariaLabel, title, className: `iad-filter-action iba-filter-clear ${className}` });
@@ -8543,10 +8543,10 @@ var __IadClientBundle__ = (() => {
     return /* @__PURE__ */ (0, import_jsx_runtime14.jsx)(IconButton, { ...props, icon: "refresh", label: ariaLabel, title, className: `iad-filter-action iba-refresh-icon ${className}` });
   }
 
-  // apps/iad-harness/src/client/workspace.tsx
+  // src/client/workspace.tsx
   var import_react13 = __require("react");
 
-  // apps/iad-harness/src/client/inspection.ts
+  // src/client/inspection.ts
   function inspectionImage(inspection, selection, transform2) {
     const { analysis, reference } = inspection;
     return {
@@ -8577,14 +8577,14 @@ var __IadClientBundle__ = (() => {
     return { finding, evidence, region };
   }
 
-  // apps/iad-harness/src/shared/knowledge-presentation.ts
+  // src/shared/knowledge-presentation.ts
   var knowledgeStatuses = {
     supported: "\u6709\u8BC1\u636E\u652F\u6301",
     provisional: "\u5F85\u9A8C\u8BC1",
     conflicted: "\u5B58\u5728\u77DB\u76FE"
   };
 
-  // apps/iad-harness/src/shared/consistency.parameters.generated.ts
+  // src/shared/consistency.parameters.generated.ts
   var conflictCategoryDefaults = {
     "labelme": [
       "\u7C7B\u522B\u4E0D\u4E00\u81F4",
@@ -8680,7 +8680,7 @@ var __IadClientBundle__ = (() => {
     ]
   };
 
-  // apps/iad-harness/src/client/workspace.tsx
+  // src/client/workspace.tsx
   var defaultView = (page) => ({ datasetIds: null, explorationPrompt: null, explorationPromptBase: "", datasetSettingsTab: "directories", checkId: "", explorationVersion: "", explorationNormalCount: "10", explorationDefectCount: "10", explorationNormalImages: [], explorationDefectImages: [], explorationObjective: "", miningSourceMode: "uncovered", scopeRunId: "", scopeSessionId: "", miningContinuous: false, conflictId: "", miningCount: "10", miningImages: [], miningPreset: "", miningSearch: "", miningPage: 1, filters: { ...page === "industrial-review" ? initialReviewFilters : initialFilters }, page: 1, selected: "", tab: "results", version: "", normalVersion: "", defectVersion: "", job: "", historyPage: 1, historySearch: "", historySampleId: "", knowledgeSearch: "", knowledgeStatus: "", inspection: null });
   var Workspace = class {
     constructor(conversation) {
@@ -8920,7 +8920,7 @@ var __IadClientBundle__ = (() => {
     return { workspace, state };
   }
 
-  // apps/iad-harness/src/client/dataset-hierarchy.ts
+  // src/client/dataset-hierarchy.ts
   var UNGROUPED_SCOPE_ID = "__ungrouped__";
   function buildHierarchyGroups(datasets, groups = []) {
     const result = groups.map((group) => ({ ...group, kind: "group" }));
@@ -8931,7 +8931,7 @@ var __IadClientBundle__ = (() => {
     return dataset.group_id || UNGROUPED_SCOPE_ID;
   }
 
-  // apps/iad-harness/src/client/components/DatasetManager.tsx
+  // src/client/components/DatasetManager.tsx
   var import_jsx_runtime15 = __require("react/jsx-runtime");
   function DatasetManager({
     datasets: propDatasets,
@@ -9497,7 +9497,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/FloatingMenu.tsx
+  // src/client/components/FloatingMenu.tsx
   var import_react15 = __require("react");
   var import_jsx_runtime16 = __require("react/jsx-runtime");
   function FloatingMenu({ label, summary, className, detailsRef, children }) {
@@ -9530,7 +9530,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/SampleFilters.tsx
+  // src/client/components/SampleFilters.tsx
   var import_jsx_runtime17 = __require("react/jsx-runtime");
   function SampleFilters({ dataset, filters, onFilters, busy = false, defaults: defaults2 = initialFilters }) {
     const options = {
@@ -9601,10 +9601,10 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/SampleGrid.tsx
+  // src/client/components/SampleGrid.tsx
   var import_react23 = __require("react");
 
-  // apps/iad-harness/src/client/components/Pagination.tsx
+  // src/client/components/Pagination.tsx
   var import_jsx_runtime18 = __require("react/jsx-runtime");
   var pageSize = 24;
   var IBA_JOBS_PAGE_SIZE = 8;
@@ -9644,16 +9644,16 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ThumbnailCard.tsx
+  // src/client/components/ThumbnailCard.tsx
   var import_react20 = __require("react");
 
-  // apps/iad-harness/src/client/components/AnnotatedImageStage.tsx
+  // src/client/components/AnnotatedImageStage.tsx
   var import_react19 = __require("react");
 
-  // apps/iad-harness/src/client/components/AnnotationLayer.tsx
+  // src/client/components/AnnotationLayer.tsx
   var import_react18 = __require("react");
 
-  // apps/iad-harness/src/client/components/MediaLoad.tsx
+  // src/client/components/MediaLoad.tsx
   var import_react17 = __require("react");
   var import_jsx_runtime19 = __require("react/jsx-runtime");
   var RetryContext = (0, import_react17.createContext)(0);
@@ -9704,7 +9704,7 @@ var __IadClientBundle__ = (() => {
     return /* @__PURE__ */ (0, import_jsx_runtime19.jsx)("image", { ...props, href: useRetryUrl(href), "data-media-source": href, "data-media-label": "\u6807\u6CE8\u50CF\u7D20" });
   }
 
-  // apps/iad-harness/src/client/components/AnnotationLayer.tsx
+  // src/client/components/AnnotationLayer.tsx
   var import_jsx_runtime20 = __require("react/jsx-runtime");
   function AnnotationLayer({ source, viewport, fit = "stretch" }) {
     const namespace = (0, import_react18.useId)();
@@ -9749,13 +9749,13 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ImageQualityBadge.tsx
+  // src/client/components/ImageQualityBadge.tsx
   var import_jsx_runtime21 = __require("react/jsx-runtime");
   function ImageQualityBadge({ label }) {
     return label ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "iad-image-quality", "data-quality": label, children: label }) : null;
   }
 
-  // apps/iad-harness/src/client/components/AnnotatedImageStage.tsx
+  // src/client/components/AnnotatedImageStage.tsx
   var import_jsx_runtime22 = __require("react/jsx-runtime");
   function AnnotatedImageStage({
     src,
@@ -9826,7 +9826,7 @@ var __IadClientBundle__ = (() => {
     );
   }
 
-  // apps/iad-harness/src/client/components/ThumbnailCard.tsx
+  // src/client/components/ThumbnailCard.tsx
   var import_jsx_runtime23 = __require("react/jsx-runtime");
   var ThumbnailCard = (0, import_react20.forwardRef)(function ThumbnailCard2({ src, image, variant = "thumbnail", label, children, mediaOverlay, imageLoading = "lazy", className = "", title = label, ...props }, ref) {
     return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { ...props, "data-variant": variant, ref, type: "button", className: `iad-thumbnail-card ${className}`, title, children: [
@@ -9839,10 +9839,10 @@ var __IadClientBundle__ = (() => {
     ] });
   });
 
-  // apps/iad-harness/src/client/components/Tooltip.tsx
+  // src/client/components/Tooltip.tsx
   var import_react21 = __require("react");
 
-  // apps/iad-harness/src/client/theme.ts
+  // src/client/theme.ts
   var darkColors = `--iad-canvas:#141B25;--iad-surface:#202B3A;--iad-navigation:#182231;--iad-surface-muted:#293648;--iad-text:#EDF2F8;--iad-muted:#B4C0D0;--iad-border:#4C5B6E;--iad-panel-border:var(--iad-border);--iad-section-border:var(--iad-border);--iad-control-border:#8393AA;--iad-primary:#A7C5FF;--iad-primary-fill:#315FC9;--iad-hover:#293E60;--iad-success:#92D7B0;--iad-warning:#F3C280;--iad-danger:#FFB7B1;--iad-viewer:#10161F;`;
   var themeStyles = `
 :root {
@@ -9888,7 +9888,7 @@ var __IadClientBundle__ = (() => {
 [data-shortcut-modal="settings"] > nav {border-inline-end:1px solid var(--iad-panel-border)}
 `;
 
-  // apps/iad-harness/src/client/components/Tooltip.tsx
+  // src/client/components/Tooltip.tsx
   var import_jsx_runtime24 = __require("react/jsx-runtime");
   function Tooltip({ label, content, className, children }) {
     const [open, setOpen] = (0, import_react21.useState)(false);
@@ -9918,7 +9918,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/SampleCard.tsx
+  // src/client/components/SampleCard.tsx
   var import_jsx_runtime25 = __require("react/jsx-runtime");
   function SampleCard({ sample, selected, onSelect, reference, selection, compact = false }) {
     const status = sample.suggestion?.suggested_label;
@@ -9945,7 +9945,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/SampleGrid.tsx
+  // src/client/components/SampleGrid.tsx
   var import_jsx_runtime26 = __require("react/jsx-runtime");
   function SampleGrid({ dataset, filters, onFilters, items, total, page, onPage, selected, onSelect, loading, sourceManagement, layout: layout2 = "grid", showFilters = true }) {
     const scope = dataset.dataset_id;
@@ -10041,20 +10041,20 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/SampleInspector.tsx
-  var import_react34 = __require("react");
+  // src/client/components/SampleInspector.tsx
+  var import_react33 = __require("react");
 
-  // apps/iad-harness/src/client/components/ImageViewer.tsx
+  // src/client/components/ImageViewer.tsx
   var import_react29 = __require("react");
 
-  // apps/iad-harness/src/client/components/FullscreenViewer.tsx
+  // src/client/components/FullscreenViewer.tsx
   var import_react25 = __require("react");
   var import_react_dom3 = __require("react-dom");
 
-  // apps/iad-harness/src/client/useResource.ts
+  // src/client/useResource.ts
   var import_react24 = __require("react");
 
-  // apps/iad-harness/src/shared/job-display.ts
+  // src/shared/job-display.ts
   var JOB_POLL_INTERVAL = 1200;
   var jobIsActive = (job) => !!job && ["PENDING", "RUNNING"].includes(job.status);
   var jobTimeFormat = new Intl.DateTimeFormat("zh-CN", {
@@ -10205,7 +10205,7 @@ var __IadClientBundle__ = (() => {
     return { ...workflow, stages, index: ["consistency", "audit"].includes(kind) && job.status === "COMPLETED" ? stages.length - 1 : stages.findIndex((stage) => stage.phases.includes(job.phase || "")) };
   }
 
-  // apps/iad-harness/src/client/useResource.ts
+  // src/client/useResource.ts
   function useResource(path, revision = 0, live = false) {
     const result = useQuery({
       queryKey: ["iad", "resource", path],
@@ -10228,7 +10228,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // apps/iad-harness/src/client/components/FullscreenViewer.tsx
+  // src/client/components/FullscreenViewer.tsx
   var import_jsx_runtime27 = __require("react/jsx-runtime");
   function FullscreenViewer({
     open,
@@ -10529,7 +10529,7 @@ var __IadClientBundle__ = (() => {
     return typeof document === "undefined" ? dialog : (0, import_react_dom3.createPortal)(dialog, document.body);
   }
 
-  // apps/iad-harness/src/client/components/AuditEvidence.tsx
+  // src/client/components/AuditEvidence.tsx
   var import_jsx_runtime28 = __require("react/jsx-runtime");
   function AuditEvidence({ analysis, ids, label, onEvidence, selectedId }) {
     const images = auditImageIndex(analysis);
@@ -10555,7 +10555,7 @@ var __IadClientBundle__ = (() => {
     }) });
   }
 
-  // apps/iad-harness/src/client/components/AuditFindings.tsx
+  // src/client/components/AuditFindings.tsx
   var import_react26 = __require("react");
   var import_jsx_runtime29 = __require("react/jsx-runtime");
   var priorities = { high: "\u4F18\u5148\u590D\u6838", medium: "\u968F\u540E\u590D\u6838", low: "\u8865\u5145\u6838\u5BF9" };
@@ -10599,7 +10599,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/InspectionQuestion.tsx
+  // src/client/components/InspectionQuestion.tsx
   var import_react27 = __require("react");
   var import_jsx_runtime30 = __require("react/jsx-runtime");
   function InspectionQuestion({ inspection, selection, transform: transform2 }) {
@@ -10639,7 +10639,7 @@ var __IadClientBundle__ = (() => {
     ] }) : /* @__PURE__ */ (0, import_jsx_runtime30.jsx)("button", { onClick: () => setExpanded(true), children: "\u5411 Agent \u8FFD\u95EE" });
   }
 
-  // apps/iad-harness/src/client/components/InspectionEvidence.tsx
+  // src/client/components/InspectionEvidence.tsx
   var import_jsx_runtime31 = __require("react/jsx-runtime");
   function InspectionOverlay({ inspection, selectedId, hoveredIds, regions, finding }) {
     const { analysis } = inspection;
@@ -10792,7 +10792,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ImageCanvas.tsx
+  // src/client/components/ImageCanvas.tsx
   var import_react28 = __require("react");
   var import_jsx_runtime32 = __require("react/jsx-runtime");
   var emptyHover = { ids: [], dismissed: false, x: 0, y: 0 };
@@ -11101,7 +11101,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ImageViewer.tsx
+  // src/client/components/ImageViewer.tsx
   var import_jsx_runtime33 = __require("react/jsx-runtime");
   function ImageViewer({ image, onClose, navigation: navigation2, collection }) {
     const [index3, setIndex] = (0, import_react29.useState)(collection?.index || 0);
@@ -11188,19 +11188,13 @@ var __IadClientBundle__ = (() => {
     );
   }
 
-  // apps/iad-harness/src/client/components/ReviewWorkspace.tsx
-  var import_react30 = __require("react");
+  // src/client/components/ReviewWorkspace.tsx
   var import_jsx_runtime34 = __require("react/jsx-runtime");
   function ReviewWorkspace({ queue, filters, image, decision, information }) {
-    const [panel, setPanel] = (0, import_react30.useState)(null);
     return /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("section", { className: "iad-review-focused", "aria-label": "\u4E13\u6CE8\u590D\u6838", children: [
       filters,
-      /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "iad-review-tools", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("button", { className: "iad-queue-trigger", onClick: () => setPanel("queue"), children: "\u6253\u5F00\u590D\u6838\u961F\u5217" }),
-        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("button", { className: "iad-decision-trigger", disabled: !decision, onClick: () => setPanel("decision"), children: "\u6253\u5F00\u4EBA\u5DE5\u88C1\u51B3" })
-      ] }),
       /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "iad-review-columns", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("aside", { className: "iad-review-queue-slot", "aria-label": "\u5F85\u590D\u6838\u6837\u672C", children: panel !== "queue" && queue }),
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("aside", { className: "iad-review-queue-slot", "aria-label": "\u5F85\u590D\u6838\u6837\u672C", children: queue }),
         /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("div", { className: "iad-review-center", children: [
           image,
           /* @__PURE__ */ (0, import_jsx_runtime34.jsxs)("details", { className: "iad-review-information", children: [
@@ -11208,18 +11202,17 @@ var __IadClientBundle__ = (() => {
             information
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("aside", { className: "iad-review-decision-slot", "aria-label": "\u4EBA\u5DE5\u88C1\u51B3\u9762\u677F", children: panel !== "decision" && decision })
-      ] }),
-      panel && /* @__PURE__ */ (0, import_jsx_runtime34.jsx)(Modal, { title: panel === "queue" ? "\u590D\u6838\u961F\u5217" : "\u4EBA\u5DE5\u88C1\u51B3", className: "iad-review-drawer", onClose: () => setPanel(null), children: panel === "queue" ? queue : decision })
+        /* @__PURE__ */ (0, import_jsx_runtime34.jsx)("aside", { className: "iad-review-decision-slot", "aria-label": "\u4EBA\u5DE5\u88C1\u51B3\u9762\u677F", children: decision })
+      ] })
     ] });
   }
 
-  // apps/iad-harness/src/client/components/KnowledgeEvidenceGallery.tsx
-  var import_react31 = __require("react");
+  // src/client/components/KnowledgeEvidenceGallery.tsx
+  var import_react30 = __require("react");
   var import_jsx_runtime35 = __require("react/jsx-runtime");
   function KnowledgeEvidenceGallery({ versionId, items, onOpen }) {
     const scope = JSON.stringify([versionId, items.map((item) => item.image.evidence_id)]);
-    const [position, setPosition] = (0, import_react31.useState)({ scope: "", page: 1 });
+    const [position, setPosition] = (0, import_react30.useState)({ scope: "", page: 1 });
     const page = position.scope === scope ? position.page : 1;
     const query = new URLSearchParams({
       version_id: versionId,
@@ -11251,7 +11244,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/DatasetKnowledge.tsx
+  // src/client/components/DatasetKnowledge.tsx
   var import_jsx_runtime36 = __require("react/jsx-runtime");
   var statuses = { supported: "\u6709\u8BC1\u636E\u652F\u6301", provisional: "\u5F85\u9A8C\u8BC1", conflicted: "\u5B58\u5728\u77DB\u76FE" };
   function DatasetKnowledge({ knowledge }) {
@@ -11292,7 +11285,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/RuleAssessments.tsx
+  // src/client/components/RuleAssessments.tsx
   var import_jsx_runtime37 = __require("react/jsx-runtime");
   var statuses2 = { normal: "\u672A\u89C1\u5F02\u5E38", anomaly: "\u53D1\u73B0\u504F\u79BB", insufficient: "\u8BC1\u636E\u4E0D\u8DB3", not_applicable: "\u4E0D\u9002\u7528" };
   function RuleAssessments({ analysis, knowledge, onEvidence }) {
@@ -11314,7 +11307,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/shared/consistency-presentation.ts
+  // src/shared/consistency-presentation.ts
   var imageRelations = {
     EXACT: "\u50CF\u7D20\u5B8C\u5168\u76F8\u540C",
     NEAR_CANDIDATE: "\u8FD1\u91CD\u590D\u5019\u9009",
@@ -11342,7 +11335,7 @@ var __IadClientBundle__ = (() => {
     ].filter(Boolean).join("\uFF0C");
   }
 
-  // apps/iad-harness/src/client/components/AuditConsistency.tsx
+  // src/client/components/AuditConsistency.tsx
   var import_jsx_runtime38 = __require("react/jsx-runtime");
   function AuditConsistency({ record, onEvidence }) {
     const conflicts = record.results.filter((result) => result.annotation.confirmed_conflict).length;
@@ -11392,14 +11385,14 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/HumanReviewForm.tsx
-  var import_react33 = __require("react");
-
-  // apps/iad-harness/src/client/useReviewDraft.ts
+  // src/client/components/HumanReviewForm.tsx
   var import_react32 = __require("react");
+
+  // src/client/useReviewDraft.ts
+  var import_react31 = __require("react");
   function useReviewDraft(datasetId, sampleId) {
     const key2 = `iad.review-draft:${datasetId}:${sampleId}`;
-    const [state, setState] = (0, import_react32.useState)(() => {
+    const [state, setState] = (0, import_react31.useState)(() => {
       const draft = { reviewer: localStorage.getItem("iad.reviewer") || "auditor_qc", comment: "", decision: null, pending: null };
       try {
         const stored = JSON.parse(sessionStorage.getItem(key2) || "null");
@@ -11437,13 +11430,13 @@ var __IadClientBundle__ = (() => {
     return { ...state.draft, dirty: state.dirty, update, prepare: prepare2, discard };
   }
 
-  // apps/iad-harness/src/client/components/HumanReviewForm.tsx
+  // src/client/components/HumanReviewForm.tsx
   var import_jsx_runtime39 = __require("react/jsx-runtime");
   function HumanReviewForm({ datasetId, sampleId, detail, onSubmitted, advanceOnSubmit = false }) {
     const draft = useReviewDraft(datasetId, sampleId);
-    const formId = (0, import_react33.useId)();
-    const [busy, setBusy] = (0, import_react33.useState)(false), [error3, setError] = (0, import_react33.useState)(""), [notice, setNotice] = (0, import_react33.useState)("");
-    const openedAt = (0, import_react33.useRef)(Date.now());
+    const formId = (0, import_react32.useId)();
+    const [busy, setBusy] = (0, import_react32.useState)(false), [error3, setError] = (0, import_react32.useState)(""), [notice, setNotice] = (0, import_react32.useState)("");
+    const openedAt = (0, import_react32.useRef)(Date.now());
     async function submit(decision) {
       if (!draft.reviewer.trim()) {
         setError("\u8BF7\u586B\u5199\u590D\u6838\u4EBA");
@@ -11526,7 +11519,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/dataset-image-annotations.ts
+  // src/client/dataset-image-annotations.ts
   function datasetImageAnnotations(format2, sample, annotations) {
     if (format2 === "folder_classification") return { annotationLayer: null, qualityLabel: sample.quality_status === "PASS" ? "OK" : sample.quality_status === "FAIL" ? "NG" : void 0 };
     if (format2 !== "labelme") return {};
@@ -11538,27 +11531,27 @@ var __IadClientBundle__ = (() => {
     } };
   }
 
-  // apps/iad-harness/src/client/components/SampleInspector.tsx
+  // src/client/components/SampleInspector.tsx
   var import_jsx_runtime40 = __require("react/jsx-runtime");
   function SampleInspector({ dataset, sampleId, mode, revision, onReviewed, jobs, onJobsChanged, navigation: navigation2, queue, filters, advanceOnSubmit = false, panel }) {
     const { workspace, state } = useWorkspace();
-    const [loadedDetail, setDetail] = (0, import_react34.useState)(null);
+    const [loadedDetail, setDetail] = (0, import_react33.useState)(null);
     const detail = loadedDetail?.sample.sample_id === sampleId ? loadedDetail : null;
-    const [error3, setError] = (0, import_react34.useState)("");
+    const [error3, setError] = (0, import_react33.useState)("");
     const job = jobs.find((job2) => job2.sample_ids.includes(sampleId));
     const jobRunning = jobs.some((job2) => job2.status === "RUNNING" || job2.status === "PENDING");
-    const [lightbox, setLightbox] = (0, import_react34.useState)(null);
+    const [lightbox, setLightbox] = (0, import_react33.useState)(null);
     const onPanelOpen = panel?.onOpen;
-    (0, import_react34.useEffect)(() => {
+    (0, import_react33.useEffect)(() => {
       if (lightbox) onPanelOpen?.(true);
     }, [lightbox, onPanelOpen]);
-    const imageButton = (0, import_react34.useRef)(null);
-    (0, import_react34.useEffect)(() => {
+    const imageButton = (0, import_react33.useRef)(null);
+    (0, import_react33.useEffect)(() => {
       setDetail(null);
       setError("");
       setLightbox(null);
     }, [sampleId]);
-    (0, import_react34.useEffect)(() => {
+    (0, import_react33.useEffect)(() => {
       const saved = workspace.view(workspace.getSnapshot().pageId).inspection;
       if (!saved || saved.reference.sample_id !== sampleId) return;
       const controller = new AbortController();
@@ -11569,7 +11562,7 @@ var __IadClientBundle__ = (() => {
       });
       return () => controller.abort();
     }, [sampleId, workspace]);
-    (0, import_react34.useEffect)(() => {
+    (0, import_react33.useEffect)(() => {
       if (!sampleId) return;
       const controller = new AbortController();
       request(`/sample/${encodeURIComponent(sampleId)}`, void 0, void 0, controller.signal).then((value) => {
@@ -11589,7 +11582,7 @@ var __IadClientBundle__ = (() => {
       const analysis = suggestion.analysis;
       return inspectionImage({ reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: suggestion.suggestion_id }, analysis }, { kind: "evidence", id: evidence.evidence_id });
     };
-    const image = (0, import_react34.useMemo)(() => detail ? {
+    const image = (0, import_react33.useMemo)(() => detail ? {
       src: mediaUrl(detail.sample),
       title: detail.sample.relative_path.split("/").pop(),
       width: detail.sample.width,
@@ -11597,7 +11590,7 @@ var __IadClientBundle__ = (() => {
       ...datasetImageAnnotations(dataset.format, detail.sample, detail.annotations),
       inspection: detail.suggestion?.analysis ? { reference: { dataset_id: dataset.dataset_id, sample_id: sampleId, suggestion_id: detail.suggestion.suggestion_id }, analysis: detail.suggestion.analysis } : void 0
     } : null, [detail, dataset.dataset_id, dataset.format, sampleId]);
-    (0, import_react34.useEffect)(() => {
+    (0, import_react33.useEffect)(() => {
       if (navigation2?.open && image && detail?.sample.sample_id === sampleId) {
         imageButton.current?.focus({ preventScroll: true });
         setLightbox({ ...image, initialSelection: null, initialTransform: { zoom: 0, x: 0, y: 0 } });
@@ -11848,7 +11841,7 @@ var __IadClientBundle__ = (() => {
     return panel ? /* @__PURE__ */ (0, import_jsx_runtime40.jsx)(Modal, { title: "\u6837\u672C\u8BE6\u60C5", onClose: panel.onClose, restoreFocus: panel.restoreFocus, presentation, className: `iad-audit-sample ${presentation === "modal" ? "iad-drawer" : ""}`, children: body }) : body;
   }
 
-  // apps/iad-harness/src/client/components/layout/SectionHeading.tsx
+  // src/client/components/layout/SectionHeading.tsx
   var import_jsx_runtime41 = __require("react/jsx-runtime");
   function SectionHeading({ title, titleId, children, className = "" }) {
     return /* @__PURE__ */ (0, import_jsx_runtime41.jsxs)("header", { className: `iad-section-heading ${className}`, children: [
@@ -11857,12 +11850,12 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/layout/TabBar.tsx
-  var import_react35 = __require("react");
+  // src/client/components/layout/TabBar.tsx
+  var import_react34 = __require("react");
   var import_jsx_runtime42 = __require("react/jsx-runtime");
-  var import_react36 = __require("react");
+  var import_react35 = __require("react");
   function TabBar({ label, items, value, onChange, className = "" }) {
-    const buttons = (0, import_react35.useRef)(/* @__PURE__ */ new Map());
+    const buttons = (0, import_react34.useRef)(/* @__PURE__ */ new Map());
     function navigate(event, index3) {
       const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1 : event.key === "ArrowRight" ? (index3 + 1) % items.length : event.key === "ArrowLeft" ? (index3 + items.length - 1) % items.length : null;
       if (next === null) return;
@@ -11870,7 +11863,7 @@ var __IadClientBundle__ = (() => {
       onChange(items[next].id);
       buttons.current.get(items[next].id)?.focus({ preventScroll: true });
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime42.jsx)("div", { className: `iad-tabs ${className}`.trim(), role: "tablist", "aria-label": label, children: items.map((item, index3) => /* @__PURE__ */ (0, import_react36.createElement)(
+    return /* @__PURE__ */ (0, import_jsx_runtime42.jsx)("div", { className: `iad-tabs ${className}`.trim(), role: "tablist", "aria-label": label, children: items.map((item, index3) => /* @__PURE__ */ (0, import_react35.createElement)(
       "button",
       {
         ...item.buttonProps,
@@ -11891,10 +11884,10 @@ var __IadClientBundle__ = (() => {
     )) });
   }
 
-  // apps/iad-harness/src/client/components/AuditPage.tsx
-  var import_react55 = __require("react");
+  // src/client/components/AuditPage.tsx
+  var import_react54 = __require("react");
 
-  // apps/iad-harness/src/shared/audit.generated.ts
+  // src/shared/audit.generated.ts
   var auditCapabilityLabels = {
     "representative_test_set": "\u4EE3\u8868\u6027\u6D4B\u8BD5\u96C6",
     "ordinary_normal": "\u666E\u901A\u6B63\u5E38",
@@ -11997,8 +11990,8 @@ var __IadClientBundle__ = (() => {
     "MODEL_REVIEWED:UNCERTAIN": "\u5DF2\u6709\u5185\u5BB9\u76F8\u540C\u7684\u5BF9\u7167\u56FE\uFF0C\u4F46\u90E8\u5206\u6807\u6CE8\u5173\u7CFB\u8FD8\u9700\u8981\u590D\u770B\uFF0C\u4F8B\u5982\u76EE\u6807\u7684\u8FB9\u7F18\u770B\u4E0D\u6E05\u3002"
   };
 
-  // apps/iad-harness/src/client/useJobs.ts
-  var import_react37 = __require("react");
+  // src/client/useJobs.ts
+  var import_react36 = __require("react");
   function useJobs(kind, datasetId, onProgress, selectedRunId = "", refreshRevision = 0) {
     const scope = JSON.stringify([...new Set((Array.isArray(datasetId) ? datasetId : [datasetId]).filter(Boolean))].sort());
     const identity2 = `${kind}:${scope}`;
@@ -12043,20 +12036,20 @@ var __IadClientBundle__ = (() => {
       },
       refetchInterval: (query2) => jobIsActive(query2.state.data) ? JOB_POLL_INTERVAL : false
     }, queryClient);
-    const jobs = (0, import_react37.useMemo)(() => needsSelected && selected.data ? [...query.data?.jobs || [], selected.data] : query.data?.jobs || [], [query.data, selected.data, needsSelected]);
-    const observed = (0, import_react37.useRef)({ identity: identity2, signature: "" });
-    (0, import_react37.useEffect)(() => {
+    const jobs = (0, import_react36.useMemo)(() => needsSelected && selected.data ? [...query.data?.jobs || [], selected.data] : query.data?.jobs || [], [query.data, selected.data, needsSelected]);
+    const observed = (0, import_react36.useRef)({ identity: identity2, signature: "" });
+    (0, import_react36.useEffect)(() => {
       if (!query.data) return;
       const signature = JSON.stringify(jobs.map((job) => [job.run_id, job.status, job.completed, job.failed, job.analysis_version_id, job.knowledge_version_id, job.exploration_version_id]).sort((a, b) => String(a[0]).localeCompare(String(b[0]))));
       if (observed.current.identity === identity2 && observed.current.signature && observed.current.signature !== signature) onProgress();
       observed.current = { identity: identity2, signature };
     }, [query.data, jobs, identity2, kind, onProgress]);
-    const previous = (0, import_react37.useRef)(refreshRevision);
-    (0, import_react37.useEffect)(() => {
+    const previous = (0, import_react36.useRef)(refreshRevision);
+    (0, import_react36.useEffect)(() => {
       if (previous.current !== refreshRevision) void query.refetch({ cancelRefetch: false });
       previous.current = refreshRevision;
     }, [refreshRevision, query.refetch]);
-    const refresh = (0, import_react37.useCallback)(() => {
+    const refresh = (0, import_react36.useCallback)(() => {
       void query.refetch({ cancelRefetch: false });
     }, [query.refetch]);
     return {
@@ -12071,14 +12064,14 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // apps/iad-harness/src/client/useJobList.ts
-  var import_react38 = __require("react");
+  // src/client/useJobList.ts
+  var import_react37 = __require("react");
   function useJobList(jobs, scope, selectedRunId = "", onSelect) {
     const empty = { scope, search: "", status: "", page: 1, runId: selectedRunId };
-    const [saved, setSaved] = (0, import_react38.useState)(empty);
+    const [saved, setSaved] = (0, import_react37.useState)(empty);
     const state = saved.scope === scope ? saved : empty;
-    const navigation2 = (0, import_react38.useRef)({ scope, runId: selectedRunId, resolved: false });
-    (0, import_react38.useEffect)(() => {
+    const navigation2 = (0, import_react37.useRef)({ scope, runId: selectedRunId, resolved: false });
+    (0, import_react37.useEffect)(() => {
       const previous = navigation2.current;
       if (previous.scope === scope && previous.runId === selectedRunId && previous.resolved) return;
       const index3 = jobs.findIndex((job) => job.run_id === selectedRunId || job.root_run_id === selectedRunId);
@@ -12116,7 +12109,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // apps/iad-harness/src/client/components/DatasetScopeSelector.tsx
+  // src/client/components/DatasetScopeSelector.tsx
   var import_jsx_runtime43 = __require("react/jsx-runtime");
   function DatasetScopeSelector({
     groups,
@@ -12160,11 +12153,11 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/layout/PageTabs.tsx
-  var import_react39 = __require("react");
+  // src/client/components/layout/PageTabs.tsx
+  var import_react38 = __require("react");
   var import_jsx_runtime44 = __require("react/jsx-runtime");
   function PageTabs({ label, items, value, onChange, children, className }) {
-    const id = (0, import_react39.useId)();
+    const id = (0, import_react38.useId)();
     const current = items.find((item) => item.id === value)?.id || items[0]?.id;
     if (!current) return null;
     return /* @__PURE__ */ (0, import_jsx_runtime44.jsxs)(import_jsx_runtime44.Fragment, { children: [
@@ -12176,14 +12169,14 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/JobList.tsx
-  var import_react43 = __require("react");
+  // src/client/components/JobList.tsx
+  var import_react42 = __require("react");
 
-  // apps/iad-harness/src/client/useJobClock.ts
-  var import_react40 = __require("react");
+  // src/client/useJobClock.ts
+  var import_react39 = __require("react");
   function useJobClock(running) {
-    const [now, setNow] = (0, import_react40.useState)(Date.now);
-    (0, import_react40.useEffect)(() => {
+    const [now, setNow] = (0, import_react39.useState)(Date.now);
+    (0, import_react39.useEffect)(() => {
       if (!running) return;
       setNow(Date.now());
       const timer = setInterval(() => setNow(Date.now()), 1e3);
@@ -12192,7 +12185,7 @@ var __IadClientBundle__ = (() => {
     return now;
   }
 
-  // apps/iad-harness/src/client/components/JobListPanel.tsx
+  // src/client/components/JobListPanel.tsx
   var import_jsx_runtime45 = __require("react/jsx-runtime");
   function JobListPanel({ title, actions: actions4, children, className = "", ...props }) {
     return /* @__PURE__ */ (0, import_jsx_runtime45.jsxs)("section", { ...props, "aria-label": title, className: `iad-job-list ${className}`, children: [
@@ -12201,11 +12194,11 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/JobStatusDrawer.tsx
-  var import_react42 = __require("react");
+  // src/client/components/JobStatusDrawer.tsx
+  var import_react41 = __require("react");
 
-  // apps/iad-harness/src/client/components/JobDetail.tsx
-  var import_react41 = __toESM(__require("react"), 1);
+  // src/client/components/JobDetail.tsx
+  var import_react40 = __toESM(__require("react"), 1);
   var import_jsx_runtime46 = __require("react/jsx-runtime");
   function JobDetail({ job, stale = false }) {
     const now = useJobClock(job.status === "RUNNING");
@@ -12228,7 +12221,7 @@ var __IadClientBundle__ = (() => {
         /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("span", { className: "iad-job-pill", "data-status": job.status, children: job.cancel_requested && ["PENDING", "RUNNING"].includes(job.status) ? "\u6B63\u5728\u505C\u6B62" : jobStatuses[job.status] }),
         /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("strong", { children: pending ? "\u7B49\u5F85\u8D44\u6E90\u8C03\u5EA6" : phase })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("dl", { className: "iad-job-meta", children: meta.map(([label, value]) => /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)(import_react41.default.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("dl", { className: "iad-job-meta", children: meta.map(([label, value]) => /* @__PURE__ */ (0, import_jsx_runtime46.jsxs)(import_react40.default.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("dt", { children: label }),
         /* @__PURE__ */ (0, import_jsx_runtime46.jsx)("dd", { children: value })
       ] }, label)) }),
@@ -12265,7 +12258,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/JobStatusDrawer.tsx
+  // src/client/components/JobStatusDrawer.tsx
   var import_jsx_runtime47 = __require("react/jsx-runtime");
   var cancellationRoutes = {
     ANALYSIS_WORKFLOW: "analysis",
@@ -12310,18 +12303,18 @@ var __IadClientBundle__ = (() => {
   }
   function JobStatusDrawer({ job, onClose, stale }) {
     const { state } = useWorkspace();
-    const page = (0, import_react42.useRef)(state.pageId);
-    const trigger = (0, import_react42.useRef)(document.activeElement instanceof HTMLElement ? document.activeElement : null);
-    const triggerId = (0, import_react42.useRef)(trigger.current?.id);
-    const [confirmation, setConfirmation] = (0, import_react42.useState)(false);
-    const cancelTrigger = (0, import_react42.useRef)(null);
-    const [cancelled, setCancelled] = (0, import_react42.useState)(null);
+    const page = (0, import_react41.useRef)(state.pageId);
+    const trigger = (0, import_react41.useRef)(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    const triggerId = (0, import_react41.useRef)(trigger.current?.id);
+    const [confirmation, setConfirmation] = (0, import_react41.useState)(false);
+    const cancelTrigger = (0, import_react41.useRef)(null);
+    const [cancelled, setCancelled] = (0, import_react41.useState)(null);
     const active = ["PENDING", "RUNNING"].includes(job.status);
     const response = cancelled?.run_id === job.run_id ? cancelled : null;
     const displayed = active && response ? response : job;
     const stopping = ["PENDING", "RUNNING"].includes(displayed.status) && displayed.cancel_requested;
     const canCancel = active && !stopping && !!cancellationRoutes[job.job_type];
-    (0, import_react42.useEffect)(() => {
+    (0, import_react41.useEffect)(() => {
       setConfirmation(false);
       setCancelled(null);
     }, [job.run_id]);
@@ -12330,7 +12323,7 @@ var __IadClientBundle__ = (() => {
       const result = await request(`/${cancellationRoutes[job.job_type]}/cancel/${encodeURIComponent(job.run_id)}`, {});
       setCancelled(result);
     }
-    (0, import_react42.useEffect)(() => {
+    (0, import_react41.useEffect)(() => {
       if (state.pageId !== page.current) onClose();
     }, [state.pageId, onClose]);
     return /* @__PURE__ */ (0, import_jsx_runtime47.jsxs)(import_jsx_runtime47.Fragment, { children: [
@@ -12370,11 +12363,11 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/JobList.tsx
+  // src/client/components/JobList.tsx
   var import_jsx_runtime48 = __require("react/jsx-runtime");
   function JobList({ id, title, list, datasets, actions: actions4, selection, loading = false, className = "" }) {
     const now = useJobClock(list.visible.some((job) => job.status === "RUNNING"));
-    const searchInput = (0, import_react43.useRef)(null);
+    const searchInput = (0, import_react42.useRef)(null);
     const activate = (job) => {
       if (!selection) {
         list.select(job);
@@ -12465,7 +12458,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditStatisticsDialog.tsx
+  // src/client/components/AuditStatisticsDialog.tsx
   var import_jsx_runtime49 = __require("react/jsx-runtime");
   function AuditStatisticsDialog({ job, revision, onClose }) {
     const result = useResource(`/audit/jobs/${encodeURIComponent(job.run_id)}/statistics`, `${revision}:${job.status}`, jobIsActive(job));
@@ -12495,7 +12488,7 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/analysis-results.ts
+  // src/client/analysis-results.ts
   function analysisReadSource(view) {
     return "version_id" in view ? { kind: "published", versionId: view.version_id } : { kind: "current", view };
   }
@@ -12523,7 +12516,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // apps/iad-harness/src/client/audit-report.ts
+  // src/client/audit-report.ts
   var sections = [
     ["conclusion", "\u603B\u4F53\u7ED3\u8BBA"],
     ["distribution", "\u6570\u636E\u5206\u5E03"],
@@ -12559,7 +12552,7 @@ var __IadClientBundle__ = (() => {
     return key2 === "data_origin" ? originLabels[value] || value : value;
   }
 
-  // apps/iad-harness/src/client/components/AuditReportSection.tsx
+  // src/client/components/AuditReportSection.tsx
   var import_jsx_runtime50 = __require("react/jsx-runtime");
   function AuditReportSection({ section, children }) {
     return /* @__PURE__ */ (0, import_jsx_runtime50.jsxs)("section", { className: "iad-report-section", "data-report-section": section, children: [
@@ -12568,10 +12561,10 @@ var __IadClientBundle__ = (() => {
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditReportDistribution.tsx
-  var import_react45 = __require("react");
+  // src/client/components/AuditReportDistribution.tsx
+  var import_react44 = __require("react");
 
-  // apps/iad-harness/src/client/distribution-selection.ts
+  // src/client/distribution-selection.ts
   function sumCounts(items) {
     const counts = {};
     for (const item of items) for (const [key2, count2] of Object.entries(item)) counts[key2] = (counts[key2] || 0) + count2;
@@ -12621,10 +12614,10 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // apps/iad-harness/src/client/components/charts/Chart.tsx
-  var import_react44 = __require("react");
+  // src/client/components/charts/Chart.tsx
+  var import_react43 = __require("react");
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/tslib@2.3.0/node_modules/tslib/tslib.es6.js
+  // ../../node_modules/.pnpm/tslib@2.3.0/node_modules/tslib/tslib.es6.js
   var extendStatics = function(d, b) {
     extendStatics = Object.setPrototypeOf || { __proto__: [] } instanceof Array && function(d2, b2) {
       d2.__proto__ = b2;
@@ -12643,7 +12636,7 @@ var __IadClientBundle__ = (() => {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/env.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/env.js
   var Browser = /* @__PURE__ */ (function() {
     function Browser2() {
       this.firefox = false;
@@ -12716,7 +12709,7 @@ var __IadClientBundle__ = (() => {
   }
   var env_default = env;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/platform.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/platform.js
   var DEFAULT_FONT_SIZE = 12;
   var DEFAULT_FONT_FAMILY = "sans-serif";
   var DEFAULT_FONT = DEFAULT_FONT_SIZE + "px " + DEFAULT_FONT_FAMILY;
@@ -12783,7 +12776,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/util.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/util.js
   var BUILTIN_OBJECT = reduce([
     "Function",
     "RegExp",
@@ -13287,7 +13280,7 @@ var __IadClientBundle__ = (() => {
   var RADIAN_TO_DEGREE = 180 / Math.PI;
   var EPSILON = Number.EPSILON || Math.pow(2, -52);
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/vector.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/vector.js
   function create(x, y) {
     if (x == null) {
       x = 0;
@@ -13368,7 +13361,7 @@ var __IadClientBundle__ = (() => {
     return out2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/mixin/Draggable.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/mixin/Draggable.js
   var Param = /* @__PURE__ */ (function() {
     function Param2(target, e2) {
       this.target = target;
@@ -13436,7 +13429,7 @@ var __IadClientBundle__ = (() => {
   })();
   var Draggable_default = Draggable;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/Eventful.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/Eventful.js
   var Eventful = (function() {
     function Eventful2(eventProcessors) {
       if (eventProcessors) {
@@ -13589,7 +13582,7 @@ var __IadClientBundle__ = (() => {
   })();
   var Eventful_default = Eventful;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/fourPointsTransform.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/fourPointsTransform.js
   var LN2 = Math.log(2);
   function determinant(rows, rank, rowStart, rowMask, colMask, detCache) {
     var cacheKey = rowMask + "-" + colMask;
@@ -13647,7 +13640,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/dom.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/dom.js
   var EVENT_SAVED_PROP = "___zrEVENTSAVED";
   var _calcOut = [];
   function transformLocalCoord(out2, elFrom, elTarget, inX, inY) {
@@ -13749,7 +13742,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/event.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/event.js
   var MOUSE_EVENT_REG = /^(?:mouse|pointer|contextmenu|drag|drop)|click/;
   var _calcOut2 = [];
   var firefoxNotSupportOffsetXY = env_default.browser.firefox && +env_default.browser.version.split(".")[0] < 39;
@@ -13837,7 +13830,7 @@ var __IadClientBundle__ = (() => {
     e2.cancelBubble = true;
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/GestureMgr.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/GestureMgr.js
   var GestureMgr = (function() {
     function GestureMgr2() {
       this._track = [];
@@ -13916,7 +13909,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/matrix.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/matrix.js
   function create2() {
     return [1, 0, 0, 1, 0, 0];
   }
@@ -14014,7 +14007,7 @@ var __IadClientBundle__ = (() => {
     return out2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/Point.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/Point.js
   var Point = (function() {
     function Point2(x, y) {
       this.x = x || 0;
@@ -14145,7 +14138,7 @@ var __IadClientBundle__ = (() => {
   })();
   var Point_default = Point;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/BoundingRect.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/BoundingRect.js
   var mathMin = Math.min;
   var mathMax = Math.max;
   var mathAbs = Math.abs;
@@ -14461,7 +14454,7 @@ var __IadClientBundle__ = (() => {
   }
   var BoundingRect_default = BoundingRect;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/Handler.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/Handler.js
   var SILENT = "silent";
   function makeEventPacket(eveType, targetInfo, event) {
     return {
@@ -14748,7 +14741,7 @@ var __IadClientBundle__ = (() => {
   }
   var Handler_default = Handler;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/timsort.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/timsort.js
   var DEFAULT_MIN_MERGE = 32;
   var DEFAULT_MIN_GALLOPING = 7;
   function minRunLength(n) {
@@ -15257,12 +15250,12 @@ var __IadClientBundle__ = (() => {
     ts.forceMergeRuns();
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/constants.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/constants.js
   var REDRAW_BIT = 1;
   var STYLE_CHANGED_BIT = 2;
   var SHAPE_CHANGED_BIT = 4;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/Storage.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/Storage.js
   var invalidZErrorLogged = false;
   function logInvalidZError() {
     if (invalidZErrorLogged) {
@@ -15417,14 +15410,14 @@ var __IadClientBundle__ = (() => {
   })();
   var Storage_default = Storage;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/requestAnimationFrame.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/requestAnimationFrame.js
   var requestAnimationFrame2;
   requestAnimationFrame2 = env_default.hasGlobalWindow && (window.requestAnimationFrame && window.requestAnimationFrame.bind(window) || window.msRequestAnimationFrame && window.msRequestAnimationFrame.bind(window) || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame) || function(func) {
     return setTimeout(func, 16);
   };
   var requestAnimationFrame_default = requestAnimationFrame2;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/easing.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/easing.js
   var easingFuncs = {
     linear: function(k) {
       return k;
@@ -15611,7 +15604,7 @@ var __IadClientBundle__ = (() => {
   };
   var easing_default = easingFuncs;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/curve.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/curve.js
   var mathPow = Math.pow;
   var mathSqrt = Math.sqrt;
   var EPSILON2 = 1e-8;
@@ -15940,7 +15933,7 @@ var __IadClientBundle__ = (() => {
     return d;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/cubicEasing.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/cubicEasing.js
   var regexp = /cubic-bezier\(([0-9,\.e ]+)\)/;
   function createCubicEasingFunc(cubicEasingStr) {
     var cubic = cubicEasingStr && regexp.exec(cubicEasingStr);
@@ -15960,7 +15953,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/Clip.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/Clip.js
   var Clip = (function() {
     function Clip2(opts) {
       this._inited = false;
@@ -16020,7 +16013,7 @@ var __IadClientBundle__ = (() => {
   })();
   var Clip_default = Clip;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/LRU.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/LRU.js
   var Entry = /* @__PURE__ */ (function() {
     function Entry2(val) {
       this.value = val;
@@ -16126,7 +16119,7 @@ var __IadClientBundle__ = (() => {
   })();
   var LRU_default = LRU;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/tool/color.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/tool/color.js
   var kCSSColorTable = {
     "transparent": [0, 0, 0, 0],
     "aliceblue": [240, 248, 255, 1],
@@ -16597,7 +16590,7 @@ var __IadClientBundle__ = (() => {
     return color3;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/helper.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/helper.js
   var mathRound = Math.round;
   function normalizeColor(color3) {
     var opacity;
@@ -16725,7 +16718,7 @@ var __IadClientBundle__ = (() => {
     };
   })();
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/Animator.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/Animator.js
   var arraySlice = Array.prototype.slice;
   function interpolateNumber(p0, p1, percent) {
     return (p1 - p0) * percent + p0;
@@ -17419,7 +17412,7 @@ var __IadClientBundle__ = (() => {
   })();
   var Animator_default = Animator;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/Animation.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/animation/Animation.js
   function getTime() {
     return (/* @__PURE__ */ new Date()).getTime();
   }
@@ -17560,7 +17553,7 @@ var __IadClientBundle__ = (() => {
   })(Eventful_default);
   var Animation_default = Animation;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/dom/HandlerProxy.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/dom/HandlerProxy.js
   var TOUCH_CLICK_DELAY = 300;
   var globalEventSupported = env_default.domSupported;
   var localNativeListenerNames = (function() {
@@ -17855,7 +17848,7 @@ var __IadClientBundle__ = (() => {
   })(Eventful_default);
   var HandlerProxy_default = HandlerDomProxy;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/config.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/config.js
   var dpr = 1;
   if (env_default.hasGlobalWindow) {
     dpr = Math.max(window.devicePixelRatio || window.screen && window.screen.deviceXDPI / window.screen.logicalXDPI || 1, 1);
@@ -17866,7 +17859,7 @@ var __IadClientBundle__ = (() => {
   var LIGHT_LABEL_COLOR = "#ccc";
   var LIGHTER_LABEL_COLOR = "#eee";
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/Transformable.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/Transformable.js
   var mIdentity = identity;
   var EPSILON4 = 5e-5;
   function isNotAroundZero2(val) {
@@ -18096,7 +18089,7 @@ var __IadClientBundle__ = (() => {
   }
   var Transformable_default = Transformable;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/text.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/text.js
   function ensureFontMeasureInfo(font) {
     if (!_fontMeasureInfoCache) {
       _fontMeasureInfoCache = new LRU_default(100);
@@ -18300,7 +18293,7 @@ var __IadClientBundle__ = (() => {
     return out2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/Element.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/Element.js
   var PRESERVED_NORMAL_STATE = "__zr_normal__";
   var PRIMARY_STATES_KEYS = TRANSFORMABLE_PROPS.concat(["ignore"]);
   var DEFAULT_ANIMATABLE_MAP = reduce(TRANSFORMABLE_PROPS, function(obj, key2) {
@@ -19312,7 +19305,7 @@ var __IadClientBundle__ = (() => {
   }
   var Element_default = Element2;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Group.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Group.js
   var Group = (function(_super) {
     __extends(Group4, _super);
     function Group4(opts) {
@@ -19487,7 +19480,7 @@ var __IadClientBundle__ = (() => {
   Group.prototype.type = "group";
   var Group_default = Group;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/zrender.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/zrender.js
   var painterCtors = {};
   var instances = {};
   function delInstance(id) {
@@ -19787,7 +19780,7 @@ var __IadClientBundle__ = (() => {
     ssrDataGetter = getter;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/number.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/number.js
   var RADIAN_EPSILON = 1e-4;
   var TO_FIXED_SUPPORTED_PRECISION_MAX = 20;
   function _trim(str) {
@@ -20109,7 +20102,7 @@ var __IadClientBundle__ = (() => {
     return val != null && isFinite(val);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/log.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/log.js
   var ECHARTS_PREFIX = "[ECharts] ";
   var storedLogs = {};
   var hasConsole = typeof console !== "undefined" && console.warn && console.log;
@@ -20181,7 +20174,7 @@ var __IadClientBundle__ = (() => {
     throw new Error(msg);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/model.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/model.js
   function interpolateNumber2(p0, p1, percent) {
     return (p1 - p0) * percent + p0;
   }
@@ -20771,7 +20764,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/clazz.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/clazz.js
   var TYPE_DELIMITER = ".";
   var IS_CONTAINER = "___EC__COMPONENT__CONTAINER___";
   var IS_EXTENDED_CLASS = "___EC__EXTENDED_CLASS___";
@@ -20927,7 +20920,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/makeStyleMapper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/makeStyleMapper.js
   function makeStyleMapper(properties, ignoreParent) {
     for (var i = 0; i < properties.length; i++) {
       if (!properties[i][1]) {
@@ -20951,7 +20944,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/areaStyle.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/areaStyle.js
   var AREA_STYLE_KEY_MAP = [
     ["fill", "color"],
     ["shadowBlur"],
@@ -20975,7 +20968,7 @@ var __IadClientBundle__ = (() => {
     })()
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/image.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/image.js
   var globalImageCache = new LRU_default(50);
   function findExistImage(newImageOrSrc) {
     if (typeof newImageOrSrc === "string") {
@@ -21025,7 +21018,7 @@ var __IadClientBundle__ = (() => {
     return image && image.width && image.height;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/parseText.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/parseText.js
   var STYLE_REG = /\{([a-zA-Z0-9_]+)\|([^}]*)\}/g;
   function truncateText2(out2, text, containerWidth, font, ellipsis, options) {
     if (!containerWidth) {
@@ -21539,7 +21532,7 @@ var __IadClientBundle__ = (() => {
     return stroke != null && stroke !== "none" && style.lineWidth > 0;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Displayable.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Displayable.js
   var STYLE_MAGIC_KEY = "__zr_style_" + Math.round(Math.random() * 10);
   var DEFAULT_COMMON_STYLE = {
     shadowBlur: 0,
@@ -21852,7 +21845,7 @@ var __IadClientBundle__ = (() => {
   }
   var Displayable_default = Displayable;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/bbox.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/bbox.js
   var mathMin3 = Math.min;
   var mathMax3 = Math.max;
   var mathSin = Math.sin;
@@ -21954,7 +21947,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/PathProxy.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/PathProxy.js
   var CMD = {
     M: 1,
     L: 2,
@@ -22656,7 +22649,7 @@ var __IadClientBundle__ = (() => {
   })();
   var PathProxy_default = PathProxy;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/line.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/line.js
   function containStroke(x0, y0, x1, y1, lineWidth, x, y) {
     if (lineWidth === 0) {
       return false;
@@ -22678,7 +22671,7 @@ var __IadClientBundle__ = (() => {
     return _s <= _l / 2 * _l / 2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/cubic.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/cubic.js
   function containStroke2(x0, y0, x1, y1, x2, y2, x3, y3, lineWidth, x, y) {
     if (lineWidth === 0) {
       return false;
@@ -22691,7 +22684,7 @@ var __IadClientBundle__ = (() => {
     return d <= _l / 2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/quadratic.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/quadratic.js
   function containStroke3(x0, y0, x1, y1, x2, y2, lineWidth, x, y) {
     if (lineWidth === 0) {
       return false;
@@ -22704,7 +22697,7 @@ var __IadClientBundle__ = (() => {
     return d <= _l / 2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/util.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/util.js
   var PI23 = Math.PI * 2;
   function normalizeRadian(angle) {
     angle %= PI23;
@@ -22714,7 +22707,7 @@ var __IadClientBundle__ = (() => {
     return angle;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/arc.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/arc.js
   var PI24 = Math.PI * 2;
   function containStroke4(cx, cy, r, startAngle, endAngle, anticlockwise, lineWidth, x, y) {
     if (lineWidth === 0) {
@@ -22748,7 +22741,7 @@ var __IadClientBundle__ = (() => {
     return angle >= startAngle && angle <= endAngle || angle + PI24 >= startAngle && angle + PI24 <= endAngle;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/windingLine.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/windingLine.js
   function windingLine(x0, y0, x1, y1, x, y) {
     if (y > y0 && y > y1 || y < y0 && y < y1) {
       return 0;
@@ -22765,7 +22758,7 @@ var __IadClientBundle__ = (() => {
     return x_ === x ? Infinity : x_ > x ? dir3 : 0;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/path.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/contain/path.js
   var CMD2 = PathProxy_default.CMD;
   var PI25 = Math.PI * 2;
   var EPSILON5 = 1e-4;
@@ -23045,7 +23038,7 @@ var __IadClientBundle__ = (() => {
     return containPath(pathProxy, lineWidth, true, x, y);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Path.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Path.js
   var DEFAULT_PATH_STYLE = defaults({
     fill: "#000",
     stroke: null,
@@ -23430,7 +23423,7 @@ var __IadClientBundle__ = (() => {
   })(Displayable_default);
   var Path_default = Path;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/TSpan.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/TSpan.js
   var DEFAULT_TSPAN_STYLE = defaults({
     strokeFirst: true,
     font: DEFAULT_FONT,
@@ -23474,7 +23467,7 @@ var __IadClientBundle__ = (() => {
   TSpan.prototype.type = "tspan";
   var TSpan_default = TSpan;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Image.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Image.js
   var DEFAULT_IMAGE_STYLE = defaults({
     x: 0,
     y: 0
@@ -23541,7 +23534,7 @@ var __IadClientBundle__ = (() => {
   ZRImage.prototype.type = "image";
   var Image_default = ZRImage;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/roundRect.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/roundRect.js
   function buildPath(ctx, shape) {
     var x = shape.x;
     var y = shape.y;
@@ -23614,7 +23607,7 @@ var __IadClientBundle__ = (() => {
     ctx.closePath();
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/subPixelOptimize.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/subPixelOptimize.js
   var round5 = Math.round;
   function subPixelOptimizeLine(outputShape, inputShape, style) {
     if (!inputShape) {
@@ -23670,7 +23663,7 @@ var __IadClientBundle__ = (() => {
     return (doubledPosition + round5(lineWidth)) % 2 === 0 ? doubledPosition / 2 : (doubledPosition + (positiveOrNegative ? 1 : -1)) / 2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Rect.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Rect.js
   var RectShape = /* @__PURE__ */ (function() {
     function RectShape2() {
       this.x = 0;
@@ -23722,7 +23715,7 @@ var __IadClientBundle__ = (() => {
   Rect.prototype.type = "rect";
   var Rect_default = Rect;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Text.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Text.js
   var DEFAULT_RICH_TEXT_COLOR = {
     fill: "#000"
   };
@@ -24216,7 +24209,7 @@ var __IadClientBundle__ = (() => {
   }
   var Text_default = ZRText;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/innerStore.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/innerStore.js
   var getECData = makeInner();
   var setCommonECData = function(seriesIndex, dataType, dataIdx, el) {
     if (el) {
@@ -24237,7 +24230,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/types.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/types.js
   var UNDEFINED_STR = "undefined";
   var COMPONENT_MAIN_TYPE_SERIES = "series";
   var VISUAL_DIMENSIONS = createHashMap(["tooltip", "label", "itemName", "itemId", "itemGroupId", "itemChildGroupId", "seriesName"]);
@@ -24250,7 +24243,7 @@ var __IadClientBundle__ = (() => {
   var SERIES_LAYOUT_BY_COLUMN = "column";
   var SERIES_LAYOUT_BY_ROW = "row";
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/ExtensionAPI.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/ExtensionAPI.js
   var availableMethods = [
     "getDom",
     "getZr",
@@ -24287,7 +24280,7 @@ var __IadClientBundle__ = (() => {
   }
   var ExtensionAPI_default = ExtensionAPI;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/states.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/states.js
   var _highlightNextDigit = 1;
   var _highlightKeyMap = {};
   var getSavedStates = makeInner();
@@ -24809,7 +24802,7 @@ var __IadClientBundle__ = (() => {
     store.selectStroke = selectState.style && selectState.style.stroke || null;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/graphic.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/graphic.js
   var graphic_exports = {};
   __export(graphic_exports, {
     Arc: () => Arc_default,
@@ -24877,7 +24870,7 @@ var __IadClientBundle__ = (() => {
     updateProps: () => updateProps
   });
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/tool/transformPath.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/tool/transformPath.js
   var CMD3 = PathProxy_default.CMD;
   var points = [[], [], []];
   var mathSqrt2 = Math.sqrt;
@@ -24958,7 +24951,7 @@ var __IadClientBundle__ = (() => {
     path.increaseVersion();
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/tool/path.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/tool/path.js
   var mathSqrt3 = Math.sqrt;
   var mathSin3 = Math.sin;
   var mathCos3 = Math.cos;
@@ -25291,7 +25284,7 @@ var __IadClientBundle__ = (() => {
     return pathBundle;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Circle.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Circle.js
   var CircleShape = /* @__PURE__ */ (function() {
     function CircleShape2() {
       this.cx = 0;
@@ -25317,7 +25310,7 @@ var __IadClientBundle__ = (() => {
   Circle.prototype.type = "circle";
   var Circle_default = Circle;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Ellipse.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Ellipse.js
   var EllipseShape = /* @__PURE__ */ (function() {
     function EllipseShape2() {
       this.cx = 0;
@@ -25355,7 +25348,7 @@ var __IadClientBundle__ = (() => {
   Ellipse.prototype.type = "ellipse";
   var Ellipse_default = Ellipse;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/roundSector.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/roundSector.js
   var PI4 = Math.PI;
   var PI26 = PI4 * 2;
   var mathSin4 = Math.sin;
@@ -25571,7 +25564,7 @@ var __IadClientBundle__ = (() => {
     ctx.closePath();
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Sector.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Sector.js
   var SectorShape = /* @__PURE__ */ (function() {
     function SectorShape2() {
       this.cx = 0;
@@ -25604,7 +25597,7 @@ var __IadClientBundle__ = (() => {
   Sector.prototype.type = "sector";
   var Sector_default = Sector;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Ring.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Ring.js
   var RingShape = /* @__PURE__ */ (function() {
     function RingShape2() {
       this.cx = 0;
@@ -25636,7 +25629,7 @@ var __IadClientBundle__ = (() => {
   Ring.prototype.type = "ring";
   var Ring_default = Ring;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/smoothBezier.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/smoothBezier.js
   function smoothBezier(points2, smooth, isLoop, constraint) {
     var cps = [];
     var v = [];
@@ -25698,7 +25691,7 @@ var __IadClientBundle__ = (() => {
     return cps;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/poly.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/helper/poly.js
   function buildPath3(ctx, shape, closePath) {
     var smooth = shape.smooth;
     var points2 = shape.points;
@@ -25723,7 +25716,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Polygon.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Polygon.js
   var PolygonShape = /* @__PURE__ */ (function() {
     function PolygonShape2() {
       this.points = null;
@@ -25748,7 +25741,7 @@ var __IadClientBundle__ = (() => {
   Polygon.prototype.type = "polygon";
   var Polygon_default = Polygon;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Polyline.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Polyline.js
   var PolylineShape = /* @__PURE__ */ (function() {
     function PolylineShape2() {
       this.points = null;
@@ -25780,7 +25773,7 @@ var __IadClientBundle__ = (() => {
   Polyline.prototype.type = "polyline";
   var Polyline_default = Polyline;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Line.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Line.js
   var subPixelOptimizeOutputShape2 = {};
   var LineShape = /* @__PURE__ */ (function() {
     function LineShape2() {
@@ -25846,7 +25839,7 @@ var __IadClientBundle__ = (() => {
   Line.prototype.type = "line";
   var Line_default = Line;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/BezierCurve.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/BezierCurve.js
   var out = [];
   var BezierCurveShape = /* @__PURE__ */ (function() {
     function BezierCurveShape2() {
@@ -25939,7 +25932,7 @@ var __IadClientBundle__ = (() => {
   BezierCurve.prototype.type = "bezier-curve";
   var BezierCurve_default = BezierCurve;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Arc.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/shape/Arc.js
   var ArcShape = /* @__PURE__ */ (function() {
     function ArcShape2() {
       this.cx = 0;
@@ -25982,7 +25975,7 @@ var __IadClientBundle__ = (() => {
   Arc.prototype.type = "arc";
   var Arc_default = Arc;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/CompoundPath.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/CompoundPath.js
   var CompoundPath = (function(_super) {
     __extends(CompoundPath2, _super);
     function CompoundPath2() {
@@ -26031,7 +26024,7 @@ var __IadClientBundle__ = (() => {
   })(Path_default);
   var CompoundPath_default = CompoundPath;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Gradient.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/Gradient.js
   var Gradient = (function() {
     function Gradient2(colorStops) {
       this.colorStops = colorStops || [];
@@ -26046,7 +26039,7 @@ var __IadClientBundle__ = (() => {
   })();
   var Gradient_default = Gradient;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/LinearGradient.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/LinearGradient.js
   var LinearGradient = (function(_super) {
     __extends(LinearGradient2, _super);
     function LinearGradient2(x, y, x2, y2, colorStops, globalCoord) {
@@ -26063,7 +26056,7 @@ var __IadClientBundle__ = (() => {
   })(Gradient_default);
   var LinearGradient_default = LinearGradient;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/RadialGradient.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/RadialGradient.js
   var RadialGradient = (function(_super) {
     __extends(RadialGradient2, _super);
     function RadialGradient2(x, y, r, colorStops, globalCoord) {
@@ -26079,7 +26072,7 @@ var __IadClientBundle__ = (() => {
   })(Gradient_default);
   var RadialGradient_default = RadialGradient;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/OrientedBoundingRect.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/OrientedBoundingRect.js
   var mathMin6 = Math.min;
   var mathMax6 = Math.max;
   var mathAbs5 = Math.abs;
@@ -26211,10 +26204,10 @@ var __IadClientBundle__ = (() => {
   })();
   var OrientedBoundingRect_default = OrientedBoundingRect;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/types.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/types.js
   var INCREMENTAL_ID_TRUE_COMPAT = 1;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/IncrementalDisplayable.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/graphic/IncrementalDisplayable.js
   var m = [];
   var IncrementalDisplayable = (function(_super) {
     __extends(IncrementalDisplayable2, _super);
@@ -26327,7 +26320,7 @@ var __IadClientBundle__ = (() => {
   })(Displayable_default);
   var IncrementalDisplayable_default = IncrementalDisplayable;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/animation/basicTransition.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/animation/basicTransition.js
   var transitionStore = makeInner();
   function getAnimationConfig(animationType, animatableModel, dataIndex, extraOpts, extraDelayParams) {
     var animationPayload;
@@ -26465,7 +26458,7 @@ var __IadClientBundle__ = (() => {
     transitionStore(el).oldStyle = el.style;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/graphic.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/graphic.js
   var _customShapeMap = {};
   var XY2 = ["x", "y"];
   var WH2 = ["width", "height"];
@@ -26917,7 +26910,7 @@ var __IadClientBundle__ = (() => {
   registerShape("bezierCurve", BezierCurve_default);
   registerShape("arc", Arc_default);
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/label/labelStyle.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/label/labelStyle.js
   var EMPTY_OBJ = {};
   function setLabelText(label, labelTexts) {
     for (var i = 0; i < SPECIAL_STATES.length; i++) {
@@ -27280,7 +27273,7 @@ var __IadClientBundle__ = (() => {
     textMargin: 2
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/textStyle.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/textStyle.js
   var PATH_COLOR = ["textStyle", "color"];
   var textStyleParams = ["fontStyle", "fontWeight", "fontSize", "fontFamily", "padding", "lineHeight", "rich", "width", "height", "overflow"];
   var tmpText = new Text_default();
@@ -27318,7 +27311,7 @@ var __IadClientBundle__ = (() => {
   );
   var textStyle_default = TextStyleMixin;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/lineStyle.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/lineStyle.js
   var LINE_STYLE_KEY_MAP = [
     ["lineWidth", "width"],
     ["stroke", "color"],
@@ -27348,7 +27341,7 @@ var __IadClientBundle__ = (() => {
     })()
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/itemStyle.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/itemStyle.js
   var ITEM_STYLE_KEY_MAP = [
     ["fill", "color"],
     ["stroke", "borderColor"],
@@ -27379,7 +27372,7 @@ var __IadClientBundle__ = (() => {
     })()
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/Model.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/Model.js
   var Model = (
     /** @class */
     (function() {
@@ -27478,7 +27471,7 @@ var __IadClientBundle__ = (() => {
   mixin(Model, textStyle_default);
   var Model_default = Model;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/component.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/component.js
   var base = Math.round(Math.random() * 10);
   function getUID(type) {
     return [type || "", base++].join("_");
@@ -27587,7 +27580,7 @@ var __IadClientBundle__ = (() => {
     return merge(merge({}, superOption, true), subOption, true);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/i18n/langEN.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/i18n/langEN.js
   var langEN_default = {
     time: {
       month: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
@@ -27700,7 +27693,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/i18n/langZH.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/i18n/langZH.js
   var langZH_default = {
     time: {
       month: ["\u4E00\u6708", "\u4E8C\u6708", "\u4E09\u6708", "\u56DB\u6708", "\u4E94\u6708", "\u516D\u6708", "\u4E03\u6708", "\u516B\u6708", "\u4E5D\u6708", "\u5341\u6708", "\u5341\u4E00\u6708", "\u5341\u4E8C\u6708"],
@@ -27813,7 +27806,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/locale.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/locale.js
   var LOCALE_ZH = "ZH";
   var LOCALE_EN = "EN";
   var DEFAULT_LOCALE = LOCALE_EN;
@@ -27849,7 +27842,7 @@ var __IadClientBundle__ = (() => {
   registerLocale(LOCALE_EN, langEN_default);
   registerLocale(LOCALE_ZH, langZH_default);
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/break.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/break.js
   var _impl = null;
   function getScaleBreakHelper() {
     return _impl;
@@ -27872,7 +27865,7 @@ var __IadClientBundle__ = (() => {
     return brk ? brk.hasBreaks() : false;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/time.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/time.js
   var ONE_SECOND = 1e3;
   var ONE_MINUTE = ONE_SECOND * 60;
   var ONE_HOUR = ONE_MINUTE * 60;
@@ -28120,7 +28113,7 @@ var __IadClientBundle__ = (() => {
     return isUTC ? "setUTCMilliseconds" : "setMilliseconds";
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/format.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/format.js
   function addCommas(x) {
     if (!isNumeric(x)) {
       return isString(x) ? x : "-";
@@ -28225,7 +28218,7 @@ var __IadClientBundle__ = (() => {
     return isString(color3) ? color3 : isObject(color3) ? color3.colorStops && (color3.colorStops[0] || {}).color || defaultColor : defaultColor;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/CoordinateSystem.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/CoordinateSystem.js
   var nonSeriesBoxCoordSysCreators = {};
   var normalCoordSysCreators = {};
   var CoordinateSystemManager = (
@@ -28378,7 +28371,7 @@ var __IadClientBundle__ = (() => {
   }
   var CoordinateSystem_default = CoordinateSystemManager;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/layout.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/layout.js
   var each2 = each;
   var LOCATION_PARAMS = ["left", "right", "top", "bottom", "width", "height"];
   var HV_NAMES = [["width", "left", "right"], ["height", "top", "bottom"]];
@@ -28711,7 +28704,7 @@ var __IadClientBundle__ = (() => {
     return target;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/Component.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/Component.js
   var inner = makeInner();
   var ComponentModel = (
     /** @class */
@@ -28814,7 +28807,7 @@ var __IadClientBundle__ = (() => {
   }
   var Component_default = ComponentModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/tokens.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/tokens.js
   var tokens = {
     color: {},
     darkColor: {},
@@ -28924,7 +28917,7 @@ var __IadClientBundle__ = (() => {
   };
   var tokens_default = tokens;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/globalDefault.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/globalDefault.js
   var platform2 = "";
   if (typeof navigator !== "undefined") {
     platform2 = navigator.platform || "";
@@ -29014,7 +29007,7 @@ var __IadClientBundle__ = (() => {
     useUTC: false
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/sourceHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/sourceHelper.js
   var BE_ORDINAL = {
     Must: 1,
     Might: 2,
@@ -29246,7 +29239,7 @@ var __IadClientBundle__ = (() => {
     return BE_ORDINAL.Not;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/internalComponentCreator.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/internalComponentCreator.js
   var internalOptionCreatorMap = createHashMap();
   function concatInternalOptions(ecModel, mainType, newCmptOptionList) {
     var internalOptionCreator = internalOptionCreatorMap.get(mainType);
@@ -29265,7 +29258,7 @@ var __IadClientBundle__ = (() => {
     return newCmptOptionList.concat(internalOptions);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/palette.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/palette.js
   var innerColor = makeInner();
   var innerDecal = makeInner();
   var PaletteMixin = (
@@ -29322,7 +29315,7 @@ var __IadClientBundle__ = (() => {
     inner11(that).paletteNameMap = {};
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/Global.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/Global.js
   var reCreateSeriesIndices;
   var assertSeriesInitialized;
   var initBase;
@@ -29888,7 +29881,7 @@ var __IadClientBundle__ = (() => {
   mixin(GlobalModel, PaletteMixin);
   var Global_default = GlobalModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/OptionManager.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/OptionManager.js
   var QUERY_REG = /^(min|max)?(.+)$/;
   var OptionManager = (
     /** @class */
@@ -30074,7 +30067,7 @@ var __IadClientBundle__ = (() => {
   }
   var OptionManager_default = OptionManager;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/preprocessor/helper/compatStyle.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/preprocessor/helper/compatStyle.js
   var each3 = each;
   var isObject2 = isObject;
   var POSSIBLE_STYLES = ["areaStyle", "lineStyle", "nodeStyle", "linkStyle", "chordStyle", "label", "labelLine"];
@@ -30338,7 +30331,7 @@ var __IadClientBundle__ = (() => {
     compatTextStyle(toObj(option.tooltip).axisPointer, "label");
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/preprocessor/backwardCompat.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/preprocessor/backwardCompat.js
   function get(opt, path) {
     var pathArr = path.split(",");
     var obj = opt;
@@ -30545,7 +30538,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/processor/dataStack.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/processor/dataStack.js
   var dataStackStageHandler = createSimpleOverallStageHandler2(dataStack);
   function dataStack(ecModel) {
     var stackInfoMap = createHashMap();
@@ -30628,7 +30621,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/Source.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/Source.js
   var SourceImpl = (
     /** @class */
     /* @__PURE__ */ (function() {
@@ -30833,7 +30826,7 @@ var __IadClientBundle__ = (() => {
     return sourceFormat === SOURCE_FORMAT_OBJECT_ROWS || sourceFormat === SOURCE_FORMAT_KEYED_COLUMNS;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/dataProvider.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/dataProvider.js
   var _a;
   var _b;
   var _c;
@@ -31092,7 +31085,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/dataFormat.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/mixin/dataFormat.js
   var DIMENSION_LABEL_REG = /\{@(.+?)\}/g;
   var DataFormatMixin = (
     /** @class */
@@ -31204,7 +31197,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/task.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/task.js
   function createTask(define) {
     return new Task(define);
   }
@@ -31384,7 +31377,7 @@ var __IadClientBundle__ = (() => {
     }
   })();
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/dataValueHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/dataValueHelper.js
   function parseDataValue(value, opt) {
     var dimType = opt && opt.type;
     if (dimType === "ordinal") {
@@ -31535,7 +31528,7 @@ var __IadClientBundle__ = (() => {
     return value > filterParsed.g && value >= filterParsed.ge && value < filterParsed.l && value <= filterParsed.le;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/transform.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/transform.js
   var ExternalSource = (
     /** @class */
     (function() {
@@ -31820,7 +31813,7 @@ var __IadClientBundle__ = (() => {
     return sourceFormat === SOURCE_FORMAT_ARRAY_ROWS || sourceFormat === SOURCE_FORMAT_OBJECT_ROWS;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/DataStore.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/DataStore.js
   var CtorUint32Array = typeof Uint32Array === UNDEFINED_STR ? Array : Uint32Array;
   var CtorUint16Array = typeof Uint16Array === UNDEFINED_STR ? Array : Uint16Array;
   var CtorInt32Array = typeof Int32Array === UNDEFINED_STR ? Array : Int32Array;
@@ -32613,7 +32606,7 @@ var __IadClientBundle__ = (() => {
   );
   var DataStore_default = DataStore;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/sourceManager.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/sourceManager.js
   var SourceManager = (
     /** @class */
     (function() {
@@ -32837,7 +32830,7 @@ var __IadClientBundle__ = (() => {
     throw new Error(errMsg);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/tooltipMarkup.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/tooltipMarkup.js
   var TOOLTIP_LINE_HEIGHT_CSS = "line-height:1";
   function getTooltipLineHeight(textStyle) {
     var lineHeight = textStyle.lineHeight;
@@ -33082,7 +33075,7 @@ var __IadClientBundle__ = (() => {
     })()
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/seriesFormatTooltip.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/seriesFormatTooltip.js
   function defaultSeriesFormatTooltip(opt) {
     var series = opt.series;
     var dataIndex = opt.dataIndex;
@@ -33172,7 +33165,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/Series.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/Series.js
   var inner2 = makeInner();
   function getSelectionKey(data, dataIndex) {
     return data.getName(dataIndex) || data.getId(dataIndex);
@@ -33573,7 +33566,7 @@ var __IadClientBundle__ = (() => {
   }
   var Series_default = SeriesModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/view/Component.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/view/Component.js
   var ComponentView = (
     /** @class */
     (function() {
@@ -33608,7 +33601,7 @@ var __IadClientBundle__ = (() => {
   enableClassManagement(ComponentView);
   var Component_default2 = ComponentView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/createRenderPlanner.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/createRenderPlanner.js
   function createRenderPlanner() {
     var inner11 = makeInner();
     return function(seriesModel) {
@@ -33622,7 +33615,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/view/Chart.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/view/Chart.js
   var inner3 = makeInner();
   var renderPlanner = createRenderPlanner();
   var ChartView = (
@@ -33746,7 +33739,7 @@ var __IadClientBundle__ = (() => {
   };
   var Chart_default = ChartView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/throttle.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/throttle.js
   var ORIGIN_METHOD = "\0__throttleOriginMethod";
   var RATE = "\0__throttleRate";
   var THROTTLE_TYPE = "\0__throttleType";
@@ -33827,7 +33820,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/style.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/style.js
   var inner4 = makeInner();
   var defaultStyleMappers = {
     itemStyle: makeStyleMapper(ITEM_STYLE_KEY_MAP, true),
@@ -33969,7 +33962,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/loading/default.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/loading/default.js
   var PI5 = Math.PI;
   function defaultLoading(api, opts) {
     opts = opts || {};
@@ -34071,7 +34064,7 @@ var __IadClientBundle__ = (() => {
     return group;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/Scheduler.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/Scheduler.js
   var Scheduler = (
     /** @class */
     (function() {
@@ -34413,7 +34406,7 @@ var __IadClientBundle__ = (() => {
   }
   var Scheduler_default = Scheduler;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/theme/dark.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/theme/dark.js
   var color2 = tokens_default.darkColor;
   var backgroundColor = color2.background;
   var axisCommon = function() {
@@ -34715,7 +34708,7 @@ var __IadClientBundle__ = (() => {
   theme.categoryAxis.splitLine.show = false;
   var dark_default = theme;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/ECEventProcessor.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/ECEventProcessor.js
   var ECEventProcessor = (
     /** @class */
     (function() {
@@ -34791,7 +34784,7 @@ var __IadClientBundle__ = (() => {
     })()
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/symbol.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/symbol.js
   var SYMBOL_PROPS_WITH_CB = ["symbol", "symbolSize", "symbolRotate", "symbolOffset"];
   var SYMBOL_PROPS = SYMBOL_PROPS_WITH_CB.concat(["symbolKeepAspect"]);
   var seriesSymbolTask = {
@@ -34869,7 +34862,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/helper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/helper.js
   function getItemVisualFromData(data, dataIndex, key2) {
     switch (key2) {
       case "color":
@@ -34926,7 +34919,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/legacy/dataSelectAction.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/legacy/dataSelectAction.js
   function createLegacyDataSelectAction(seriesType2, ecRegisterAction) {
     function getSeriesIndices(ecModel, payload) {
       var seriesIndices = [];
@@ -34996,7 +34989,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/event.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/event.js
   function findEventDispatcher(target, det, returnFirstMatch) {
     var found;
     while (target) {
@@ -35011,11 +35004,11 @@ var __IadClientBundle__ = (() => {
     return found;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/lifecycle.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/lifecycle.js
   var lifecycle = new Eventful_default();
   var lifecycle_default = lifecycle;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/impl.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/impl.js
   var implsStore = {};
   function registerImpl(name2, impl) {
     if (true) {
@@ -35034,13 +35027,13 @@ var __IadClientBundle__ = (() => {
     return implsStore[name2];
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/custom/customSeriesRegister.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/custom/customSeriesRegister.js
   var customRenderers = {};
   function registerCustomSeries(type, renderItem) {
     customRenderers[type] = renderItem;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/cycleCache.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/cycleCache.js
   var ecModelCacheInner = makeInner();
   function resetCachePerECPrepare(ecModel) {
     ecModelCacheInner(ecModel).prepare = {};
@@ -35055,7 +35048,7 @@ var __IadClientBundle__ = (() => {
     return ecModelCacheInner(ecModel).fullUpdate;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/WeakMap.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/core/WeakMap.js
   var wmUniqueIndex = Math.round(Math.random() * 9);
   var supportDefineProperty = typeof Object.defineProperty === "function";
   var WeakMap2 = (function() {
@@ -35098,7 +35091,7 @@ var __IadClientBundle__ = (() => {
   })();
   var WeakMap_default = WeakMap2;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/symbol.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/symbol.js
   var Triangle = Path_default.extend({
     type: "triangle",
     shape: {
@@ -35351,7 +35344,7 @@ var __IadClientBundle__ = (() => {
     return [parsePercent2(symbolOffset[0], symbolSize[0]) || 0, parsePercent2(retrieve2(symbolOffset[1], symbolOffset[0]), symbolSize[1]) || 0];
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/canvas/helper.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/canvas/helper.js
   function isSafeNum(num) {
     return isFinite(num);
   }
@@ -35428,7 +35421,7 @@ var __IadClientBundle__ = (() => {
     return (root[cwh] || parseInt10(stl[wh]) || parseInt10(root.style[wh])) - (parseInt10(stl[plt]) || 0) - (parseInt10(stl[prb]) || 0) || 0;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/canvas/dashStyle.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/canvas/dashStyle.js
   function normalizeLineDash(lineType, lineWidth) {
     if (!lineType || lineType === "solid" || !(lineWidth > 0)) {
       return null;
@@ -35451,7 +35444,7 @@ var __IadClientBundle__ = (() => {
     return [lineDash, lineDashOffset];
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/canvas/graphic.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/canvas/graphic.js
   var pathProxyForDraw = new PathProxy_default(true);
   function styleHasStroke(style) {
     var stroke = style.stroke;
@@ -35972,7 +35965,7 @@ var __IadClientBundle__ = (() => {
     ctx.restore();
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/decal.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/decal.js
   var decalMap = new WeakMap_default();
   var decalCache = new LRU_default(100);
   var decalKeys = ["symbol", "symbolSize", "symbolKeepAspect", "color", "backgroundColor", "dashArrayX", "dashArrayY", "maxTileWidth", "maxTileHeight"];
@@ -36255,7 +36248,7 @@ var __IadClientBundle__ = (() => {
     return blockLength;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/decal.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/decal.js
   var decalVisualStageHandler = createSimpleOverallStageHandler2(decalVisual);
   function decalVisual(ecModel, api) {
     ecModel.eachRawSeries(function(seriesModel) {
@@ -36280,7 +36273,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/echarts.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/core/echarts.js
   var TEST_FRAME_REMAIN_TIME = 1;
   var PRIORITY_PROCESSOR_SERIES_FILTER = 800;
   var PRIORITY_PROCESSOR_DATASTACK = 900;
@@ -38138,7 +38131,7 @@ var __IadClientBundle__ = (() => {
   registerTheme("default", {});
   registerTheme("dark", dark_default);
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/DataDiffer.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/DataDiffer.js
   function dataIndexMapValueLength(valNumOrArrLengthMoreThan2) {
     return valNumOrArrLengthMoreThan2 == null ? 0 : valNumOrArrLengthMoreThan2.length || 1;
   }
@@ -38291,7 +38284,7 @@ var __IadClientBundle__ = (() => {
   );
   var DataDiffer_default = DataDiffer;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/dimensionHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/dimensionHelper.js
   var DimensionUserOuput = (
     /** @class */
     (function() {
@@ -38390,7 +38383,7 @@ var __IadClientBundle__ = (() => {
     return !(dimType === "ordinal" || dimType === "time");
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/SeriesDimensionDefine.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/SeriesDimensionDefine.js
   var SeriesDimensionDefine = (
     /** @class */
     /* @__PURE__ */ (function() {
@@ -38405,7 +38398,7 @@ var __IadClientBundle__ = (() => {
   );
   var SeriesDimensionDefine_default = SeriesDimensionDefine;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/SeriesDataSchema.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/SeriesDataSchema.js
   var inner5 = makeInner();
   var dimTypeShort = {
     float: "f",
@@ -38541,7 +38534,7 @@ var __IadClientBundle__ = (() => {
     return dimCount > 30;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/SeriesData.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/SeriesData.js
   var isObject3 = isObject;
   var map2 = map;
   var CtorInt32Array2 = typeof Int32Array === "undefined" ? Array : Int32Array;
@@ -39202,7 +39195,7 @@ var __IadClientBundle__ = (() => {
   );
   var SeriesData_default = SeriesData;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/createDimensions.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/createDimensions.js
   function prepareSeriesDataSchema(source, opt) {
     if (!isSourceInstance(source)) {
       source = createSourceFromSeriesDataOption(source);
@@ -39397,7 +39390,7 @@ var __IadClientBundle__ = (() => {
     return name2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/referHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/model/referHelper.js
   var SeriesModelCoordSysInfo = (
     /** @class */
     /* @__PURE__ */ (function() {
@@ -39520,7 +39513,7 @@ var __IadClientBundle__ = (() => {
     return axisModel.get("type") === "category";
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/dataStackHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/helper/dataStackHelper.js
   function enableDataStack(seriesModel, dimensionsInput, opt) {
     opt = opt || {};
     var byIndex = opt.byIndex;
@@ -39631,7 +39624,7 @@ var __IadClientBundle__ = (() => {
     return isDimensionStacked(data, targetDim) ? data.getCalculationInfo("stackResultDimension") : targetDim;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/createSeriesData.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/createSeriesData.js
   function getCoordSysDimDefs(seriesModel, coordSysInfo) {
     var coordSysName = seriesModel.get("coordinateSystem");
     var registeredCoordSys = CoordinateSystem_default.get(coordSysName);
@@ -39737,7 +39730,7 @@ var __IadClientBundle__ = (() => {
   }
   var createSeriesData_default = createSeriesData;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Scale.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Scale.js
   var Scale = (
     /** @class */
     (function() {
@@ -39755,7 +39748,7 @@ var __IadClientBundle__ = (() => {
   enableClassManagement(Scale);
   var Scale_default = Scale;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/OrdinalMeta.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/data/OrdinalMeta.js
   var uidBase = 0;
   var OrdinalMeta = (
     /** @class */
@@ -39823,7 +39816,7 @@ var __IadClientBundle__ = (() => {
   }
   var OrdinalMeta_default = OrdinalMeta;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/scaleMapper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/scaleMapper.js
   var SCALE_EXTENT_KIND_EFFECTIVE = 0;
   var SCALE_EXTENT_KIND_MAPPING = 1;
   var SCALE_MAPPER_METHOD_NAMES_MAP = {
@@ -39970,7 +39963,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/helper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/helper.js
   function isIntervalOrLogScale(scale3) {
     return isIntervalScale(scale3) || isLogScale(scale3);
   }
@@ -40081,7 +40074,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Ordinal.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Ordinal.js
   var OrdinalScale = (
     /** @class */
     (function(_super) {
@@ -40227,7 +40220,7 @@ var __IadClientBundle__ = (() => {
   Scale_default.registerClass(OrdinalScale);
   var Ordinal_default = OrdinalScale;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/minorTicks.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/minorTicks.js
   function getMinorTicks(scale3, splitNumber, breaks, scaleInterval) {
     var ticks = scale3.getTicks({
       expandToNicedExtent: true
@@ -40261,7 +40254,7 @@ var __IadClientBundle__ = (() => {
     return minorTicks;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Interval.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Interval.js
   var IntervalScale = (
     /** @class */
     (function(_super) {
@@ -40413,7 +40406,7 @@ var __IadClientBundle__ = (() => {
   Scale_default.registerClass(IntervalScale);
   var Interval_default = IntervalScale;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Time.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Time.js
   var bisect = function(a, x, lo, hi) {
     while (lo < hi) {
       var mid = lo + hi >>> 1;
@@ -40810,7 +40803,7 @@ var __IadClientBundle__ = (() => {
   Scale_default.registerClass(TimeScale);
   var Time_default = TimeScale;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Log.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/scale/Log.js
   var LOOKUP_IDX_EXTENT_START = 0;
   var LOOKUP_IDX_EXTENT_END = 1;
   var LOOKUP_IDX_BREAK_START = 2;
@@ -40967,7 +40960,7 @@ var __IadClientBundle__ = (() => {
   var tmpNotUsedArr = [];
   var Log_default = LogScale;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisCommonTypes.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisCommonTypes.js
   var AXIS_TYPES = {
     value: 1,
     category: 1,
@@ -40975,7 +40968,7 @@ var __IadClientBundle__ = (() => {
     log: 1
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisHelper.js
   var axisInner = makeInner();
   function determineAxisType(model) {
     var type = model.get("type");
@@ -41146,7 +41139,7 @@ var __IadClientBundle__ = (() => {
     return isOrdinalScale(scale3) && !!axisModel.get("boundaryGap");
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisModelCommonMixin.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisModelCommonMixin.js
   var AxisModelCommonMixin = (
     /** @class */
     (function() {
@@ -41162,7 +41155,7 @@ var __IadClientBundle__ = (() => {
     })()
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisStatistics.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisStatistics.js
   var callOnlyOnce = makeCallOnlyOnce();
   var AXIS_STAT_KEY_DELIMITER = "|&";
   var ecModelCacheFullUpdateInner = makeInner();
@@ -41372,7 +41365,7 @@ var __IadClientBundle__ = (() => {
   }
   var clientsForLookup = createHashMap();
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/scaleRawExtentInfo.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/scaleRawExtentInfo.js
   var scaleInner = makeInner();
   var AXIS_EXTENT_INFO_BUILD_FROM_COORD_SYS_UPDATE = 1;
   var AXIS_EXTENT_INFO_BUILD_FROM_DATA_ZOOM = 2;
@@ -41701,7 +41694,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisNiceTicks.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisNiceTicks.js
   function calcNiceForIntervalOrLogScale(scale3, opt) {
     var isTargetLogScale = isLogScale(scale3);
     var intervalStub = isTargetLogScale ? scale3.intervalStub : scale3;
@@ -41812,7 +41805,7 @@ var __IadClientBundle__ = (() => {
     ordinal: noop6
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/extension.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/extension.js
   var extensions = [];
   var extensionRegisters = {
     registerPreprocessor,
@@ -41875,7 +41868,7 @@ var __IadClientBundle__ = (() => {
     ext.install(extensionRegisters);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisTickLabelBuilder.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisTickLabelBuilder.js
   var modelInner = makeInner();
   var axisInner2 = makeInner();
   var AxisTickLabelComputingKind = {
@@ -42144,7 +42137,7 @@ var __IadClientBundle__ = (() => {
     return result;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisBand.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisBand.js
   var FALLBACK_BAND_WIDTH_RATIO = 0.8;
   function calcBandWidth(axis, opt) {
     opt = opt || {};
@@ -42212,7 +42205,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/Axis.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/Axis.js
   var NORMALIZED_EXTENT = [0, 1];
   var Axis = (
     /** @class */
@@ -42355,7 +42348,7 @@ var __IadClientBundle__ = (() => {
   }
   var Axis_default = Axis;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/label/labelGuideHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/label/labelGuideHelper.js
   var PI27 = Math.PI * 2;
   var CMD4 = PathProxy_default.CMD;
   function projectPointToLine(x1, y1, x2, y2, x, y, out2, limitToEnds) {
@@ -42561,7 +42554,7 @@ var __IadClientBundle__ = (() => {
     return statesModels;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/label/labelLayoutHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/label/labelLayoutHelper.js
   var LABEL_LAYOUT_BASE_PROPS = ["label", "labelLine", "layoutOption", "priority", "defaultAttr", "marginForce", "minMarginForce", "marginDefault", "suggestIgnore"];
   var LABEL_LAYOUT_DIRTY_BIT_OTHERS = 1;
   var LABEL_LAYOUT_DIRTY_BIT_OBB = 2;
@@ -42842,7 +42835,7 @@ var __IadClientBundle__ = (() => {
     return ensureOBB(baseLayoutInfo).intersect(ensureOBB(targetLayoutInfo), mtv, intersectOpt);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/LineSeries.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/LineSeries.js
   var LineSeriesModel = (
     /** @class */
     (function(_super) {
@@ -42954,7 +42947,7 @@ var __IadClientBundle__ = (() => {
   );
   var LineSeries_default = LineSeriesModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/labelHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/labelHelper.js
   function getDefaultLabel(data, dataIndex) {
     var labelDims = data.mapDimensionsAll("defaultedLabel");
     var len2 = labelDims.length;
@@ -42984,7 +42977,7 @@ var __IadClientBundle__ = (() => {
     return vals.join(" ");
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/Symbol.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/Symbol.js
   var Symbol2 = (
     /** @class */
     (function(_super) {
@@ -43226,7 +43219,7 @@ var __IadClientBundle__ = (() => {
   }
   var Symbol_default = Symbol2;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/SymbolDraw.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/SymbolDraw.js
   function symbolNeedsDraw(data, point, idx, opt) {
     return point && !isNaN(point[0]) && !isNaN(point[1]) && !(opt && opt.isIgnore && opt.isIgnore(idx)) && !(opt && opt.clipShape && !opt.clipShape.contain(point[0], point[1])) && data.getItemVisual(idx, "symbol") !== "none";
   }
@@ -43397,7 +43390,7 @@ var __IadClientBundle__ = (() => {
   );
   var SymbolDraw_default = SymbolDraw;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/helper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/helper.js
   function prepareDataCoordInfo(coordSys, data, valueOrigin) {
     var baseAxis = coordSys.getBaseAxis();
     var valueAxis2 = coordSys.getOtherAxis(baseAxis);
@@ -43476,7 +43469,7 @@ var __IadClientBundle__ = (() => {
     return !isFinite(xOrY) || !isFinite(yOrX);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/vendor.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/vendor.js
   var Float32ArrayCtor = typeof Float32Array !== UNDEFINED_STR ? Float32Array : void 0;
   var Float64ArrayCtor = typeof Float64Array !== UNDEFINED_STR ? Float64Array : void 0;
   function createFloat32Array(capacity) {
@@ -43520,7 +43513,7 @@ var __IadClientBundle__ = (() => {
     return tyArr;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/lineAnimationDiff.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/lineAnimationDiff.js
   function diffData(oldData, newData) {
     var diffResult = [];
     newData.diff(oldData).add(function(idx) {
@@ -43629,7 +43622,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/poly.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/poly.js
   var mathMin7 = Math.min;
   var mathMax7 = Math.max;
   function drawSegment(ctx, points2, start2, segLen, allLen, dir3, smooth, smoothMonotone, connectNulls) {
@@ -43923,7 +43916,7 @@ var __IadClientBundle__ = (() => {
     })(Path_default)
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/createClipPathFromCoordSys.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/createClipPathFromCoordSys.js
   function createGridClipPath(cartesian, hasAnimation, seriesModel, done, during) {
     var rect = cartesian.getArea();
     var x = rect.x;
@@ -44038,7 +44031,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/CoordinateSystem.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/CoordinateSystem.js
   function isCoordinateSystemType(coordSys, type) {
     return coordSys.type === type;
   }
@@ -44047,7 +44040,7 @@ var __IadClientBundle__ = (() => {
     return dimensions[0] === "lng" && dimensions[1] === "lat" && !!coordSys.getViewRect;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/styleCompat.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/styleCompat.js
   var deprecatedLogs = {};
   function isEC4CompatibleStyle(style, elType, hasOwnTextContentOption, hasOwnTextConfig) {
     return style && (style.legacy || style.legacy !== false && !hasOwnTextContentOption && !hasOwnTextConfig && elType !== "tspan" && (elType === "text" || hasOwn2(style, "text")));
@@ -44131,7 +44124,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/LineView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/LineView.js
   function isPointsSame(points1, points2) {
     if (points1.length !== points2.length) {
       return;
@@ -45085,7 +45078,7 @@ var __IadClientBundle__ = (() => {
   );
   var LineView_default = LineView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/layout/points.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/layout/points.js
   function pointsLayout(seriesType2, forceStoreInTypedArray) {
     return {
       seriesType: seriesType2,
@@ -45148,7 +45141,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/processor/dataSample.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/processor/dataSample.js
   var samplers = {
     average: function(frame) {
       var sum = 0;
@@ -45229,7 +45222,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/line/install.js
   function install(registers) {
     registers.registerChartView(LineView_default);
     registers.registerSeriesModel(LineSeries_default);
@@ -45248,7 +45241,7 @@ var __IadClientBundle__ = (() => {
     registers.registerProcessor(registers.PRIORITY.PROCESSOR.STATISTIC, dataSample("line"));
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/Axis2D.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/Axis2D.js
   var Axis2D = (
     /** @class */
     (function(_super) {
@@ -45286,16 +45279,16 @@ var __IadClientBundle__ = (() => {
   );
   var Axis2D_default = Axis2D;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/axisBreakHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/axisBreakHelper.js
   var _impl2 = null;
   function getAxisBreakHelper() {
     return _impl2;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/axisAction.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/axisAction.js
   var AXIS_BREAK_EXPAND_ACTION_TYPE = "expandAxisBreak";
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/AxisBuilder.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/AxisBuilder.js
   var PI6 = Math.PI;
   var DEFAULT_CENTER_NAME_MARGIN_LEVELS = [[1, 2, 1, 2], [5, 3, 5, 3], [8, 3, 8, 3]];
   var DEFAULT_ENDS_NAME_MARGIN_LEVELS = [[0, 1, 0, 1], [0, 3, 0, 3], [0, 3, 0, 3]];
@@ -46168,7 +46161,7 @@ var __IadClientBundle__ = (() => {
   }
   var AxisBuilder_default = AxisBuilder;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/cartesianAxisHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/cartesianAxisHelper.js
   function layout(rect, axisModel, opt) {
     opt = opt || {};
     var axis = axisModel.axis;
@@ -46262,7 +46255,7 @@ var __IadClientBundle__ = (() => {
     axisBuilder.updateCfg(newRaw);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisStatisticsMetricsImpl.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisStatisticsMetricsImpl.js
   function registerMetricImplLiPosMinGap() {
     registerMetricImpl("liPosMinGap", metricLiPosMinGapImpl);
   }
@@ -46343,7 +46336,7 @@ var __IadClientBundle__ = (() => {
     // An arbitrary initial capability.
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/axisSnippets.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/axisSnippets.js
   function createBandWidthBasedAxisContainShapeHandler(axisStatKey) {
     return function(axis, ecModel) {
       var bandWidthResult = calcBandWidth(axis, {
@@ -46370,7 +46363,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/layout/barCommon.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/layout/barCommon.js
   var SERIES_TYPE_BAR = "bar";
   function requireAxisStatisticsForBaseBar(registers, axisStatKey, seriesType2, coordSysType) {
     requireAxisStatistics(registers, {
@@ -46388,7 +46381,7 @@ var __IadClientBundle__ = (() => {
     return val;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/GridModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/GridModel.js
   var OUTER_BOUNDS_DEFAULT = {
     left: 0,
     right: 0,
@@ -46446,7 +46439,7 @@ var __IadClientBundle__ = (() => {
   );
   var GridModel_default = GridModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/layout/barGrid.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/layout/barGrid.js
   var callOnlyOnce2 = makeCallOnlyOnce();
   var STACK_PREFIX = "__ec_stack_";
   function getSeriesStackId(seriesModel) {
@@ -46737,7 +46730,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/bar/BaseBarSeries.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/bar/BaseBarSeries.js
   var BaseBarSeriesModel = (
     /** @class */
     (function(_super) {
@@ -46841,7 +46834,7 @@ var __IadClientBundle__ = (() => {
   Series_default.registerClass(BaseBarSeriesModel);
   var BaseBarSeries_default = BaseBarSeriesModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/bar/BarSeries.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/bar/BarSeries.js
   var BarSeriesModel = (
     /** @class */
     (function(_super) {
@@ -46903,7 +46896,7 @@ var __IadClientBundle__ = (() => {
   );
   var BarSeries_default = BarSeriesModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/shape/sausage.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/util/shape/sausage.js
   var SausageShape = (
     /** @class */
     /* @__PURE__ */ (function() {
@@ -46967,7 +46960,7 @@ var __IadClientBundle__ = (() => {
   );
   var sausage_default = SausagePath;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/label/sectorLabel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/label/sectorLabel.js
   function createSectorCalculateTextPosition(positionMapping, opts) {
     opts = opts || {};
     var isRoundCap = opts.isRoundCap;
@@ -47115,7 +47108,7 @@ var __IadClientBundle__ = (() => {
     return distance2 * Math.cos(angle) * (isEnd ? 1 : -1);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/sectorHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/sectorHelper.js
   function getSectorCornerRadius(model, shape, zeroIfNull) {
     var cornerRadius = model.get("borderRadius");
     if (cornerRadius == null) {
@@ -47134,7 +47127,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/bar/BarView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/bar/BarView.js
   var mathMax8 = Math.max;
   var mathMin8 = Math.min;
   var BarView = (
@@ -47925,7 +47918,7 @@ var __IadClientBundle__ = (() => {
   }
   var BarView_default = BarView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/bar/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/bar/install.js
   function install2(registers) {
     registers.registerChartView(BarView_default);
     registers.registerSeriesModel(BarSeries_default);
@@ -47950,7 +47943,7 @@ var __IadClientBundle__ = (() => {
     registerBarGridAxisHandlers(registers);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/processor/dataFilter.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/processor/dataFilter.js
   function dataFilter(seriesType2) {
     return {
       seriesType: seriesType2,
@@ -47975,7 +47968,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/createSeriesDataSimply.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/createSeriesDataSimply.js
   function createSeriesDataSimply(seriesModel, opt, nameList) {
     opt = isArray(opt) && {
       coordDimensions: opt
@@ -47989,7 +47982,7 @@ var __IadClientBundle__ = (() => {
     return list;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/LegendVisualProvider.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/LegendVisualProvider.js
   var LegendVisualProvider = (
     /** @class */
     (function() {
@@ -48018,7 +48011,7 @@ var __IadClientBundle__ = (() => {
   );
   var LegendVisualProvider_default = LegendVisualProvider;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/PieSeries.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/PieSeries.js
   var SERIES_TYPE_PIE = "pie";
   var innerData = makeInner();
   var PieSeriesModel = (
@@ -48180,7 +48173,7 @@ var __IadClientBundle__ = (() => {
   });
   var PieSeries_default = PieSeriesModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/labelLayout.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/labelLayout.js
   var RADIAN = Math.PI / 180;
   function adjustSingleSide(list, cx, cy, r, dir3, viewWidth, viewHeight, viewLeft, viewTop, farthestX) {
     if (list.length < 2) {
@@ -48565,7 +48558,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/pieLayout.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/pieLayout.js
   var PI28 = Math.PI * 2;
   var RADIAN2 = Math.PI / 180;
   var pieLayoutStageHandler = createSimpleOverallStageHandler(SERIES_TYPE_PIE, pieLayout);
@@ -48707,7 +48700,7 @@ var __IadClientBundle__ = (() => {
   }
   var getSeriesLayoutData = makeInner();
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/PieView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/PieView.js
   var PiePiece = (
     /** @class */
     (function(_super) {
@@ -48924,7 +48917,7 @@ var __IadClientBundle__ = (() => {
   );
   var PieView_default = PieView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/processor/negativeDataFilter.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/processor/negativeDataFilter.js
   function negativeDataFilter(seriesType2) {
     return {
       seriesType: seriesType2,
@@ -48942,7 +48935,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/pie/install.js
   function install3(registers) {
     registers.registerChartView(PieView_default);
     registers.registerSeriesModel(PieSeries_default);
@@ -48952,7 +48945,7 @@ var __IadClientBundle__ = (() => {
     registers.registerProcessor(negativeDataFilter(SERIES_TYPE_PIE));
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/scatter/ScatterSeries.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/scatter/ScatterSeries.js
   var ScatterSeriesModel = (
     /** @class */
     (function(_super) {
@@ -49023,7 +49016,7 @@ var __IadClientBundle__ = (() => {
   );
   var ScatterSeries_default = ScatterSeriesModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/LargeSymbolDraw.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/LargeSymbolDraw.js
   var BOOST_SIZE_THRESHOLD = 4;
   var LargeSymbolPathShape = (
     /** @class */
@@ -49285,7 +49278,7 @@ var __IadClientBundle__ = (() => {
   );
   var LargeSymbolDraw_default = LargeSymbolDraw;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/scatter/ScatterView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/scatter/ScatterView.js
   var ScatterView = (
     /** @class */
     (function(_super) {
@@ -49367,7 +49360,7 @@ var __IadClientBundle__ = (() => {
   }
   var ScatterView_default = ScatterView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/AxisModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/AxisModel.js
   var CartesianAxisModel = (
     /** @class */
     (function(_super) {
@@ -49384,7 +49377,7 @@ var __IadClientBundle__ = (() => {
   );
   mixin(CartesianAxisModel, AxisModelCommonMixin);
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisDefault.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisDefault.js
   var defaultOption = {
     show: true,
     // zlevel: 0,
@@ -49580,7 +49573,7 @@ var __IadClientBundle__ = (() => {
     log: logAxis
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisModelCreator.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisModelCreator.js
   function axisModelCreator(registers, axisName, BaseAxisModelClass, extraDefaultOption) {
     each(AXIS_TYPES, function(v, axisType) {
       var defaultOption3 = merge(merge({}, axisDefault_default[axisType], true), extraDefaultOption, true);
@@ -49641,7 +49634,7 @@ var __IadClientBundle__ = (() => {
     return option.type || (option.data ? "category" : "value");
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/Cartesian.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/Cartesian.js
   var Cartesian = (
     /** @class */
     (function() {
@@ -49675,7 +49668,7 @@ var __IadClientBundle__ = (() => {
   );
   var Cartesian_default = Cartesian;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/Cartesian2D.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/Cartesian2D.js
   var cartesian2DDimensions = ["x", "y"];
   function canCalculateAffineTransform(scale3) {
     return (scale3.type === "interval" || scale3.type === "time") && !hasBreaks(scale3);
@@ -49785,7 +49778,7 @@ var __IadClientBundle__ = (() => {
   );
   var Cartesian2D_default = Cartesian2D;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisAlignTicks.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/axisAlignTicks.js
   function scaleCalcAlign(targetAxis, alignToScale) {
     var targetScale = targetAxis.scale;
     var targetAxisModel = targetAxis.model;
@@ -49962,7 +49955,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/Grid.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/coord/cartesian/Grid.js
   var XY_TO_MARGIN_IDX = [
     [3, 1],
     [0, 2]
@@ -50518,7 +50511,7 @@ var __IadClientBundle__ = (() => {
   };
   var Grid_default = Grid;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/modelHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/modelHelper.js
   function collect(ecModel, api) {
     var result = {
       /**
@@ -50716,7 +50709,7 @@ var __IadClientBundle__ = (() => {
     return model.type + "||" + model.id;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/AxisView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/AxisView.js
   var axisPointerClazz = {};
   var AxisView = (
     /** @class */
@@ -50774,7 +50767,7 @@ var __IadClientBundle__ = (() => {
   );
   var AxisView_default = AxisView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/axisSplitHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/axisSplitHelper.js
   var inner6 = makeInner();
   function rectCoordAxisBuildSplitArea(axisView, axisGroup, axisModel, gridModel) {
     var axis = axisModel.axis;
@@ -50852,7 +50845,7 @@ var __IadClientBundle__ = (() => {
     inner6(axisView).splitAreaColors = null;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/CartesianAxisView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axis/CartesianAxisView.js
   var selfBuilderAttrs = ["splitArea", "splitLine", "minorSplitLine", "breakArea"];
   var CartesianAxisView = (
     /** @class */
@@ -51032,7 +51025,7 @@ var __IadClientBundle__ = (() => {
     })(CartesianAxisView)
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/grid/installSimple.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/grid/installSimple.js
   var GridView = (
     /** @class */
     (function(_super) {
@@ -51079,7 +51072,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/scatter/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/scatter/install.js
   function install5(registers) {
     use(install4);
     registers.registerSeriesModel(ScatterSeries_default);
@@ -51087,7 +51080,7 @@ var __IadClientBundle__ = (() => {
     registers.registerLayout(pointsLayout("scatter"));
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/VisualMapping.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/VisualMapping.js
   var each4 = each;
   var isObject4 = isObject;
   var CATEGORY_DEFAULT_VISUAL_INDEX = -1;
@@ -51450,7 +51443,7 @@ var __IadClientBundle__ = (() => {
   }
   var VisualMapping_default = VisualMapping;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/helper/sliderMove.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/helper/sliderMove.js
   function sliderMove(delta, handleEnds, extent, handleIndex, minSpan, maxSpan) {
     delta = delta || 0;
     var extentSpan = addSafe(extent[1], -extent[0]);
@@ -51496,7 +51489,7 @@ var __IadClientBundle__ = (() => {
     return Math.min(extend2[1] != null ? extend2[1] : Infinity, Math.max(extend2[0] != null ? extend2[0] : -Infinity, value));
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/whiskerBoxCommon.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/helper/whiskerBoxCommon.js
   var WhiskerBoxCommonMixin = (
     /** @class */
     (function() {
@@ -51595,7 +51588,7 @@ var __IadClientBundle__ = (() => {
     return !containCount ? SHAPE_CLIP_KIND_FULLY_CLIPPED : containCount < count2 ? SHAPE_CLIP_KIND_PARTIALLY_CLIPPED : SHAPE_CLIP_KIND_NOT_CLIPPED;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/BoxplotSeries.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/BoxplotSeries.js
   var SERIES_TYPE_BOXPLOT = "boxplot";
   var BoxplotSeriesModel = (
     /** @class */
@@ -51655,7 +51648,7 @@ var __IadClientBundle__ = (() => {
   mixin(BoxplotSeriesModel, WhiskerBoxCommonMixin, true);
   var BoxplotSeries_default = BoxplotSeriesModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/BoxplotView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/BoxplotView.js
   var BoxplotView = (
     /** @class */
     (function(_super) {
@@ -51801,7 +51794,7 @@ var __IadClientBundle__ = (() => {
   }
   var BoxplotView_default = BoxplotView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/boxplotLayout.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/boxplotLayout.js
   var callOnlyOnce3 = makeCallOnlyOnce();
   var boxplotLayoutStageHandler = createSimpleOverallStageHandler(SERIES_TYPE_BOXPLOT, boxplotLayout);
   function boxplotLayout(ecModel) {
@@ -51922,7 +51915,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/prepareBoxplotData.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/prepareBoxplotData.js
   function prepareBoxplotData(rawData, opt) {
     opt = opt || {};
     var boxData = [];
@@ -51958,7 +51951,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/boxplotTransform.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/boxplotTransform.js
   var boxplotTransform = {
     type: "echarts:boxplot",
     transform: function transform(params) {
@@ -51980,7 +51973,7 @@ var __IadClientBundle__ = (() => {
     }
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/boxplot/install.js
   function install6(registers) {
     registers.registerSeriesModel(BoxplotSeries_default);
     registers.registerChartView(BoxplotView_default);
@@ -51989,7 +51982,7 @@ var __IadClientBundle__ = (() => {
     registerBoxplotAxisHandlers(registers);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/heatmap/HeatmapLayer.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/heatmap/HeatmapLayer.js
   var GRADIENT_LEVELS = 256;
   var HeatmapLayer = (
     /** @class */
@@ -52088,7 +52081,7 @@ var __IadClientBundle__ = (() => {
   );
   var HeatmapLayer_default = HeatmapLayer;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/heatmap/HeatmapView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/heatmap/HeatmapView.js
   function getIsInPiecewiseRange(dataExtent, pieceList, selected) {
     var dataSpan = dataExtent[1] - dataExtent[0];
     pieceList = map(pieceList, function(piece) {
@@ -52344,7 +52337,7 @@ var __IadClientBundle__ = (() => {
   );
   var HeatmapView_default = HeatmapView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/heatmap/HeatmapSeries.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/heatmap/HeatmapSeries.js
   var HeatmapSeriesModel = (
     /** @class */
     (function(_super) {
@@ -52391,13 +52384,13 @@ var __IadClientBundle__ = (() => {
   );
   var HeatmapSeries_default = HeatmapSeriesModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/heatmap/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/chart/heatmap/install.js
   function install7(registers) {
     registers.registerChartView(HeatmapView_default);
     registers.registerSeriesModel(HeatmapSeries_default);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/animation/customGraphicTransition.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/animation/customGraphicTransition.js
   var LEGACY_TRANSFORM_PROPS_MAP = {
     position: ["x", "y"],
     scale: ["scaleX", "scaleY"],
@@ -52780,7 +52773,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/animation/customGraphicKeyframeAnimation.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/animation/customGraphicKeyframeAnimation.js
   var getStateToRestore = makeInner();
   var KEYFRAME_EXCLUDE_KEYS = ["percent", "easing", "shape", "style", "extra"];
   function stopPreviousKeyframeAnimationAndRestore(el) {
@@ -52864,7 +52857,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/BaseAxisPointer.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/BaseAxisPointer.js
   var inner7 = makeInner();
   var clone3 = clone;
   var bind2 = bind;
@@ -53140,7 +53133,7 @@ var __IadClientBundle__ = (() => {
   }
   var BaseAxisPointer_default = BaseAxisPointer;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/viewHelper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/viewHelper.js
   function buildElStyle(axisPointerModel) {
     var axisPointerType = axisPointerModel.get("type");
     var styleModel = axisPointerModel.getModel(axisPointerType + "Style");
@@ -53281,7 +53274,7 @@ var __IadClientBundle__ = (() => {
     return [mathMax2(mathMin2(axisExtent[0], axisExtent[1]), val - bandWidth / 2), mathMin2(val + bandWidth / 2, mathMax2(axisExtent[0], axisExtent[1]))];
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/CartesianAxisPointer.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/CartesianAxisPointer.js
   var CartesianAxisPointer = (
     /** @class */
     (function(_super) {
@@ -53376,7 +53369,7 @@ var __IadClientBundle__ = (() => {
   }
   var CartesianAxisPointer_default = CartesianAxisPointer;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/AxisPointerModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/AxisPointerModel.js
   var AxisPointerModel = (
     /** @class */
     (function(_super) {
@@ -53444,7 +53437,7 @@ var __IadClientBundle__ = (() => {
   );
   var AxisPointerModel_default = AxisPointerModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/globalListener.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/globalListener.js
   var inner8 = makeInner();
   var each5 = each;
   function register(key2, api, handler) {
@@ -53526,7 +53519,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/AxisPointerView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/AxisPointerView.js
   var AxisPointerView = (
     /** @class */
     (function(_super) {
@@ -53562,7 +53555,7 @@ var __IadClientBundle__ = (() => {
   );
   var AxisPointerView_default = AxisPointerView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/findPointFromSeries.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/findPointFromSeries.js
   function findPointFromSeries(finder, ecModel) {
     var point = [];
     var seriesIndex = finder.seriesIndex;
@@ -53611,7 +53604,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/axisTrigger.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/axisTrigger.js
   var inner9 = makeInner();
   function axisTrigger(payload, ecModel, api) {
     var currTrigger = payload.currTrigger;
@@ -53904,7 +53897,7 @@ var __IadClientBundle__ = (() => {
     return !point || point[0] == null || isNaN(point[0]) || point[1] == null || isNaN(point[1]);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/axisPointer/install.js
   function install8(registers) {
     AxisView_default.registerAxisPointerClass("CartesianAxisPointer", CartesianAxisPointer_default);
     registers.registerComponentModel(AxisPointerModel_default);
@@ -53930,13 +53923,13 @@ var __IadClientBundle__ = (() => {
     }, axisTrigger);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/grid/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/grid/install.js
   function install9(registers) {
     use(install4);
     use(install8);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/graphic/GraphicModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/graphic/GraphicModel.js
   function setKeyInfoToNewElOption(resultItem, newElOption) {
     var existElOption = resultItem.existing;
     newElOption.id = resultItem.keyInfo.id;
@@ -54097,7 +54090,7 @@ var __IadClientBundle__ = (() => {
     })(Component_default)
   );
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/graphic/GraphicView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/graphic/GraphicView.js
   var nonShapeGraphicElements = {
     // Reserved but not supported in graphic component.
     path: null,
@@ -54395,7 +54388,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/graphic/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/graphic/install.js
   function install10(registers) {
     registers.registerComponentModel(GraphicComponentModel);
     registers.registerComponentView(GraphicComponentView);
@@ -54417,7 +54410,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/helper/listComponent.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/helper/listComponent.js
   function makeBackground(rect, componentModel) {
     var padding = normalizeCssArray2(componentModel.get("padding"));
     var style = componentModel.getItemStyle(["color", "opacity"]);
@@ -54437,7 +54430,7 @@ var __IadClientBundle__ = (() => {
     return bgRect;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/TooltipModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/TooltipModel.js
   var TooltipModel = (
     /** @class */
     (function(_super) {
@@ -54522,7 +54515,7 @@ var __IadClientBundle__ = (() => {
   );
   var TooltipModel_default = TooltipModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/helper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/helper.js
   function shouldTooltipConfine(tooltipModel) {
     var confineOption = tooltipModel.get("confine");
     return confineOption != null ? !!confineOption : tooltipModel.get("renderMode") === "richText";
@@ -54554,7 +54547,7 @@ var __IadClientBundle__ = (() => {
     return stl ? style ? stl[style] : stl : null;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/TooltipHTMLContent.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/TooltipHTMLContent.js
   var CSS_TRANSITION_VENDOR = toCSSVendorPrefix(TRANSITION_VENDOR, "transition");
   var CSS_TRANSFORM_VENDOR = toCSSVendorPrefix(TRANSFORM_VENDOR, "transform");
   var gCssText = "position:absolute;display:block;border-style:solid;white-space:nowrap;z-index:9999999;" + (env_default.transform3dSupported ? "will-change:transform;" : "");
@@ -54861,7 +54854,7 @@ var __IadClientBundle__ = (() => {
   );
   var TooltipHTMLContent_default = TooltipHTMLContent;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/TooltipRichContent.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/TooltipRichContent.js
   var TooltipRichContent = (
     /** @class */
     (function() {
@@ -55010,7 +55003,7 @@ var __IadClientBundle__ = (() => {
   }
   var TooltipRichContent_default = TooltipRichContent;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/TooltipView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/TooltipView.js
   var proxyRect = new Rect_default({
     shape: {
       x: -1,
@@ -55696,7 +55689,7 @@ var __IadClientBundle__ = (() => {
   }
   var TooltipView_default = TooltipView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/tooltip/install.js
   function install11(registers) {
     use(install8);
     registers.registerComponentModel(TooltipModel_default);
@@ -55713,7 +55706,7 @@ var __IadClientBundle__ = (() => {
     }, noop6);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/visualSolution.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/visualSolution.js
   var each6 = each;
   function hasKeys(obj) {
     if (obj) {
@@ -55807,7 +55800,7 @@ var __IadClientBundle__ = (() => {
     };
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/LegendModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/LegendModel.js
   var getDefaultSelectorOptions = function(ecModel, type) {
     if (type === "all") {
       return {
@@ -56063,7 +56056,7 @@ var __IadClientBundle__ = (() => {
   );
   var LegendModel_default = LegendModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/LegendView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/LegendView.js
   var curry2 = curry;
   var each7 = each;
   var Group2 = Group_default;
@@ -56486,7 +56479,7 @@ var __IadClientBundle__ = (() => {
   }
   var LegendView_default = LegendView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/legendAction.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/legendAction.js
   function legendSelectActionHandler(methodName, payload, ecModel) {
     var isAllSelect = methodName === "allSelect" || methodName === "inverseSelect";
     var selectedMap = {};
@@ -56543,7 +56536,7 @@ var __IadClientBundle__ = (() => {
     registers.registerAction("legendUnSelect", "legendunselected", curry(legendSelectActionHandler, "unSelect"));
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/legendFilter.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/legendFilter.js
   var legendFilterStageHandler = createSimpleOverallStageHandler2(legendFilter);
   function legendFilter(ecModel) {
     var legendModels = ecModel.findComponents({
@@ -56561,7 +56554,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/installLegendPlain.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/installLegendPlain.js
   function install12(registers) {
     registers.registerComponentModel(LegendModel_default);
     registers.registerComponentView(LegendView_default);
@@ -56572,7 +56565,7 @@ var __IadClientBundle__ = (() => {
     installLegendAction(registers);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/ScrollableLegendModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/ScrollableLegendModel.js
   var ScrollableLegendModel = (
     /** @class */
     (function(_super) {
@@ -56627,7 +56620,7 @@ var __IadClientBundle__ = (() => {
   }
   var ScrollableLegendModel_default = ScrollableLegendModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/ScrollableLegendView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/ScrollableLegendView.js
   var Group3 = Group_default;
   var WH3 = ["width", "height"];
   var XY3 = ["x", "y"];
@@ -56931,7 +56924,7 @@ var __IadClientBundle__ = (() => {
   );
   var ScrollableLegendView_default = ScrollableLegendView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/scrollableLegendAction.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/scrollableLegendAction.js
   function installScrollableLegendAction(registers) {
     registers.registerAction("legendScroll", "legendscroll", function(payload, ecModel) {
       var scrollDataIndex = payload.scrollDataIndex;
@@ -56945,7 +56938,7 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/installLegendScroll.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/installLegendScroll.js
   function install13(registers) {
     use(install12);
     registers.registerComponentModel(ScrollableLegendModel_default);
@@ -56953,13 +56946,13 @@ var __IadClientBundle__ = (() => {
     installScrollableLegendAction(registers);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/legend/install.js
   function install14(registers) {
     use(install12);
     use(install13);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/visualDefault.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/visualDefault.js
   var visualDefault = {
     /**
      * @public
@@ -57005,7 +56998,7 @@ var __IadClientBundle__ = (() => {
   };
   var visualDefault_default = visualDefault;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/VisualMapModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/VisualMapModel.js
   var mapVisual = VisualMapping_default.mapVisual;
   var eachVisual = VisualMapping_default.eachVisual;
   var isArray2 = isArray;
@@ -57305,7 +57298,7 @@ var __IadClientBundle__ = (() => {
   );
   var VisualMapModel_default = VisualMapModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/ContinuousModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/ContinuousModel.js
   var DEFAULT_BAR_BOUND = [20, 140];
   var ContinuousModel = (
     /** @class */
@@ -57477,7 +57470,7 @@ var __IadClientBundle__ = (() => {
   }
   var ContinuousModel_default = ContinuousModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/VisualMapView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/VisualMapView.js
   var VisualMapView = (
     /** @class */
     (function(_super) {
@@ -57568,7 +57561,7 @@ var __IadClientBundle__ = (() => {
   );
   var VisualMapView_default = VisualMapView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/helper.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/helper.js
   var paramsSet = [["left", "right", "width"], ["top", "bottom", "height"]];
   function getItemAlign(visualMapModel, api, itemSize) {
     var modelOption = visualMapModel.option;
@@ -57603,7 +57596,7 @@ var __IadClientBundle__ = (() => {
     return batch;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/ContinuousView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/ContinuousView.js
   var linearMap3 = linearMap;
   var each9 = each;
   var mathMin9 = Math.min;
@@ -58182,7 +58175,7 @@ var __IadClientBundle__ = (() => {
   }
   var ContinuousView_default = ContinuousView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/visualMapAction.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/visualMapAction.js
   var visualMapActionInfo = {
     type: "selectDataRange",
     event: "dataRangeSelected",
@@ -58198,7 +58191,7 @@ var __IadClientBundle__ = (() => {
     });
   };
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/visualEncoding.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/visualEncoding.js
   var visualMapEncodingHandlers = [
     {
       createOnAllSeries: true,
@@ -58258,7 +58251,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/preprocessor.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/preprocessor.js
   var each10 = each;
   function visualMapPreprocessor(option) {
     var visualMap = option && option.visualMap;
@@ -58305,7 +58298,7 @@ var __IadClientBundle__ = (() => {
     return obj && obj.hasOwnProperty && obj.hasOwnProperty(name2);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/installCommon.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/installCommon.js
   var installed = false;
   function installCommon(registers) {
     if (installed) {
@@ -58322,14 +58315,14 @@ var __IadClientBundle__ = (() => {
     registers.registerPreprocessor(visualMapPreprocessor);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/installVisualMapContinuous.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/installVisualMapContinuous.js
   function install15(registers) {
     registers.registerComponentModel(ContinuousModel_default);
     registers.registerComponentView(ContinuousView_default);
     installCommon(registers);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/PiecewiseModel.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/PiecewiseModel.js
   var PiecewiseModel = (
     /** @class */
     (function(_super) {
@@ -58655,7 +58648,7 @@ var __IadClientBundle__ = (() => {
   }
   var PiecewiseModel_default = PiecewiseModel;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/PiecewiseView.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/PiecewiseView.js
   var PiecewiseVisualMapView = (
     /** @class */
     (function(_super) {
@@ -58817,20 +58810,20 @@ var __IadClientBundle__ = (() => {
   );
   var PiecewiseView_default = PiecewiseVisualMapView;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/installVisualMapPiecewise.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/installVisualMapPiecewise.js
   function install16(registers) {
     registers.registerComponentModel(PiecewiseModel_default);
     registers.registerComponentView(PiecewiseView_default);
     installCommon(registers);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/visualMap/install.js
   function install17(registers) {
     use(install15);
     use(install16);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/aria.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/visual/aria.js
   var DEFAULT_OPTION = {
     label: {
       enabled: true
@@ -59007,7 +59000,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/aria/preprocessor.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/aria/preprocessor.js
   function ariaPreprocessor(option) {
     if (!option || !option.aria) {
       return;
@@ -59024,13 +59017,13 @@ var __IadClientBundle__ = (() => {
     });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/aria/install.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/component/aria/install.js
   function install18(registers) {
     registers.registerPreprocessor(ariaPreprocessor);
     registers.registerVisual(registers.PRIORITY.VISUAL.ARIA, ariaVisualStageHandler);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/SVGPathRebuilder.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/SVGPathRebuilder.js
   var mathSin5 = Math.sin;
   var mathCos5 = Math.cos;
   var PI7 = Math.PI;
@@ -59130,7 +59123,7 @@ var __IadClientBundle__ = (() => {
   })();
   var SVGPathRebuilder_default = SVGPathRebuilder;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/mapStyleToAttrs.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/mapStyleToAttrs.js
   var NONE = "none";
   var mathRound3 = Math.round;
   function pathHasFill(style) {
@@ -59201,7 +59194,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/core.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/core.js
   var SVGNS = "http://www.w3.org/2000/svg";
   var XLINKNS = "http://www.w3.org/1999/xlink";
   var XMLNS = "http://www.w3.org/2000/xmlns/";
@@ -59305,13 +59298,13 @@ var __IadClientBundle__ = (() => {
     }, children);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/cssClassId.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/cssClassId.js
   var cssClassIdx = 0;
   function getClassId() {
     return cssClassIdx++;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/cssAnimation.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/cssAnimation.js
   var EASING_MAP = {
     cubicIn: "0.32,0,0.67,0",
     cubicOut: "0.33,1,0.68,1",
@@ -59576,7 +59569,7 @@ var __IadClientBundle__ = (() => {
     }
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/cssEmphasis.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/cssEmphasis.js
   function createCSSEmphasis(el, attrs, scope) {
     if (!el.ignore) {
       if (el.isSilent()) {
@@ -59627,7 +59620,7 @@ var __IadClientBundle__ = (() => {
     attrs["class"] = attrs["class"] ? attrs["class"] + " " + className : className;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/graphic.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/graphic.js
   var round6 = Math.round;
   function isImageLike2(val) {
     return val && isString(val.src);
@@ -60063,7 +60056,7 @@ var __IadClientBundle__ = (() => {
     attrs["clip-path"] = getIdURL(clipPathId);
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/domapi.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/domapi.js
   function createTextNode(text) {
     return document.createTextNode(text);
   }
@@ -60086,7 +60079,7 @@ var __IadClientBundle__ = (() => {
     node.textContent = text;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/patch.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/patch.js
   var colonChar = 58;
   var xChar = 120;
   var emptyNode = createVNode("", "");
@@ -60312,7 +60305,7 @@ var __IadClientBundle__ = (() => {
     return vnode;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/Painter.js
+  // ../../node_modules/.pnpm/zrender@6.1.0/node_modules/zrender/lib/svg/Painter.js
   var svgId = 0;
   var SVGPainter = (function() {
     function SVGPainter2(root, storage, opts) {
@@ -60554,12 +60547,12 @@ var __IadClientBundle__ = (() => {
   }
   var Painter_default = SVGPainter;
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/renderer/installSVGRenderer.js
+  // ../../node_modules/.pnpm/echarts@6.1.0/node_modules/echarts/lib/renderer/installSVGRenderer.js
   function install19(registers) {
     registers.registerPainter("svg", Painter_default);
   }
 
-  // apps/iad-harness/src/client/components/charts/options.ts
+  // src/client/components/charts/options.ts
   function chartNumber(value, format2 = "count") {
     return value.toLocaleString("zh-CN", format2 === "percent" ? { style: "percent", maximumSignificantDigits: 4 } : format2 === "count" ? { maximumFractionDigits: 0 } : { maximumSignificantDigits: 5 });
   }
@@ -60816,7 +60809,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     }
   }
 
-  // apps/iad-harness/src/client/components/charts/Chart.tsx
+  // src/client/components/charts/Chart.tsx
   var import_jsx_runtime51 = __require("react/jsx-runtime");
   use([
     install2,
@@ -60834,16 +60827,16 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     install19
   ]);
   function Chart({ id, title, spec, onSelect, description, controls }) {
-    const host = (0, import_react44.useRef)(null);
-    const chartType = (0, import_react44.useRef)(spec?.type);
+    const host = (0, import_react43.useRef)(null);
+    const chartType = (0, import_react43.useRef)(spec?.type);
     if (spec) chartType.current = spec.type;
-    const current = (0, import_react44.useRef)({ spec, onSelect });
+    const current = (0, import_react43.useRef)({ spec, onSelect });
     current.current = { spec, onSelect };
-    const draw = (0, import_react44.useRef)(() => {
+    const draw = (0, import_react43.useRef)(() => {
     });
     const hasData = spec !== null;
     const summary = [title, ...spec ? chartReadings(spec) : []].join("\uFF1B").replaceAll("\n", "\uFF0C");
-    (0, import_react44.useEffect)(() => {
+    (0, import_react43.useEffect)(() => {
       if (!hasData) return;
       const element = host.current;
       const chart = init2(element, void 0, { renderer: "svg" });
@@ -60885,7 +60878,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
         chart.dispose();
       };
     }, [hasData]);
-    (0, import_react44.useEffect)(() => draw.current(), [spec]);
+    (0, import_react43.useEffect)(() => draw.current(), [spec]);
     return /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("figure", { className: "iad-chart", "data-chart": id || chartType.current, "data-chart-type": chartType.current, children: [
       /* @__PURE__ */ (0, import_jsx_runtime51.jsxs)("figcaption", { children: [
         title,
@@ -60896,14 +60889,14 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditReportDistribution.tsx
+  // src/client/components/AuditReportDistribution.tsx
   var import_jsx_runtime52 = __require("react/jsx-runtime");
-  var import_react46 = __require("react");
+  var import_react45 = __require("react");
   var qualityNames = { PASS: "\u826F\u54C1", FAIL: "\u5F02\u5E38", UNCERTAIN: "\u672A\u786E\u5B9A" };
   function DistributionPlot({ id, title, data, names, spec }) {
-    const selectorId = (0, import_react45.useId)();
-    const [selected, setSelected] = (0, import_react45.useState)(data.datasets);
-    const view = (0, import_react45.useMemo)(() => selectDistribution(data, selected, names), [data, selected, names]);
+    const selectorId = (0, import_react44.useId)();
+    const [selected, setSelected] = (0, import_react44.useState)(data.datasets);
+    const view = (0, import_react44.useMemo)(() => selectDistribution(data, selected, names), [data, selected, names]);
     return /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(Chart, { id, title, spec: view ? spec(view) : null, controls: /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(
       MultiSelect,
       {
@@ -60976,7 +60969,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
         }) }),
         ["image_aspect_ratio", "box_aspect_ratio", "relative_area"].filter((key2) => overall.histograms[key2]).map((key2) => {
           const title = { image_aspect_ratio: "\u56FE\u50CF\u957F\u5BBD\u6BD4", box_aspect_ratio: "\u6846\u957F\u5BBD\u6BD4", relative_area: "\u6846\u9762\u79EF\u5360\u6BD4" }[key2];
-          return /* @__PURE__ */ (0, import_react46.createElement)(DistributionPlot, { ...scope, key: key2, id: key2.replaceAll("_", "-"), title, spec: (view) => ({
+          return /* @__PURE__ */ (0, import_react45.createElement)(DistributionPlot, { ...scope, key: key2, id: key2.replaceAll("_", "-"), title, spec: (view) => ({
             type: "distribution",
             series: view.distributions[key2],
             xLabel: title,
@@ -61000,7 +60993,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
           }) }),
           /* @__PURE__ */ (0, import_jsx_runtime52.jsx)(DistributionPlot, { ...scope, id: "category-area", title: "\u5404\u7C7B\u522B\u6846\u9762\u79EF\u5360\u6BD4", spec: (view) => ({ type: "boxplot", format: "percent", rows: view.area_by_category }) })
         ] }),
-        ["datasets", ...sources.map(([key2]) => key2)].map((key2) => /* @__PURE__ */ (0, import_react46.createElement)(
+        ["datasets", ...sources.map(([key2]) => key2)].map((key2) => /* @__PURE__ */ (0, import_react45.createElement)(
           DistributionPlot,
           {
             ...scope,
@@ -61025,10 +61018,10 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] }) });
   }
 
-  // apps/iad-harness/src/client/components/AuditEvidenceGallery.tsx
-  var import_react47 = __require("react");
+  // src/client/components/AuditEvidenceGallery.tsx
+  var import_react46 = __require("react");
 
-  // apps/iad-harness/src/client/components/AuditReportHeading.tsx
+  // src/client/components/AuditReportHeading.tsx
   var import_jsx_runtime53 = __require("react/jsx-runtime");
   function AuditReportHeading({ level, number, children }) {
     const Heading = `h${level}`;
@@ -61038,17 +61031,17 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditEvidenceGallery.tsx
+  // src/client/components/AuditEvidenceGallery.tsx
   var import_jsx_runtime54 = __require("react/jsx-runtime");
   function AuditEvidenceGallery({ items, imageUrl, title = "\u56FE\u50CF\u8BC1\u636E", heading = { level: 4 } }) {
-    const grid = (0, import_react47.useRef)(null);
-    const [paging, setPaging] = (0, import_react47.useState)({ page: 1, size: 8 });
-    const [current, setCurrent] = (0, import_react47.useState)(null);
-    const [role, setRole] = (0, import_react47.useState)("representative");
+    const grid = (0, import_react46.useRef)(null);
+    const [paging, setPaging] = (0, import_react46.useState)({ page: 1, size: 8 });
+    const [current, setCurrent] = (0, import_react46.useState)(null);
+    const [role, setRole] = (0, import_react46.useState)("representative");
     const compare2 = items.some((item) => item.role === "counter") && items.some((item) => item.role === "representative");
     const selected = compare2 ? items.filter((item) => item.role === role) : items;
     const page = Math.min(paging.page, Math.max(1, Math.ceil(selected.length / paging.size)));
-    (0, import_react47.useLayoutEffect)(() => {
+    (0, import_react46.useLayoutEffect)(() => {
       if (!items.length) return;
       const element = grid.current;
       const observer = new ResizeObserver(() => {
@@ -61122,7 +61115,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditReportChart.tsx
+  // src/client/components/AuditReportChart.tsx
   var import_jsx_runtime55 = __require("react/jsx-runtime");
   function AuditReportChart({ kind, title, rows, unit, maximum }) {
     return /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(Chart, { id: kind, title, spec: kind === "outcomes" ? {
@@ -61132,7 +61125,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     } : { type: "bar", series: [{ label: "\u6570\u91CF", unit }], rows: rows.map((row) => ({ id: row.label, label: row.label, values: [row.value] })), maximum } });
   }
 
-  // apps/iad-harness/src/client/components/AuditReportCases.tsx
+  // src/client/components/AuditReportCases.tsx
   var import_jsx_runtime56 = __require("react/jsx-runtime");
   function auditCaseImages(report, ids) {
     const images = /* @__PURE__ */ new Map();
@@ -61144,7 +61137,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     return /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(AuditEvidenceGallery, { items: auditCaseImages(report, ids), imageUrl, heading });
   }
 
-  // apps/iad-harness/src/client/components/AuditEvidenceSection.tsx
+  // src/client/components/AuditEvidenceSection.tsx
   var import_jsx_runtime57 = __require("react/jsx-runtime");
   function AuditEvidenceSection({ content, imageUrl }) {
     const galleries = content.galleries.filter((group) => group.images.length);
@@ -61175,7 +61168,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditReportConsistency.tsx
+  // src/client/components/AuditReportConsistency.tsx
   var import_jsx_runtime58 = __require("react/jsx-runtime");
   function AuditReportConsistency({ report, sources, imageUrl }) {
     const analyses = report.consistency_analyses || [];
@@ -61194,6 +61187,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     const scopes = [
       "NO_CANDIDATES",
       "NO_ELIGIBLE_CANDIDATES",
+      "PROGRAM_REVIEWED:EQUIVALENT",
       "MODEL_REVIEWED:EQUIVALENT",
       ...sources.filter((item) => ["MODEL_REVIEWED:MATERIAL", "MODEL_REVIEWED:UNCERTAIN"].includes(item.key) && item.value > 0).map((item) => item.key)
     ];
@@ -61266,7 +61260,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditReportKnowledge.tsx
+  // src/client/components/AuditReportKnowledge.tsx
   var import_jsx_runtime59 = __require("react/jsx-runtime");
   function AuditReportKnowledge({ report, imageUrl }) {
     const entries = report.knowledge_entries || [];
@@ -61297,7 +61291,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditReportContent.tsx
+  // src/client/components/AuditReportContent.tsx
   var import_jsx_runtime60 = __require("react/jsx-runtime");
   function AuditReportContent({ report, imageUrl }) {
     const stats = report.statistics, profile = report.dataset_profile;
@@ -61308,7 +61302,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       label,
       value: Object.values(stats.consistency_cross[key2] || {}).reduce((sum, count2) => sum + count2, 0)
     })) : [];
-    const compared = sources.filter((item) => item.key.startsWith("MODEL_REVIEWED:")).reduce((sum, item) => sum + item.value, 0);
+    const compared = sources.filter((item) => item.key.startsWith("MODEL_REVIEWED:") || item.key.startsWith("PROGRAM_REVIEWED:")).reduce((sum, item) => sum + item.value, 0);
     const showReadiness = report.capabilities.some((item) => item.readiness_status !== "not_evaluated");
     const qualityCases = cases.filter((item) => item.evidence_refs.some((reference) => reference.kind === "finding"));
     return /* @__PURE__ */ (0, import_jsx_runtime60.jsxs)("article", { className: "iad-audit-document", children: [
@@ -61505,7 +61499,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditReport.tsx
+  // src/client/components/AuditReport.tsx
   var import_jsx_runtime61 = __require("react/jsx-runtime");
   function AuditReport({ job, revision }) {
     const terminal = !!job && !["PENDING", "RUNNING"].includes(job.status);
@@ -61529,10 +61523,10 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditSampleDialog.tsx
-  var import_react48 = __require("react");
+  // src/client/components/AuditSampleDialog.tsx
+  var import_react47 = __require("react");
 
-  // apps/iad-harness/src/client/components/AuditSampleMedia.tsx
+  // src/client/components/AuditSampleMedia.tsx
   var import_jsx_runtime62 = __require("react/jsx-runtime");
   function auditSampleImage(sample, taskId) {
     if (sample.overview_evidence_id) {
@@ -61541,13 +61535,13 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     return mediaUrl({ task_id: taskId, sample_id: sample.sample_id });
   }
 
-  // apps/iad-harness/src/client/components/AuditSampleDialog.tsx
+  // src/client/components/AuditSampleDialog.tsx
   var import_jsx_runtime63 = __require("react/jsx-runtime");
   function AuditSampleDialog({ sample, taskId, onClose }) {
     const resource = useResource(`/audit/jobs/${encodeURIComponent(sample.run_id)}/samples/${encodeURIComponent(sample.sample_id)}`);
-    const [lightbox, setLightbox] = (0, import_react48.useState)(null);
+    const [lightbox, setLightbox] = (0, import_react47.useState)(null);
     const detail = resource.data;
-    const pictures = (0, import_react48.useMemo)(() => {
+    const pictures = (0, import_react47.useMemo)(() => {
       return [...(detail?.evidence || []).filter((item) => item.image.role === "overview" && item.image.representation === "raw")].sort((left, right) => Number(right.sample_id === sample.sample_id) - Number(left.sample_id === sample.sample_id)).map((item) => {
         const record = item.source, image = item.image;
         const view = {
@@ -61660,11 +61654,11 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/PromptDrawer.tsx
-  var import_react49 = __toESM(__require("react"), 1);
+  // src/client/components/PromptDrawer.tsx
+  var import_react48 = __toESM(__require("react"), 1);
   var import_jsx_runtime64 = __require("react/jsx-runtime");
   function PromptDrawer({ title, text, systemText, additionalSections = [], systemLabel = "\u7CFB\u7EDF\u63D0\u793A\u8BCD", userLabel = "\u7528\u6237\u63D0\u793A\u8BCD", onClose }) {
-    const [notice, setNotice] = (0, import_react49.useState)("");
+    const [notice, setNotice] = (0, import_react48.useState)("");
     const sections2 = [
       ...systemText ? [{ title: systemLabel, text: systemText }] : [],
       { title: systemText ? userLabel : "", text },
@@ -61685,7 +61679,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)("div", { className: "iad-dialog-body", children: [
         notice && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("p", { role: "status", children: notice }),
-        sections2.map((section) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_react49.default.Fragment, { children: [
+        sections2.map((section) => /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_react48.default.Fragment, { children: [
           section.title && /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("h3", { children: section.title }),
           /* @__PURE__ */ (0, import_jsx_runtime64.jsx)("pre", { className: "iad-prompt-text", children: section.text })
         ] }, section.title))
@@ -61693,7 +61687,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditPromptDrawer.tsx
+  // src/client/components/AuditPromptDrawer.tsx
   var import_jsx_runtime65 = __require("react/jsx-runtime");
   function AuditPromptDrawer({ runId, onClose }) {
     const prompts = useResource(`/audit/jobs/${encodeURIComponent(runId)}/prompts`);
@@ -61712,10 +61706,10 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     );
   }
 
-  // apps/iad-harness/src/client/components/AuditSetup.tsx
-  var import_react54 = __require("react");
+  // src/client/components/AuditSetup.tsx
+  var import_react53 = __require("react");
 
-  // apps/iad-harness/src/client/useModuleSettings.ts
+  // src/client/useModuleSettings.ts
   function useModuleSettings(module) {
     const client = useQueryClient(), key2 = ["iad", "module-settings", module], path = `/settings/modules/${module}`;
     const resource = useQuery({ queryKey: key2, queryFn: ({ signal }) => request(path, void 0, void 0, signal) });
@@ -61756,7 +61750,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     };
   }
 
-  // apps/iad-harness/src/shared/prompt-defaults.generated.ts
+  // src/shared/prompt-defaults.generated.ts
   var promptDefaults = {
     "audit": "\u89C2\u5BDF\u5B8C\u6574\u539F\u56FE\u3001\u5168\u90E8\u539F\u59CB\u6807\u6CE8\u548C\u5FC5\u9700\u5C40\u90E8\uFF0C\u72EC\u7ACB\u6838\u5BF9\u53EF\u89C1\u73B0\u8C61\u7684\u8986\u76D6\u3001\u5B9A\u4F4D\u548C\u5B9E\u4F8B\u7EC4\u7EC7\uFF0C\u518D\u9010\u9879\u6838\u5BF9\u4E0A\u6E38\u5DEE\u5F02\u3001\u6240\u9009\u77E5\u8BC6\u548C\u672C\u6279\u7EBF\u7D22\u3002\n\n\u63D0\u4EA4\u5177\u4F53\u56FE\u50CF\u4F9D\u636E\u3001\u4E00\u53E5\u8BDD\u7ED3\u8BBA\u3001\u6709\u72EC\u7ACB\u56FE\u8BC1\u7684\u7591\u70B9\u3001\u5FC5\u8981\u666E\u901A\u89C2\u5BDF\u53CA\u5C11\u91CF\u8DE8\u56FE\u89C6\u89C9\u7279\u5F81\u3002\u5206\u6790\u4E0E\u4F9D\u636E\u8BF4\u660E\u672C\u56FE\u4E8B\u5B9E\uFF0C\u5C40\u9650\u8BB0\u5F55\u5B9E\u9645\u53D6\u8BC1\u7F3A\u53E3\uFF1B\u5F15\u7528\u5B9E\u9645\u89C2\u5BDF\u7684\u5B8C\u6574\u539F\u56FE\u3002",
     "auditReport": "\u7EFC\u5408\u5168\u90E8\u6709\u6548\u56FE\u7EA7\u7ED3\u679C\u3001\u5168\u5C40\u53D1\u73B0\u3001\u7A0B\u5E8F\u7EDF\u8BA1\u3001\u6765\u6E90\u4FE1\u606F\u548C\u9009\u7528\u7684\u8BC4\u6D4B\u6210\u679C\uFF0C\u5F62\u6210\u9762\u5411\u975E\u9879\u76EE\u4EBA\u5458\u7684\u8D28\u91CF\u4E0E\u8BC4\u6D4B\u80FD\u529B\u62A5\u544A\uFF0C\u6309\u5DE5\u5177\u5408\u540C\u63D0\u4EA4\u3002\n\n\u7ED3\u8BBA\u53EA\u6982\u62EC\u5F53\u524D\u7528\u9014\u548C\u4E3B\u8981\u89C6\u89C9\u53D1\u73B0\uFF0C\u6570\u91CF\u7531\u9875\u9762\u7EDF\u8BA1\u5C55\u793A\u3002\u968F\u540E\u56DE\u7B54\u81EA\u6D3D\u6027\u3001\u6807\u6CE8\u590D\u6838\u91CD\u70B9\u3001\u89C6\u89C9\u8986\u76D6\u3001\u72EC\u7ACB\u6027\u4E0E\u4EE3\u8868\u6027\u3001\u6A21\u578B\u80FD\u529B\u548C\u4F7F\u7528\u6761\u4EF6\u3002\n\n\u81EA\u6D3D\u6027\u5F00\u5934\u7528\u4E00\u4E24\u53E5\u8BDD\u56DE\u7B54\uFF1A\u5728\u5185\u5BB9\u76F8\u540C\u3001\u53EF\u4EE5\u5BF9\u7167\u7684\u56FE\u50CF\u4E2D\uFF0C\u6807\u6CE8\u662F\u5426\u4E00\u81F4\uFF1B\u7A0B\u5E8F\u6807\u51FA\u7684\u5DEE\u5F02\u7ECF\u8FC7\u6A21\u578B\u770B\u56FE\u540E\uFF0C\u54EA\u4E9B\u4ECD\u7136\u6210\u7ACB\u3002\u4E24\u5957\u7EDF\u8BA1\u7531\u7A0B\u5E8F\u8BA1\u7B97\u5E76\u5728\u9875\u9762\u5C55\u793A\uFF0C\u6309\u4E3B\u56FE\u8BA1\u6570\uFF0C\u540C\u4E00\u5F20\u56FE\u5728\u540C\u4E00\u7C7B\u53EA\u8BB0\u4E00\u6B21\u3002\u968F\u540E\u6309\u5B9E\u9645\u7C7B\u578B\u89E3\u91CA\u7A0B\u5E8F\u53D1\u73B0\u548C\u6A21\u578B\u590D\u6838\u7684\u5DEE\u522B\uFF0C\u76F4\u63A5\u8BF4\u4E24\u4FA7\u6807\u6CE8\u54EA\u91CC\u4E0D\u540C\u3001\u4E3A\u4F55\u4FDD\u7559\u6216\u6392\u9664\uFF0C\u914D3\u81F38\u5F20\u76F8\u5173\u5B8C\u6574\u539F\u56FE\u3002\n\n\u65E0\u5019\u9009\u3001\u65E0\u6709\u6548\u5019\u9009\u3001\u6807\u6CE8\u4E00\u81F4\u7B49\u975E\u7A7A\u8303\u56F4\u5404\u81EA\u8BF4\u660E\u5BF9\u7167\u56FE\u7684\u60C5\u51B5\u548C\u8DE8\u56FE\u6BD4\u8F83\u7ED3\u679C\uFF0C\u7CBE\u90093\u81F38\u5F20\u5C5E\u4E8E\u8BE5\u8303\u56F4\u7684\u5B8C\u6574\u539F\u56FE\u3002\u8303\u56F4\u7531\u8BB0\u5F55\u4E2D\u7684consistency.source_status\u786E\u5B9A\u3002\u5355\u5F20\u56FE\u662F\u5426\u6F0F\u6807\u3001\u5708\u591A\u4E86\u6216\u628A\u4E00\u4E2A\u76EE\u6807\u5206\u6210\u51E0\u4E2A\uFF0C\u653E\u5728\u6807\u6CE8\u8D28\u91CF\u7AE0\u8282\uFF1B\u5F62\u6001\u3001\u4EAE\u5EA6\u548C\u7EB9\u7406\u53D8\u5316\u653E\u5728\u89C6\u89C9\u8986\u76D6\u6216\u6A21\u578B\u80FD\u529B\u7AE0\u8282\u3002\u7AE0\u8282\u6982\u8FF0\u805A\u7126\u6807\u6CE8\u662F\u5426\u4E00\u81F4\uFF0C\u5177\u4F53\u56FE\u50CF\u7EC6\u8282\u5728\u5BF9\u5E94\u5C0F\u8282\u8BF4\u660E\u3002\n\n\u8986\u76D6\u6309\u5B9E\u9645\u5F62\u6001\u3001\u65B9\u5411\u3001\u5C3A\u5EA6\u611F\u53D7\u3001\u53EF\u89C1\u5EA6\u3001\u80CC\u666F\u548C\u7ED3\u6784\u5173\u7CFB\u5F62\u6210\u4E3B\u9898\u3002\u72EC\u7ACB\u6027\u8BF4\u6E05\u54EA\u4E9B\u56FE\u7247\u91CD\u590D\u3001\u54EA\u4E9B\u53EF\u80FD\u62CD\u81EA\u540C\u4E00\u4EF6\u7269\u54C1\uFF1B\u7F3A\u5C11\u767B\u8BB0\u65F6\uFF0C\u76F4\u63A5\u5217\u51FA\u9700\u8981\u8865\u8BB0\u7684\u7269\u54C1\u3001\u6279\u6B21\u6216\u91C7\u96C6\u6765\u6E90\uFF0C\u4EE5\u53CA\u5B8C\u6210\u540E\u53EF\u4EE5\u600E\u6837\u5206\u7EC4\u3002\n\n\u80FD\u529B\u4E13\u9898\u4ECE\u771F\u5B9E\u89C6\u89C9\u56F0\u96BE\u5F62\u6210\u3002\u6BCF\u4E2A\u5C0F\u70B9\u8BF4\u660E\u89C2\u5BDF\u3001\u8DE8\u56FE\u5171\u6027\u4E0E\u5DEE\u522B\u3001\u53EF\u80FD\u68C0\u9A8C\u7684\u6A21\u578B\u8868\u73B0\uFF0C\u5E76\u5F15\u7528\u6709\u5B8C\u6574\u539F\u56FE\u7684\u6848\u4F8B\u3002\u5355\u56FE\u7279\u6B8A\u73B0\u8C61\u6309\u4E2A\u4F8B\u89E3\u91CA\uFF0C\u5C1A\u7F3A\u7684\u80FD\u529B\u573A\u666F\u96C6\u4E2D\u5217\u51FA\u3002\u56FA\u5B9A\u6807\u7B7E\u4F9B\u5185\u90E8\u7EDF\u8BA1\uFF0C\u6B63\u6587\u4E13\u9898\u6309\u8BC1\u636E\u7EC4\u7EC7\u3002\n\n\u6BCF\u6761\u6240\u9009\u77E5\u8BC6\u5206\u522B\u8BF4\u660E\u68C0\u67E5\u52A8\u4F5C\u3001\u9002\u7528\u60C5\u51B5\u3001\u5B9E\u9645\u56FE\u50CF\u89C2\u5BDF\u4E0E\u5BF9\u7167\uFF0C\u4EE5\u53CA\u5BF9\u672C\u6B21\u5224\u65AD\u7684\u4F5C\u7528\u3002\u7CBE\u9009\u4E3B Agent \u5DF2\u67E5\u770B\u7684\u5B8C\u6574\u539F\u56FE\u89E3\u91CA\u5E94\u7528\u3002\u6807\u9898\u53CA\u77E5\u8BC6\u72B6\u6001\u6765\u81EA\u51BB\u7ED3\u6761\u76EE\uFF0C\u9010\u56FE\u6838\u5BF9\u6570\u91CF\u6765\u81EA\u7A0B\u5E8F\u7EDF\u8BA1\u3002\u77E5\u8BC6\u7AE0\u8282\u4F7F\u7528\u6807\u9898\u3001\u63CF\u8FF0\u3001\u56FE\u50CF\u8BC1\u636E\u548C\u7ED3\u6784\u5316\u5206\u6790\uFF1B\u77E5\u8BC6\u4E3A\u7A7A\u65F6\u5217\u8868\u4E3A\u7A7A\u3002\n\n\u6BCF\u4E2A\u5206\u6790\u70B9\u76F4\u63A5\u8BB2\u56FE\u91CC\u6709\u4EC0\u4E48\u3001\u6807\u6CE8\u6709\u6CA1\u6709\u5708\u5BF9\u3001\u4E24\u56FE\u54EA\u91CC\u76F8\u540C\u6216\u4E0D\u540C\uFF0C\u4EE5\u53CA\u53EF\u4EE5\u636E\u6B64\u68C0\u67E5\u6A21\u578B\u7684\u4EC0\u4E48\u8868\u73B0\u3002\u6B63\u6587\u81EA\u6210\u4E00\u6BB5\u5B8C\u6574\u8BF4\u660E\uFF0C\u76F8\u5173\u539F\u56FE\u901A\u8FC7\u5173\u8054\u5B57\u6BB5\u5728\u8BE5\u5904\u5C55\u793A\u3002\u6BCF\u5F20\u56FE\u7684\u8BF4\u660E\u6307\u51FA\u5E94\u770B\u54EA\u91CC\u3001\u5177\u4F53\u5F62\u6001\u6216\u5DEE\u522B\u3002\u5206\u6790\u548C\u56FE\u8BC1\u5173\u8054\u5F53\u524D\u6709\u6548\u56FE\u7EA7\u7248\u672C\u3002\n\n\u5206\u522B\u8BC4\u4EF7\u89C6\u89C9\u63A2\u7D22\u3001\u8BAD\u7EC3\u5B9E\u9A8C\u3001\u5185\u90E8\u8C03\u8BD5\u3001\u56FE\u50CF\u7EA7\u8BC4\u6D4B\u3001\u77E9\u5F62\u6846\u5B9A\u4F4D\u8BC4\u6D4B\u3001\u50CF\u7D20\u533A\u57DF\u8BC4\u6D4B\u53CA\u6B63\u5F0F\u8BC4\u6D4B\u57FA\u51C6\u3002\u5404\u9879\u8BF4\u660E\u53EF\u5F00\u5C55\u7684\u5DE5\u4F5C\u548C\u5B9E\u9645\u6761\u4EF6\u3002\u5171\u540C\u7F3A\u9879\u96C6\u4E2D\u5728\u7528\u9014\u7AE0\u8282\uFF0C\u5404\u4E3B\u9898\u53EA\u8865\u5145\u7279\u6709\u6761\u4EF6\u3002\n\n\u5148\u5199\u5177\u4F53\u4E8B\u5B9E\uFF0C\u518D\u89E3\u91CA\u539F\u56E0\u6216\u4E0B\u4E00\u6B65\u3002\u4E00\u53E5\u8BDD\u53EA\u8BB2\u4E00\u4E2A\u8981\u70B9\uFF0C\u4E3B\u8BED\u662F\u56FE\u4E2D\u7684\u90E8\u4F4D\u3001\u5DF2\u6709\u6807\u6CE8\u6216\u8981\u505A\u7684\u68C0\u67E5\u3002\u63D0\u4EA4\u524D\u9010\u6BB5\u6309\u666E\u901A\u8BFB\u8005\u7684\u89C6\u89D2\u91CD\u8BFB\uFF1A\u8BFB\u8005\u80FD\u5426\u6307\u7740\u56FE\u7247\u627E\u5230\u4F60\u8BF4\u7684\u5730\u65B9\uFF0C\u80FD\u5426\u76F4\u63A5\u77E5\u9053\u4F60\u7684\u5224\u65AD\u6216\u4E0B\u4E00\u6B65\u52A8\u4F5C\uFF1B\u8BFB\u4E0D\u987A\u7684\u53E5\u5B50\u7528\u65E5\u5E38\u7528\u8BED\u91CD\u5199\u3002\u6574\u4F53\u7EDF\u8BA1\u7531\u9875\u9762\u4EA4\u4EE3\uFF0C\u6280\u672F\u660E\u7EC6\u4FDD\u7559\u5728\u7ED3\u6784\u5316\u8BB0\u5F55\u4E2D\u3002\n\n\u62A5\u544A\u5E2E\u52A9\u8BFB\u8005\u770B\u61C2\u8FD9\u6279\u56FE\u50CF\u3001\u6807\u6CE8\u548C\u540E\u7EED\u5DE5\u4F5C\uFF0C\u56DE\u7B54\u81EA\u6D3D\u6027\u3001\u6807\u6CE8\u8D28\u91CF\u3001\u89C6\u89C9\u8986\u76D6\u3001\u72EC\u7ACB\u6027\u4E0E\u4EE3\u8868\u6027\u3001\u6A21\u578B\u80FD\u529B\u548C\u6570\u636E\u7528\u9014\u516D\u4E2A\u95EE\u9898\u3002\u5F00\u5934\u76F4\u63A5\u8BF4\u73B0\u5728\u80FD\u7528\u6765\u505A\u4EC0\u4E48\u3001\u4E3B\u8981\u53D1\u73B0\u4EC0\u4E48\u3002\n\n\u6BCF\u6BB5\u56F4\u7ED5\u4E00\u4E2A\u8981\u70B9\uFF0C\u901A\u5E38\u7528\u4E24\u4E09\u53E5\u8BDD\u8BB2\u6E05\u695A\uFF1A\u56FE\u91CC\u54EA\u91CC\u503C\u5F97\u770B\uFF0C\u6807\u6CE8\u6216\u4E24\u5F20\u56FE\u6709\u4EC0\u4E48\u76F8\u540C\u548C\u4E0D\u540C\uFF0C\u8FD9\u5BF9\u4F7F\u7528\u6570\u636E\u6709\u4EC0\u4E48\u5F71\u54CD\u3002\u76F4\u63A5\u4E0B\u6709\u4F9D\u636E\u7684\u5224\u65AD\u3002\u9700\u8981\u8BFB\u8005\u590D\u770B\u65F6\uFF0C\u8BF4\u6E05\u770B\u54EA\u4E2A\u90E8\u4F4D\u3001\u8981\u786E\u8BA4\u4EC0\u4E48\u3002\n\n\u6B63\u6587\u4F7F\u7528\u65E5\u5E38\u52A8\u8BCD\uFF0C\u5C11\u7528\u62BD\u8C61\u540D\u8BCD\u4E32\u3002\u8BF4\u201C\u8FD9\u4E24\u5F20\u56FE\u62CD\u7684\u662F\u540C\u4E00\u5904\u201D\u201C\u51E0\u4E2A\u6846\u5708\u4F4F\u540C\u4E00\u6761\u8FB9\u201D\u201C\u8865\u5145\u5176\u4ED6\u6279\u6B21\u7684\u56FE\u7247\u201D\uFF0C\u628A\u5224\u65AD\u8FC7\u7A0B\u8BB2\u6210\u5177\u4F53\u7684\u56FE\u50CF\u4E8B\u5B9E\u548C\u52A8\u4F5C\u3002\u4E0D\u8981\u7167\u642C\u5DE5\u5177\u8F93\u51FA\u7684\u5224\u5B9A\u672F\u8BED\uFF0C\u6216\u7528\u4E00\u4E32\u9650\u5236\u58F0\u660E\u4EE3\u66FF\u7ED3\u679C\u3002\u4EFB\u52A1\u89C4\u5219\u3001\u7CFB\u7EDF\u72B6\u6001\u548C\u4FDD\u5B58\u8FC7\u7A0B\u7559\u5728\u914D\u7F6E\u4E0E\u8BB0\u5F55\u91CC\u3002\n\n\u6807\u9898\u53EA\u5199\u4E3B\u9898\uFF0C\u5C42\u7EA7\u7F16\u53F7\u7531\u9875\u9762\u7EDF\u4E00\u6DFB\u52A0\uFF0C\u6570\u91CF\u5728\u6B63\u6587\u7EDF\u8BA1\u6216\u56FE\u8868\u4E2D\u5355\u72EC\u5C55\u793A\u3002\n\n\u6570\u91CF\u548C\u6765\u6E90\u72B6\u6001\u7531\u9875\u9762\u7EDF\u8BA1\u5C55\u793A\uFF0C\u6B63\u6587\u89E3\u91CA\u5177\u4F53\u4E8B\u5B9E\u3002\u6570\u636E\u5206\u5E03\u7531\u7A0B\u5E8F\u4ECE\u51BB\u7ED3\u539F\u59CB\u56FE\u50CF\u548C\u6807\u6CE8\u8BA1\u7B97\uFF0C\u6309\u9700\u901A\u8FC7audit_distribution\u8BFB\u53D6\uFF1B\u5206\u5E03\u56FE\u8868\u7531\u9875\u9762\u5C55\u793A\uFF0C\u6B63\u6587\u5F15\u7528\u6570\u5B57\u76F4\u63A5\u91C7\u7528\u5DE5\u5177\u7ED3\u679C\u3002\u5171\u540C\u7F3A\u5C11\u7684\u6750\u6599\u96C6\u4E2D\u5199\u6210\u4E0B\u4E00\u6B65\uFF1A\u8865\u54EA\u7C7B\u56FE\u7247\u3001\u786E\u8BA4\u54EA\u4E9B\u53C2\u8003\u6807\u6CE8\u3001\u767B\u8BB0\u54EA\u4E9B\u6765\u6E90\uFF0C\u518D\u5F00\u5C55\u4EC0\u4E48\u5DE5\u4F5C\u3002\u5404\u4E3B\u9898\u53EA\u8865\u5145\u81EA\u5DF1\u7279\u6709\u7684\u51C6\u5907\u4E8B\u9879\uFF0C\u4E0D\u5728\u6BCF\u6BB5\u91CD\u590D\u540C\u4E00\u6761\u4EF6\u3002\n\n\u4E3B Agent \u7EFC\u5408\u5168\u90E8\u6709\u6548\u56FE\u7EA7\u4E8B\u5B9E\u548C\u53D1\u73B0\uFF0C\u5404\u5C0F\u70B9\u72EC\u7ACB\u8BF4\u660E\u5E76\u5173\u80543\u81F38\u5F20\u76F8\u5173\u539F\u56FE\uFF0C\u8BFB\u8005\u5728\u5F53\u524D\u5C0F\u8282\u5C31\u80FD\u5BF9\u7167\u56FE\u7247\u8BFB\u61C2\u3002\u6848\u4F8B\u53CA\u56FE\u50CF\u7F16\u53F7\u53EA\u586B\u5173\u8054\u5B57\u6BB5\uFF0C\u7531\u9875\u9762\u5728\u6B63\u6587\u65C1\u5C55\u793A\u56FE\u7247\u3002\u6848\u4F8B\u4FDD\u5B58\u53EF\u590D\u7528\u7684\u56FE\u50CF\u4F9D\u636E\uFF1B\u77E5\u8BC6\u63CF\u8FF0\u8BF4\u6E05\u6559\u6211\u4EEC\u770B\u54EA\u91CC\u3001\u8FD9\u6B21\u770B\u5230\u4E86\u4EC0\u4E48\u3002\n\n\u6B63\u5F0F\u56FE\u8BC1\u4F7F\u7528\u4E3B Agent \u5B9E\u9645\u67E5\u770B\u7684\u5B8C\u6574\u539F\u56FE\u53CA\u539F\u59CB\u6807\u6CE8\u3002\u5C40\u90E8\u89C6\u56FE\u7528\u4E8E\u6838\u67E5\uFF0C\u6B63\u6587\u56FE\u5E93\u4F7F\u7528\u5B8C\u6574\u539F\u56FE\u3002\u6BCF\u5904\u9700\u8981\u56FE\u8BC1\u7684\u5206\u6790\u7CBE\u90093\u81F38\u5F20\u80FD\u591F\u5171\u540C\u8BF4\u660E\u95EE\u9898\u7684\u539F\u56FE\uFF0C\u8BF4\u660E\u5404\u56FE\u7684\u73B0\u8C61\u6216\u5173\u952E\u5DEE\u522B\u3002\u6709\u5BF9\u7167\u5173\u7CFB\u65F6\u5C06\u5BF9\u7167\u539F\u56FE\u6807\u4E3Acounter\uFF0C\u754C\u9762\u4EE5Tab\u7EC4\u7EC7\u5F53\u524D\u56FE\u7EC4\u548C\u5BF9\u7167\u56FE\u7EC4\u3002\u8BC1\u636E\u4E0D\u8DB3\u65F6\u7EE7\u7EED\u67E5\u56FE\u6216\u6536\u62E2\u4E3B\u9898\u3002\n\n\u89C6\u89C9\u8986\u76D6\u56F4\u7ED5\u5F62\u6001\u3001\u65B9\u5411\u3001\u53EF\u89C1\u5EA6\u3001\u80CC\u666F\u3001\u7ED3\u6784\u5173\u7CFB\u548C\u6B63\u5E38\u53D8\u5316\u7EC4\u7EC7\u3002\u7528\u9014\u8BF4\u6E05\u8FD9\u4E9B\u573A\u666F\u53EF\u4EE5\u68C0\u67E5\u6A21\u578B\u7684\u4EC0\u4E48\u8868\u73B0\uFF0C\u4EE5\u53CA\u5177\u4F53\u9700\u8981\u505A\u7684\u51C6\u5907\u3002",
@@ -61812,7 +61806,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ]
   };
 
-  // apps/iad-harness/src/client/components/AgentPromptEditors.tsx
+  // src/client/components/AgentPromptEditors.tsx
   var import_jsx_runtime66 = __require("react/jsx-runtime");
   function PromptTextEditor({ id, label, value, onChange, disabled = false }) {
     return /* @__PURE__ */ (0, import_jsx_runtime66.jsxs)("label", { className: "exp-input", htmlFor: id, children: [
@@ -61839,16 +61833,16 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/KnowledgeEntryDialog.tsx
-  var import_react52 = __require("react");
+  // src/client/components/KnowledgeEntryDialog.tsx
+  var import_react51 = __require("react");
 
-  // apps/iad-harness/src/client/components/KnowledgeCheckEvidence.tsx
-  var import_react50 = __require("react");
+  // src/client/components/KnowledgeCheckEvidence.tsx
+  var import_react49 = __require("react");
   var import_jsx_runtime67 = __require("react/jsx-runtime");
   function KnowledgeCheckEvidence({ source, checkId, role, active, onOpen, onLoaded }) {
-    const grid = (0, import_react50.useRef)(null);
-    const [paging, setPaging] = (0, import_react50.useState)({ page: 1, size: 0 });
-    (0, import_react50.useLayoutEffect)(() => {
+    const grid = (0, import_react49.useRef)(null);
+    const [paging, setPaging] = (0, import_react49.useState)({ page: 1, size: 0 });
+    (0, import_react49.useLayoutEffect)(() => {
       const element = grid.current;
       const observer = new ResizeObserver(() => {
         if (!element.getBoundingClientRect().width) return;
@@ -61868,7 +61862,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     });
     const result = useResource(active && paging.size && source.kind === "published" ? `/knowledge/details?${query}` : null);
     const detail = source.kind === "current" && paging.size ? currentKnowledgeDetail(source.view, checkId, role, paging.page, paging.size) : result.data;
-    (0, import_react50.useEffect)(() => {
+    (0, import_react49.useEffect)(() => {
       if (detail) onLoaded?.(detail);
     }, [result.data, source, checkId, role, paging.page, paging.size, onLoaded]);
     const label = role === "support" ? "\u652F\u6301\u8BC1\u636E" : "\u53CD\u5BF9\u8BC1\u636E";
@@ -61906,13 +61900,13 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AnalysisEvidenceViewer.tsx
-  var import_react51 = __require("react");
+  // src/client/components/AnalysisEvidenceViewer.tsx
+  var import_react50 = __require("react");
   var import_jsx_runtime68 = __require("react/jsx-runtime");
   function AnalysisEvidenceViewer({ result, source, onClose }) {
     const resource = useResource(`${analysisReadPath(result)}/samples/${encodeURIComponent(source.sampleId)}/evidence${result.kind === "current" ? `?revision=${result.view.revision}` : ""}`);
-    const [selected, setSelected] = (0, import_react51.useState)(source.id);
-    const items = (0, import_react51.useMemo)(() => resource.data?.items.filter((item) => result.kind === "published" || result.view.evidence.some((value) => value.evidence_id === item.evidence_id)).map((item) => {
+    const [selected, setSelected] = (0, import_react50.useState)(source.id);
+    const items = (0, import_react50.useMemo)(() => resource.data?.items.filter((item) => result.kind === "published" || result.view.evidence.some((value) => value.evidence_id === item.evidence_id)).map((item) => {
       const registration = resource.data.registration;
       return {
         id: item.evidence_id,
@@ -61940,16 +61934,16 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     );
   }
 
-  // apps/iad-harness/src/client/components/KnowledgeEntryDialog.tsx
+  // src/client/components/KnowledgeEntryDialog.tsx
   var import_jsx_runtime69 = __require("react/jsx-runtime");
   function KnowledgeEntryDialog({ source, checkId, onClose, onSaved }) {
-    const [image, setImage] = (0, import_react52.useState)(null);
-    const [detail, setDetail] = (0, import_react52.useState)(null);
-    const [evidenceRole, setEvidenceRole] = (0, import_react52.useState)("support");
-    const [status, setStatus] = (0, import_react52.useState)("pending"), [note, setNote] = (0, import_react52.useState)("");
-    const [saving, setSaving] = (0, import_react52.useState)(false), [error3, setError] = (0, import_react52.useState)("");
+    const [image, setImage] = (0, import_react51.useState)(null);
+    const [detail, setDetail] = (0, import_react51.useState)(null);
+    const [evidenceRole, setEvidenceRole] = (0, import_react51.useState)("support");
+    const [status, setStatus] = (0, import_react51.useState)("pending"), [note, setNote] = (0, import_react51.useState)("");
+    const [saving, setSaving] = (0, import_react51.useState)(false), [error3, setError] = (0, import_react51.useState)("");
     const reviewRevision = detail?.check.review.revision;
-    (0, import_react52.useEffect)(() => {
+    (0, import_react51.useEffect)(() => {
       if (detail) {
         setStatus(detail.check.review.status);
         setNote(detail.check.review.note);
@@ -62083,7 +62077,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyStatisticsDrawer.tsx
+  // src/client/components/ConsistencyStatisticsDrawer.tsx
   var import_jsx_runtime70 = __require("react/jsx-runtime");
   function ConsistencyStatisticsDrawer({ statistics, onClose, loading = false, error: error3 }) {
     const original = conflictCategories.map((name2) => ({
@@ -62112,7 +62106,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] }) : /* @__PURE__ */ (0, import_jsx_runtime70.jsx)("p", { role: "status", children: "\u6682\u65E0\u7EDF\u8BA1\u6570\u636E\u3002" }) }) });
   }
 
-  // apps/iad-harness/src/client/consistency-view.ts
+  // src/client/consistency-view.ts
   var consistencyImageGroups = { NO_CANDIDATES: "\u65E0\u5019\u9009", NO_ELIGIBLE_CANDIDATES: "\u65E0\u6709\u6548\u5019\u9009", PROGRAM_CONSISTENT: "\u4E00\u81F4" };
   var initialConsistencyFilters = { search: "", model: "all", agreement: "all", review: "all" };
   var ConsistencyView = class {
@@ -62211,18 +62205,18 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     }
   };
 
-  // apps/iad-harness/src/client/components/KnowledgeEntryList.tsx
-  var import_react53 = __require("react");
+  // src/client/components/KnowledgeEntryList.tsx
+  var import_react52 = __require("react");
   var import_jsx_runtime71 = __require("react/jsx-runtime");
   function KnowledgeEntryList({ source, revision = 0, actions: actions4, selection, headerActions, children }) {
-    const [search, setSearch] = (0, import_react53.useState)(""), [status, setStatus] = (0, import_react53.useState)("all"), [page, setPage] = (0, import_react53.useState)(1);
+    const [search, setSearch] = (0, import_react52.useState)(""), [status, setStatus] = (0, import_react52.useState)("all"), [page, setPage] = (0, import_react52.useState)(1);
     const query = new URLSearchParams({ version_id: source?.kind === "published" ? source.versionId : "", page: String(page), page_size: "8", search, review_status: status });
     const checks = useResource(source?.kind === "published" ? `/knowledge/details?${query}` : null, revision);
     const preview = source?.kind === "current" ? source.view.checks.filter((check) => (!search || `${check.title} ${check.criterion}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())) && (status === "all" || status === check.review.status || status === "conflict" && check.status === "conflicted")) : [];
     const total = source?.kind === "published" ? checks.data?.total || 0 : preview.length;
     const pages2 = Math.max(1, Math.ceil(total / 8));
     const rows = source?.kind === "published" ? checks.data?.items || [] : preview.slice((page - 1) * 8, page * 8);
-    (0, import_react53.useEffect)(() => {
+    (0, import_react52.useEffect)(() => {
       if (!checks.loading && page > pages2) setPage(pages2);
     }, [page, pages2, checks.loading]);
     const available = !!source && (total > 0 || !!search || status !== "all");
@@ -62333,7 +62327,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AnalysisPromptDrawer.tsx
+  // src/client/components/AnalysisPromptDrawer.tsx
   var import_jsx_runtime72 = __require("react/jsx-runtime");
   function AnalysisPromptDrawer({ jobId, onClose, title = "\u63A2\u7D22\u63D0\u793A\u8BCD" }) {
     const { data, loading, error: error3 } = useResource(`/analysis/prompts/${encodeURIComponent(jobId)}`);
@@ -62355,14 +62349,14 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     );
   }
 
-  // apps/iad-harness/src/client/consistency-prompts.ts
+  // src/client/consistency-prompts.ts
   var identityPromptFields = [
     { name: "gate_system", label: "\u8EAB\u4EFD\u9A8C\u8BC1\u7CFB\u7EDF\u63D0\u793A\u8BCD" },
     { name: "gate_user", label: "\u8EAB\u4EFD\u9A8C\u8BC1\u7528\u6237\u63D0\u793A\u8BCD" },
     { name: "gate_examples", label: "\u8EAB\u4EFD\u9A8C\u8BC1\u5224\u65AD\u793A\u4F8B" }
   ];
 
-  // apps/iad-harness/src/client/components/ConsistencyPromptDrawer.tsx
+  // src/client/components/ConsistencyPromptDrawer.tsx
   var import_jsx_runtime73 = __require("react/jsx-runtime");
   function ConsistencyPromptDrawer({ job, onClose }) {
     return /* @__PURE__ */ (0, import_jsx_runtime73.jsx)(
@@ -62377,30 +62371,30 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     );
   }
 
-  // apps/iad-harness/src/client/components/AuditSetup.tsx
+  // src/client/components/AuditSetup.tsx
   var import_jsx_runtime74 = __require("react/jsx-runtime");
   function AuditSetup({ datasets, availableDatasets, jobs, revision, onStarted, onCancel, onBusyChange }) {
     const model = useModuleSettings("audit");
     const scope = JSON.stringify(datasets.map((dataset) => dataset.dataset_id).sort());
     const catalog = useResource(`/audit/sources?${new URLSearchParams({ dataset_ids: scope })}`, revision);
-    const [versionId, setVersionId] = (0, import_react54.useState)(""), [entryIds, setEntryIds] = (0, import_react54.useState)(/* @__PURE__ */ new Set());
-    const [consistencyId, setConsistencyId] = (0, import_react54.useState)("");
-    const [detail, setDetail] = (0, import_react54.useState)(null);
-    const [statisticsId, setStatisticsId] = (0, import_react54.useState)("");
+    const [versionId, setVersionId] = (0, import_react53.useState)(""), [entryIds, setEntryIds] = (0, import_react53.useState)(/* @__PURE__ */ new Set());
+    const [consistencyId, setConsistencyId] = (0, import_react53.useState)("");
+    const [detail, setDetail] = (0, import_react53.useState)(null);
+    const [statisticsId, setStatisticsId] = (0, import_react53.useState)("");
     const statistics = useQuery({
       queryKey: ["iad", "consistency-statistics", statisticsId],
       enabled: !!statisticsId,
       queryFn: ({ signal }) => ConsistencyView.statistics(statisticsId, signal)
     }, queryClient);
-    const [benchmarkId, setBenchmarkId] = (0, import_react54.useState)("");
-    const [statusJob, setStatusJob] = (0, import_react54.useState)(null), [promptJob, setPromptJob] = (0, import_react54.useState)(null);
-    const [busy, setBusy] = (0, import_react54.useState)(false), [error3, setError] = (0, import_react54.useState)("");
-    const [systemPrompt, setSystemPrompt] = (0, import_react54.useState)(promptDefaults.system.audit);
-    const [userPrompt, setUserPrompt] = (0, import_react54.useState)(promptDefaults.audit);
-    const [masterSystem, setMasterSystem] = (0, import_react54.useState)(promptDefaults.auditMasterSystem);
-    const [masterUser, setMasterUser] = (0, import_react54.useState)(promptDefaults.auditBatch);
-    const [reportPrompt, setReportPrompt] = (0, import_react54.useState)(promptDefaults.auditReport);
-    const submission = (0, import_react54.useRef)();
+    const [benchmarkId, setBenchmarkId] = (0, import_react53.useState)("");
+    const [statusJob, setStatusJob] = (0, import_react53.useState)(null), [promptJob, setPromptJob] = (0, import_react53.useState)(null);
+    const [busy, setBusy] = (0, import_react53.useState)(false), [error3, setError] = (0, import_react53.useState)("");
+    const [systemPrompt, setSystemPrompt] = (0, import_react53.useState)(promptDefaults.system.audit);
+    const [userPrompt, setUserPrompt] = (0, import_react53.useState)(promptDefaults.audit);
+    const [masterSystem, setMasterSystem] = (0, import_react53.useState)(promptDefaults.auditMasterSystem);
+    const [masterUser, setMasterUser] = (0, import_react53.useState)(promptDefaults.auditBatch);
+    const [reportPrompt, setReportPrompt] = (0, import_react53.useState)(promptDefaults.auditReport);
+    const submission = (0, import_react53.useRef)();
     const knowledgeJobs = catalog.data?.knowledge_jobs || [], consistencyJobs = catalog.data?.consistency_jobs || [];
     const sourceJobs = catalog.data?.jobs || [];
     const knowledgeList = useJobList(sourceJobs.filter((job) => knowledgeJobs.some((source) => source.job_id === job.run_id)), scope);
@@ -62600,32 +62594,32 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AuditPage.tsx
+  // src/client/components/AuditPage.tsx
   var import_jsx_runtime75 = __require("react/jsx-runtime");
   function AuditPage({ dataset, datasets, groups, refreshRevision, onDatasetsChanged }) {
     const { workspace } = useWorkspace();
-    const hierarchy = (0, import_react55.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-    const [groupId, setGroupId] = (0, import_react55.useState)(() => getDatasetGroupId(dataset));
-    const children = (0, import_react55.useMemo)(() => datasets.filter((item) => getDatasetGroupId(item) === groupId), [datasets, hierarchy, groupId]);
-    const [selectedIds, setSelectedIds] = (0, import_react55.useState)([dataset.dataset_id]);
+    const hierarchy = (0, import_react54.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const [groupId, setGroupId] = (0, import_react54.useState)(() => getDatasetGroupId(dataset));
+    const children = (0, import_react54.useMemo)(() => datasets.filter((item) => getDatasetGroupId(item) === groupId), [datasets, hierarchy, groupId]);
+    const [selectedIds, setSelectedIds] = (0, import_react54.useState)([dataset.dataset_id]);
     const ids = selectedIds.filter((id) => children.some((child) => child.dataset_id === id));
     const scope = JSON.stringify([...ids].sort());
-    const [tab, setTab] = (0, import_react55.useState)("audit");
-    const [revision, setRevision] = (0, import_react55.useState)(0);
-    const [promptJob, setPromptJob] = (0, import_react55.useState)("");
-    const progress = (0, import_react55.useCallback)(() => setRevision((value) => value + 1), []);
+    const [tab, setTab] = (0, import_react54.useState)("audit");
+    const [revision, setRevision] = (0, import_react54.useState)(0);
+    const [promptJob, setPromptJob] = (0, import_react54.useState)("");
+    const progress = (0, import_react54.useCallback)(() => setRevision((value) => value + 1), []);
     const jobs = useJobs("audit", ids, progress, workspace.view("industrial-audit").job, refreshRevision);
     const selection = useJobList(jobs.jobs, scope, workspace.view("industrial-audit").job, (job2) => workspace.updateView("industrial-audit", { job: job2.root_run_id }));
-    const [statisticsJob, setStatisticsJob] = (0, import_react55.useState)(null);
+    const [statisticsJob, setStatisticsJob] = (0, import_react54.useState)(null);
     const job = selection.selected;
-    const [issueType, setIssueType] = (0, import_react55.useState)(""), [sourceAssessment, setSourceAssessment] = (0, import_react55.useState)("");
-    const [search, setSearch] = (0, import_react55.useState)(""), [status, setStatus] = (0, import_react55.useState)("all"), [page, setPage] = (0, import_react55.useState)(1);
+    const [issueType, setIssueType] = (0, import_react54.useState)(""), [sourceAssessment, setSourceAssessment] = (0, import_react54.useState)("");
+    const [search, setSearch] = (0, import_react54.useState)(""), [status, setStatus] = (0, import_react54.useState)("all"), [page, setPage] = (0, import_react54.useState)(1);
     const createOpen = workspace.view("industrial-audit").tab === "setup";
     const setCreateOpen = (open) => workspace.updateView("industrial-audit", { tab: open ? "setup" : "results" });
-    const [jobDetails, setJobDetails] = (0, import_react55.useState)(null);
-    const [creatingBusy, setCreatingBusy] = (0, import_react55.useState)(false);
-    const [sample, setSample] = (0, import_react55.useState)(null);
-    (0, import_react55.useEffect)(() => {
+    const [jobDetails, setJobDetails] = (0, import_react54.useState)(null);
+    const [creatingBusy, setCreatingBusy] = (0, import_react54.useState)(false);
+    const [sample, setSample] = (0, import_react54.useState)(null);
+    (0, import_react54.useEffect)(() => {
       setPage(1);
       setSearch("");
       setStatus("all");
@@ -62633,7 +62627,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       setSourceAssessment("");
       setSample(null);
     }, [job?.run_id]);
-    (0, import_react55.useEffect)(() => {
+    (0, import_react54.useEffect)(() => {
       if (!hierarchy.some((group) => group.group_id === groupId)) {
         const next = hierarchy[0]?.group_id || "";
         setGroupId(next);
@@ -62837,23 +62831,23 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/KnowledgeConflictReview.tsx
-  var import_react56 = __require("react");
+  // src/client/components/KnowledgeConflictReview.tsx
+  var import_react55 = __require("react");
   var import_jsx_runtime76 = __require("react/jsx-runtime");
   var states = { pending_review: "\u5F85\u4EBA\u5DE5\u786E\u8BA4", pending_recheck: "\u5F85\u91CD\u6838\u9A8C", resolved: "\u5DF2\u751F\u6548" };
   var actions2 = { retain: "\u4FDD\u7559\u5224\u636E", revise: "\u4FEE\u8BA2\u5224\u636E", retire: "\u9000\u5F79\u5224\u636E", need_evidence: "\u8981\u6C42\u8865\u8BC1" };
   function KnowledgeConflictReview({ datasetId }) {
     const { workspace } = useWorkspace(), view = workspace.view("industrial-review");
-    const [loading, setLoading] = (0, import_react56.useState)(true), [contextLoading, setContextLoading] = (0, import_react56.useState)(false), [page, setPage] = (0, import_react56.useState)(1);
-    const [state, setState] = (0, import_react56.useState)("");
-    const [items, setItems] = (0, import_react56.useState)([]);
-    const [context, setContext] = (0, import_react56.useState)(null);
-    const [error3, setError] = (0, import_react56.useState)(""), [revision, setRevision] = (0, import_react56.useState)(0), [busy, setBusy] = (0, import_react56.useState)(false);
-    const [reviewer, setReviewer] = (0, import_react56.useState)(""), [reason, setReason] = (0, import_react56.useState)(""), [instruction, setInstruction] = (0, import_react56.useState)("");
-    const [action, setAction] = (0, import_react56.useState)("retain");
-    const [pending, setPending] = (0, import_react56.useState)(null);
-    const [lightbox, setLightbox] = (0, import_react56.useState)(null);
-    (0, import_react56.useEffect)(() => {
+    const [loading, setLoading] = (0, import_react55.useState)(true), [contextLoading, setContextLoading] = (0, import_react55.useState)(false), [page, setPage] = (0, import_react55.useState)(1);
+    const [state, setState] = (0, import_react55.useState)("");
+    const [items, setItems] = (0, import_react55.useState)([]);
+    const [context, setContext] = (0, import_react55.useState)(null);
+    const [error3, setError] = (0, import_react55.useState)(""), [revision, setRevision] = (0, import_react55.useState)(0), [busy, setBusy] = (0, import_react55.useState)(false);
+    const [reviewer, setReviewer] = (0, import_react55.useState)(""), [reason, setReason] = (0, import_react55.useState)(""), [instruction, setInstruction] = (0, import_react55.useState)("");
+    const [action, setAction] = (0, import_react55.useState)("retain");
+    const [pending, setPending] = (0, import_react55.useState)(null);
+    const [lightbox, setLightbox] = (0, import_react55.useState)(null);
+    (0, import_react55.useEffect)(() => {
       const controller = new AbortController();
       setLoading(true);
       request(`/review/knowledge/queue?${new URLSearchParams({ dataset_id: datasetId })}`, void 0, void 0, controller.signal).then((result) => {
@@ -62867,7 +62861,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     }, [datasetId, revision]);
     const filtered = items.filter((item) => !state || item.state === state);
     const selected = filtered.find((item) => item.conflict_id === view.conflictId && item.version_id === view.version) || filtered[0];
-    (0, import_react56.useEffect)(() => {
+    (0, import_react55.useEffect)(() => {
       const controller = new AbortController();
       setContext(null);
       setError("");
@@ -63028,7 +63022,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/AnalysisExportButton.tsx
+  // src/client/components/AnalysisExportButton.tsx
   var import_jsx_runtime77 = __require("react/jsx-runtime");
   function AnalysisExportButton({ versionId }) {
     return /* @__PURE__ */ (0, import_jsx_runtime77.jsx)(
@@ -63042,12 +63036,12 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     );
   }
 
-  // apps/iad-harness/src/client/components/ExplorationPresetDialog.tsx
-  var import_react57 = __require("react");
+  // src/client/components/ExplorationPresetDialog.tsx
+  var import_react56 = __require("react");
   var import_jsx_runtime78 = __require("react/jsx-runtime");
   function ExplorationPresetDialog({ text, onSaved, onClose }) {
-    const [name2, setName] = (0, import_react57.useState)(""), [saving, setSaving] = (0, import_react57.useState)(false), [error3, setError] = (0, import_react57.useState)("");
-    const input = (0, import_react57.useRef)(null);
+    const [name2, setName] = (0, import_react56.useState)(""), [saving, setSaving] = (0, import_react56.useState)(false), [error3, setError] = (0, import_react56.useState)("");
+    const input = (0, import_react56.useRef)(null);
     async function save(event) {
       event.preventDefault();
       if (saving || !name2.trim()) return;
@@ -63078,28 +63072,28 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] }) });
   }
 
-  // apps/iad-harness/src/client/components/ExplorationSourceDialog.tsx
-  var import_react58 = __require("react");
+  // src/client/components/ExplorationSourceDialog.tsx
+  var import_react57 = __require("react");
   var import_jsx_runtime79 = __require("react/jsx-runtime");
   function ExplorationSourceDialog({ kind, datasets, candidates, selected, loading, onChange, onClose }) {
-    const [search, setSearch] = (0, import_react58.useState)(""), [selectedOnly, setSelectedOnly] = (0, import_react58.useState)(false), [page, setPage] = (0, import_react58.useState)(1);
-    const [subsetIds, setSubsetIds] = (0, import_react58.useState)(() => datasets.map((item) => item.dataset_id)), [category, setCategory] = (0, import_react58.useState)("");
-    const input = (0, import_react58.useRef)(null), label = kind === "normal" ? "\u826F\u54C1" : "\u5F02\u5E38";
-    const scroll = (0, import_react58.useRef)(null);
-    const chosen = (0, import_react58.useMemo)(() => new Set(selected), [selected]);
-    const pool = (0, import_react58.useMemo)(() => candidates.filter((item) => item.candidate_role === kind && subsetIds.includes(item.datasetId)), [candidates, kind, subsetIds]);
+    const [search, setSearch] = (0, import_react57.useState)(""), [selectedOnly, setSelectedOnly] = (0, import_react57.useState)(false), [page, setPage] = (0, import_react57.useState)(1);
+    const [subsetIds, setSubsetIds] = (0, import_react57.useState)(() => datasets.map((item) => item.dataset_id)), [category, setCategory] = (0, import_react57.useState)("");
+    const input = (0, import_react57.useRef)(null), label = kind === "normal" ? "\u826F\u54C1" : "\u5F02\u5E38";
+    const scroll = (0, import_react57.useRef)(null);
+    const chosen = (0, import_react57.useMemo)(() => new Set(selected), [selected]);
+    const pool = (0, import_react57.useMemo)(() => candidates.filter((item) => item.candidate_role === kind && subsetIds.includes(item.datasetId)), [candidates, kind, subsetIds]);
     const showCategory = kind === "defect" && datasets.some((item) => subsetIds.includes(item.dataset_id) && item.format === "labelme");
-    const categories = (0, import_react58.useMemo)(() => [...new Set(pool.flatMap((item) => item.annotation_categories))].sort((left, right) => left.localeCompare(right, "zh-CN", { numeric: true })), [pool]);
+    const categories = (0, import_react57.useMemo)(() => [...new Set(pool.flatMap((item) => item.annotation_categories))].sort((left, right) => left.localeCompare(right, "zh-CN", { numeric: true })), [pool]);
     const activeCategory = showCategory && categories.includes(category) ? category : "";
-    (0, import_react58.useEffect)(() => {
+    (0, import_react57.useEffect)(() => {
       if (category !== activeCategory) setCategory(activeCategory);
     }, [category, activeCategory]);
-    const filtered = (0, import_react58.useMemo)(() => {
+    const filtered = (0, import_react57.useMemo)(() => {
       const query = search.trim().toLocaleLowerCase();
       return pool.filter((item) => (!selectedOnly || chosen.has(item.id)) && (!activeCategory || item.annotation_categories.includes(activeCategory)) && (!query || item.filename.toLocaleLowerCase().includes(query)));
     }, [pool, chosen, selectedOnly, search, activeCategory]);
     const current = Math.min(page, Math.max(1, Math.ceil(filtered.length / 24)));
-    (0, import_react58.useEffect)(() => {
+    (0, import_react57.useEffect)(() => {
       scroll.current?.scrollTo({ top: 0 });
     }, [current, search, subsetIds, activeCategory, selectedOnly]);
     const filtersActive = !!search || selectedOnly || !!activeCategory || subsetIds.length !== datasets.length;
@@ -63201,21 +63195,21 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ExplorationPage.tsx
-  var import_react60 = __require("react");
-
-  // apps/iad-harness/src/client/useDatasetCatalog.ts
+  // src/client/components/ExplorationPage.tsx
   var import_react59 = __require("react");
+
+  // src/client/useDatasetCatalog.ts
+  var import_react58 = __require("react");
   function useDatasetCatalog() {
     const result = useQuery({ queryKey: ["iad", "resource", "/datasets"], queryFn: () => request("/datasets"), staleTime: Infinity }, queryClient);
-    const refresh = (0, import_react59.useCallback)(async () => {
+    const refresh = (0, import_react58.useCallback)(async () => {
       const value = await result.refetch({ cancelRefetch: false });
       return value.isError ? null : value.data ?? null;
     }, [result.refetch]);
     return { data: result.data ?? null, loading: result.isFetching, error: result.error ? message(result.error) : "", refresh };
   }
 
-  // apps/iad-harness/src/client/components/DirectionDetailDialog.tsx
+  // src/client/components/DirectionDetailDialog.tsx
   var import_jsx_runtime80 = __require("react/jsx-runtime");
   function DirectionDetailDialog({
     direction: dir3,
@@ -63278,7 +63272,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/direction-evidence.tsx
+  // src/client/direction-evidence.tsx
   function directionEvidence(snapshot, direction) {
     const all = snapshot.evidence.map((evidence) => {
       return { id: evidence.evidence_id, evidence, title: evidence.filename, filename: evidence.filename.split("/").at(-1) };
@@ -63299,7 +63293,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     return { entries, counters };
   }
 
-  // apps/iad-harness/src/client/exploration-view.ts
+  // src/client/exploration-view.ts
   var ExplorationNarrative = class {
     names = /* @__PURE__ */ new Map();
     pattern;
@@ -63366,7 +63360,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     }) || [];
   }
 
-  // apps/iad-harness/src/client/components/ExplorationPage.tsx
+  // src/client/components/ExplorationPage.tsx
   var import_jsx_runtime81 = __require("react/jsx-runtime");
   function ExplorationPage({
     dataset,
@@ -63383,49 +63377,49 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     const initialChildren = datasets.filter(
       (d) => getDatasetGroupId(d) === initialParentId
     );
-    const [selectedParentId, setSelectedParentId] = (0, import_react60.useState)(() => initialParentId);
-    const [selectedChildIds, setSelectedChildIds] = (0, import_react60.useState)(
+    const [selectedParentId, setSelectedParentId] = (0, import_react59.useState)(() => initialParentId);
+    const [selectedChildIds, setSelectedChildIds] = (0, import_react59.useState)(
       () => initialChildren.length > 0 ? initialChildren.map((c) => c.dataset_id) : [dataset.dataset_id]
     );
-    const [view, setView] = (0, import_react60.useState)("jobs");
-    const [statusJobId, setStatusJobId] = (0, import_react60.useState)(null);
-    const [refreshTick, setRefreshTick] = (0, import_react60.useState)(0);
-    const [error3, setError] = (0, import_react60.useState)("");
-    const [submitting, setSubmitting] = (0, import_react60.useState)(false);
-    const submission = (0, import_react60.useRef)(null);
-    const [sampleTab, setSampleTab] = (0, import_react60.useState)("normal");
-    const [normalSelected, setNormalSelected] = (0, import_react60.useState)([]);
-    const [defectSelected, setDefectSelected] = (0, import_react60.useState)([]);
-    const [presets, setPresets] = (0, import_react60.useState)([]);
-    const [selectedPresetId, setSelectedPresetId] = (0, import_react60.useState)("");
-    const [prompt, setPrompt] = (0, import_react60.useState)("");
-    const [systemPrompt, setSystemPrompt] = (0, import_react60.useState)(promptDefaults.explorationSystem[dataset.format]);
-    const [observerSystemPrompt, setObserverSystemPrompt] = (0, import_react60.useState)(promptDefaults.explorationObserverSystem[dataset.format]);
-    const [observerUserPrompt, setObserverUserPrompt] = (0, import_react60.useState)("");
-    const systemFormat = (0, import_react60.useRef)(dataset.format);
-    const [originalPrompt, setOriginalPrompt] = (0, import_react60.useState)("");
-    const [modal, setModal] = (0, import_react60.useState)("");
-    const [promptJobId, setPromptJobId] = (0, import_react60.useState)(null);
-    const [viewingDirection, setViewingDirection] = (0, import_react60.useState)(null);
-    const [viewerData, setViewerData] = (0, import_react60.useState)(null);
-    const [analysisImage, setAnalysisImage] = (0, import_react60.useState)(null);
-    const [samplePool, setSamplePool] = (0, import_react60.useState)([]);
-    const [samplesLoaded, setSamplesLoaded] = (0, import_react60.useState)(false), [samplesLoading, setSamplesLoading] = (0, import_react60.useState)(false);
-    const sampleById = (0, import_react60.useMemo)(() => new Map(samplePool.map((item) => [item.id, item])), [samplePool]);
-    const progress = (0, import_react60.useCallback)(() => setRefreshTick((value) => value + 1), []);
+    const [view, setView] = (0, import_react59.useState)("jobs");
+    const [statusJobId, setStatusJobId] = (0, import_react59.useState)(null);
+    const [refreshTick, setRefreshTick] = (0, import_react59.useState)(0);
+    const [error3, setError] = (0, import_react59.useState)("");
+    const [submitting, setSubmitting] = (0, import_react59.useState)(false);
+    const submission = (0, import_react59.useRef)(null);
+    const [sampleTab, setSampleTab] = (0, import_react59.useState)("normal");
+    const [normalSelected, setNormalSelected] = (0, import_react59.useState)([]);
+    const [defectSelected, setDefectSelected] = (0, import_react59.useState)([]);
+    const [presets, setPresets] = (0, import_react59.useState)([]);
+    const [selectedPresetId, setSelectedPresetId] = (0, import_react59.useState)("");
+    const [prompt, setPrompt] = (0, import_react59.useState)("");
+    const [systemPrompt, setSystemPrompt] = (0, import_react59.useState)(promptDefaults.explorationSystem[dataset.format]);
+    const [observerSystemPrompt, setObserverSystemPrompt] = (0, import_react59.useState)(promptDefaults.explorationObserverSystem[dataset.format]);
+    const [observerUserPrompt, setObserverUserPrompt] = (0, import_react59.useState)("");
+    const systemFormat = (0, import_react59.useRef)(dataset.format);
+    const [originalPrompt, setOriginalPrompt] = (0, import_react59.useState)("");
+    const [modal, setModal] = (0, import_react59.useState)("");
+    const [promptJobId, setPromptJobId] = (0, import_react59.useState)(null);
+    const [viewingDirection, setViewingDirection] = (0, import_react59.useState)(null);
+    const [viewerData, setViewerData] = (0, import_react59.useState)(null);
+    const [analysisImage, setAnalysisImage] = (0, import_react59.useState)(null);
+    const [samplePool, setSamplePool] = (0, import_react59.useState)([]);
+    const [samplesLoaded, setSamplesLoaded] = (0, import_react59.useState)(false), [samplesLoading, setSamplesLoading] = (0, import_react59.useState)(false);
+    const sampleById = (0, import_react59.useMemo)(() => new Map(samplePool.map((item) => [item.id, item])), [samplePool]);
+    const progress = (0, import_react59.useCallback)(() => setRefreshTick((value) => value + 1), []);
     const jobQuery = useJobs("exploration", selectedChildIds, progress, selectedJobId, refreshRevision);
     const jobs = jobQuery.jobs;
     const refreshJobs = () => {
       jobQuery.refresh();
       progress();
     };
-    (0, import_react60.useEffect)(() => {
+    (0, import_react59.useEffect)(() => {
       const parentId = getDatasetGroupId(dataset);
       setSelectedParentId(parentId);
       const children = datasets.filter((item) => getDatasetGroupId(item) === parentId);
       setSelectedChildIds(children.map((item) => item.dataset_id));
     }, [dataset.dataset_id]);
-    (0, import_react60.useEffect)(() => {
+    (0, import_react59.useEffect)(() => {
       let active = true;
       request("/exploration/presets").then((res) => {
         if (active && res.presets?.length) {
@@ -63443,7 +63437,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
         active = false;
       };
     }, [refreshRevision]);
-    (0, import_react60.useEffect)(() => {
+    (0, import_react59.useEffect)(() => {
       if (view !== "setup" || modal !== "source" || samplesLoaded) return;
       const controller = new AbortController();
       setSamplesLoading(true);
@@ -63460,11 +63454,11 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       });
       return () => controller.abort();
     }, [selectedChildIds, view, modal, samplesLoaded]);
-    const parentGroups = (0, import_react60.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const parentGroups = (0, import_react59.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
     const currentChildDatasets = datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
     const scopeFormats = new Set(datasets.filter((item) => selectedChildIds.includes(item.dataset_id)).map((item) => item.format));
     const scopeFormat = scopeFormats.size === 1 ? [...scopeFormats][0] : null;
-    (0, import_react60.useEffect)(() => {
+    (0, import_react59.useEffect)(() => {
       if (scopeFormat && scopeFormat !== systemFormat.current) {
         systemFormat.current = scopeFormat;
         setSystemPrompt(promptDefaults.explorationSystem[scopeFormat]);
@@ -63481,12 +63475,12 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     const historical = useResource(route.job === selectedJob?.run_id && route.version ? `/analysis/publications/${encodeURIComponent(route.version)}` : null, refreshTick);
     const publication = historical.data || (jobIsActive(selectedJob) ? results.data?.current : results.data?.publication || results.data?.current);
     const publicationSource = publication ? analysisReadSource(publication) : null;
-    const datasetNames = (0, import_react60.useMemo)(() => Object.fromEntries(datasets.map((item) => [item.dataset_id, item.name])), [datasets]);
-    const narrative = (0, import_react60.useMemo)(() => publication ? new ExplorationNarrative(publication, datasetNames) : null, [publication, datasetNames]);
-    const selectedJobDirections = (0, import_react60.useMemo)(() => explorationDirections(publication, route.selected, datasetNames), [publication, route.selected, datasetNames]);
+    const datasetNames = (0, import_react59.useMemo)(() => Object.fromEntries(datasets.map((item) => [item.dataset_id, item.name])), [datasets]);
+    const narrative = (0, import_react59.useMemo)(() => publication ? new ExplorationNarrative(publication, datasetNames) : null, [publication, datasetNames]);
+    const selectedJobDirections = (0, import_react59.useMemo)(() => explorationDirections(publication, route.selected, datasetNames), [publication, route.selected, datasetNames]);
     const selectedJobLimitations = publication?.catalog.limitations.map((text) => narrative.text(text)) || [];
     const selectedJobSummary = publication ? narrative.text(publication.catalog.summary) : "";
-    (0, import_react60.useEffect)(() => {
+    (0, import_react59.useEffect)(() => {
       if (!route.selected || !publication) return;
       const direction = selectedJobDirections.find((item) => item.id === route.selected);
       if (direction) {
@@ -63894,64 +63888,64 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/KnowledgePage.tsx
-  var import_react62 = __require("react");
-
-  // apps/iad-harness/src/client/components/KnowledgeMiningCreate.tsx
+  // src/client/components/KnowledgePage.tsx
   var import_react61 = __require("react");
 
-  // apps/iad-harness/src/client/components/KnowledgeConfirmation.tsx
+  // src/client/components/KnowledgeMiningCreate.tsx
+  var import_react60 = __require("react");
+
+  // src/client/components/KnowledgeConfirmation.tsx
   var import_jsx_runtime82 = __require("react/jsx-runtime");
   function KnowledgeConfirmation({ state, onClose }) {
     return state && /* @__PURE__ */ (0, import_jsx_runtime82.jsx)(ConfirmationDialog, { title: state.title, danger: state.danger, confirmLabel: state.confirmLabel, onClose, onConfirm: state.onConfirm, children: /* @__PURE__ */ (0, import_jsx_runtime82.jsx)("p", { id: "confirm-message", children: state.message }) });
   }
 
-  // apps/iad-harness/src/client/components/KnowledgeMiningCreate.tsx
+  // src/client/components/KnowledgeMiningCreate.tsx
   var import_jsx_runtime83 = __require("react/jsx-runtime");
   var DIRECTION_PAGE_SIZE = 8;
   function KnowledgeMiningCreate({ dataset, datasets, groups, selectedParentId, selectedChildIds, onClose, onStarted }) {
     const parentGroups = groups.filter((group) => group.group_id !== "single");
     const configuration = useModuleSettings("knowledge");
     const configuredBatch = configuration.settings && "batch_size" in configuration.settings ? configuration.settings.batch_size : void 0;
-    const [batchSize, setBatchSize] = (0, import_react61.useState)(null);
-    (0, import_react61.useEffect)(() => {
+    const [batchSize, setBatchSize] = (0, import_react60.useState)(null);
+    (0, import_react60.useEffect)(() => {
       if (configuredBatch !== void 0) setBatchSize(configuredBatch);
     }, [configuredBatch]);
-    const started = (0, import_react61.useRef)(null);
-    const submission = (0, import_react61.useRef)(null);
-    const [confirmState, setConfirmState] = (0, import_react61.useState)(null);
-    const [setupDataset, setSetupDataset] = (0, import_react61.useState)(selectedParentId);
-    const [setupSubsets, setSetupSubsets] = (0, import_react61.useState)(new Set(selectedChildIds));
-    const [setupGeneral, setSetupGeneral] = (0, import_react61.useState)(/* @__PURE__ */ new Set());
-    const [setupExplored, setSetupExplored] = (0, import_react61.useState)(/* @__PURE__ */ new Set());
-    const [setupEdits, setSetupEdits] = (0, import_react61.useState)({});
-    const [setupTab, setSetupTab] = (0, import_react61.useState)("preset");
-    const [presetPage, setPresetPage] = (0, import_react61.useState)(1);
-    const [exploredPage, setExploredPage] = (0, import_react61.useState)(1);
-    const [setupPrompt, setSetupPrompt] = (0, import_react61.useState)("");
-    const [systemPrompt, setSystemPrompt] = (0, import_react61.useState)(promptDefaults.system.knowledge);
-    const [setupPromptDirty, setSetupPromptDirty] = (0, import_react61.useState)(false);
-    const [observerSystemPrompt, setObserverSystemPrompt] = (0, import_react61.useState)(promptDefaults.knowledgeObserverSystem);
-    const [observerUserPrompt, setObserverUserPrompt] = (0, import_react61.useState)("");
-    const [observerPromptDirty, setObserverPromptDirty] = (0, import_react61.useState)(false);
-    const [formError, setFormError] = (0, import_react61.useState)("");
-    const [editingDir, setEditingDir] = (0, import_react61.useState)(null);
-    const [editingName, setEditingName] = (0, import_react61.useState)("");
-    const [editingText, setEditingText] = (0, import_react61.useState)("");
-    const [dirEditError, setDirEditError] = (0, import_react61.useState)("");
-    const currentSetupParent = (0, import_react61.useMemo)(() => {
+    const started = (0, import_react60.useRef)(null);
+    const submission = (0, import_react60.useRef)(null);
+    const [confirmState, setConfirmState] = (0, import_react60.useState)(null);
+    const [setupDataset, setSetupDataset] = (0, import_react60.useState)(selectedParentId);
+    const [setupSubsets, setSetupSubsets] = (0, import_react60.useState)(new Set(selectedChildIds));
+    const [setupGeneral, setSetupGeneral] = (0, import_react60.useState)(/* @__PURE__ */ new Set());
+    const [setupExplored, setSetupExplored] = (0, import_react60.useState)(/* @__PURE__ */ new Set());
+    const [setupEdits, setSetupEdits] = (0, import_react60.useState)({});
+    const [setupTab, setSetupTab] = (0, import_react60.useState)("preset");
+    const [presetPage, setPresetPage] = (0, import_react60.useState)(1);
+    const [exploredPage, setExploredPage] = (0, import_react60.useState)(1);
+    const [setupPrompt, setSetupPrompt] = (0, import_react60.useState)("");
+    const [systemPrompt, setSystemPrompt] = (0, import_react60.useState)(promptDefaults.system.knowledge);
+    const [setupPromptDirty, setSetupPromptDirty] = (0, import_react60.useState)(false);
+    const [observerSystemPrompt, setObserverSystemPrompt] = (0, import_react60.useState)(promptDefaults.knowledgeObserverSystem);
+    const [observerUserPrompt, setObserverUserPrompt] = (0, import_react60.useState)("");
+    const [observerPromptDirty, setObserverPromptDirty] = (0, import_react60.useState)(false);
+    const [formError, setFormError] = (0, import_react60.useState)("");
+    const [editingDir, setEditingDir] = (0, import_react60.useState)(null);
+    const [editingName, setEditingName] = (0, import_react60.useState)("");
+    const [editingText, setEditingText] = (0, import_react60.useState)("");
+    const [dirEditError, setDirEditError] = (0, import_react60.useState)("");
+    const currentSetupParent = (0, import_react60.useMemo)(() => {
       return parentGroups.find((g) => g.group_id === setupDataset) || parentGroups[0];
     }, [parentGroups, setupDataset]);
-    const currentSetupChildDatasets = (0, import_react61.useMemo)(() => {
+    const currentSetupChildDatasets = (0, import_react60.useMemo)(() => {
       return datasets.filter((d) => getDatasetGroupId(d) === setupDataset);
     }, [datasets, groups, setupDataset]);
-    const [presetDirections, setPresetDirections] = (0, import_react61.useState)([]);
-    const [exploredDirections, setExploredDirections] = (0, import_react61.useState)([]);
-    const [directionsError, setDirectionsError] = (0, import_react61.useState)("");
-    const [presetsLoading, setPresetsLoading] = (0, import_react61.useState)(true);
-    const [directionsLoading, setDirectionsLoading] = (0, import_react61.useState)(true);
-    const [presetsError, setPresetsError] = (0, import_react61.useState)("");
-    (0, import_react61.useEffect)(() => {
+    const [presetDirections, setPresetDirections] = (0, import_react60.useState)([]);
+    const [exploredDirections, setExploredDirections] = (0, import_react60.useState)([]);
+    const [directionsError, setDirectionsError] = (0, import_react60.useState)("");
+    const [presetsLoading, setPresetsLoading] = (0, import_react60.useState)(true);
+    const [directionsLoading, setDirectionsLoading] = (0, import_react60.useState)(true);
+    const [presetsError, setPresetsError] = (0, import_react60.useState)("");
+    (0, import_react60.useEffect)(() => {
       const controller = new AbortController();
       request("/knowledge/presets", void 0, void 0, controller.signal).then(({ directions }) => {
         if (controller.signal.aborted) return;
@@ -63966,7 +63960,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       return () => controller.abort();
     }, []);
     const subsetIds = JSON.stringify([...setupSubsets].sort());
-    (0, import_react61.useEffect)(() => {
+    (0, import_react60.useEffect)(() => {
       const controller = new AbortController();
       setDirectionsError("");
       setDirectionsLoading(true);
@@ -63990,16 +63984,16 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     const kbExploredDirs = exploredDirections;
     const currentPresetPage = Math.min(presetPage, Math.max(1, Math.ceil(presetDirections.length / DIRECTION_PAGE_SIZE)));
     const currentExploredPage = Math.min(exploredPage, Math.max(1, Math.ceil(kbExploredDirs.length / DIRECTION_PAGE_SIZE)));
-    const getDirInfo = (0, import_react61.useCallback)((item, dirKind) => {
+    const getDirInfo = (0, import_react60.useCallback)((item, dirKind) => {
       const edit = setupEdits[`${dirKind}:${item.id}`];
       return edit ? { ...item, ...edit } : item;
     }, [setupEdits]);
-    const allSelectedDirItems = (0, import_react61.useMemo)(() => {
+    const allSelectedDirItems = (0, import_react60.useMemo)(() => {
       const presetsList = presetDirections.filter((p) => setupGeneral.has(p.id)).map((p) => getDirInfo(p, "preset"));
       const exploredList = kbExploredDirs.filter((e2) => setupExplored.has(e2.id)).map((e2) => getDirInfo(e2, "explore"));
       return [...presetsList, ...exploredList];
     }, [setupGeneral, setupExplored, kbExploredDirs, presetDirections, getDirInfo]);
-    const generatePromptText = (0, import_react61.useCallback)((datasetName, subsetsNames, dirs) => {
+    const generatePromptText = (0, import_react60.useCallback)((datasetName, subsetsNames, dirs) => {
       return [
         promptDefaults.knowledgeInstruction,
         `\u6570\u636E\u96C6\uFF1A${datasetName}`,
@@ -64009,14 +64003,14 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
         ...dirs.map((x, index3) => `D${index3 + 1} | ${x.name}\uFF1A${x.text}`)
       ].join("\n");
     }, []);
-    (0, import_react61.useEffect)(() => {
+    (0, import_react60.useEffect)(() => {
       const parentName = currentSetupParent?.name || dataset.name;
       const subsetsNames = currentSetupChildDatasets.filter((c) => setupSubsets.has(c.dataset_id)).map((c) => c.name);
       const generated = generatePromptText(parentName, subsetsNames, allSelectedDirItems);
       if (!setupPromptDirty) setSetupPrompt(generated);
       if (!observerPromptDirty) setObserverUserPrompt(generated);
     }, [setupPromptDirty, observerPromptDirty, currentSetupParent, currentSetupChildDatasets, setupSubsets, allSelectedDirItems, generatePromptText, dataset.name]);
-    const validationProblem = (0, import_react61.useMemo)(() => {
+    const validationProblem = (0, import_react60.useMemo)(() => {
       if (!configuration.settings?.model) return configuration.loading ? "\u6B63\u5728\u8BFB\u53D6\u6A21\u578B" : "\u8BF7\u5148\u914D\u7F6E\u77E5\u8BC6\u6316\u6398\u5206\u6790\u6A21\u578B";
       if (configuration.saving) return "\u6B63\u5728\u4FDD\u5B58\u6BCF\u6279\u56FE\u50CF\u6570";
       if (configuration.error) return configuration.error;
@@ -64070,8 +64064,8 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       setEditingDir(null);
       setDirEditError("");
     };
-    const [submitting, setSubmitting] = (0, import_react61.useState)(false);
-    (0, import_react61.useEffect)(() => {
+    const [submitting, setSubmitting] = (0, import_react60.useState)(false);
+    (0, import_react60.useEffect)(() => {
       if (!started.current) submission.current = null;
     }, [setupDataset, setupPrompt, systemPrompt, observerSystemPrompt, observerUserPrompt, batchSize, JSON.stringify(Array.from(setupSubsets).sort())]);
     const handleSubmitJob = async () => {
@@ -64395,7 +64389,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/components/KnowledgePage.tsx
+  // src/client/components/KnowledgePage.tsx
   var import_jsx_runtime84 = __require("react/jsx-runtime");
   function KnowledgePage({
     dataset,
@@ -64409,8 +64403,8 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     const selectedParentId = getDatasetGroupId(dataset);
     const selectedChildIds = view.datasetIds ?? [dataset.dataset_id];
     const scopeKey = JSON.stringify(selectedChildIds);
-    const [revision, setRevision] = (0, import_react62.useState)(0);
-    const updated = (0, import_react62.useCallback)(() => setRevision((v) => v + 1), []);
+    const [revision, setRevision] = (0, import_react61.useState)(0);
+    const updated = (0, import_react61.useCallback)(() => setRevision((v) => v + 1), []);
     const polling = useJobs("knowledge", selectedChildIds, updated, view.job);
     const versionResources = useQueries({ queries: selectedChildIds.map((dataset_id) => {
       const path = `/knowledge/versions?${new URLSearchParams({ dataset_id })}`;
@@ -64418,30 +64412,27 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     }) }, queryClient);
     const versions = [...new Map(versionResources.flatMap((result) => result.data?.versions || []).map((version) => [version.version_id, version])).values()];
     const versionError = versionResources.find((result) => result.error)?.error;
-    (0, import_react62.useEffect)(() => {
+    (0, import_react61.useEffect)(() => {
       for (const dataset_id of JSON.parse(scopeKey))
         void queryClient.invalidateQueries({ queryKey: ["iad", "resource", `/knowledge/versions?${new URLSearchParams({ dataset_id })}`], exact: true });
     }, [scopeKey, revision, refreshRevision]);
     const loadError = catalog.error;
-    const [jobDetails, setJobDetails] = (0, import_react62.useState)(null);
-    const jobList = useJobList(polling.jobs, scopeKey, view.job, (job) => selectJob(job.run_id));
+    const [jobDetails, setJobDetails] = (0, import_react61.useState)(null);
+    const jobList = useJobList(polling.jobs, scopeKey, view.job, (job) => workspace.updateView(pageId, { job: job.run_id, version: "" }));
     const selectedJob = jobList.selected;
-    const [knowledgeSearch, setKnowledgeSearch] = (0, import_react62.useState)("");
-    const [knowledgeStatus, setKnowledgeStatus] = (0, import_react62.useState)("all");
-    const [entryPage, setEntryPage] = (0, import_react62.useState)(1);
-    const [promptJob, setPromptJob] = (0, import_react62.useState)(null);
-    const [detailItem, setDetailItem] = (0, import_react62.useState)(null);
-    const [confirmState, setConfirmState] = (0, import_react62.useState)(null);
+    const [promptJob, setPromptJob] = (0, import_react61.useState)(null);
+    const [detailItem, setDetailItem] = (0, import_react61.useState)(null);
+    const [confirmState, setConfirmState] = (0, import_react61.useState)(null);
     const createOpen = view.tab === "setup";
-    const [toastMsg, setToastMsg] = (0, import_react62.useState)("");
-    const toast = (0, import_react62.useCallback)((msg) => setToastMsg(msg), []);
-    (0, import_react62.useEffect)(() => {
+    const [toastMsg, setToastMsg] = (0, import_react61.useState)("");
+    const toast = (0, import_react61.useCallback)((msg) => setToastMsg(msg), []);
+    (0, import_react61.useEffect)(() => {
       if (!toastMsg) return;
       const timer = setTimeout(() => setToastMsg(""), 2800);
       return () => clearTimeout(timer);
     }, [toastMsg]);
-    const parentGroups = (0, import_react62.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-    const currentChildDatasets = (0, import_react62.useMemo)(() => {
+    const parentGroups = (0, import_react61.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const currentChildDatasets = (0, import_react61.useMemo)(() => {
       return datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
     }, [datasets, groups, selectedParentId]);
     const handleParentChange = (parentId) => {
@@ -64464,13 +64455,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       updated();
       toast("\u5DF2\u5237\u65B0\u5F53\u524D\u6570\u636E");
     };
-    function selectJob(id) {
-      workspace.updateView(pageId, { job: id, version: "" });
-      setEntryPage(1);
-      setKnowledgeSearch("");
-      setKnowledgeStatus("all");
-    }
-    const resultVersions = (0, import_react62.useMemo)(() => {
+    const resultVersions = (0, import_react61.useMemo)(() => {
       if (!selectedJob?.knowledge_version_id) return [];
       const ids = /* @__PURE__ */ new Set([
         selectedJob.knowledge_version_id,
@@ -64495,46 +64480,20 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     const preview = selectedVersionId ? null : results.data?.current;
     const readSource = selectedVersionId ? { kind: "published", versionId: selectedVersionId } : preview ? { kind: "current", view: preview } : null;
     const canMaintain = !!selectedVersionId && versionResources.some((result) => result.data?.current_version_id === selectedVersionId);
-    const checkQuery = new URLSearchParams({ version_id: selectedVersionId || "", page: String(entryPage), page_size: "8", search: knowledgeSearch, review_status: knowledgeStatus });
-    const checksResource = useResource(selectedVersionId ? `/knowledge/details?${checkQuery}` : null, revision + refreshRevision);
-    const previewChecks = preview?.checks.filter((check) => (!knowledgeSearch || `${check.title} ${check.criterion}`.toLocaleLowerCase().includes(knowledgeSearch.toLocaleLowerCase())) && (knowledgeStatus === "all" || knowledgeStatus === check.review.status || knowledgeStatus === "conflict" && check.status === "conflicted")) || [];
-    const totalChecks = selectedVersionId ? checksResource.data?.total || 0 : previewChecks.length;
-    const maxEntryPages = Math.max(1, Math.ceil(totalChecks / 8));
-    const currentEntryPage = Math.min(maxEntryPages, Math.max(1, entryPage));
-    const filteredChecks = selectedVersionId ? checksResource.data?.items || [] : previewChecks.slice((currentEntryPage - 1) * 8, currentEntryPage * 8);
-    (0, import_react62.useEffect)(() => {
-      if (entryPage > maxEntryPages && !checksResource.loading) setEntryPage(maxEntryPages);
-    }, [entryPage, maxEntryPages, checksResource.loading]);
-    const pagedChecks = filteredChecks.map((check) => ({
-      id: check.check_id,
-      name: check.title,
-      summary: check.criterion,
-      supportCount: check.support_count,
-      counterCount: check.counter_count,
-      review: check.review
-    }));
-    (0, import_react62.useEffect)(() => {
+    (0, import_react61.useEffect)(() => {
       setDetailItem(null);
     }, [scopeKey, selectedJob?.run_id]);
-    (0, import_react62.useEffect)(() => {
-      setEntryPage(1);
-    }, [selectedJob?.run_id, selectedVersionId]);
-    const closePrompt = () => setPromptJob(null);
-    const openDetail = (item) => {
-      if (readSource) setDetailItem({ source: readSource, checkId: item.id });
-    };
-    const closeDetail = () => setDetailItem(null);
     const askDeleteEntry = (item) => {
       if (!selectedVersionId || !selectedJob) return;
       setConfirmState({
         title: "\u79FB\u9664\u77E5\u8BC6\u6761\u76EE",
-        message: `\u4ECE\u5F53\u524D\u77E5\u8BC6\u4E2D\u79FB\u9664\u201C${item.name}\u201D\u5E76\u751F\u6210\u7EF4\u62A4\u7248\u672C\uFF1F`,
+        message: `\u4ECE\u5F53\u524D\u77E5\u8BC6\u4E2D\u79FB\u9664\u201C${item.title}\u201D\u5E76\u751F\u6210\u7EF4\u62A4\u7248\u672C\uFF1F`,
         danger: true,
         onConfirm: async () => {
           try {
             const version = await request(
               `/knowledge/versions/${encodeURIComponent(selectedVersionId)}/checks/remove`,
-              { submission_id: v4_default(), check_id: item.id }
+              { submission_id: v4_default(), check_id: item.check_id }
             );
             workspace.updateView(pageId, { job: selectedJob.run_id, version: version.version_id });
             updated();
@@ -64586,125 +64545,35 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
               updated();
             }
           } }),
-          /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("section", { className: "panel", id: "knowledge-panel", "aria-labelledby": "knowledge-heading", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)(SectionHeading, { title: "\u77E5\u8BC6\u6761\u76EE", titleId: "knowledge-heading", children: [
-              selectedVersionId?.startsWith("analysis_version_") && /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(AnalysisExportButton, { versionId: selectedVersionId }),
-              (selectedVersionId ? versions.find((version) => version.version_id === selectedVersionId)?.check_count : preview?.checks.length) ? /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "filterset", id: "knowledge-filterset", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("section", { className: "panel", id: "knowledge-panel", children: /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(
+            KnowledgeEntryList,
+            {
+              source: readSource,
+              revision: revision + refreshRevision,
+              headerActions: selectedVersionId?.startsWith("analysis_version_") && /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(AnalysisExportButton, { versionId: selectedVersionId }),
+              actions: { view: (entry) => {
+                if (readSource) setDetailItem({ source: readSource, checkId: entry.check_id });
+              }, remove: { enabled: canMaintain, run: askDeleteEntry } },
+              children: selectedVersionId && resultVersions.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("label", { className: "control", children: [
+                "\u7ED3\u679C\u7248\u672C",
                 /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(
-                  "input",
-                  {
-                    className: "f",
-                    id: "knowledge-search",
-                    placeholder: "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE",
-                    "aria-label": "\u641C\u7D22\u77E5\u8BC6\u6761\u76EE",
-                    value: knowledgeSearch,
-                    onChange: (e2) => {
-                      setKnowledgeSearch(e2.target.value);
-                      setEntryPage(1);
-                    }
-                  }
-                ),
-                /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)(
                   Select,
                   {
                     className: "f",
-                    id: "knowledge-status",
-                    "aria-label": "\u7B5B\u9009\u6838\u5B9E\u72B6\u6001",
-                    value: knowledgeStatus,
-                    onChange: (e2) => {
-                      setKnowledgeStatus(e2.target.value);
-                      setEntryPage(1);
-                    },
-                    children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("option", { value: "all", children: "\u5168\u90E8\u6761\u76EE" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("option", { value: "pending", children: "\u5F85\u6838\u5B9E" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("option", { value: "confirmed", children: "\u5DF2\u901A\u8FC7" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("option", { value: "rejected", children: "\u5DF2\u9A73\u56DE" }),
-                      /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("option", { value: "conflict", children: "\u5B58\u5728\u77DB\u76FE" })
-                    ]
-                  }
-                ),
-                /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(
-                  ClearFilterButton,
-                  {
-                    id: "kb-clear-knowledge-filters",
-                    ariaLabel: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6",
-                    title: "\u6E05\u9664\u7B5B\u9009\u6761\u4EF6",
-                    disabled: !knowledgeSearch && knowledgeStatus === "all",
-                    onClick: () => {
-                      setKnowledgeSearch("");
-                      setKnowledgeStatus("all");
-                      setEntryPage(1);
-                    }
+                    "aria-label": "\u77E5\u8BC6\u7ED3\u679C\u7248\u672C",
+                    value: selectedVersionId,
+                    onChange: (event) => workspace.updateView(pageId, { job: selectedJob.run_id, version: event.target.value }),
+                    children: resultVersions.map((version) => /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("option", { value: version.version_id, children: [
+                      version.manually_edited ? "\u7EF4\u62A4\u7248\u672C" : "\u4F5C\u4E1A\u51BB\u7ED3\u7248\u672C",
+                      " ",
+                      version.version_id.slice(-8)
+                    ] }, version.version_id))
                   }
                 )
-              ] }) : null
-            ] }),
-            selectedVersionId && resultVersions.length > 1 && /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("label", { className: "control", children: [
-              "\u7ED3\u679C\u7248\u672C",
-              /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(
-                Select,
-                {
-                  className: "f",
-                  "aria-label": "\u77E5\u8BC6\u7ED3\u679C\u7248\u672C",
-                  value: selectedVersionId || "",
-                  onChange: (event) => workspace.updateView(pageId, { job: selectedJob.run_id, version: event.target.value }),
-                  children: resultVersions.map((version) => /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("option", { value: version.version_id, children: [
-                    version.manually_edited ? "\u7EF4\u62A4\u7248\u672C" : "\u4F5C\u4E1A\u51BB\u7ED3\u7248\u672C",
-                    " ",
-                    version.version_id.slice(-8)
-                  ] }, version.version_id))
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("div", { className: "knowledge-wrap", id: "knowledge-body", children: !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u77E5\u8BC6\u6761\u76EE" }) : !readSource ? /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u77E5\u8BC6\u6761\u76EE" }) : checksResource.error ? /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("p", { role: "alert", children: checksResource.error }) : checksResource.loading ? /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("div", { className: "blank", children: "\u6B63\u5728\u8BFB\u53D6\u4F5C\u4E1A\u51BB\u7ED3\u77E5\u8BC6" }) : filteredChecks.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("div", { className: "blank", children: knowledgeSearch || knowledgeStatus !== "all" ? "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u77E5\u8BC6\u6761\u76EE\u3002" : "\u5F53\u524D\u4F5C\u4E1A\u6682\u65E0\u77E5\u8BC6\u6761\u76EE\u3002" }) : /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "knowledge-list", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("div", { className: "knowledge-head", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { children: "\u77E5\u8BC6\u6761\u76EE" }),
-                /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { children: "\u63CF\u8FF0" }),
-                /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { children: "\u652F\u6301/\u53CD\u5BF9" }),
-                /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { children: "\u64CD\u4F5C" })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("div", { className: "knowledge-items", children: pagedChecks.map((item) => /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)(
-                "div",
-                {
-                  className: "knowledge-row",
-                  "data-detail-entry": item.id,
-                  role: "row",
-                  tabIndex: 0,
-                  "aria-label": `\u67E5\u770B\u77E5\u8BC6\u6761\u76EE\uFF1A${item.name}`,
-                  onClick: () => openDetail(item),
-                  onKeyDown: (e2) => {
-                    if (e2.key === "Enter" || e2.key === " ") {
-                      e2.preventDefault();
-                      openDetail(item);
-                    }
-                  },
-                  children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { className: "row-title knowledge-entry-name", children: item.name }),
-                    /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("span", { className: "row-desc knowledge-entry-description", title: item.summary, children: item.summary }),
-                    /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)(
-                      "span",
-                      {
-                        className: "row-count col-evidence-count",
-                        title: `\u652F\u6301 ${item.supportCount} \u5F20\uFF0C\u53CD\u5BF9 ${item.counterCount} \u5F20`,
-                        children: [
-                          item.supportCount,
-                          "/",
-                          item.counterCount
-                        ]
-                      }
-                    ),
-                    /* @__PURE__ */ (0, import_jsx_runtime84.jsxs)("span", { className: "col-action jobact", onClick: (e2) => e2.stopPropagation(), children: [
-                      /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(IconButton, { icon: "details", type: "button", className: "knowledge-entry-view", "data-view-entry": item.id, label: `\u67E5\u770B\u77E5\u8BC6\u6761\u76EE ${item.name}`, title: "\u67E5\u770B\u77E5\u8BC6\u6761\u76EE", onClick: () => openDetail(item) }),
-                      /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(IconButton, { icon: "delete", type: "button", className: "knowledge-entry-delete", "data-delete-entry": item.id, disabled: !canMaintain, label: `\u5220\u9664\u77E5\u8BC6\u6761\u76EE ${item.name}`, title: "\u5220\u9664\u77E5\u8BC6\u6761\u76EE", onClick: () => askDeleteEntry(item) })
-                    ] })
-                  ]
-                },
-                item.id
-              )) }),
-              /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(Pagination, { hideSinglePage: true, total: totalChecks, page: currentEntryPage, size: 8, onPage: setEntryPage, label: "\u77E5\u8BC6\u6761\u76EE" })
-            ] }) })
-          ] }),
+              ] })
+            },
+            selectedVersionId || selectedJob?.run_id || "empty"
+          ) }),
           (loadError || polling.error || versionError || results.error) && /* @__PURE__ */ (0, import_jsx_runtime84.jsx)("p", { role: "alert", children: loadError || polling.error || results.error || (versionError ? message(versionError) : "") })
         ] }),
         createOpen && /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(
@@ -64729,12 +64598,12 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
           scopeKey
         )
       ] }) }),
-      promptJob && /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(AnalysisPromptDrawer, { title: "\u77E5\u8BC6\u6316\u6398\u63D0\u793A\u8BCD", jobId: promptJob.run_id, onClose: closePrompt }),
+      promptJob && /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(AnalysisPromptDrawer, { title: "\u77E5\u8BC6\u6316\u6398\u63D0\u793A\u8BCD", jobId: promptJob.run_id, onClose: () => setPromptJob(null) }),
       detailItem && /* @__PURE__ */ (0, import_jsx_runtime84.jsx)(
         KnowledgeEntryDialog,
         {
           ...detailItem,
-          onClose: closeDetail,
+          onClose: () => setDetailItem(null),
           onSaved: () => {
             updated();
             toast("\u4EBA\u5DE5\u6838\u5B9E\u5DF2\u4FDD\u5B58");
@@ -64755,14 +64624,14 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] }) });
   }
 
-  // apps/iad-harness/src/client/components/ReviewRecords.tsx
-  var import_react63 = __require("react");
+  // src/client/components/ReviewRecords.tsx
+  var import_react62 = __require("react");
   var import_jsx_runtime85 = __require("react/jsx-runtime");
   function ReviewRecords({ datasetId, page, search, selected, revision, onPage, onSearch, onSelect, onQueue, detail }) {
-    const [result, setResult] = (0, import_react63.useState)(null);
-    const [loading, setLoading] = (0, import_react63.useState)(true), [error3, setError] = (0, import_react63.useState)("");
-    const [retry, setRetry] = (0, import_react63.useState)(0);
-    (0, import_react63.useEffect)(() => {
+    const [result, setResult] = (0, import_react62.useState)(null);
+    const [loading, setLoading] = (0, import_react62.useState)(true), [error3, setError] = (0, import_react62.useState)("");
+    const [retry, setRetry] = (0, import_react62.useState)(0);
+    (0, import_react62.useEffect)(() => {
       const controller = new AbortController();
       setLoading(true);
       setError("");
@@ -64821,7 +64690,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     ] });
   }
 
-  // apps/iad-harness/src/client/controls.ts
+  // src/client/controls.ts
   var controlStyles = `
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) button,:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) input,:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) select,:is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) textarea {font:inherit;font-size:var(--iad-font-size);line-height:1.5;}
 :is(.iad-workbench,.iad-tool-card,.iad-detail-dialog,.iad-floating-menu-panel) button {cursor:pointer;background:var(--iad-surface);color:var(--iad-text);border:1px solid var(--iad-control-border);border-radius:var(--iad-radius);min-height:var(--iad-control-height);padding:8px 12px;transition:background-color 140ms,border-color 140ms;}
@@ -64863,12 +64732,12 @@ dialog.iad-detail-dialog {--iad-icon-button-size:var(--iad-control-height);}
 .full-toolbar {--iad-icon-color:var(--iad-on-viewer);--iad-icon-hover-color:var(--iad-on-viewer);--iad-icon-hover-background:rgba(255,255,255,.16);--iad-icon-focus:#a1c6ff;}
 `;
 
-  // apps/iad-harness/src/client/styles/models.ts
+  // src/client/styles/models.ts
   var modelsStyles = `
 .iad-model-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:0 0 16px}.iad-model-fields .iad-field{min-width:0;margin:0}.iad-provider-manager{min-width:0}.iad-provider-manager>.iad-muted{margin-bottom:20px}.iad-provider-manager>.iad-table-scroll{background:var(--iad-surface);border-radius:var(--iad-radius)}.iad-provider-manager input{max-width:100%}.iad-provider-endpoint{overflow-wrap:anywhere;max-width:420px}.iad-provider-dialog{width:min(780px,calc(100vw - 32px))}.iad-provider-dialog fieldset{border:0;padding:0;margin:0;min-width:0}.iad-provider-model{padding:12px 16px;margin:12px 0;background:var(--iad-surface-muted);border-radius:8px}.iad-provider-model .iad-row{justify-content:space-between}
 `;
 
-  // apps/iad-harness/src/client/styles/exploration.ts
+  // src/client/styles/exploration.ts
   var explorationStyles = `
 dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-dialog-max-height),calc(100dvh - 2 * var(--iba-dialog-gap)))!important}
 .exp-source-dialog .exp-source-body{display:grid;grid-template-rows:auto minmax(0,1fr) 44px;gap:16px;overflow:hidden}
@@ -64886,8 +64755,8 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .exp-source-dialog .iad-thumbnail-option{display:grid;justify-items:start;align-content:start;gap:6px;min-width:0}
 .exp-source-dialog .exp-source-pagination{min-width:0;align-self:end;min-height:44px}
 .exp-source-dialog .exp-source-pagination .iad-pagination{margin:0}
-@media(max-width:620px){.exp-source-dialog .exp-source-body{grid-template-rows:auto minmax(0,1fr) 88px}.exp-source-dialog .exp-source-pagination{min-height:88px}}
-@media(max-width:750px){.exp-source-dialog .exp-source-filters{grid-template-columns:repeat(2,minmax(0,1fr)) 40px}.exp-source-dialog .exp-source-search-field{grid-column:1/-1}.exp-source-dialog .exp-source-child-field{grid-column:1;grid-row:2}.exp-source-dialog .exp-source-category-field{grid-column:2/-1;grid-row:2}.exp-source-dialog .exp-source-only{grid-column:1/3;grid-row:3}.exp-source-dialog .exp-source-filters>.iad-filter-action{grid-column:3;grid-row:3}}
+
+
 .iad-exploration-page{min-width:0}.iad-job-sync{display:flex;align-items:center;flex-wrap:wrap;gap:12px 20px;min-height:44px;margin-bottom:20px;font-size:.8125rem}.iad-job-sync button{margin-left:auto}.iad-job-sync[data-state=stale]{padding:12px 16px;border-left:3px solid var(--iad-warning);background:var(--iad-surface);color:var(--iad-warning)}
 .iad-exploration-page textarea{width:100%}
 .iad-exploration-page .iad-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:280px;padding:40px 24px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius)}.iad-exploration-page .iad-empty h2{margin:0;color:var(--iad-text)}.iad-exploration-page .iad-empty p{max-width:480px}.iad-exploration-page .iad-empty button{margin-top:8px}
@@ -64895,11 +64764,11 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-exploration-summary{margin-bottom:20px}.iad-exploration-summary>p{line-height:1.8;overflow-wrap:anywhere}.iad-exploration-summary>p[data-expanded=false]{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}
 .iad-exploration-results .iad-section-header>select{min-width:260px;max-width:100%}.iad-exploration-results .iad-resource-table th:nth-child(2){width:20%}.iad-exploration-results .iad-resource-table th:nth-child(3){width:80px}.iad-exploration-results .iad-resource-table th:last-child{width:160px}.iad-exploration-results .iad-resource-table td{padding:12px 16px}.iad-exploration-results .iad-resource-table td:first-child{overflow-wrap:anywhere}
 .iad-exploration-limitations{margin-top:18px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius);overflow:hidden}.iad-exploration-limitations>summary{list-style:none;display:flex;align-items:center;gap:13px;min-height:54px;padding:0 18px;cursor:pointer;user-select:none}.iad-exploration-limitations>summary::-webkit-details-marker{display:none}.iad-exploration-limitations>summary:hover{background:var(--iad-hover)}.iad-exploration-limitations>summary:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}.iad-exploration-limitations>summary>.iad-muted,.iad-limit-count{font-size:.75rem;color:var(--iad-muted)}.iad-limit-count{margin-left:auto;white-space:nowrap}.iad-limit-chevron{flex:none;color:var(--iad-muted);transition:transform .15s ease}.iad-exploration-limitations[open] .iad-limit-chevron{transform:rotate(90deg)}.iad-limit-list{list-style:none;counter-reset:iad-limitation;margin:0;padding:0 18px;border-top:1px solid var(--iad-border)}.iad-limit-list>li{counter-increment:iad-limitation;display:grid;grid-template-columns:115px minmax(0,1fr);gap:14px;padding:13px 0;line-height:1.8;color:var(--iad-muted);overflow-wrap:anywhere}.iad-limit-list>li::before{content:counter(iad-limitation,decimal-leading-zero);font-weight:600}.iad-limit-list>li+li{border-top:1px solid var(--iad-border)}
-@container workbench (max-width:1180px){.iad-exploration-setup-layout{grid-template-columns:minmax(0,1fr) 320px}.iad-exploration-jobs-layout{grid-template-columns:minmax(0,1fr)}}
-@container workbench (max-width:960px){.iad-exploration-setup-layout{grid-template-columns:minmax(0,1fr)}.iad-exploration-side{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
 
 .iad-detail-dialog.iad-direction-dialog{width:min(1280px,calc(100vw - 64px));height:fit-content;max-height:calc(100dvh - 64px);overflow:hidden;padding:0;display:flex;flex-direction:column}.iad-direction-dialog .iad-dialog-header{position:static;flex:none;padding:22px 28px 14px;margin:0;top:0}.iad-direction-dialog .iad-dialog-header h2{font-size:1.3125rem}.iad-direction-body{min-height:0;overflow:auto;padding:0 28px 20px}.iad-direction-meta{display:flex;gap:16px;flex-wrap:wrap;color:var(--iad-muted);font-size:.75rem;padding:14px 0 20px}.iad-direction-objective{padding-bottom:20px;border-bottom:1px solid var(--iad-border)}.iad-detail-dialog.iad-direction-dialog h3{margin:0 0 12px}.iad-direction-body p{white-space:pre-line;overflow-wrap:anywhere;line-height:1.8}.iad-direction-text-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;padding:20px 0;border-bottom:1px solid var(--iad-border)}.iad-direction-text-grid>section+section{padding-top:20px;border-top:1px solid var(--iad-border)}.iad-direction-text-grid ul{margin:0;padding-left:18px;display:grid;gap:10px}.iad-direction-evidence{padding-top:20px}.iad-evidence-groups{display:grid;grid-template-columns:minmax(0,var(--iad-normal-width,3fr)) minmax(0,var(--iad-defect-width,5fr));gap:24px}.iad-evidence-group{min-width:0}.iad-evidence-group h4{display:flex;justify-content:space-between;gap:8px;margin:0 0 10px;font-size:.75rem;font-weight:500;color:var(--iad-muted)}.iad-evidence-thumbnails>div:first-child{display:grid;grid-template-columns:repeat(var(--iad-evidence-columns),minmax(0,1fr));gap:10px}.iad-direction-evidence-item{display:grid;gap:6px;text-align:left;min-width:0;padding:5px!important;border-color:var(--iad-border)!important}.iad-direction-evidence-item img{width:100%;height:104px;object-fit:contain;background:var(--iad-surface-muted)}.iad-direction-evidence-item strong{font-size:.75rem;font-weight:500}.iad-direction-evidence-item>span{font-size:.625rem;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.iad-direction-evidence-item[data-focused=true]{outline:2px solid var(--iad-primary);outline-offset:2px;border-color:var(--iad-primary)!important}.iad-direction-trace{margin-top:16px;padding-top:12px;border-top:1px solid var(--iad-border);overflow-wrap:anywhere}.iad-direction-trace summary{cursor:pointer;min-height:32px}.iad-direction-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;flex:none;padding:14px 28px;border-top:1px solid var(--iad-border)}.iad-direction-destination{display:flex;align-items:center;gap:12px;color:var(--iad-muted);font-size:.75rem}.iad-direction-destination select{width:112px}.iad-missing-evidence{overflow-wrap:anywhere;font-size:.75rem}.iad-missing-evidence code{display:block}
-@media(max-width:1050px){.iad-evidence-groups{grid-template-columns:minmax(0,1fr)}.iad-evidence-thumbnails>div:first-child{grid-template-columns:repeat(5,minmax(0,1fr))}}
+
 
 
 
@@ -64968,8 +64837,8 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .exp-evidence img{width:100%;height:120px;object-fit:contain;background:#f0f4f9;border-radius:4px}
 .exp-detail-field{padding:8px 0;border-bottom:1px solid #e8edf3;font-size:13px}.exp-detail-field span{display:block;font-size:12px;color:#76869a;margin-bottom:5px}
 .exp-inline-warning{margin:0 0 10px;font-size:12px;color:#a64e3e}
-@media(max-width:1120px){.exp-samples{gap:12px}.exp-preview img{height:72px}}
-@media(max-width:850px){.exp-heading-actions select{width:220px}.exp-samples{grid-template-columns:1fr}.exp-prompt-head{grid-template-columns:1fr auto}.exp-prompt-head .exp-input{grid-column:1/-1;max-width:none}.exp-phase-grid{grid-template-columns:repeat(2,1fr)}.exp-detail-grid{grid-template-columns:1fr}}
+
+
 @media(prefers-reduced-motion:reduce){.exp-progress>i{animation:none}}
 
 .exp-sample-body{min-width:0}
@@ -64981,9 +64850,9 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .exp-previews-wide .exp-preview.empty{height:156px}
 .exp-sample-context{color:#75859c;font-size:12px;padding-bottom:12px}
 .exp-samples.exp-samples-tabs{display:block}
-@media(max-width:1200px){.exp-previews.exp-previews-wide{grid-template-columns:repeat(5,minmax(0,1fr))}}
-@media(max-width:970px){.exp-previews.exp-previews-wide{grid-template-columns:repeat(4,minmax(0,1fr))}}
-@media(max-width:640px){.exp-scope>.exp-input:first-child,.exp-child-wrap{width:100%}.exp-previews.exp-previews-wide{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+
 
 
 .exp-sample-toolbar{justify-content:flex-end}
@@ -65019,7 +64888,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .exp-job-table th:nth-child(1){width:24%}.exp-job-table th:nth-child(2){width:13%}.exp-job-table th:nth-child(3){width:25%}.exp-job-table th:nth-child(4){width:18%}.exp-job-table th:nth-child(5){width:10%}
 .exp-job-table .exp-pill{font-size:12px;border-radius:4px;font-weight:500}
 .exp-pill.pending{color:#8e6d24;background:#fff5df}
-@media(max-width:980px){.exp-job-table{min-width:780px}}
+
 
 
 .exp-unified-layout{display:flex;flex-direction:column;gap:var(--iad-layout-gap);min-width:0}
@@ -65042,7 +64911,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .exp-result-neutral{font-size:12px;color:#70819a;margin-top:18px}
 .exp-error-message{color:#a23043;background:#fff6f7;border:1px solid #f3d7dc;padding:13px 15px;border-radius:5px;font-size:13px;line-height:1.6}
 .exp-unified-empty{min-height:165px!important}
-@media(max-width:900px){.exp-result-content{--exp-result-inset:17px}.exp-direction-table th:nth-child(1){width:auto}}
+
 
 .exp-prompt-action-col{width:128px;text-align:right!important}
 .exp-prompt-link{border:0;background:transparent;color:#245bcc;font:inherit;font-size:12px;padding:6px 5px;cursor:pointer;border-radius:5px;white-space:nowrap}
@@ -65055,7 +64924,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 
 
 
-@media(max-width:760px){.exp-prompt-action-col{width:110px}}
+
 
 
 .exp-direction-table th:nth-child(1){width:auto!important}
@@ -65136,10 +65005,10 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 
 `;
 
-  // apps/iad-harness/src/client/styles/base.ts
+  // src/client/styles/base.ts
   var baseStyles = `.iad-detail-dialog,.iad-floating-menu-panel{overflow-wrap:anywhere;font:var(--dsh-content-font-size,.875rem)/1.571429 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
 .iad-panel{min-width:0;padding:24px;border:1px solid var(--iad-border);border-radius:var(--iad-radius);background:var(--iad-surface)}.iad-panel>h3:first-child{margin-top:0}
-.iad-workbench {container:workbench / inline-size;height:100%;box-sizing:border-box;overflow:auto;scrollbar-gutter:stable;min-width:0;padding:var(--iad-page-padding);color:var(--iad-text);background:var(--iad-canvas);font:var(--dsh-content-font-size,.875rem)/1.571429 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;}
+.iad-workbench {height:100%;box-sizing:border-box;overflow:auto;scrollbar-gutter:stable;min-width:0;padding:var(--iad-page-padding);color:var(--iad-text);background:var(--iad-canvas);font:var(--dsh-content-font-size,.875rem)/1.571429 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;}
 :is(.iad-workbench,.iad-detail-dialog,.iad-floating-menu-panel) * {box-sizing:border-box;}
 .iad-plain-empty{margin:0;padding:24px;color:var(--iad-text);font-size:var(--iad-font-size);line-height:1.6;font-weight:400;text-align:left;background:var(--iad-surface)}
 .iad-workbench .iad-result-empty{margin:0;padding:28px 16px;min-height:88px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.5;font-weight:400;color:#65758c}
@@ -65160,14 +65029,14 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-section-layout {display:grid;grid-template-columns:180px minmax(0,1fr);gap:32px;padding:28px 0;border-bottom:1px solid var(--iad-border);min-width:0;}
 .iad-section-layout:first-child {padding-top:0;}.iad-section-layout:last-of-type {padding-bottom:0;border-bottom:0;}
 .iad-section-layout>div {min-width:0;}.iad-section-layout h3 {margin:0;}.iad-section-layout .iad-field:first-child {margin-top:0;}
-@container workbench (max-width:1180px){.iad-section-layout{grid-template-columns:150px minmax(0,1fr);gap:24px}}
-@container workbench (max-width:900px){.iad-section-layout{grid-template-columns:minmax(0,1fr);gap:20px}}
+
+
 
 /* IBA Unified Two-Tier Dataset Hierarchy Scope Selector */
 
 `;
 
-  // apps/iad-harness/src/client/styles/collections.ts
+  // src/client/styles/collections.ts
   var collectionsStyles = `.iad-main {display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start;}
 .iad-audit-sample:not(.iad-inline-dialog) .iad-inspector{position:static;padding:0}.iad-audit-sample:not(.iad-inline-dialog) .iad-inspector>h2{display:none}
 .iad-main[data-compact=true]{grid-template-columns:minmax(0,1fr)}
@@ -65221,7 +65090,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-reference-grid small {display:block;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;}
 `;
 
-  // apps/iad-harness/src/client/styles/jobs.ts
+  // src/client/styles/jobs.ts
   var jobsStyles = `
 .iad-job-list{min-width:0;overflow:hidden;padding:0;background:var(--iad-surface);border:1px solid var(--iad-panel-border);border-radius:6px;margin-bottom:var(--iad-layout-gap);font-size:var(--iad-font-size)}
 .iad-job-list>nav.iad-pagination{margin:0;padding:11px 18px;border-top:1px solid var(--iad-border)}
@@ -65268,10 +65137,10 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-job-note{font-size:12px;color:var(--iad-muted);line-height:1.65;margin:12px 0 0}
 .iad-job-drawer-footer{border-top:1px solid var(--iad-border);display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap;padding:13px 24px;flex:none}
 .iad-job-drawer-footer p{flex-basis:100%;margin:0}
-@media(max-width:680px){.iad-job-drawer-body{padding:18px 16px}.iad-job-drawer-footer{padding:12px 16px}}
+
 `;
 
-  // apps/iad-harness/src/client/styles/overlays.ts
+  // src/client/styles/overlays.ts
   var overlaysStyles = `.iad-viewer-hint{margin:0;padding:8px 20px;flex:none;border-top:1px solid var(--iad-control-border);color:color-mix(in srgb,var(--iad-on-viewer) 75%,var(--iad-viewer));font-size:.75rem;background:var(--iad-viewer)}.iad-viewer-zoom{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.iad-viewer-evidence-group h4{font-size:.75rem;color:var(--iad-muted);font-weight:500;margin:16px 0 8px}.iad-viewer-heading{flex:1;min-width:160px;overflow:hidden}.iad-viewer-heading strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.iad-viewer-heading small{display:block;margin-top:4px;font-size:.75rem;color:var(--iad-muted)}
 .iad-viewer-dialog .iad-lightbox{padding:0}.iad-lightbox>.iad-lightbox-toolbar{padding:12px 20px;gap:12px;border-bottom:1px solid var(--iad-control-border);background:var(--iad-surface);color:var(--iad-text)}.iad-lightbox>.iad-viewer-body{margin:0;gap:0}.iad-viewer-body.has-context{grid-template-columns:minmax(0,1fr) 288px}.iad-viewer-aux{min-width:0;min-height:0;overflow:auto}.iad-viewer-aux>.iad-inspection-panel{height:100%;border-radius:0}.iad-viewer-context{padding:24px 20px;background:var(--iad-surface);color:var(--iad-text);height:100%;border-left:1px solid var(--iad-control-border);overflow:auto}.iad-viewer-context h3{font-size:.875rem;margin:0 0 10px}.iad-viewer-context p{font-size:.75rem;line-height:1.8;overflow-wrap:anywhere;color:var(--iad-muted)}.iad-viewer-context section,.iad-viewer-context details{margin-top:20px;padding-top:20px;border-top:1px solid var(--iad-border)}.iad-viewer-context dl{font-size:.75rem;overflow-wrap:anywhere}.iad-viewer-context dd{margin-left:0}.iad-viewer-thumbnails{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0 20px}.iad-viewer-thumbnails button{display:grid;gap:5px;padding:3px;min-width:0;font-size:.6875rem}.iad-viewer-thumbnails img{width:100%;height:80px;object-fit:contain;background:var(--iad-surface-muted)}.iad-viewer-thumbnails button[aria-current=true]{outline:2px solid var(--iad-primary);outline-offset:1px;background:var(--iad-hover)}
 
@@ -65286,7 +65155,6 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-viewer-edge-button:is(:hover,:focus-visible)>.iad-viewer-edge-disc{background:var(--iad-viewer-edge-hover);border-color:var(--iad-viewer-edge-hover-border)}
 .iad-viewer-edge-button:disabled>.iad-viewer-edge-disc{opacity:.38}
 .iad-image-canvas .iad-viewer-edge-nav>button.iad-viewer-edge-button:focus-visible{outline:2px solid var(--iad-primary);outline-offset:-2px}
-@media(hover:none){.iad-image-canvas .iad-viewer-edge-nav>button.iad-viewer-edge-button:not(:disabled){opacity:1}}
 @media(prefers-reduced-motion:reduce){.iad-image-canvas .iad-viewer-edge-nav>button.iad-viewer-edge-button,.iad-viewer-edge-disc{transition:none}}
 .iad-viewer-media>.iad-media-loading {position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:calc(100% - 32px);padding:12px 16px;border-radius:var(--iad-radius);background:var(--iad-viewer);color:var(--iad-on-viewer);line-height:1.5;pointer-events:none;}
 .iad-viewer-media[aria-busy=true] .iad-viewer-world {visibility:hidden;}
@@ -65315,7 +65183,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 
 `;
 
-  // apps/iad-harness/src/client/styles/forms.ts
+  // src/client/styles/forms.ts
   var formsStyles = `
 .iad-form-fields{display:grid;gap:19px;align-content:start}
 .iad-form-fields>.iad-field{margin:0;gap:8px}
@@ -65376,7 +65244,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-detail-dialog .iad-inspector {border:0;box-shadow:none;}
 .iad-browse {min-width:0;}
 
-@container workbench (max-width:959px){.iad-workbench{--iad-page-padding:var(--iad-space-6)}}
+
 
 @media(prefers-reduced-motion:reduce) {.iad-workbench * {scroll-behavior:auto;transition:none;animation:none;}}
 
@@ -65384,7 +65252,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 
 `;
 
-  // apps/iad-harness/src/client/styles/review.ts
+  // src/client/styles/review.ts
   var reviewStyles = `.iad-workbench[data-page=industrial-review]:has(.iad-review-focused) {display:flex;flex-direction:column;overflow:auto;}
 .iad-workbench[data-page=industrial-review]:has(.iad-review-focused)>.iad-tab-panel {display:flex;flex-direction:column;flex:1;min-height:min-content;}
 .iad-focused-inspector {display:flex;flex-direction:column;flex:1;min-height:min-content;padding:0;background:transparent;}
@@ -65410,41 +65278,36 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-review-submit {display:flex;flex-direction:column;gap:8px;padding-top:16px;flex:none;background:var(--iad-surface);}
 .iad-review-submit .iad-error {margin:0;max-height:100px;overflow:auto;}
 .iad-review-submit small {text-align:center;}
-.iad-review-tools {display:none;gap:8px;flex:none;}
-.iad-review-tools button {display:none;}
-.iad-detail-dialog.iad-review-drawer {width:min(440px,100%);height:100dvh;max-height:100dvh;margin:0 0 0 auto;border-radius:0;flex-direction:column;}.iad-detail-dialog.iad-review-drawer[open]{display:flex;}
-.iad-review-drawer>.iad-decision {flex:1;min-height:0;}
-.iad-review-drawer .iad-review-queue {overflow:auto;}
 .iad-embedded-canvas {position:relative;display:flex;flex-direction:column;flex:1;min-height:0;background:var(--iad-viewer);border-radius:var(--iad-radius);padding:12px;color:var(--iad-on-viewer);overflow:hidden;}
 .iad-embedded-canvas .iad-lightbox-toolbar {gap:8px;}
 .iad-embedded-canvas .iad-viewer-body {margin-top:12px;}
 .iad-embedded-evidence {position:absolute;right:12px;bottom:12px;z-index:2;max-width:calc(100% - 24px);width:340px;color:var(--iad-text);background:var(--iad-surface);border-radius:var(--iad-radius);}
 .iad-embedded-evidence>summary {cursor:pointer;padding:12px;min-height:44px;}
 .iad-embedded-evidence .iad-inspection-panel {max-height:260px;}
-@container workbench (max-width:1180px) {.iad-review-columns {grid-template-columns:minmax(0,1fr) 300px;}.iad-review-queue-slot {display:none;}.iad-review-tools {display:flex;}.iad-review-tools .iad-queue-trigger {display:block;}}
-@container workbench (max-width:900px) {.iad-review-columns {grid-template-columns:minmax(0,1fr);}.iad-review-decision-slot {display:none;}.iad-review-tools .iad-decision-trigger {display:block;}}
+
+
 .iad-conflict-workspace {display:grid;grid-template-columns:240px minmax(0,1fr);gap:24px;align-items:start;}
 .iad-conflict-detail {display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;min-width:0;}.iad-conflict-detail>article,.iad-conflict-detail>aside {min-width:0;}
 .iad-disposition-fields {border:0;min-width:0;margin:0;padding:0;}
-@container workbench (max-width:1180px){.iad-conflict-detail {grid-template-columns:minmax(0,1fr);}.iad-conflict-workspace {grid-template-columns:220px minmax(0,1fr);}}
-@container workbench (max-width:900px){.iad-conflict-workspace {grid-template-columns:minmax(0,1fr);}}
+
+
 
 `;
 
-  // apps/iad-harness/src/client/styles/knowledge.ts
+  // src/client/styles/knowledge.ts
   var knowledgeStyles = `
 #knowledge-page .kb-create-fields{border:0;padding:0;margin:0;min-width:0;}
 /* V49 Knowledge Mining Styles - Scoped to .kb-v45 and workbench */
 
 :root {
-  --iad-content-modal-gutter: var(--iba-dialog-gap, clamp(12px, 2.5vw, 32px));
+  --iad-content-modal-gutter: var(--iba-dialog-gap, 32px);
   --iad-content-modal-radius: 8px;
   --iad-content-modal-width: 1380px;
   --iad-content-modal-height: 820px;
 }
 
 #knowledge-page, .iad-knowledge-page {
-  --iad-content-modal-gutter: var(--iba-dialog-gap, clamp(12px, 2.5vw, 32px));
+  --iad-content-modal-gutter: var(--iba-dialog-gap, 32px);
   --iad-content-modal-radius: 8px;
   --iad-content-modal-width: 1380px;
   --iad-content-modal-height: 820px;
@@ -65589,10 +65452,6 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
   gap: 9px;
 }
 
-.kb-v45 .knowledge-entry-view:hover {
-  color: #285fc9 !important;
-  background: #edf2fa !important;
-}
 
 /* Status Badges */
 .status {
@@ -65639,40 +65498,9 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 }
 
 /* Lower Panel: Knowledge Entries */
-.kb-v45 .knowledge-list {
-  width: 100%;
-  min-width: 0;
-  overflow-x: auto;
-  overflow-y: visible;
-}
 
-.kb-v45 .knowledge-head,
-.kb-v45 .knowledge-row {
-  display: grid;
-  grid-template-columns: minmax(200px, 28%) minmax(290px, 1fr) 112px 90px !important;
-  align-items: center;
-  gap: 14px !important;
-  min-width: 770px !important;
-}
 
-.kb-v45 .knowledge-entry-name,
-.kb-v45 .knowledge-entry-description {
-  display: block;
-  font-weight: 400 !important;
-  color: var(--iba-v50-ink, #172338) !important;
-  line-height: 1.55;
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
 
-.kb-v45 .knowledge-row .knowledge-entry-description {
-  white-space: normal !important;
-  overflow: visible !important;
-  text-overflow: clip !important;
-  max-height: none !important;
-  padding: 0 !important;
-  margin: 0 !important;
-}
 
 .kb-v45 .jobtitle {
   font-weight: 400 !important;
@@ -65685,79 +65513,14 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
   display: none !important;
 }
 
-.kb-v45 .knowledge-head {
-  min-height: 43px;
-  padding: 0 20px;
-  background: #f1f4f9;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  border-bottom: 1px solid #dfe6f0;
-}
 
-.kb-v45 .knowledge-head > span:last-child {
-  text-align: right;
-}
 
-.kb-v45 .knowledge-row {
-  width: 100%;
-  min-height: 74px;
-  padding: 11px 20px;
-  border: 0;
-  border-bottom: 1px solid #e5eaf1;
-  text-align: left;
-  background: #fff;
-  color: #172338 !important;
-  cursor: pointer;
-  font-size: 13px !important;
-  border-radius: 0;
-  font-family: inherit;
-}
 
-.kb-v45 .knowledge-row:hover {
-  background: #f7faff;
-}
 
-.kb-v45 .knowledge-row:focus-visible {
-  outline: 2px solid #8caef1;
-  outline-offset: -2px;
-  background: #f3f7ff;
-}
 
-.kb-v45 .knowledge-row .row-title {
-  display: block;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  line-height: 1.5;
-}
 
-.kb-v45 .knowledge-row .row-desc {
-  display: block;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  line-height: 1.55;
-  margin-top: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 
-.kb-v45 .knowledge-row .col-evidence-count {
-  text-align: left;
-  color: #172338 !important;
-  font-size: 13px !important;
-  font-variant-numeric: tabular-nums;
-}
 
-.kb-v45 .knowledge-row .col-action {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 7px;
-  min-width: 0;
-}
 
 /* Blank states */
 .kb-v45 .blank {
@@ -66383,15 +66146,11 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
   color: #a53b39;
   font-size: 13px;
 }
-@media (max-width: 700px) {
-  :is(#knowledge-page, .iad-knowledge-page) :is(.kb-v45, .iad-knowledge-page) .kb-setup-confirm {
-    padding: 15px !important;
-  }
-}
+
 
 `;
 
-  // apps/iad-harness/src/client/styles/knowledge-entries.ts
+  // src/client/styles/knowledge-entries.ts
   var knowledgeEntryStyles = `
 .iad-knowledge-filters{display:flex;align-items:center;gap:10px}
 .iad-knowledge-filters input{width:200px}.iad-knowledge-filters select{width:155px}
@@ -66414,7 +66173,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-knowledge-version{display:flex;align-items:center;gap:10px;padding:12px 20px}
 `;
 
-  // apps/iad-harness/src/client/styles/setup.ts
+  // src/client/styles/setup.ts
   var setupStyles = `.iad-setup {max-width:1040px;min-width:0;padding:24px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:var(--iad-radius);}.iad-workbench .iad-short-field{flex:none;width:88px;margin:0 0 16px}.iad-short-field input{width:100%}.iad-form-footer{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;padding-top:20px;margin-top:24px;border-top:1px solid var(--iad-border)}.iad-form-footer>.iad-muted{margin-right:auto}
 .iad-setup-section {padding:var(--iad-space-6) 0;border-bottom:1px solid var(--iad-border);}
 .iad-setup-section:first-of-type {padding-top:0;}.iad-setup-section:last-child {border:0;}
@@ -66425,7 +66184,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-setup-section .iad-info-group {background:transparent;padding:0;margin:0;}
 `;
 
-  // apps/iad-harness/src/client/styles/datasets.ts
+  // src/client/styles/datasets.ts
   var datasetsStyles = `
 :root, [data-page="industrial-datasets"] {
   --drawer-width: min(560px, 100vw);
@@ -66794,32 +66553,13 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .toast.hidden { display: none; }
 
 /* Responsive */
-@media(max-width: 1200px) {
-  .iad-dataset-page-wrap.has-drawer { padding-right: 0 !important; }
-  .drawer-root.open { pointer-events: auto; }
-  .drawer-root.open .drawer-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    background: rgba(15,25,43,.22);
-    pointer-events: auto;
-    z-index: 50;
-  }
-  .dataset-drawer {
-    width: min(540px, 95vw);
-    box-shadow: -8px 0 30px rgba(0,0,0,.17);
-    z-index: 51;
-  }
-}
 
-@media(max-width: 760px) {
-  .drawer-top { padding: 19px 15px; }
-  .drawer-body { padding: 15px; }
-}
+
+
 
 `;
 
-  // apps/iad-harness/src/client/styles/consistency.ts
+  // src/client/styles/consistency.ts
   var consistencyStyles = `
 .iad-consistency .iad-consistency-query{padding:18px 20px 16px;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:7px;margin-bottom:14px}
 .iad-consistency .iad-consistency-query .iad-row{align-items:end;gap:12px;flex-wrap:wrap}.iad-consistency-query .iad-filter{min-width:145px;gap:7px;color:var(--iad-muted);font-size:12px}.iad-consistency-query .iad-filter :is(select,input){font-size:14px;height:40px}
@@ -66853,7 +66593,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-consistency-model-state{display:block;padding:0 10px 10px;font-size:11px;color:var(--iad-muted)}.iad-group-overall{margin-top:16px}.iad-group-overall h4{margin:0 0 8px;font-size:14px}.iad-group-overall p{margin:0;line-height:1.7}.iad-consistency-card-caption{display:grid;gap:8px;padding:10px;min-width:0}.iad-consistency-card-caption>strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.iad-consistency-card-caption>div{display:flex;justify-content:space-between;gap:8px;color:var(--iad-muted);font-size:11px}.iad-consistency-badge{display:inline-block;padding:2px 5px;border-radius:3px;background:var(--iad-hover);color:var(--iad-primary);font-size:11px;font-weight:400}
 .iad-detail-dialog.iad-consistency-group-dialog{width:min(1520px,96vw);height:94vh;max-width:96vw;max-height:94vh;padding:0;overflow:hidden;border:0;border-radius:7px}
 .iad-consistency-group-dialog[open]{display:flex;flex-direction:column}.iad-group-header,.iad-group-footer{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:15px 22px;flex:none;background:var(--iad-surface)}.iad-group-header{border-bottom:1px solid var(--iad-border)}.iad-group-header>div:first-child{min-width:0}.iad-group-header h2{font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin:3px 0}.iad-group-header p{margin:0;font-size:12px;color:var(--iad-muted)}.iad-group-header span{font-size:11px}.iad-group-header .iad-row{flex-wrap:nowrap;gap:8px}
-.iad-group-scroll{display:flex;flex-direction:column;flex:1;min-height:0;padding:18px 24px 0;overflow:hidden}.iad-group-visuals{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding-bottom:8px}.iad-consistency-group-dialog .iad-image-pair{margin-top:0}.iad-consistency-group-dialog .iad-image-pair-side>p{font-size:13px;font-weight:600;margin:0 0 8px;color:var(--iad-text)}.iad-consistency .iad-consistency-group-dialog .iad-embedded-canvas{height:clamp(280px,39vh,430px)}.iad-consistency-group-dialog .iad-lightbox-toolbar{padding:5px;gap:4px;flex-wrap:nowrap}.iad-consistency-group-dialog .iad-viewer-heading{display:none}.iad-consistency-group-dialog .iad-viewer-zoom select{width:90px}.iad-consistency-group-dialog .iad-viewer-body{margin-top:0}
+.iad-group-scroll{display:flex;flex-direction:column;flex:1;min-height:0;padding:18px 24px 0;overflow:hidden}.iad-group-visuals{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding-bottom:8px}.iad-consistency-group-dialog .iad-image-pair{margin-top:0}.iad-consistency-group-dialog .iad-image-pair-side>p{font-size:13px;font-weight:600;margin:0 0 8px;color:var(--iad-text)}.iad-consistency .iad-consistency-group-dialog .iad-embedded-canvas{height:430px}.iad-consistency-group-dialog .iad-lightbox-toolbar{padding:5px;gap:4px;flex-wrap:nowrap}.iad-consistency-group-dialog .iad-viewer-heading{display:none}.iad-consistency-group-dialog .iad-viewer-zoom select{width:90px}.iad-consistency-group-dialog .iad-viewer-body{margin-top:0}
 .iad-group-image-names{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:8px;color:var(--iad-muted);font-size:11px}.iad-group-image-names span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .iad-group-candidates{margin:20px 0 16px}.iad-group-candidates>.iad-row{justify-content:space-between;gap:10px}.iad-group-candidates h3{margin:0 auto 8px 0;font-size:13px}.iad-group-candidate-strip{display:flex;overflow:auto;gap:10px;padding:3px 1px 8px}.iad-group-candidate-strip>button{display:grid;flex:0 0 116px;gap:4px;text-align:left;min-width:0}.iad-group-candidate-strip img{width:104px;height:94px;object-fit:contain;background:var(--iad-viewer);border-radius:3px}.iad-group-candidate-strip strong{font-size:11px}.iad-group-candidate-strip span{font-size:10px;color:var(--iad-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:104px}
 .iad-group-analysis{flex:none;max-height:40%;overflow:auto;overscroll-behavior:contain;border-top:1px solid var(--iad-border);padding-bottom:16px}.iad-group-analysis h3{font-size:14px}.iad-group-analysis .iad-tab-panel{padding:16px 0 0}.iad-group-analysis .iad-consistency-differences{max-height:none;overflow:visible}.iad-group-references{display:grid;grid-template-columns:60px minmax(0,1fr);gap:6px;font-size:12px}.iad-group-references dd{margin:0;overflow-wrap:anywhere}.iad-group-fact{display:flex;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--iad-border);font-size:12px}.iad-group-fact>button{margin-left:auto}.iad-group-footer{border-top:1px solid var(--iad-border)}
@@ -66862,7 +66602,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-consistency-job-summary>div{min-width:0;padding:2px 18px;border-right:1px solid var(--iad-border);display:flex;flex-direction:column;align-items:start;gap:5px}.iad-consistency-job-summary>div:last-child{border-right:0}.iad-consistency-job-summary>div>span:first-child,.iad-consistency-job-summary small{color:var(--iad-muted);font-size:12px}.iad-consistency-job-summary strong{font-size:18px}.iad-consistency-job-summary .iad-job-sync{position:relative;margin:0;padding-right:55px;gap:8px}.iad-consistency-job-summary .iad-job-sync>span[role=status]{color:var(--iad-text);font-weight:600;font-size:14px}.iad-consistency-job-summary .iad-job-sync>button{position:absolute;right:12px;top:12px;margin:0}.iad-consistency-job-detail-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}.iad-consistency-job-detail-heading h2{font-size:15px;margin:0}.iad-consistency-job-detail-heading strong{font-size:12px;color:var(--iad-primary)}.iad-consistency-job-progress{gap:16px;margin:12px 0}.iad-consistency-child-jobs{margin:18px 0}.iad-consistency-child-jobs>summary{cursor:pointer;font-size:12px;color:var(--iad-muted);padding:8px 0}.iad-consistency-jobs [aria-label="\u6279\u6B21\u6BD4\u8F83\u7ED3\u679C"] h3{font-size:14px}.iad-consistency-jobs [aria-label="\u6279\u6B21\u6BD4\u8F83\u7ED3\u679C"]>.iad-row{padding:12px 0;border-top:1px solid var(--iad-border);font-size:12px}
 .iad-consistency-report-strip{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;background:var(--iad-surface);border:1px solid var(--iad-border);border-radius:7px;padding:10px 0}.iad-consistency-report-strip>div{display:grid;gap:6px;align-content:start;padding:2px 16px;border-right:1px solid var(--iad-border);min-width:0}.iad-consistency-report-strip>div:last-child{border-right:0}.iad-consistency-report-strip :is(span,small){color:var(--iad-muted);font-size:11px}.iad-consistency-report-strip strong{font-size:16px}.iad-consistency-report-strip>div:first-child strong{font-size:14px}.iad-consistency-report-tools{display:flex;align-items:center;gap:12px;margin:6px 0;font-size:12px}.iad-consistency-summary-details{margin-left:auto}.iad-consistency-summary-details>summary{padding:3px 0}
 .iad-consistency-filter-chips{display:flex;gap:10px;padding:12px 16px 0;flex-wrap:wrap}
-@container workbench (max-width:1200px){.iad-consistency-gallery{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
 
 :root {
   --blue: #285ed6;
@@ -66901,8 +66641,8 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .dc-decision-controls input{height:16px;width:16px;accent-color:var(--iad-primary)}
 .dc-note{width:100%;height:58px;min-height:58px;padding:10px;border:1px solid var(--iad-control-border);border-radius:5px;resize:vertical;color:var(--iad-text);background:var(--iad-surface)}
 .dc-dialog-footer{display:flex;gap:8px;justify-content:flex-end;flex:none}
-@media(max-width:1000px){.dc-compare{grid-template-columns:1fr}}
-@media(max-width:650px){.dc-scope{display:grid}.dc-dialog-head-actions{gap:4px}}
+
+
 
 .dc-stats-content {
   overflow-y: auto !important;
@@ -66916,7 +66656,6 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
   gap: 13px !important;
   align-items: stretch !important;
 }
-.dc-stats-filter{display:grid;gap:6px;max-width:360px;margin-bottom:18px}
 
 .dc-images-panel,
 .dc-fact-panel,
@@ -66964,7 +66703,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .dc-model-panel p{white-space:pre-wrap;overflow-wrap:anywhere}
 `;
 
-  // apps/iad-harness/src/client/styles/images.ts
+  // src/client/styles/images.ts
   var imagesStyles = `
 .iad-image-quality{position:absolute;left:9px;top:9px;z-index:2;padding:4px 9px;border-radius:4px;background:var(--iad-surface);color:var(--iad-text);font-weight:650;pointer-events:none}
 .iad-image-quality[data-quality="OK"]{color:var(--iad-success,#24844b)}
@@ -67102,7 +66841,7 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 }
 `;
 
-  // apps/iad-harness/src/client/styles/dialogs.ts
+  // src/client/styles/dialogs.ts
   var dialogsStyles = `
 dialog.iad-detail-dialog {text-align:left;}
 .iad-dialog-form-layout {display:flex;flex-direction:column;flex:1 1 auto;min-height:0;}
@@ -67120,8 +66859,8 @@ dialog.iad-detail-dialog {text-align:left;}
   --iba-dialog-gap: var(--iad-dialog-gutter);
 
   --iad-modal-backdrop: rgba(23, 34, 51, 0.68);
-  --iad-dialog-gutter: clamp(12px, 2.5vw, 32px);
-  --iad-dialog-vgutter: clamp(12px, 2.5vw, 32px);
+  --iad-dialog-gutter: 32px;
+  --iad-dialog-vgutter: 32px;
 
   /* Dimensions */
   --iad-dialog-max-width: 1380px;
@@ -67151,19 +66890,9 @@ dialog:is(.iad-detail-dialog,.iad-fullscreen-dialog) {
   --iad-dialog-muted-color: var(--iad-muted);
 }
 
-@media (max-width: 850px) {
-  :root {
-    --iad-dialog-gutter: 18px;
-    --iad-dialog-vgutter: 18px;
-  }
-}
 
-@media (max-width: 560px) {
-  :root {
-    --iad-dialog-gutter: 12px;
-    --iad-dialog-vgutter: 12px;
-  }
-}
+
+
 
 
 .overlay:not(.show),
@@ -67306,7 +67035,7 @@ dialog.iad-detail-dialog:not(.iad-drawer):not(.iad-inline-dialog):not(.iad-viewe
 .exp-direction-dialog .exp-evidence-viewport:focus-visible {outline:2px solid #2458d5;outline-offset:-2px}
 
 .detail-preview {
-  height: clamp(310px, 46dvh, 500px) !important;
+  height: 500px !important;
 }
 
 /* ==========================================================================
@@ -67327,8 +67056,7 @@ dialog.iad-detail-dialog.iad-dialog-form {
   height: fit-content !important;
 }
 
-#knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent,
-.dc-stats-dialog .dc-stats-body {
+#knowledge-page .kb-v45 #create-overlay > .modal > .modalcontent {
   padding: 22px 26px 24px !important;
   overflow-y: auto !important;
   flex: 0 1 auto !important;
@@ -67482,7 +67210,7 @@ dialog.iad-drawer::backdrop{background:rgba(17,28,45,.49)}
 dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!important}
 `;
 
-  // apps/iad-harness/src/client/styles/typography.ts
+  // src/client/styles/typography.ts
   var typographyStyles = `
 /* ==========================================================================
    V51 Unified Design Tokens (Single Source of Truth)
@@ -67759,24 +67487,11 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
   opacity: 0.65 !important;
 }
 
-/* ==========================================================================
-   V51 Responsive Layout for Narrow Viewports
-   ========================================================================== */
-@media (max-width: 820px) {
-  :is(.filter-bar .filter-item, .dc-results-section .dc-refined-filterbar .dc-filter-field, .exp-job-list-actions .exp-filter-control, .kb-v45 .filterset > .f) {
-    flex: 1 1 180px !important;
-    width: auto !important;
-    max-width: none !important;
-  }
-  :is(.kb-v45 .context .control:first-child, .kb-v45 .context .control:nth-child(2)) {
-    flex: 1 1 240px !important;
-    width: auto !important;
-    max-width: none !important;
-  }
-}
+
+
 `;
 
-  // apps/iad-harness/src/client/styles/audit.ts
+  // src/client/styles/audit.ts
   var auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#dbe2eb; --audit-blue:#285ed6; --audit-bg:#fff; color:var(--audit-ink); font:13px/1.5 system-ui,"Microsoft YaHei","PingFang SC",sans-serif; padding:0 0 64px; min-width:0; }
 #audit-page[hidden] {display:none!important}
 #audit-page *,#audit-page *::before,#audit-page *::after{box-sizing:border-box}
@@ -67855,21 +67570,10 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
 #audit-page .audit-evidence-link span{min-width:0;line-height:1.7}
 #audit-page .audit-disclaimer{margin-top:20px;color:var(--audit-ink);font-size:13px}
 #audit-page .audit-create-page{display:grid;gap:16px;min-width:0}
+#audit-page .audit-create-page>.iad-job-list{margin:0}
 #audit-page .audit-source-panel{margin:0;min-width:0}
 #audit-page .audit-source-panel .audit-panel-head{padding:16px 20px}
 #audit-page .audit-source-panel .audit-panel-head h2{font-size:16px}
-#audit-page .audit-source-table{width:100%;overflow:auto;max-height:350px;scrollbar-width:thin}
-#audit-page .audit-source-table .audit-table{font-size:13px;min-width:720px;table-layout:fixed}
-#audit-create-consistency-jobs .audit-source-table .audit-table{min-width:900px}
-#audit-page .audit-source-table th{position:sticky;top:0;z-index:1;background:#f1f4f9}
-#audit-page .audit-source-table .audit-table :is(th,td){padding:11px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#audit-page .audit-source-table .audit-table .audit-description{white-space:normal;line-height:1.6;overflow-wrap:anywhere}
-#audit-page .audit-source-table input{width:16px;height:16px;accent-color:var(--audit-blue);cursor:pointer}
-#audit-page .audit-entry-row{cursor:pointer}
-#audit-page .audit-entry-title{border:0;background:none;padding:0;color:var(--iad-primary);font:inherit;text-align:left;cursor:pointer;white-space:normal;overflow-wrap:anywhere}
-#audit-page .audit-entry-area{border-top:1px solid var(--audit-border)}
-#audit-page .audit-entry-header{padding:15px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-#audit-page .audit-entry-header h3{font-size:15px;margin:0}
 #audit-page .audit-pick-all{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
 #audit-page .audit-pick-all input{width:16px;height:16px;accent-color:var(--audit-blue)}
 #audit-page .audit-create-confirm{padding:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
@@ -67900,10 +67604,10 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
 #audit-page .audit-lightbox .prev{left:24px;top:50%}
 #audit-page .audit-lightbox .next{right:24px;top:50%}
 #audit-page .audit-lightbox .caption{position:absolute;bottom:20px;left:20px;right:20px;text-align:center;color:#fff;font-size:13px}
-@media(max-width:1100px){#audit-page .audit-report-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}#audit-page .audit-kpi:nth-child(3){border-right:0}#audit-page .audit-kpi:nth-child(n+4){border-top:1px solid var(--audit-border)}}
-@media(max-width:780px){#audit-page{padding:0 0 40px}#audit-page .audit-scope-parent,#audit-page .audit-scope-child{width:100%}#audit-page .audit-report-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}#audit-page .audit-kpi{border-top:1px solid var(--audit-border)}#audit-page .audit-report-columns{grid-template-columns:1fr}#audit-page .audit-overlay{padding:12px}#audit-page .audit-dialog{width:calc(100vw - 24px);height:calc(100dvh - 24px)}#audit-page .audit-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:9px;padding:12px}#audit-page .audit-thumb{height:122px}#audit-page .audit-dialog-body{padding:16px}}`;
 
-  // apps/iad-harness/src/client/styles/gallery.ts
+`;
+
+  // src/client/styles/gallery.ts
   var galleryStyles = `
 .iad-image-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}.iad-image-pair-side{min-width:0}.iad-image-pair-side>p{margin-bottom:8px;color:var(--iad-muted)}
 
@@ -67916,7 +67620,7 @@ button.iad-thumbnail-card:focus-visible,button.iad-thumbnail-card[data-focused=t
 button.iad-thumbnail-card[data-variant=evidence]{max-width:none;height:auto;padding:0;flex:none;border:0;border-radius:0;background:transparent}
 .iad-thumbnail-card[data-variant=evidence]>.iad-thumbnail-media{height:300px;flex:none;border:1px solid var(--iad-border);border-radius:4px;background:#f0f4f9}
 .iad-thumbnail-card[data-variant=evidence]>.iad-thumbnail-caption{white-space:normal;overflow-wrap:anywhere;font-size:var(--iad-font-size);margin-top:9px;padding:0;line-height:1.6}
-@media(max-width:750px){.iad-thumbnail-card[data-variant=evidence]>.iad-thumbnail-media{height:235px}}
+
 .iad-thumbnail-strip{display:flex;flex:none;gap:12px;overflow-x:auto;max-width:100%;min-height:0;padding:3px 2px 8px}
 .iad-thumbnail-card>.iad-thumbnail-caption{display:block;min-width:0;padding:6px 0 2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:12px;font-weight:400;color:inherit;line-height:18px}
 .iad-thumbnail-card>small,.iad-thumbnail-card>.iad-thumbnail-meta{display:block;font-size:12px;line-height:18px;color:var(--iad-muted,#687990)}
@@ -67946,21 +67650,21 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .full-content{display:flex;flex:1;min-height:0;min-width:0}.full-context{width:288px;min-width:0;overflow:auto;background:var(--iad-surface,#fff);padding:16px;color:var(--iad-text,#172338)}.full-context .iad-thumbnail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 `;
 
-  // apps/iad-harness/src/client/styles/section-heading.ts
+  // src/client/styles/section-heading.ts
   var sectionHeadingStyles = `
 .iad-section-heading{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px var(--iad-layout-inline-gap);min-height:var(--iad-layout-section-height);padding:8px var(--iad-layout-section-inset);margin:0;border-bottom:1px solid var(--iad-section-border);background:var(--iad-surface)}
 .iad-section-heading>h2{font-size:16px;font-weight:650;line-height:24px;letter-spacing:0;color:var(--iad-text);margin:0;padding:0}
 .iad-section-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:10px 16px;margin-left:auto;min-width:0}
 `;
 
-  // apps/iad-harness/src/client/styles/page-heading.ts
+  // src/client/styles/page-heading.ts
   var pageHeadingStyles = `
 .iad-workbench.iad-business-page{width:100%;max-width:none;margin-inline:0;padding:var(--iad-layout-top) var(--iad-layout-inset) var(--iad-layout-bottom)}
 .iad-business-page .iad-header{display:flex;align-items:center;justify-content:space-between;gap:var(--iad-layout-inline-gap);min-height:var(--iad-layout-title-height);margin:0 0 var(--iad-layout-gap)}
 .iad-business-page .iad-header h1{margin:0;padding:0;color:var(--iad-text);font-size:24px;font-weight:670;line-height:1.35;letter-spacing:-.4px}
 `;
 
-  // apps/iad-harness/src/client/styles/reports.ts
+  // src/client/styles/reports.ts
   var reportStyles = `
 .iad-report-body{padding:24px;display:grid;gap:22px;min-width:0}
 .iad-report-section{min-width:0;display:grid;gap:12px}
@@ -67969,7 +67673,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .iad-report-data>div{display:grid;grid-template-columns:105px minmax(0,1fr);gap:14px;min-width:0}
 .iad-report-data dt,.iad-report-data dd{margin:0;overflow-wrap:anywhere}
 .iad-dataset-report .iad-thumbnail-grid>div{min-width:0;display:grid;justify-items:start;gap:8px}
-@media(max-width:600px){.iad-report-body{padding:16px}}
+
 
 .iad-audit-document{--iba-unified-body-size:14px;width:100%;min-width:0;color:var(--audit-ink,#172338);background:#fff;font-size:14px;line-height:1.85}
 #audit-page .iad-audit-document h1{font-size:28px;line-height:1.45;margin:0 0 10px;font-weight:700}
@@ -67994,12 +67698,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .iad-audit-gallery .iad-thumbnail-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
 .iad-audit-gallery button.iad-thumbnail-card{max-width:none;height:174px;padding:5px}
 .iad-audit-document ul{margin:0;padding-left:22px}
-@media(max-width:900px){.iad-audit-gallery .iad-thumbnail-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){#audit-page .iad-audit-document h1{font-size:25px}#audit-page .iad-audit-document h2{font-size:21px}#audit-page .iad-audit-document h3{font-size:18px}#audit-page .iad-audit-document h4{font-size:16px}.iad-audit-document>.iad-report-section{padding:24px 0}}
+
+
 @media print{.iad-audit-gallery nav,.iad-fullscreen-dialog{display:none!important}.iad-audit-document>.iad-report-section{break-inside:auto}.iad-audit-gallery .iad-thumbnail-card{break-inside:avoid}}
 `;
 
-  // apps/iad-harness/src/client/styles/tabs.ts
+  // src/client/styles/tabs.ts
   var tabStyles = `
 .iad-tabs[role=tablist] {flex-shrink:0;display:flex;align-items:center;gap:23px;max-width:100%;overflow-x:auto;white-space:nowrap;scrollbar-width:thin;border:0;border-bottom:1px solid var(--iad-border);margin:1px 0 16px;padding:0;}
 .iad-tabs[role=tablist] > button[role=tab] {position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;box-sizing:border-box;height:var(--iad-tab-height);min-height:var(--iad-tab-height);padding:0 1px;margin:0;border:0;border-bottom:2px solid transparent;border-radius:0;background:transparent;color:var(--iad-muted);font:inherit;font-size:var(--iad-font-size);font-weight:400;box-shadow:none;cursor:pointer;}
@@ -68009,10 +67713,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .iad-tabs .iad-tab-count {font-size:12px;color:inherit;font-weight:500;opacity:.85;font-variant-numeric:tabular-nums;}
 .iad-tab-panel {min-width:0;}
 .iad-tab-panel:focus-visible {outline:2px solid var(--iad-primary);outline-offset:2px;}
-@media(max-width:640px) {.iad-tabs[role=tablist] {gap:15px;}}
+
 `;
 
-  // apps/iad-harness/src/client/styles/selects.ts
+  // src/client/styles/selects.ts
   var selectStyles = `
 .iba-scope-selector{display:flex;align-items:flex-end;flex-wrap:wrap;column-gap:var(--iad-layout-inline-gap);row-gap:12px;min-height:calc(var(--iad-layout-label-height) + var(--iad-layout-label-gap) + var(--iad-control-height));margin:0 0 var(--iad-layout-gap)}
 .iba-scope-selector>.iad-scope-parent,.iba-scope-selector>.iad-scope-child{display:flex;flex-direction:column;gap:var(--iad-layout-label-gap);min-width:0;max-width:100%;flex:none}
@@ -68033,10 +67737,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .iad-select-option span{min-width:0;overflow-wrap:anywhere;line-height:1.5}
 .iad-select-option:has(:disabled){cursor:default;color:var(--iad-muted)}
 .iad-select-empty{padding:10px;margin:0}
-@media(max-width:760px){.iba-scope-selector>.iad-scope-parent,.iba-scope-selector>.iad-scope-child{width:100%}}
+
 `;
 
-  // apps/iad-harness/src/client/styles/layout.ts
+  // src/client/styles/layout.ts
   var layoutStyles = `
 :root{
  --iad-layout-inset:32px;
@@ -68062,11 +67766,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .iad-job-table-grid tbody td{padding:8px 18px;vertical-align:middle}
 .iad-section-heading .iad-section-actions input{width:var(--iad-job-search-width);height:var(--iad-control-height)}
 .iad-section-heading .iad-section-actions select{width:var(--iad-job-status-width);height:var(--iad-control-height)}
-@media(max-width:780px){:root{--iad-layout-inset:20px}}
-@media(max-width:580px){:root{--iad-layout-inset:16px;--iad-layout-section-inset:16px}}
+
+
 `;
 
-  // apps/iad-harness/src/client/styles/charts.ts
+  // src/client/styles/charts.ts
   var chartStyles = `
 :root,.iad-workbench,[data-ds-dark-theme],dialog{
  --iad-chart-ink:var(--iad-text);--iad-chart-muted:var(--iad-muted);--iad-chart-grid:var(--iad-section-border);
@@ -68075,15 +67779,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 }
 .iad-audit-document{--iad-chart-ink:#172338;--iad-chart-muted:#536174;--iad-chart-grid:#E2E8F0;
  --iad-chart-surface:#fff;--iad-chart-primary:#285ED6;--iad-chart-success:#166344;--iad-chart-warning:#8A4B06;--iad-chart-danger:#B42318}
-.iad-chart{--iba-unified-ink:var(--iad-chart-ink);container-type:inline-size;margin:8px 0 18px;min-width:0;display:grid;align-content:start;gap:10px;break-inside:avoid;color:var(--iad-chart-ink)}
+.iad-chart{--iba-unified-ink:var(--iad-chart-ink);margin:8px 0 18px;min-width:0;display:grid;align-content:start;gap:10px;break-inside:avoid;color:var(--iad-chart-ink)}
 .iad-chart figcaption{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;font-size:16px;font-weight:650;color:var(--iad-chart-ink);line-height:1.6}
 .iad-chart-controls{display:flex;min-width:0;font-size:14px;font-weight:400}
 .iad-chart-controls .iad-multiselect{width:220px;max-width:100%}
 .iad-chart-description{--iba-unified-ink:var(--iad-chart-muted);color:var(--iad-chart-muted);font-size:13px;margin:0}
 .iad-chart-plot,.iad-chart-empty{--iad-chart-height:480px;height:var(--iad-chart-height)}
 .iad-chart-plot{width:100%;min-width:0;margin-inline:auto;font-family:var(--iad-font-family)}
-.iad-chart:is([data-chart-type="heatmap"],[data-chart-type="donut"]) .iad-chart-plot{width:min(100%,640px)}
-.iad-chart[data-chart-type="heatmap"] :is(.iad-chart-plot,.iad-chart-empty){height:min(var(--iad-chart-height),75cqi)}
+.iad-chart:is([data-chart-type="heatmap"],[data-chart-type="donut"]) .iad-chart-plot{width:640px}
 .iad-chart-empty{display:grid;place-items:center;margin:0;color:var(--iad-chart-muted);font-size:14px}
 .iad-chart-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;min-width:0}
 .iad-distribution-summary{display:flex;flex-wrap:wrap;gap:12px 28px;font-variant-numeric:tabular-nums}
@@ -68091,7 +67794,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 @media print{.iad-chart-plot{break-inside:avoid}}
 `;
 
-  // apps/iad-harness/src/client/styles/tables.ts
+  // src/client/styles/tables.ts
   var tableStyles = `
 .iad-audit-document{--iad-table-header:#F1F4F9;--iad-table-border:var(--audit-border,#dbe2eb)}
 .iad-data-table{width:100%;border-collapse:collapse;text-align:left;font-variant-numeric:tabular-nums}
@@ -68099,33 +67802,33 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .iad-data-table thead{background:var(--iad-table-header,var(--iad-surface-muted))}
 .iad-data-table th,.iad-data-table td{padding:10px 12px;border:0;border-bottom:1px solid var(--iad-table-border,var(--iad-section-border));text-align:left;vertical-align:top;white-space:normal;overflow-wrap:anywhere}
 .iad-data-table th{font-weight:600}
-@media(max-width:600px){.iad-data-table th,.iad-data-table td{padding:9px 6px}}
+
 `;
 
-  // apps/iad-harness/src/client/styles.ts
+  // src/client/styles.ts
   var workbenchStyles = themeStyles + layoutStyles + tableStyles + modelsStyles + explorationStyles + baseStyles + collectionsStyles + jobsStyles + overlaysStyles + formsStyles + reviewStyles + knowledgeStyles + knowledgeEntryStyles + setupStyles + datasetsStyles + consistencyStyles + imagesStyles + dialogsStyles + typographyStyles + auditStyles + controlStyles + selectStyles + tabStyles + galleryStyles + reportStyles + pageHeadingStyles + sectionHeadingStyles + chartStyles;
 
-  // apps/iad-harness/src/client/useSampleNavigation.ts
-  var import_react64 = __require("react");
+  // src/client/useSampleNavigation.ts
+  var import_react63 = __require("react");
   function useSampleNavigation(pageId, taskId, query, result, enabled) {
     const { workspace, state } = useWorkspace();
     const view = workspace.view(pageId);
-    const [busy, setBusy] = (0, import_react64.useState)(false);
-    const [error3, setError] = (0, import_react64.useState)("");
-    const [target, setTarget] = (0, import_react64.useState)("");
-    const pending = (0, import_react64.useRef)();
+    const [busy, setBusy] = (0, import_react63.useState)(false);
+    const [error3, setError] = (0, import_react63.useState)("");
+    const [target, setTarget] = (0, import_react63.useState)("");
+    const pending = (0, import_react63.useRef)();
     const position = enabled && result.query === query ? result.items.findIndex((item) => item.sample_id === view.selected) : -1;
     const previous = position >= 0 && (position > 0 || view.page > 1);
     const next = position >= 0 && (position < result.items.length - 1 || view.page * pageSize < result.total);
-    const cancel = (0, import_react64.useCallback)(() => {
+    const cancel = (0, import_react63.useCallback)(() => {
       pending.current?.abort();
       pending.current = void 0;
       setBusy(false);
       setError("");
       setTarget("");
     }, []);
-    const opened = (0, import_react64.useCallback)(() => setTarget(""), []);
-    (0, import_react64.useEffect)(() => {
+    const opened = (0, import_react63.useCallback)(() => setTarget(""), []);
+    (0, import_react63.useEffect)(() => {
       setBusy(false);
       setError("");
       setTarget((target2) => state.active && state.pageId === pageId && target2 === view.selected ? target2 : "");
@@ -68168,12 +67871,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     return { previous, next, busy, error: error3, move, open: !!target && target === view.selected, opened, cancel };
   }
 
-  // apps/iad-harness/src/client/usePagePosition.ts
-  var import_react65 = __require("react");
+  // src/client/usePagePosition.ts
+  var import_react64 = __require("react");
   function usePagePosition(source, ready) {
     const { workspace } = useWorkspace();
-    const surface = (0, import_react65.useRef)(null);
-    (0, import_react65.useLayoutEffect)(() => {
+    const surface = (0, import_react64.useRef)(null);
+    (0, import_react64.useLayoutEffect)(() => {
       const element = surface.current;
       if (!source || !ready || !element) return;
       element.scrollTop = workspace.pagePosition(source);
@@ -68184,50 +67887,50 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     return surface;
   }
 
-  // apps/iad-harness/src/client/components/ImagesPage.tsx
-  var import_react66 = __require("react");
+  // src/client/components/ImagesPage.tsx
+  var import_react65 = __require("react");
   var import_jsx_runtime86 = __require("react/jsx-runtime");
   function ImagesPage({ datasets, groups, onDatasetsChanged }) {
-    const hierarchyGroups = (0, import_react66.useMemo)(() => {
+    const hierarchyGroups = (0, import_react65.useMemo)(() => {
       return buildHierarchyGroups(datasets, groups);
     }, [groups, datasets]);
-    const [selectedParentId, setSelectedParentId] = (0, import_react66.useState)(() => hierarchyGroups[0]?.group_id || "");
-    (0, import_react66.useEffect)(() => {
+    const [selectedParentId, setSelectedParentId] = (0, import_react65.useState)(() => hierarchyGroups[0]?.group_id || "");
+    (0, import_react65.useEffect)(() => {
       if (hierarchyGroups.length > 0 && (!selectedParentId || !hierarchyGroups.some((g) => g.group_id === selectedParentId))) {
         setSelectedParentId(hierarchyGroups[0].group_id);
       }
     }, [hierarchyGroups, selectedParentId]);
-    const parentChildren = (0, import_react66.useMemo)(() => {
+    const parentChildren = (0, import_react65.useMemo)(() => {
       return datasets.filter((d) => getDatasetGroupId(d) === selectedParentId);
     }, [datasets, selectedParentId]);
-    const [selectedChildIds, setSelectedChildIds] = (0, import_react66.useState)(/* @__PURE__ */ new Set());
-    (0, import_react66.useEffect)(() => {
+    const [selectedChildIds, setSelectedChildIds] = (0, import_react65.useState)(/* @__PURE__ */ new Set());
+    (0, import_react65.useEffect)(() => {
       if (parentChildren.length > 0) {
         setSelectedChildIds(/* @__PURE__ */ new Set([parentChildren[0].dataset_id]));
       } else {
         setSelectedChildIds(/* @__PURE__ */ new Set());
       }
     }, [selectedParentId, parentChildren]);
-    const [search, setSearch] = (0, import_react66.useState)("");
-    const [quality, setQuality] = (0, import_react66.useState)("all");
-    const [annotation, setAnnotation] = (0, import_react66.useState)("all");
-    const [category, setCategory] = (0, import_react66.useState)("all");
-    const [page, setPage] = (0, import_react66.useState)(1);
+    const [search, setSearch] = (0, import_react65.useState)("");
+    const [quality, setQuality] = (0, import_react65.useState)("all");
+    const [annotation, setAnnotation] = (0, import_react65.useState)("all");
+    const [category, setCategory] = (0, import_react65.useState)("all");
+    const [page, setPage] = (0, import_react65.useState)(1);
     const pageSize2 = 24;
-    const activeDatasets = (0, import_react66.useMemo)(() => {
+    const activeDatasets = (0, import_react65.useMemo)(() => {
       return parentChildren.filter((d) => selectedChildIds.has(d.dataset_id));
     }, [parentChildren, selectedChildIds]);
-    const effectiveDatasets = (0, import_react66.useMemo)(() => {
+    const effectiveDatasets = (0, import_react65.useMemo)(() => {
       if (activeDatasets.length > 0) return activeDatasets;
       return parentChildren;
     }, [activeDatasets, parentChildren]);
-    const hasLabelme = (0, import_react66.useMemo)(() => {
+    const hasLabelme = (0, import_react65.useMemo)(() => {
       return effectiveDatasets.some((d) => d.format === "labelme");
     }, [effectiveDatasets]);
-    const hasAnomaly = (0, import_react66.useMemo)(() => {
+    const hasAnomaly = (0, import_react65.useMemo)(() => {
       return effectiveDatasets.some((d) => d.format === "folder_classification");
     }, [effectiveDatasets]);
-    const availableCategories = (0, import_react66.useMemo)(() => {
+    const availableCategories = (0, import_react65.useMemo)(() => {
       const set3 = /* @__PURE__ */ new Set();
       for (const d of effectiveDatasets) {
         for (const cat of d.annotation_categories || []) {
@@ -68236,26 +67939,26 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       }
       return Array.from(set3);
     }, [effectiveDatasets]);
-    (0, import_react66.useEffect)(() => {
+    (0, import_react65.useEffect)(() => {
       if (!hasAnomaly && quality !== "all") {
         setQuality("all");
       }
     }, [hasAnomaly, quality]);
-    (0, import_react66.useEffect)(() => {
+    (0, import_react65.useEffect)(() => {
       if (!hasLabelme) {
         if (annotation !== "all") setAnnotation("all");
         if (category !== "all") setCategory("all");
       }
     }, [hasLabelme, annotation, category]);
-    const resetFilters = (0, import_react66.useCallback)(() => {
+    const resetFilters = (0, import_react65.useCallback)(() => {
       setSearch("");
       setQuality("all");
       setAnnotation("all");
       setCategory("all");
       setPage(1);
     }, []);
-    const [refreshRev, setRefreshRev] = (0, import_react66.useState)(0);
-    const params = (0, import_react66.useMemo)(() => {
+    const [refreshRev, setRefreshRev] = (0, import_react65.useState)(0);
+    const params = (0, import_react65.useMemo)(() => {
       const params2 = new URLSearchParams();
       params2.set("dataset_ids", Array.from(selectedChildIds).sort().join(","));
       if (hasAnomaly && quality !== "all") {
@@ -68284,18 +67987,18 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     }, [selectedChildIds, quality, annotation, category, search, page, hasAnomaly, hasLabelme]);
     const result = useResource(selectedChildIds.size ? `/samples?${params}` : null, refreshRev);
     const samples = result.data?.items || [], total = result.data?.total || 0, loading = result.loading, error3 = result.error;
-    const [viewerIndex, setViewerIndex] = (0, import_react66.useState)(-1);
-    const [fullscreen, setFullscreen] = (0, import_react66.useState)(false);
+    const [viewerIndex, setViewerIndex] = (0, import_react65.useState)(-1);
+    const [fullscreen, setFullscreen] = (0, import_react65.useState)(false);
     const activeSample = viewerIndex >= 0 && viewerIndex < samples.length ? samples[viewerIndex] : null;
     const { data: sampleDetail, loading: detailLoading, error: detailError } = useResource(
       activeSample ? `/sample/${encodeURIComponent(activeSample.sample_id)}` : null
     );
-    const sampleDataset = (0, import_react66.useMemo)(() => {
+    const sampleDataset = (0, import_react65.useMemo)(() => {
       if (!activeSample) return null;
       return datasets.find((d) => d.dataset_id === activeSample.dataset_id) || activeDatasets[0] || null;
     }, [activeSample, datasets, activeDatasets]);
     const detailAnnotations = sampleDetail?.annotations || [];
-    const bboxes = (0, import_react66.useMemo)(() => {
+    const bboxes = (0, import_react65.useMemo)(() => {
       return detailAnnotations.filter((a) => a.bbox && a.bbox.length >= 4);
     }, [detailAnnotations]);
     const imgW = sampleDetail?.sample.width || activeSample?.width || 955;
@@ -68557,7 +68260,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/WorkbenchPage.tsx
+  // src/client/WorkbenchPage.tsx
   var import_jsx_runtime87 = __require("react/jsx-runtime");
   var emptyCatalog = { datasets: [], groups: [] };
   function WorkbenchPage({ pageId }) {
@@ -68566,28 +68269,28 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const { datasets, groups } = catalog.data || emptyCatalog;
     const dataset = datasets.find((d) => d.dataset_id === state.datasetId) || datasets[0];
     const datasetId = dataset?.dataset_id || "", view = workspace.view(pageId, datasetId);
-    const [result, setResult] = (0, import_react67.useState)({ query: "", items: [], total: 0 });
-    const [loading, setLoading] = (0, import_react67.useState)(false);
-    const [error3, setError] = (0, import_react67.useState)("");
-    const [revision, setRevision] = (0, import_react67.useState)(0);
-    const advance = (0, import_react67.useRef)(null);
-    const [reviewConfirmation, setReviewConfirmation] = (0, import_react67.useState)(null);
-    const loadDatasets = (0, import_react67.useCallback)(async (preferred) => {
+    const [result, setResult] = (0, import_react66.useState)({ query: "", items: [], total: 0 });
+    const [loading, setLoading] = (0, import_react66.useState)(false);
+    const [error3, setError] = (0, import_react66.useState)("");
+    const [revision, setRevision] = (0, import_react66.useState)(0);
+    const advance = (0, import_react66.useRef)(null);
+    const [reviewConfirmation, setReviewConfirmation] = (0, import_react66.useState)(null);
+    const loadDatasets = (0, import_react66.useCallback)(async (preferred) => {
       const result2 = await catalog.refresh();
       if (result2 && preferred) workspace.selectDataset(preferred, true);
     }, [catalog.refresh, workspace]);
-    const changed = (0, import_react67.useCallback)(() => {
+    const changed = (0, import_react66.useCallback)(() => {
       setRevision((v) => v + 1);
       void loadDatasets();
     }, [loadDatasets]);
-    (0, import_react67.useEffect)(() => {
+    (0, import_react66.useEffect)(() => {
       if (catalog.data && datasetId !== state.datasetId) workspace.selectDataset(datasetId, true);
     }, [catalog.data, datasetId, state.datasetId, workspace]);
     const gallery = pageId === "industrial-review" && view.tab === "results";
     const query = sampleQuery(datasetId, view.filters, view.page, pageSize);
     const navigation2 = useSampleNavigation(pageId, dataset?.task_id, query, result, gallery);
     const surface = usePagePosition(gallery ? JSON.stringify([pageId, view.tab, query]) : null, state.active && state.pageId === pageId && !!dataset && result.query === query && !loading);
-    (0, import_react67.useEffect)(() => {
+    (0, import_react66.useEffect)(() => {
       if (!dataset || !gallery) return;
       const controller = new AbortController();
       setLoading(true);
@@ -68688,17 +68391,17 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@deepseek-ai+dsh-brand@0.2.0-rc.2_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-brand/lib/index.js
+  // ../../node_modules/.pnpm/@deepseek-ai+dsh-brand@0.2.0-rc.2_@deepseek-ai+cordis@4.0.5/node_modules/@deepseek-ai/dsh-brand/lib/index.js
   function brandString(value) {
     return value;
   }
 
-  // ../../data1/wt/Industrial-Benchmark-Agent/node_modules/.pnpm/@deepseek-ai+dsh-session@0.2.0-rc.2_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-scope@0._74d7c8626a228cbe66b774fdac6de306/node_modules/@deepseek-ai/dsh-session/lib/types/types.js
+  // ../../node_modules/.pnpm/@deepseek-ai+dsh-session@0.2.0-rc.2_@deepseek-ai+cordis@4.0.5_@deepseek-ai+dsh-scope@0._74d7c8626a228cbe66b774fdac6de306/node_modules/@deepseek-ai/dsh-session/lib/types/types.js
   function SessionId(id) {
     return brandString(id);
   }
 
-  // apps/iad-harness/src/client/workbench-session.ts
+  // src/client/workbench-session.ts
   var WorkbenchSession = class {
     constructor(host) {
       this.host = host;
@@ -68756,7 +68459,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     }
   };
 
-  // apps/iad-harness/src/client/components/SessionResult.tsx
+  // src/client/components/SessionResult.tsx
   var import_jsx_runtime88 = __require("react/jsx-runtime");
   function SessionResult(props) {
     const { workspace } = useWorkspace();
@@ -68791,7 +68494,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/shared/tool-presentation.ts
+  // src/shared/tool-presentation.ts
   var workbenchTools = {
     image_retrieve: "\u67E5\u627E\u540C\u56FE",
     image_index_prepare: "\u51C6\u5907\u68C0\u7D22\u7D22\u5F15",
@@ -68834,7 +68537,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     model_audit_retry: "\u91CD\u8BD5\u6A21\u578B\u5BA1\u8BA1"
   };
 
-  // apps/iad-harness/src/client/models.tsx
+  // src/client/models.tsx
   function useModelProviders() {
     const resource = useQuery({
       queryKey: ["iad", "resource", "/models/providers"],
@@ -68854,13 +68557,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     };
   }
 
-  // apps/iad-harness/src/client/components/ProviderManager.tsx
-  var import_react68 = __require("react");
+  // src/client/components/ProviderManager.tsx
+  var import_react67 = __require("react");
   var import_jsx_runtime89 = __require("react/jsx-runtime");
   function ProviderManager() {
     const { view, refresh } = useModelProviders();
-    const [editing, setEditing] = (0, import_react68.useState)(null);
-    const [notice, setNotice] = (0, import_react68.useState)("");
+    const [editing, setEditing] = (0, import_react67.useState)(null);
+    const [notice, setNotice] = (0, import_react67.useState)("");
     return /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)(import_jsx_runtime89.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime89.jsxs)("header", { className: "iad-section-header", children: [
         /* @__PURE__ */ (0, import_jsx_runtime89.jsx)("h2", { children: "\u63D0\u4F9B\u5546" }),
@@ -68924,10 +68627,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
   function ProviderEditor({ provider, revision, onClose, onSaved }) {
-    const [id] = (0, import_react68.useState)(provider?.provider_id || `vision-${v4_default()}`);
-    const [name2, setName] = (0, import_react68.useState)(provider?.name || ""), [endpoint, setEndpoint] = (0, import_react68.useState)(provider?.endpoint || ""), [key2, setKey] = (0, import_react68.useState)("");
-    const [models, setModels] = (0, import_react68.useState)(provider?.models || []);
-    const [busy, setBusy] = (0, import_react68.useState)(false), [error3, setError] = (0, import_react68.useState)("");
+    const [id] = (0, import_react67.useState)(provider?.provider_id || `vision-${v4_default()}`);
+    const [name2, setName] = (0, import_react67.useState)(provider?.name || ""), [endpoint, setEndpoint] = (0, import_react67.useState)(provider?.endpoint || ""), [key2, setKey] = (0, import_react67.useState)("");
+    const [models, setModels] = (0, import_react67.useState)(provider?.models || []);
+    const [busy, setBusy] = (0, import_react67.useState)(false), [error3, setError] = (0, import_react67.useState)("");
     async function discover() {
       setBusy(true);
       setError("");
@@ -69028,7 +68731,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] }) }) });
   }
 
-  // apps/iad-harness/src/client/components/ModelSettingsPage.tsx
+  // src/client/components/ModelSettingsPage.tsx
   var import_jsx_runtime90 = __require("react/jsx-runtime");
   function ModelSettingsPage() {
     const { loading, error: error3, refresh } = useModelProviders();
@@ -69040,16 +68743,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/host/WorkbenchProviders.tsx
+  // src/client/host/WorkbenchProviders.tsx
   var import_jsx_runtime91 = __require("react/jsx-runtime");
   function WorkbenchProviders({ workspace, children }) {
     return /* @__PURE__ */ (0, import_jsx_runtime91.jsx)(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ (0, import_jsx_runtime91.jsx)(WorkspaceContext.Provider, { value: workspace, children }) });
   }
 
-  // apps/iad-harness/src/shared/business-modules.ts
+  // src/shared/business-modules.ts
   var businessModules = { exploration: "\u65B9\u5411\u63A2\u7D22", knowledge: "\u77E5\u8BC6\u6316\u6398", consistency: "\u6570\u636E\u4E00\u81F4\u6027", audit: "\u6A21\u578B\u5BA1\u8BA1" };
 
-  // apps/iad-harness/src/shared/model-settings.generated.ts
+  // src/shared/model-settings.generated.ts
   var reasoningEffortLabels = {
     "low": "Low",
     "medium": "Medium",
@@ -69057,11 +68760,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     "xhigh": "XHigh"
   };
 
-  // apps/iad-harness/src/client/components/ModuleModelSelect.tsx
-  var import_react69 = __require("react");
+  // src/client/components/ModuleModelSelect.tsx
+  var import_react68 = __require("react");
   var import_dsh_client_ui_primitives2 = __require("@deepseek-ai/dsh-client-ui-primitives");
 
-  // apps/iad-harness/src/client/components/ModuleSelectButton.tsx
+  // src/client/components/ModuleSelectButton.tsx
   var import_dsh_client_ui_primitives = __require("@deepseek-ai/dsh-client-ui-primitives");
   var import_jsx_runtime92 = __require("react/jsx-runtime");
   function ModuleSelectButton({ children, open, disabled, onClick, ...control }) {
@@ -69083,10 +68786,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     );
   }
 
-  // apps/iad-harness/src/client/components/ModuleModelSelect.tsx
+  // src/client/components/ModuleModelSelect.tsx
   var import_jsx_runtime93 = __require("react/jsx-runtime");
   function ModuleModelSelect({ providers, model, loading, onChange, ...control }) {
-    const [open, setOpen] = (0, import_react69.useState)(false), [search, setSearch] = (0, import_react69.useState)("");
+    const [open, setOpen] = (0, import_react68.useState)(false), [search, setSearch] = (0, import_react68.useState)("");
     const options = providers.flatMap((provider) => provider.models.map((value) => ({
       reference: { provider_id: provider.provider_id, model_id: value.model_id },
       name: value.name || value.model_id,
@@ -69152,11 +68855,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ModuleSettingRow.tsx
-  var import_react70 = __require("react");
+  // src/client/components/ModuleSettingRow.tsx
+  var import_react69 = __require("react");
   var import_jsx_runtime94 = __require("react/jsx-runtime");
   function ModuleSettingRow({ label, controlLabel, hint, error: error3, children }) {
-    const id = (0, import_react70.useId)();
+    const id = (0, import_react69.useId)();
     return /* @__PURE__ */ (0, import_jsx_runtime94.jsxs)("div", { className: "iad-module-row", children: [
       /* @__PURE__ */ (0, import_jsx_runtime94.jsxs)("div", { className: "iad-module-row-text", children: [
         /* @__PURE__ */ (0, import_jsx_runtime94.jsx)("label", { htmlFor: id, className: "iad-setting-label", children: label }),
@@ -69172,13 +68875,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ModuleSelectSetting.tsx
-  var import_react71 = __require("react");
+  // src/client/components/ModuleSelectSetting.tsx
+  var import_react70 = __require("react");
   var import_dsh_client_ui_primitives3 = __require("@deepseek-ai/dsh-client-ui-primitives");
   var import_jsx_runtime95 = __require("react/jsx-runtime");
   function ModuleSelectSetting({ label, controlLabel, value, options, onChange, disabled, hint }) {
-    const [open, setOpen] = (0, import_react71.useState)(false);
-    (0, import_react71.useEffect)(() => {
+    const [open, setOpen] = (0, import_react70.useState)(false);
+    (0, import_react70.useEffect)(() => {
       if (disabled) setOpen(false);
     }, [disabled]);
     const selected = options.find((option) => option.value === value);
@@ -69201,7 +68904,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ) });
   }
 
-  // apps/iad-harness/src/client/components/ModuleModelFields.tsx
+  // src/client/components/ModuleModelFields.tsx
   var import_jsx_runtime96 = __require("react/jsx-runtime");
   function ModuleModelFields({ settings, save }) {
     const { providers, loading, error: error3 } = useModelProviders();
@@ -69235,15 +68938,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ModuleSettingsSection.tsx
+  // src/client/components/ModuleSettingsSection.tsx
   var import_dsh_client_ui_primitives4 = __require("@deepseek-ai/dsh-client-ui-primitives");
 
-  // apps/iad-harness/src/client/components/ModuleNumberSetting.tsx
-  var import_react72 = __require("react");
+  // src/client/components/ModuleNumberSetting.tsx
+  var import_react71 = __require("react");
   var import_jsx_runtime97 = __require("react/jsx-runtime");
   function ModuleNumberSetting({ label, value, min: min4, max: max4, step, validationMessage, onSave, hint, disabled }) {
-    const [draft, setDraft] = (0, import_react72.useState)(null);
-    const [error3, setError] = (0, import_react72.useState)(false);
+    const [draft, setDraft] = (0, import_react71.useState)(null);
+    const [error3, setError] = (0, import_react71.useState)(false);
     return /* @__PURE__ */ (0, import_jsx_runtime97.jsx)(ModuleSettingRow, { label, hint, error: error3 ? validationMessage : void 0, children: (props) => /* @__PURE__ */ (0, import_jsx_runtime97.jsx)(
       "input",
       {
@@ -69276,9 +68979,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ) });
   }
 
-  // apps/iad-harness/src/client/styles/module-settings.ts
+  // src/client/styles/module-settings.ts
   var moduleSettingsStyles = `
-.iad-module-settings{container-type:inline-size;min-width:0;width:100%;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:14px;line-height:22px}
+.iad-module-settings{min-width:0;width:100%;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:14px;line-height:22px}
 .iad-module-settings *{box-sizing:border-box}
 .iad-module-row{display:flex;align-items:center;gap:8px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2)}
 .iad-module-row-text{display:flex;flex-direction:column;flex:1;gap:4px;min-width:0;padding-right:48px}
@@ -69304,16 +69007,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 .iad-module-model-label{display:flex;align-items:center;gap:6px}
 .iad-module-model-label>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .iad-module-model-label>svg{flex:none;width:14px;height:14px}
-@container(max-width:400px){
- .iad-module-row{flex-direction:column;align-items:stretch;gap:8px}
- .iad-module-row-text{padding-right:0}
- .iad-module-control{width:100%;max-width:100%}
- .iad-module-control>.iad-module-model-select,.iad-module-control>span,.iad-module-selector{width:100%}
- .iad-module-error{flex-wrap:wrap}
-}
+
 `;
 
-  // apps/iad-harness/src/client/components/ModuleSettingsSection.tsx
+  // src/client/components/ModuleSettingsSection.tsx
   var import_jsx_runtime98 = __require("react/jsx-runtime");
   function ModuleSettingsSection({ module }) {
     const { settings, save, retry, loading, saving, saved, error: error3 } = useModuleSettings(module);
@@ -69388,7 +69085,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/useImageEncoderSettings.ts
+  // src/client/useImageEncoderSettings.ts
   function editable(view) {
     return {
       model_id: view.models.find((model) => model.model_id === view.selection?.profile.model_id)?.model_id ?? null,
@@ -69435,7 +69132,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     };
   }
 
-  // apps/iad-harness/src/client/components/ConsistencySettingsSection.tsx
+  // src/client/components/ConsistencySettingsSection.tsx
   var import_dsh_client_ui_primitives5 = __require("@deepseek-ai/dsh-client-ui-primitives");
   var import_jsx_runtime99 = __require("react/jsx-runtime");
   function ConsistencySettingsSection() {
@@ -69571,7 +69268,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/host/WorkbenchSettings.tsx
+  // src/client/host/WorkbenchSettings.tsx
   var import_jsx_runtime100 = __require("react/jsx-runtime");
   function registerWorkbenchSettings(ctx, workspace) {
     ctx.slots.inject("settings.section", () => {
@@ -69583,12 +69280,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     });
   }
 
-  // apps/iad-harness/src/client/host/IndustrialSidebar.tsx
-  var import_react73 = __toESM(__require("react"), 1);
+  // src/client/host/IndustrialSidebar.tsx
+  var import_react72 = __toESM(__require("react"), 1);
   var import_jsx_runtime101 = __require("react/jsx-runtime");
   function IndustrialSidebar({ wide, panels, renderPanel, renderWorkspaces }) {
-    const [sessionsOpen, setSessionsOpen] = (0, import_react73.useState)(true);
-    const workspacesId = (0, import_react73.useId)();
+    const [sessionsOpen, setSessionsOpen] = (0, import_react72.useState)(true);
+    const workspacesId = (0, import_react72.useId)();
     const business = panels.filter((panel) => panel.id in navigation && navigation[panel.id].chapter !== "\u5DE5\u5177");
     const auxiliary = panels.filter((panel) => !business.includes(panel));
     return /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("div", { className: `iad-sidebar-content ${wide ? "iad-sidebar-wide" : "iad-sidebar-rail"}`, children: [
@@ -69606,7 +69303,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ` }),
       /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("nav", { "aria-label": "\u5DE5\u4E1A\u5DE5\u4F5C\u53F0\u5BFC\u822A", children: ["\u6570\u636E\u51C6\u5907", "\u77E5\u8BC6\u6784\u5EFA", "\u8D28\u91CF\u5BA1\u6838"].map((chapter) => /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("section", { "aria-label": chapter, children: [
         wide && /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("h2", { children: chapter }),
-        business.filter((panel) => navigation[panel.id].chapter === chapter).map((panel) => /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(import_react73.default.Fragment, { children: renderPanel(panel) }, panel.id))
+        business.filter((panel) => navigation[panel.id].chapter === chapter).map((panel) => /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(import_react72.default.Fragment, { children: renderPanel(panel) }, panel.id))
       ] }, chapter)) }),
       wide ? /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("section", { className: "iad-sidebar-sessions", "data-native-workspaces": true, "data-open": sessionsOpen, children: [
         /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("button", { type: "button", className: "iad-sidebar-disclosure", "aria-expanded": sessionsOpen, "aria-controls": workspacesId, onClick: () => setSessionsOpen((value) => !value), children: [
@@ -69615,19 +69312,19 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         ] }),
         /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("div", { id: workspacesId, className: "iad-native-workspace-content", hidden: !sessionsOpen, children: renderWorkspaces() })
       ] }) : renderWorkspaces(),
-      /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("section", { className: "iad-sidebar-tools", "aria-label": "\u5DE5\u5177", children: auxiliary.map((panel) => /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(import_react73.default.Fragment, { children: renderPanel(panel) }, panel.id)) })
+      /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("section", { className: "iad-sidebar-tools", "aria-label": "\u5DE5\u5177", children: auxiliary.map((panel) => /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(import_react72.default.Fragment, { children: renderPanel(panel) }, panel.id)) })
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyConflictDialog.tsx
-  var import_react76 = __require("react");
+  // src/client/components/ConsistencyConflictDialog.tsx
+  var import_react75 = __require("react");
 
-  // apps/iad-harness/src/client/useGroupAnalysis.ts
-  var import_react74 = __require("react");
+  // src/client/useGroupAnalysis.ts
+  var import_react73 = __require("react");
   function useGroupAnalysis(reference) {
-    const [snapshot, setSnapshot] = (0, import_react74.useState)();
+    const [snapshot, setSnapshot] = (0, import_react73.useState)();
     const key2 = JSON.stringify(reference);
-    (0, import_react74.useEffect)(() => {
+    (0, import_react73.useEffect)(() => {
       const controller = new AbortController();
       let timer;
       setSnapshot(void 0);
@@ -69651,25 +69348,25 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     return snapshot?.key === key2 ? snapshot : { analysis: null, error: "" };
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyGroupReviewForm.tsx
-  var import_react75 = __require("react");
+  // src/client/components/ConsistencyGroupReviewForm.tsx
+  var import_react74 = __require("react");
   var import_jsx_runtime102 = __require("react/jsx-runtime");
   function ConsistencyGroupReviewForm({ jobId, anchorId, onClose, onReviewed, children }) {
-    const [context, setContext] = (0, import_react75.useState)(null);
-    const [decision, setDecision] = (0, import_react75.useState)("pending");
-    const [note, setNote] = (0, import_react75.useState)("");
-    const [error3, setError] = (0, import_react75.useState)("");
-    const [busy, setBusy] = (0, import_react75.useState)(false);
-    const pending = (0, import_react75.useRef)(null);
-    const mounted = (0, import_react75.useRef)(false);
-    (0, import_react75.useEffect)(() => {
+    const [context, setContext] = (0, import_react74.useState)(null);
+    const [decision, setDecision] = (0, import_react74.useState)("pending");
+    const [note, setNote] = (0, import_react74.useState)("");
+    const [error3, setError] = (0, import_react74.useState)("");
+    const [busy, setBusy] = (0, import_react74.useState)(false);
+    const pending = (0, import_react74.useRef)(null);
+    const mounted = (0, import_react74.useRef)(false);
+    (0, import_react74.useEffect)(() => {
       mounted.current = true;
       return () => {
         mounted.current = false;
       };
     }, []);
     const path = jobId ? `/consistency/checks/${encodeURIComponent(jobId)}/anchors/${encodeURIComponent(anchorId)}/review` : null;
-    (0, import_react75.useEffect)(() => {
+    (0, import_react74.useEffect)(() => {
       const controller = new AbortController();
       if (!path) {
         setError("\u56FE\u7EC4\u7F3A\u5C11\u53EF\u590D\u6838\u7684\u4F5C\u4E1A\u5F15\u7528");
@@ -69759,7 +69456,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyModelAnalysis.tsx
+  // src/client/components/ConsistencyModelAnalysis.tsx
   var import_jsx_runtime103 = __require("react/jsx-runtime");
   var identityRelations = {
     pixel_identical: "\u50CF\u7D20\u5B8C\u5168\u4E00\u81F4\uFF08\u7A0B\u5E8F\u9A8C\u8BC1\uFF09",
@@ -69796,7 +69493,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyConflictDialog.tsx
+  // src/client/components/ConsistencyConflictDialog.tsx
   var import_jsx_runtime104 = __require("react/jsx-runtime");
   function ConsistencyConflictDialog({
     conflict: currentConflict,
@@ -69808,14 +69505,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }) {
     const currentConflictId = currentConflict.id;
     const catalog = useDatasetCatalog();
-    const [candidateIndex, setCandidateIndex] = (0, import_react76.useState)(0);
-    const [conflictMembers, setConflictMembers] = (0, import_react76.useState)([]);
-    const [membersError, setMembersError] = (0, import_react76.useState)("");
-    const [zoomItem, setZoomItem] = (0, import_react76.useState)(null);
+    const [candidateIndex, setCandidateIndex] = (0, import_react75.useState)(0);
+    const [conflictMembers, setConflictMembers] = (0, import_react75.useState)([]);
+    const [membersError, setMembersError] = (0, import_react75.useState)("");
+    const [zoomItem, setZoomItem] = (0, import_react75.useState)(null);
     const groupReference = currentConflict.reference;
     const jobId = "job_id" in groupReference ? groupReference.job_id : void 0;
     const groupAnalysis = useGroupAnalysis(currentConflict.candidateCount ? groupReference : null);
-    (0, import_react76.useEffect)(() => {
+    (0, import_react75.useEffect)(() => {
       const controller = new AbortController();
       setConflictMembers([]);
       setMembersError("");
@@ -69835,7 +69532,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const displayModelConclusion = modelConclusion ? modelConclusionLabels[modelConclusion] : currentConflict.model.label || "";
     const groupConclusion = currentConflict.type;
     const displayGroupConclusion = groupConclusion in conflictCategoryLabels ? conflictCategoryLabels[groupConclusion] : groupConclusion;
-    const currentCandidate = (0, import_react76.useMemo)(() => {
+    const currentCandidate = (0, import_react75.useMemo)(() => {
       const image = selectedMember?.image;
       return {
         sampleId: image?.sample.sample_id || "",
@@ -69853,7 +69550,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const candidateSource = selectedMember && anchorSide ? compared.data?.sources[anchorSide === "left" ? "right" : "left"] : null;
     const anchorAnnotations = anchorSource ? datasetImageAnnotations(catalog.data?.datasets.find((dataset) => dataset.dataset_id === anchorSource.sample.dataset_id)?.format, anchorSource.sample, anchorSource.annotations.annotations) : {};
     const candidateAnnotations = candidateSource ? datasetImageAnnotations(catalog.data?.datasets.find((dataset) => dataset.dataset_id === candidateSource.sample.dataset_id)?.format, candidateSource.sample, candidateSource.annotations.annotations) : {};
-    const handlePrevConflict = (0, import_react76.useCallback)(() => {
+    const handlePrevConflict = (0, import_react75.useCallback)(() => {
       if (onMove) {
         onMove(-1);
         return;
@@ -69866,7 +69563,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         setCandidateIndex(0);
       }
     }, [visibleConflicts, currentConflictId, onSelect, onMove]);
-    const handleNextConflict = (0, import_react76.useCallback)(() => {
+    const handleNextConflict = (0, import_react75.useCallback)(() => {
       if (onMove) {
         onMove(1);
         return;
@@ -70070,10 +69767,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyImages.tsx
-  var import_react77 = __require("react");
+  // src/client/components/ConsistencyImages.tsx
+  var import_react76 = __require("react");
 
-  // apps/iad-harness/src/client/components/ConsistencyResultCard.tsx
+  // src/client/components/ConsistencyResultCard.tsx
   var import_jsx_runtime105 = __require("react/jsx-runtime");
   function ConsistencyResultCard({ item, action, onOpen }) {
     const program = item.type in conflictCategoryLabels ? conflictCategoryLabels[item.type] : item.type;
@@ -70097,19 +69794,19 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     );
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyImages.tsx
+  // src/client/components/ConsistencyImages.tsx
   var import_jsx_runtime106 = __require("react/jsx-runtime");
   function ConsistencyImages({ jobId, images, filters, group, onReviewed, page, onPage }) {
-    const [selected, setSelected] = (0, import_react77.useState)(null);
-    const pendingMove = (0, import_react77.useRef)(null);
-    (0, import_react77.useEffect)(() => {
+    const [selected, setSelected] = (0, import_react76.useState)(null);
+    const pendingMove = (0, import_react76.useRef)(null);
+    (0, import_react76.useEffect)(() => {
       if (!images.pending && page > Math.max(1, Math.ceil(images.total / 18))) onPage(Math.max(1, Math.ceil(images.total / 18)));
     }, [images.pending, images.total, page, onPage]);
-    (0, import_react77.useEffect)(() => {
+    (0, import_react76.useEffect)(() => {
       setSelected(null);
       pendingMove.current = null;
     }, [group, filters.search, filters.model, filters.agreement, filters.review]);
-    (0, import_react77.useEffect)(() => {
+    (0, import_react76.useEffect)(() => {
       if (!images.pending && pendingMove.current) {
         if (!images.error) setSelected(pendingMove.current === 1 ? images.items[0] || null : images.items.at(-1) || null);
         pendingMove.current = null;
@@ -70152,8 +69849,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/useConsistencyImages.ts
-  var import_react78 = __require("react");
+  // src/client/useConsistencyImages.ts
+  var import_react77 = __require("react");
   function useConsistencyImages(jobId, revision, running, query, page) {
     const result = useQuery({
       queryKey: ["iad", "consistency-images", jobId, query, page],
@@ -70162,8 +69859,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       placeholderData: (previous2, previousQuery) => previousQuery?.queryKey[2] === jobId ? keepPreviousData(previous2) : void 0,
       refetchInterval: running ? JOB_POLL_INTERVAL : false
     }, queryClient);
-    const previous = (0, import_react78.useRef)(revision);
-    (0, import_react78.useEffect)(() => {
+    const previous = (0, import_react77.useRef)(revision);
+    (0, import_react77.useEffect)(() => {
       if (jobId && previous.current !== revision) void result.refetch({ cancelRefetch: false });
       previous.current = revision;
     }, [jobId, revision, result.refetch]);
@@ -70176,10 +69873,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     };
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyGallery.tsx
-  var import_react84 = __require("react");
+  // src/client/components/ConsistencyGallery.tsx
+  var import_react83 = __require("react");
 
-  // apps/iad-harness/src/client/consistency-images.ts
+  // src/client/consistency-images.ts
   function frozenConsistencyImage(bundle, side) {
     const source = bundle.sources[side], media = bundle.media.find((item) => item.side === side && item.representation === "preview" && !item.difference_id);
     const url = (mediaId) => `/api/iad/consistency/evidence/${encodeURIComponent(bundle.result.evidence_id)}/media/${encodeURIComponent(mediaId)}`;
@@ -70215,15 +69912,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
   var galleryImageUrl = (image) => `/api/iad/consistency/evidence/${encodeURIComponent(image.evidence_id)}/media/${image.side}-preview?max_side=360`;
 
-  // apps/iad-harness/src/client/components/ConsistencyGroupDialog.tsx
-  var import_react83 = __require("react");
+  // src/client/components/ConsistencyGroupDialog.tsx
+  var import_react82 = __require("react");
 
-  // apps/iad-harness/src/client/useConsistencyEvidence.ts
-  var import_react79 = __require("react");
+  // src/client/useConsistencyEvidence.ts
+  var import_react78 = __require("react");
   function useConsistencyEvidence(evidenceId) {
-    const [loaded, setLoaded] = (0, import_react79.useState)(null), [error3, setError] = (0, import_react79.useState)("");
+    const [loaded, setLoaded] = (0, import_react78.useState)(null), [error3, setError] = (0, import_react78.useState)("");
     const bundle = loaded?.result.evidence_id === evidenceId ? loaded : null;
-    (0, import_react79.useEffect)(() => {
+    (0, import_react78.useEffect)(() => {
       const controller = new AbortController();
       setLoaded(null);
       setError("");
@@ -70237,13 +69934,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     return { bundle, error: error3 };
   }
 
-  // apps/iad-harness/src/client/components/AnnotatedImagePair.tsx
-  var import_react80 = __require("react");
+  // src/client/components/AnnotatedImagePair.tsx
+  var import_react79 = __require("react");
   var import_jsx_runtime107 = __require("react/jsx-runtime");
   function AnnotatedImagePair({ sources, labels, synchronized = false, focusRegion, overlays, onExpand }) {
-    const [transform2, setTransform2] = (0, import_react80.useState)({ zoom: 0, x: 0, y: 0 });
-    const [rightTransform, setRightTransform] = (0, import_react80.useState)({ zoom: 0, x: 0, y: 0 });
-    (0, import_react80.useLayoutEffect)(() => {
+    const [transform2, setTransform2] = (0, import_react79.useState)({ zoom: 0, x: 0, y: 0 });
+    const [rightTransform, setRightTransform] = (0, import_react79.useState)({ zoom: 0, x: 0, y: 0 });
+    (0, import_react79.useLayoutEffect)(() => {
       if (!synchronized) setRightTransform(transform2);
     }, [synchronized]);
     return /* @__PURE__ */ (0, import_jsx_runtime107.jsx)("div", { className: "iad-image-pair", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime107.jsxs)("div", { className: "iad-image-pair-side", children: [
@@ -70261,7 +69958,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] }, index3)) });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyCanvasPair.tsx
+  // src/client/components/ConsistencyCanvasPair.tsx
   var import_jsx_runtime108 = __require("react/jsx-runtime");
   function ConsistencyCanvasPair({ sources, selected, synchronized = true, showDifferences = true, onExpand, anchorSide = "left", labels = ["\u67E5\u8BE2\u56FE\u50CF", "\u5019\u9009\u56FE\u50CF"] }) {
     const region = showDifferences && selected?.region ? { id: selected.difference_id, bbox: selected.region } : void 0;
@@ -70279,7 +69976,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     );
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyDifferences.tsx
+  // src/client/components/ConsistencyDifferences.tsx
   var import_jsx_runtime109 = __require("react/jsx-runtime");
   function ConsistencyDifferences({ member, differenceId, onDifference, anchorSide = "left" }) {
     const selected = member.annotation?.differences.find((row) => row.difference_id === differenceId);
@@ -70354,7 +70051,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyGroupAnalysis.tsx
+  // src/client/components/ConsistencyGroupAnalysis.tsx
   var import_jsx_runtime110 = __require("react/jsx-runtime");
   function ConsistencyGroupAnalysis({ reference }) {
     const { analysis, error: error3 } = useGroupAnalysis(reference);
@@ -70385,17 +70082,17 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyReviewPanel.tsx
-  var import_react82 = __require("react");
-
-  // apps/iad-harness/src/client/components/ConsistencyRegionProposal.tsx
+  // src/client/components/ConsistencyReviewPanel.tsx
   var import_react81 = __require("react");
+
+  // src/client/components/ConsistencyRegionProposal.tsx
+  var import_react80 = __require("react");
   var import_jsx_runtime111 = __require("react/jsx-runtime");
   function ConsistencyRegionProposal({ sources, differences, onChange }) {
-    const [sampleId, setSampleId] = (0, import_react81.useState)(""), [annotationId, setAnnotationId] = (0, import_react81.useState)(""), [operation, setOperation] = (0, import_react81.useState)("relabel");
-    const [category, setCategory] = (0, import_react81.useState)(""), [geometryKind, setGeometryKind] = (0, import_react81.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react81.useState)("");
+    const [sampleId, setSampleId] = (0, import_react80.useState)(""), [annotationId, setAnnotationId] = (0, import_react80.useState)(""), [operation, setOperation] = (0, import_react80.useState)("relabel");
+    const [category, setCategory] = (0, import_react80.useState)(""), [geometryKind, setGeometryKind] = (0, import_react80.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react80.useState)("");
     const annotations = differences.flatMap((diff) => [...diff.left, ...diff.right]).filter((item, index3, items) => items.findIndex((other) => other.annotation_id === item.annotation_id) === index3 && item.sample_id === sampleId);
-    const value = (0, import_react81.useMemo)(() => {
+    const value = (0, import_react80.useMemo)(() => {
       if (!sampleId || operation !== "add" && !annotationId) return null;
       if (operation === "remove") return { kind: "PROPOSE_REGION_CHANGE", changes: [{ operation, sample_id: sampleId, annotation_id: annotationId }] };
       if (operation === "relabel") return category.trim() ? { kind: "PROPOSE_REGION_CHANGE", changes: [{ operation, sample_id: sampleId, annotation_id: annotationId, category: category.trim() }] } : null;
@@ -70407,7 +70104,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       const change = operation === "add" ? { operation, sample_id: sampleId, category: category.trim(), geometry } : { operation, sample_id: sampleId, annotation_id: annotationId, geometry };
       return { kind: "PROPOSE_REGION_CHANGE", changes: [change] };
     }, [sampleId, annotationId, operation, category, geometryKind, geometryText]);
-    (0, import_react81.useEffect)(() => onChange(value), [value, onChange]);
+    (0, import_react80.useEffect)(() => onChange(value), [value, onChange]);
     return /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("section", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE", children: [
       /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { className: "iad-muted", children: "\u5EFA\u8BAE\u4E0D\u4F1A\u6539\u5199\u6E90\u6807\u6CE8\u3002\u5B9E\u9645\u4FEE\u6B63\u5E76\u91CD\u626B\u540E\u518D\u9A8C\u8BC1\u3002" }),
       /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("div", { className: "iad-config-bar", children: [
@@ -70462,7 +70159,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyReviewPanel.tsx
+  // src/client/components/ConsistencyReviewPanel.tsx
   var import_jsx_runtime112 = __require("react/jsx-runtime");
   var actions3 = { CONFIRM_DIFFERENCE: "\u786E\u8BA4\u5DEE\u5F02\uFF0C\u5F85\u4FEE\u6B63", EXPECTED_POLICY_DIFFERENCE: "\u5C5E\u4E8E\u4E0D\u540C\u89C4\u8303", REJECT_DIFFERENCE: "\u6392\u9664\u51B2\u7A81", NEEDS_CONTEXT: "\u9700\u8981\u8865\u5145\u4F9D\u636E", SET_EFFECTIVE_QUALITY: "\u63D0\u4EA4\u6709\u6548\u8D28\u91CF\u88C1\u51B3", PROPOSE_REGION_CHANGE: "\u63D0\u51FA\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE" };
   var reviewStates = { OPEN: "\u5F85\u590D\u6838", NEEDS_CONTEXT: "\u5F85\u8865\u5145\u4F9D\u636E", RESOLVED: "\u5DF2\u88C1\u51B3" };
@@ -70470,15 +70167,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   function ConsistencyReviewPanel({ bundle }) {
     const { workspace } = useWorkspace();
     const { result } = bundle, key2 = "iad.consistency-pending:" + result.evidence_id;
-    const [context, setContext] = (0, import_react82.useState)(null), [error3, setError] = (0, import_react82.useState)(""), [notice, setNotice] = (0, import_react82.useState)(""), [busy, setBusy] = (0, import_react82.useState)(false);
-    const [selected, setSelected] = (0, import_react82.useState)([]), [kind, setKind] = (0, import_react82.useState)("CONFIRM_DIFFERENCE");
-    const [reviewer, setReviewer] = (0, import_react82.useState)(() => localStorage.getItem("iad.reviewer") || "auditor_qc"), [comment, setComment] = (0, import_react82.useState)("");
-    const [quality, setQuality] = (0, import_react82.useState)({});
-    const [region, setRegion] = (0, import_react82.useState)(null);
-    const pending = (0, import_react82.useRef)(null), active = (0, import_react82.useRef)(true);
-    const [hasPending, setHasPending] = (0, import_react82.useState)(false);
+    const [context, setContext] = (0, import_react81.useState)(null), [error3, setError] = (0, import_react81.useState)(""), [notice, setNotice] = (0, import_react81.useState)(""), [busy, setBusy] = (0, import_react81.useState)(false);
+    const [selected, setSelected] = (0, import_react81.useState)([]), [kind, setKind] = (0, import_react81.useState)("CONFIRM_DIFFERENCE");
+    const [reviewer, setReviewer] = (0, import_react81.useState)(() => localStorage.getItem("iad.reviewer") || "auditor_qc"), [comment, setComment] = (0, import_react81.useState)("");
+    const [quality, setQuality] = (0, import_react81.useState)({});
+    const [region, setRegion] = (0, import_react81.useState)(null);
+    const pending = (0, import_react81.useRef)(null), active = (0, import_react81.useRef)(true);
+    const [hasPending, setHasPending] = (0, import_react81.useState)(false);
     const sources = [bundle.sources.left, bundle.sources.right];
-    (0, import_react82.useEffect)(() => {
+    (0, import_react81.useEffect)(() => {
       active.current = true;
       const controller = new AbortController();
       try {
@@ -70655,15 +70352,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyGroupDialog.tsx
+  // src/client/components/ConsistencyGroupDialog.tsx
   var import_jsx_runtime113 = __require("react/jsx-runtime");
   var tabs = [{ id: "summary", label: "MLLM \u5206\u6790" }, { id: "evidence", label: "\u8BC1\u636E\u6E05\u5355" }, { id: "review", label: "\u4EBA\u5DE5\u590D\u6838" }];
   function ConsistencyGroupDialog({ queryId, kind, item, position, total, onMove, onClose, onExpired, restoreFocus }) {
     const { state, workspace } = useWorkspace(), location2 = state.consistency;
-    const [members, setMembers] = (0, import_react83.useState)(null), [error3, setError] = (0, import_react83.useState)(""), [asking, setAsking] = (0, import_react83.useState)(false);
-    const [lightbox, setLightbox] = (0, import_react83.useState)(null);
+    const [members, setMembers] = (0, import_react82.useState)(null), [error3, setError] = (0, import_react82.useState)(""), [asking, setAsking] = (0, import_react82.useState)(false);
+    const [lightbox, setLightbox] = (0, import_react82.useState)(null);
     const memberPage = location2.memberPage || 1, tab = location2.detailTab || "summary";
-    (0, import_react83.useEffect)(() => {
+    (0, import_react82.useEffect)(() => {
       const controller = new AbortController();
       setMembers(null);
       setError("");
@@ -70791,16 +70488,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyGallery.tsx
+  // src/client/components/ConsistencyGallery.tsx
   var import_jsx_runtime114 = __require("react/jsx-runtime");
   function ConsistencyGallery({ queryId, kind, onExpired }) {
     const { state, workspace } = useWorkspace(), location2 = state.consistency;
-    const [page, setPage] = (0, import_react84.useState)(null), [error3, setError] = (0, import_react84.useState)("");
-    const pendingMove = (0, import_react84.useRef)(null);
-    const cards = (0, import_react84.useRef)(/* @__PURE__ */ new Map()), focus = (0, import_react84.useRef)(null);
+    const [page, setPage] = (0, import_react83.useState)(null), [error3, setError] = (0, import_react83.useState)("");
+    const pendingMove = (0, import_react83.useRef)(null);
+    const cards = (0, import_react83.useRef)(/* @__PURE__ */ new Map()), focus = (0, import_react83.useRef)(null);
     const search = location2.gallerySearch || "", order = location2.galleryOrder || "recent", number = location2.galleryPage || 1, differenceFilter = location2.differenceFilter || "all";
     const modelFilter = location2.modelFilter || "all";
-    (0, import_react84.useEffect)(() => {
+    (0, import_react83.useEffect)(() => {
       const controller = new AbortController();
       setPage(null);
       setError("");
@@ -70911,7 +70608,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyFilters.tsx
+  // src/client/components/ConsistencyFilters.tsx
   var import_jsx_runtime115 = __require("react/jsx-runtime");
   function ConsistencyFilters({ value, modelTypes, onChange }) {
     return /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u56FE\u50CF\u7B5B\u9009", children: [
@@ -70994,24 +70691,24 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyPage.tsx
-  var import_react88 = __require("react");
+  // src/client/components/ConsistencyPage.tsx
+  var import_react87 = __require("react");
 
-  // apps/iad-harness/src/client/components/ConsistencyEvidencePage.tsx
-  var import_react86 = __require("react");
-
-  // apps/iad-harness/src/client/components/ConsistencyComparison.tsx
+  // src/client/components/ConsistencyEvidencePage.tsx
   var import_react85 = __require("react");
+
+  // src/client/components/ConsistencyComparison.tsx
+  var import_react84 = __require("react");
   var import_jsx_runtime116 = __require("react/jsx-runtime");
   function ConsistencyComparison({ member, query, temporary, differenceId, onDifference, frozen }) {
     const { workspace } = useWorkspace();
-    const [saving, setSaving] = (0, import_react85.useState)(false);
-    const saveRequest = (0, import_react85.useRef)(null);
-    (0, import_react85.useEffect)(() => () => saveRequest.current?.abort(), []);
-    const [detail, setDetail] = (0, import_react85.useState)(null), [error3, setError] = (0, import_react85.useState)("");
-    const [synchronized, setSynchronized] = (0, import_react85.useState)(true);
-    const [showDifferences, setShowDifferences] = (0, import_react85.useState)(true);
-    (0, import_react85.useEffect)(() => {
+    const [saving, setSaving] = (0, import_react84.useState)(false);
+    const saveRequest = (0, import_react84.useRef)(null);
+    (0, import_react84.useEffect)(() => () => saveRequest.current?.abort(), []);
+    const [detail, setDetail] = (0, import_react84.useState)(null), [error3, setError] = (0, import_react84.useState)("");
+    const [synchronized, setSynchronized] = (0, import_react84.useState)(true);
+    const [showDifferences, setShowDifferences] = (0, import_react84.useState)(true);
+    (0, import_react84.useEffect)(() => {
       if (frozen) return;
       const controller = new AbortController();
       request(`/sample/${encodeURIComponent(member.sample_id)}`, void 0, void 0, controller.signal).then((data) => {
@@ -71067,7 +70764,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/FrozenConsistencyComparison.tsx
+  // src/client/components/FrozenConsistencyComparison.tsx
   var import_jsx_runtime117 = __require("react/jsx-runtime");
   function FrozenConsistencyComparison({ bundle }) {
     const { state, workspace } = useWorkspace();
@@ -71085,14 +70782,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ) });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyEvidencePage.tsx
+  // src/client/components/ConsistencyEvidencePage.tsx
   var import_jsx_runtime118 = __require("react/jsx-runtime");
   var sourceStates = { CURRENT: "\u6765\u6E90\u4E0E\u5F53\u6B21\u68C0\u67E5\u4E00\u81F4", CHANGED: "\u6765\u6E90\u5DF2\u53D8\u5316", MISSING: "\u6765\u6E90\u5DF2\u79FB\u9664", UNKNOWN: "\u6765\u6E90\u72B6\u6001\u672A\u77E5" };
   function ConsistencyEvidencePage({ evidenceId }) {
     const { workspace, state } = useWorkspace();
-    const [bundle, setBundle] = (0, import_react86.useState)(null), [error3, setError] = (0, import_react86.useState)("");
-    const [asking, setAsking] = (0, import_react86.useState)(false);
-    (0, import_react86.useEffect)(() => {
+    const [bundle, setBundle] = (0, import_react85.useState)(null), [error3, setError] = (0, import_react85.useState)("");
+    const [asking, setAsking] = (0, import_react85.useState)(false);
+    (0, import_react85.useEffect)(() => {
       const controller = new AbortController();
       setBundle(null);
       setError("");
@@ -71145,16 +70842,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyCheckCreate.tsx
-  var import_react87 = __require("react");
+  // src/client/components/ConsistencyCheckCreate.tsx
+  var import_react86 = __require("react");
   var import_jsx_runtime119 = __require("react/jsx-runtime");
   function ConsistencyCheckCreate({ datasets, groups, parentId, datasetIds, onCancel, onStarted }) {
-    const [parent, setParent] = (0, import_react87.useState)(parentId), [selectedIds, setSelectedIds] = (0, import_react87.useState)(datasetIds);
-    const [busy, setBusy] = (0, import_react87.useState)(false), [error3, setError] = (0, import_react87.useState)("");
-    const [drafts, setDrafts] = (0, import_react87.useState)({ ...consistencyTaskPrompts });
-    const [identity2, setIdentity] = (0, import_react87.useState)({ ...consistencyIdentityPrompts });
-    const submission = (0, import_react87.useRef)(null);
-    const submitButton = (0, import_react87.useRef)(null), confirmButton = (0, import_react87.useRef)(null);
+    const [parent, setParent] = (0, import_react86.useState)(parentId), [selectedIds, setSelectedIds] = (0, import_react86.useState)(datasetIds);
+    const [busy, setBusy] = (0, import_react86.useState)(false), [error3, setError] = (0, import_react86.useState)("");
+    const [drafts, setDrafts] = (0, import_react86.useState)({ ...consistencyTaskPrompts });
+    const [identity2, setIdentity] = (0, import_react86.useState)({ ...consistencyIdentityPrompts });
+    const submission = (0, import_react86.useRef)(null);
+    const submitButton = (0, import_react86.useRef)(null), confirmButton = (0, import_react86.useRef)(null);
     const taskTypes = [...new Set(datasets.filter((dataset) => selectedIds.includes(dataset.dataset_id)).map((dataset) => consistencyTaskFormats[dataset.format]))];
     const task = taskTypes.length === 1 ? taskTypes[0] : null;
     const system = task ? drafts[task].system : "", user = task ? drafts[task].user : "";
@@ -71251,18 +70948,18 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/components/ConsistencyPage.tsx
+  // src/client/components/ConsistencyPage.tsx
   var import_jsx_runtime120 = __require("react/jsx-runtime");
   function ConsistencyPage() {
     const { state, workspace } = useWorkspace();
     const catalog = useDatasetCatalog();
     const evidenceId = state.consistency.evidenceId;
     const queryId = state.consistency.queryId;
-    const [queryError, setQueryError] = (0, import_react88.useState)("");
-    const onExpired = (0, import_react88.useCallback)(() => setQueryError("\u51BB\u7ED3\u67E5\u8BE2\u5DF2\u5931\u6548\uFF0C\u8BF7\u4ECE\u68C0\u67E5\u4F5C\u4E1A\u6253\u5F00\u7ED3\u679C\u3002"), []);
-    const [visited, setVisited] = (0, import_react88.useState)(!evidenceId);
-    (0, import_react88.useEffect)(() => setQueryError(""), [queryId]);
-    (0, import_react88.useEffect)(() => {
+    const [queryError, setQueryError] = (0, import_react87.useState)("");
+    const onExpired = (0, import_react87.useCallback)(() => setQueryError("\u51BB\u7ED3\u67E5\u8BE2\u5DF2\u5931\u6548\uFF0C\u8BF7\u4ECE\u68C0\u67E5\u4F5C\u4E1A\u6253\u5F00\u7ED3\u679C\u3002"), []);
+    const [visited, setVisited] = (0, import_react87.useState)(!evidenceId);
+    (0, import_react87.useEffect)(() => setQueryError(""), [queryId]);
+    (0, import_react87.useEffect)(() => {
       if (!evidenceId) setVisited(true);
     }, [evidenceId]);
     return /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)(import_jsx_runtime120.Fragment, { children: [
@@ -71291,31 +70988,31 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const initialParent = buildHierarchyGroups(datasets, groups)[0]?.group_id || "";
     const selectedParentId = state.consistency.parentId ?? initialParent;
     const selectedChildIds = state.consistency.datasetIds ?? datasets.filter((item) => getDatasetGroupId(item) === selectedParentId).map((item) => item.dataset_id);
-    const [statusJobId, setStatusJobId] = (0, import_react88.useState)("");
+    const [statusJobId, setStatusJobId] = (0, import_react87.useState)("");
     const selectedJobId = state.consistency.batchId || "";
-    const setSelectedJobId = (0, import_react88.useCallback)((batchId) => workspace.updateConsistency({ batchId: batchId || void 0 }, true), [workspace]);
-    const [revision, setRevision] = (0, import_react88.useState)(0);
-    const [kind, setKind] = (0, import_react88.useState)("images");
-    const [modelFilter, setModelFilter] = (0, import_react88.useState)("all");
-    const [agreement, setAgreement] = (0, import_react88.useState)("all");
-    const [search, setSearch] = (0, import_react88.useState)("");
-    const [page, setPage] = (0, import_react88.useState)(1);
-    const [reviewFilter, setReviewFilter] = (0, import_react88.useState)("all");
+    const setSelectedJobId = (0, import_react87.useCallback)((batchId) => workspace.updateConsistency({ batchId: batchId || void 0 }, true), [workspace]);
+    const [revision, setRevision] = (0, import_react87.useState)(0);
+    const [kind, setKind] = (0, import_react87.useState)("images");
+    const [modelFilter, setModelFilter] = (0, import_react87.useState)("all");
+    const [agreement, setAgreement] = (0, import_react87.useState)("all");
+    const [search, setSearch] = (0, import_react87.useState)("");
+    const [page, setPage] = (0, import_react87.useState)(1);
+    const [reviewFilter, setReviewFilter] = (0, import_react87.useState)("all");
     const createOpen = state.consistency.view === "setup";
-    const [modal, setModal] = (0, import_react88.useState)("");
-    const [currentConflictId, setCurrentConflictId] = (0, import_react88.useState)("");
-    const [statsModalJobId, setStatsModalJobId] = (0, import_react88.useState)("");
-    const [promptJob, setPromptJob] = (0, import_react88.useState)(null);
-    const hierarchyGroups = (0, import_react88.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-    const currentParent = (0, import_react88.useMemo)(
+    const [modal, setModal] = (0, import_react87.useState)("");
+    const [currentConflictId, setCurrentConflictId] = (0, import_react87.useState)("");
+    const [statsModalJobId, setStatsModalJobId] = (0, import_react87.useState)("");
+    const [promptJob, setPromptJob] = (0, import_react87.useState)(null);
+    const hierarchyGroups = (0, import_react87.useMemo)(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
+    const currentParent = (0, import_react87.useMemo)(
       () => hierarchyGroups.find((g) => g.group_id === selectedParentId) || hierarchyGroups[0],
       [hierarchyGroups, selectedParentId]
     );
-    const currentChildDatasets = (0, import_react88.useMemo)(
+    const currentChildDatasets = (0, import_react87.useMemo)(
       () => datasets.filter((d) => getDatasetGroupId(d) === currentParent?.group_id),
       [datasets, hierarchyGroups, currentParent]
     );
-    const progress = (0, import_react88.useCallback)(() => setRevision((value) => value + 1), []);
+    const progress = (0, import_react87.useCallback)(() => setRevision((value) => value + 1), []);
     const polling = useJobs("consistency", selectedChildIds, progress, selectedJobId);
     const batches = polling.jobs;
     const jobList = useJobList(batches, polling.identity, selectedJobId, (job) => selectJob(job.root_run_id));
@@ -71342,10 +71039,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     }, queryClient);
     const jobConflicts = conflictQuery.data?.items || [];
     const conflictsLoading = !!selectedJob && (selectedJob.consistency_check_version === 1 ? images.pending : conflictQuery.isPending);
-    (0, import_react88.useEffect)(() => {
+    (0, import_react87.useEffect)(() => {
       if (selectedJob && selectedJob.consistency_check_version !== 1) void conflictQuery.refetch({ cancelRefetch: false });
     }, [selectedJob?.run_id, selectedJob?.status, revision]);
-    const visibleConflicts = (0, import_react88.useMemo)(
+    const visibleConflicts = (0, import_react87.useMemo)(
       () => ConsistencyView.filter(
         jobConflicts,
         { search, model: modelFilter, agreement, review: reviewFilter }
@@ -71354,11 +71051,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     );
     const totalPages = Math.max(1, Math.ceil(visibleConflicts.length / 18));
     const currentPage = Math.min(totalPages, Math.max(1, page));
-    const paginatedConflicts = (0, import_react88.useMemo)(() => {
+    const paginatedConflicts = (0, import_react87.useMemo)(() => {
       const start2 = (currentPage - 1) * 18;
       return visibleConflicts.slice(start2, start2 + 18);
     }, [visibleConflicts, currentPage]);
-    const handleParentChange = (0, import_react88.useCallback)(
+    const handleParentChange = (0, import_react87.useCallback)(
       (newParentId) => {
         const newChildren = datasets.filter((d) => getDatasetGroupId(d) === newParentId);
         workspace.updateConsistency({ parentId: newParentId, datasetIds: newChildren.map((c) => c.dataset_id), batchId: void 0 }, true);
@@ -71371,7 +71068,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       },
       [datasets, workspace]
     );
-    const handleChildToggle = (0, import_react88.useCallback)((childId) => {
+    const handleChildToggle = (0, import_react87.useCallback)((childId) => {
       workspace.updateConsistency({ parentId: selectedParentId, datasetIds: selectedChildIds.includes(childId) ? selectedChildIds.filter((id) => id !== childId) : [...selectedChildIds, childId], batchId: void 0 }, true);
       setSearch("");
       setPage(1);
@@ -71379,7 +71076,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       setModelFilter("all");
       setAgreement("all");
     }, [workspace, selectedChildIds, selectedParentId]);
-    const selectJob = (0, import_react88.useCallback)((runId) => {
+    const selectJob = (0, import_react87.useCallback)((runId) => {
       setSelectedJobId(runId);
       setSearch("");
       setPage(1);
@@ -71388,17 +71085,17 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       setAgreement("all");
       setReviewFilter("all");
     }, [setSelectedJobId]);
-    const handleRefresh = (0, import_react88.useCallback)(() => {
+    const handleRefresh = (0, import_react87.useCallback)(() => {
       polling.refresh();
       setRevision((v) => v + 1);
     }, [polling.refresh]);
-    const currentConflict = (0, import_react88.useMemo)(
+    const currentConflict = (0, import_react87.useMemo)(
       () => jobConflicts.find((c) => c.id === currentConflictId) || null,
       [jobConflicts, currentConflictId]
     );
     const taskType = selectedJob?.consistency_task_type;
     const modelTypes = Object.entries(modelConclusionLabels).filter(([value]) => value === "EQUIVALENT" || !taskType || consistencyTaskCategories[taskType].some((category) => category === value)).map(([value, label]) => ({ value, label }));
-    const conflictTabs = (0, import_react88.useMemo)(() => {
+    const conflictTabs = (0, import_react87.useMemo)(() => {
       if (!selectedJob) return [];
       const defaults2 = new Set(taskType ? consistencyTaskCategories[taskType] : datasets.filter((dataset) => selectedJob?.dataset_ids.includes(dataset.dataset_id)).flatMap((dataset) => conflictCategoryDefaults[dataset.format]));
       return [
@@ -71407,7 +71104,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         ...selectedJob?.consistency_check_version === 1 ? Object.entries(consistencyImageGroups).map(([value, label]) => ({ value, label })) : []
       ];
     }, [datasets, taskType, selectedJob?.dataset_ids, selectedJob?.consistency_check_version]);
-    (0, import_react88.useEffect)(() => {
+    (0, import_react87.useEffect)(() => {
       if (conflictTabs.length && !conflictTabs.some((tab) => tab.value === kind)) setKind(conflictTabs[0].value);
       if (modelFilter !== "all" && !modelTypes.some((option) => option.value === modelFilter)) setModelFilter("all");
     }, [conflictTabs, taskType, kind, modelFilter]);
@@ -71570,7 +71267,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ] });
   }
 
-  // apps/iad-harness/src/client/index.ts
+  // src/client/index.ts
   var name = "iad-client";
   var inject = ["slots", "layout", "sessions", "conversation", "uiWorkspace"];
   function apply(ctx) {
@@ -71579,7 +71276,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const icons2 = { "industrial-datasets": DatasetIcon, "industrial-images": ImagesIcon, "industrial-exploration": ExplorationIcon, "industrial-knowledge": KnowledgeIcon, "industrial-consistency": ImagesIcon, "industrial-audit": AuditIcon, "industrial-review": ReviewIcon, "industrial-model-settings": ModelSettingsIcon };
     ctx.slots.inject("sidebar.content", () => ctx.slots.register({ name: "sidebar.content" }, IndustrialSidebar));
     ctx.slots.inject("tool.call.toolview", () => {
-      for (const [key2, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key: key2 }, (props) => import_react89.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react89.default.createElement(SessionResult, { ...props, title })));
+      for (const [key2, title] of Object.entries(workbenchTools)) ctx.slots.register({ name: "tool.call.toolview", key: key2 }, (props) => import_react88.default.createElement(WorkspaceContext.Provider, { value: workspace }, import_react88.default.createElement(SessionResult, { ...props, title })));
     });
     ctx.slots.inject("sidebar.panellist", () => {
       const disposers = Object.entries(pages).filter(([id]) => id !== "industrial-model-settings").map(([id, label], index3) => ctx.slots.register({ name: "sidebar.panellist", id, order: index3 + 1, label }, icons2[id]));
@@ -71589,12 +71286,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       for (const id of Object.keys(pages)) {
         ctx.slots.register(
           { name: "main", key: id },
-          () => import_react89.default.createElement(WorkbenchProviders, { workspace, children: import_react89.default.createElement(
+          () => import_react88.default.createElement(WorkbenchProviders, { workspace, children: import_react88.default.createElement(
             "div",
             { className: "iad-workspace", onFocusCapture: (event) => {
               if (event.target instanceof HTMLElement) event.target.scrollIntoView({ block: "nearest", inline: "nearest" });
             }, style: { height: "100%", minWidth: 0, containerType: "inline-size", containerName: "workbench" } },
-            id === "industrial-model-settings" ? import_react89.default.createElement(ModelSettingsPage) : id === "industrial-consistency" ? import_react89.default.createElement(ConsistencyPage) : import_react89.default.createElement(WorkbenchPage, { pageId: id })
+            id === "industrial-model-settings" ? import_react88.default.createElement(ModelSettingsPage) : id === "industrial-consistency" ? import_react88.default.createElement(ConsistencyPage) : import_react88.default.createElement(WorkbenchPage, { pageId: id })
           ) })
         );
       }

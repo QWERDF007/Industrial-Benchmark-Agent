@@ -1,5 +1,5 @@
 export const moduleSettingsStyles=`
-.iad-module-settings{container-type:inline-size;min-width:0;width:100%;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:14px;line-height:22px}
+.iad-module-settings{min-width:0;width:100%;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:14px;line-height:22px}
 .iad-module-settings *{box-sizing:border-box}
 .iad-module-row{display:flex;align-items:center;gap:8px;padding:16px 0;border-bottom:.5px solid var(--dsw-alias-border-l2)}
 .iad-module-row-text{display:flex;flex-direction:column;flex:1;gap:4px;min-width:0;padding-right:48px}
@@ -25,11 +25,5 @@ export const moduleSettingsStyles=`
 .iad-module-model-label{display:flex;align-items:center;gap:6px}
 .iad-module-model-label>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .iad-module-model-label>svg{flex:none;width:14px;height:14px}
-@container(max-width:400px){
- .iad-module-row{flex-direction:column;align-items:stretch;gap:8px}
- .iad-module-row-text{padding-right:0}
- .iad-module-control{width:100%;max-width:100%}
- .iad-module-control>.iad-module-model-select,.iad-module-control>span,.iad-module-selector{width:100%}
- .iad-module-error{flex-wrap:wrap}
-}
+
 `;

@@ -28,7 +28,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
  try{
   const options=new firefox.Options().addArguments('-headless');if(process.env.FIREFOX_PATH)options.setBinary(process.env.FIREFOX_PATH);
   driver=await new Builder().forBrowser('firefox').setFirefoxOptions(options).setFirefoxService(new firefox.ServiceBuilder(process.env.GECKODRIVER_PATH||'/tmp/geckodriver').setEnvironment({...process.env,TZ:'Asia/Shanghai'})).build();
-  await driver.manage().window().setRect({width:1600,height:1000});await driver.get(`http://127.0.0.1:${server.address().port}`);
+  await driver.manage().window().setRect({width:1920,height:1080});await driver.get(`http://127.0.0.1:${server.address().port}`);
   const el=id=>driver.wait(until.elementLocated(By.id(id)),5000), click=async id=>(await el(id)).click();
   for(const module of ['exploration','knowledge','consistency','audit']) {
    const buttons=await driver.findElements(By.css('#completed-'+module+' button'));
@@ -86,10 +86,10 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
   assert.deepEqual(await phaseTimes(),['5.0s','10.0s',''],'同一业务阶段累计底层阶段耗时，没有记录的阶段留空');
   await driver.executeScript('window.__jobNow+=65000');
   await driver.wait(async()=>(await phaseTimes())[1]==='01:15',3000,'当前阶段耗时随时钟更新');
-  await driver.manage().window().setRect({width:420,height:900});
+  await driver.manage().window().setRect({width:1920,height:1080});
   const timeFits=await driver.executeScript('return [...document.querySelectorAll(".iad-job-stage")].every(row=>{const title=row.querySelector("strong").getBoundingClientRect(),time=row.querySelector(".iad-job-stage-time").getBoundingClientRect();return title.right<=time.left+1&&time.right<=row.getBoundingClientRect().right+1})');
-  assert.equal(timeFits,true,'窄屏阶段名称与耗时不重叠');
-  await driver.manage().window().setRect({width:1600,height:1000});
+  assert.equal(timeFits,true,'阶段名称与耗时不重叠');
+  await driver.manage().window().setRect({width:1920,height:1080});
   assert.deepEqual(await Promise.all((await drawer.findElements(By.css('footer button'))).map(button=>button.getText())),['取消作业']);
   await (await drawer.findElement(By.css('footer button'))).click();
   let confirmation=await driver.wait(until.elementLocated(By.css('dialog[aria-label="取消作业"][open]')),5000);

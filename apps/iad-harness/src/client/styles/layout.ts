@@ -23,6 +23,6 @@ export const layoutStyles = `
 .iad-job-table-grid tbody td{padding:8px 18px;vertical-align:middle}
 .iad-section-heading .iad-section-actions input{width:var(--iad-job-search-width);height:var(--iad-control-height)}
 .iad-section-heading .iad-section-actions select{width:var(--iad-job-status-width);height:var(--iad-control-height)}
-@media(max-width:780px){:root{--iad-layout-inset:20px}}
-@media(max-width:580px){:root{--iad-layout-inset:16px;--iad-layout-section-inset:16px}}
+
+
 `;
