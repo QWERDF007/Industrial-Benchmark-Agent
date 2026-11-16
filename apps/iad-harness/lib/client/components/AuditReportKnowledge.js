@@ -1,9 +1,10 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { auditReportSections } from '../audit-report.js';
+import { useAuditReportSections } from '../audit-report.js';
 import { AuditReportSection } from './AuditReportSection.js';
 import { knowledgeStatuses } from '../../shared/knowledge-presentation.js';
 import { AuditEvidenceSection } from './AuditEvidenceSection.js';
 export function AuditReportKnowledge({ report, imageUrl }) {
+    const auditReportSections = useAuditReportSections();
     const entries = report.knowledge_entries || [];
     return _jsxs(AuditReportSection, { section: "knowledge", children: [report.knowledge_analysis && _jsx("p", { children: report.knowledge_analysis }), !entries.length && _jsx("p", { children: Object.values(report.knowledge_titles).join('、') || '本次未选用知识条目。' }), entries.map(({ entry, analysis }, index) => {
                 const check = entry.check, counts = report.statistics?.knowledge_assessments?.[check.check_id] || {};

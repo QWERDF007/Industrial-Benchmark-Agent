@@ -1,3 +1,101 @@
+export declare const auditQualityScoreParameters: {
+    readonly aliases: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly axis: {
+                    readonly type: "string";
+                    readonly enum: readonly ["morphology", "special_morphology", "appearance", "structural_region", "hard_type", "texture", "confusable"];
+                    readonly title: "Axis";
+                    readonly required: true;
+                };
+                readonly source: {
+                    readonly type: "string";
+                    readonly title: "Source";
+                    readonly required: true;
+                };
+                readonly canonical: {
+                    readonly type: "string";
+                    readonly description: "同一实际场景使用同一名称；不同原因不得为去重而合并。";
+                    readonly title: "Canonical";
+                    readonly required: true;
+                };
+            };
+            readonly title: "QualitySceneAlias";
+        };
+        readonly title: "Aliases";
+    };
+    readonly redundancy_reviewed: {
+        readonly type: "boolean";
+        readonly description: "已实际对照冻结相似候选及已识别相似组的原图，完成低信息增量判断。";
+        readonly title: "Redundancy Reviewed";
+        readonly required: true;
+    };
+    readonly redundant_groups: {
+        readonly type: "array";
+        readonly items: {
+            readonly type: "object";
+            readonly additionalProperties: false;
+            readonly properties: {
+                readonly members: {
+                    readonly type: "array";
+                    readonly items: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly sample_id: {
+                                readonly type: "string";
+                                readonly title: "Sample Id";
+                                readonly required: true;
+                            };
+                            readonly result_revision: {
+                                readonly type: "integer";
+                                readonly title: "Result Revision";
+                                readonly required: true;
+                            };
+                            readonly kind: {
+                                readonly type: "string";
+                                readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                readonly title: "Kind";
+                                readonly required: true;
+                            };
+                            readonly index: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "integer";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Index";
+                            };
+                        };
+                        readonly title: "AuditResultReference";
+                    };
+                    readonly title: "Members";
+                    readonly required: true;
+                };
+                readonly reason: {
+                    readonly type: "string";
+                    readonly description: "依据实际对照的原图解释为何只增加很少信息，候选相似度不是依据。";
+                    readonly title: "Reason";
+                    readonly required: true;
+                };
+            };
+            readonly title: "QualityRedundantGroup";
+        };
+        readonly title: "Redundant Groups";
+    };
+    readonly preview_id: {
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
+        readonly description: "audit_quality_score返回的预览标识；正式报告原样提交，不自行生成。";
+        readonly title: "Preview Id";
+    };
+};
 export declare const auditEvidenceParameters: {
     readonly run_id: {
         readonly type: "string";
@@ -283,6 +381,122 @@ export declare const auditCommitParameters: {
         readonly type: "object";
         readonly additionalProperties: false;
         readonly properties: {
+            readonly quality_observation: {
+                readonly type: "object";
+                readonly additionalProperties: false;
+                readonly properties: {
+                    readonly complete: {
+                        readonly type: "boolean";
+                        readonly description: "是否有充分原图证据完成场景归类；缺证时填false，不猜测。";
+                        readonly title: "Complete";
+                        readonly required: true;
+                    };
+                    readonly defects: {
+                        readonly type: "array";
+                        readonly items: {
+                            readonly type: "object";
+                            readonly additionalProperties: false;
+                            readonly properties: {
+                                readonly annotation_id: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly title: "Annotation Id";
+                                    readonly required: true;
+                                };
+                                readonly morphology: {
+                                    readonly type: "string";
+                                    readonly title: "Morphology";
+                                    readonly required: true;
+                                };
+                                readonly special_morphology: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly title: "Special Morphology";
+                                };
+                                readonly appearance: {
+                                    readonly type: "string";
+                                    readonly title: "Appearance";
+                                    readonly required: true;
+                                };
+                                readonly size: {
+                                    readonly type: "string";
+                                    readonly enum: readonly ["tiny", "small", "medium", "large"];
+                                    readonly title: "Size";
+                                    readonly required: true;
+                                };
+                                readonly location: {
+                                    readonly type: "string";
+                                    readonly enum: readonly ["center", "edge", "corner"];
+                                    readonly title: "Location";
+                                    readonly required: true;
+                                };
+                                readonly structural_region: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly title: "Structural Region";
+                                };
+                                readonly contrast: {
+                                    readonly type: "string";
+                                    readonly enum: readonly ["low", "medium", "high"];
+                                    readonly title: "Contrast";
+                                    readonly required: true;
+                                };
+                            };
+                            readonly title: "QualityDefectScene";
+                        };
+                        readonly title: "Defects";
+                    };
+                    readonly normal: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly hard: {
+                                readonly type: "boolean";
+                                readonly title: "Hard";
+                                readonly required: true;
+                            };
+                            readonly hard_type: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "string";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Hard Type";
+                            };
+                            readonly confusable: {
+                                readonly type: "boolean";
+                                readonly title: "Confusable";
+                                readonly required: true;
+                            };
+                            readonly texture: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "string";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Texture";
+                            };
+                        };
+                        readonly title: "QualityNormalScene";
+                    };
+                    readonly limitation: {
+                        readonly type: "string";
+                        readonly title: "Limitation";
+                        readonly default: "";
+                    };
+                };
+                readonly title: "QualityObservation";
+                readonly description: "本图实际观察的评分场景，新作业须填写；程序读取原始类别计数和评分，不在此填写分数。";
+            };
             readonly execution_status: {
                 readonly type: "string";
                 readonly enum: readonly ["completed", "incomplete", "failed"];
@@ -658,6 +872,109 @@ export declare const auditRecordParameters: {
     };
 };
 export declare const auditReportParameters: {
+    readonly quality_assessment: {
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly aliases: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "object";
+                    readonly additionalProperties: false;
+                    readonly properties: {
+                        readonly axis: {
+                            readonly type: "string";
+                            readonly enum: readonly ["morphology", "special_morphology", "appearance", "structural_region", "hard_type", "texture", "confusable"];
+                            readonly title: "Axis";
+                            readonly required: true;
+                        };
+                        readonly source: {
+                            readonly type: "string";
+                            readonly title: "Source";
+                            readonly required: true;
+                        };
+                        readonly canonical: {
+                            readonly type: "string";
+                            readonly description: "同一实际场景使用同一名称；不同原因不得为去重而合并。";
+                            readonly title: "Canonical";
+                            readonly required: true;
+                        };
+                    };
+                    readonly title: "QualitySceneAlias";
+                };
+                readonly title: "Aliases";
+            };
+            readonly redundancy_reviewed: {
+                readonly type: "boolean";
+                readonly description: "已实际对照冻结相似候选及已识别相似组的原图，完成低信息增量判断。";
+                readonly title: "Redundancy Reviewed";
+                readonly required: true;
+            };
+            readonly redundant_groups: {
+                readonly type: "array";
+                readonly items: {
+                    readonly type: "object";
+                    readonly additionalProperties: false;
+                    readonly properties: {
+                        readonly members: {
+                            readonly type: "array";
+                            readonly items: {
+                                readonly type: "object";
+                                readonly additionalProperties: false;
+                                readonly properties: {
+                                    readonly sample_id: {
+                                        readonly type: "string";
+                                        readonly title: "Sample Id";
+                                        readonly required: true;
+                                    };
+                                    readonly result_revision: {
+                                        readonly type: "integer";
+                                        readonly title: "Result Revision";
+                                        readonly required: true;
+                                    };
+                                    readonly kind: {
+                                        readonly type: "string";
+                                        readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                        readonly title: "Kind";
+                                        readonly required: true;
+                                    };
+                                    readonly index: {
+                                        readonly oneOf: readonly [{
+                                            readonly type: "integer";
+                                        }, {
+                                            readonly type: "null";
+                                        }];
+                                        readonly title: "Index";
+                                    };
+                                };
+                                readonly title: "AuditResultReference";
+                            };
+                            readonly title: "Members";
+                            readonly required: true;
+                        };
+                        readonly reason: {
+                            readonly type: "string";
+                            readonly description: "依据实际对照的原图解释为何只增加很少信息，候选相似度不是依据。";
+                            readonly title: "Reason";
+                            readonly required: true;
+                        };
+                    };
+                    readonly title: "QualityRedundantGroup";
+                };
+                readonly title: "Redundant Groups";
+            };
+            readonly preview_id: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly description: "audit_quality_score返回的预览标识；正式报告原样提交，不自行生成。";
+                readonly title: "Preview Id";
+            };
+        };
+        readonly title: "QualityAssessment";
+    };
     readonly commit_key: {
         readonly type: "string";
         readonly title: "Commit Key";
@@ -1552,7 +1869,7 @@ export declare const auditStartParameters: {
     readonly report_instruction: {
         readonly type: "string";
         readonly title: "Report Instruction";
-        readonly default: "综合全部有效图级结果、全局发现、程序统计、来源信息和选用的评测成果，形成面向非项目人员的质量与评测能力报告，按工具合同提交。\n\n结论只概括当前用途和主要视觉发现，数量由页面统计展示。随后回答自洽性、标注复核重点、视觉覆盖、独立性与代表性、模型能力和使用条件。\n\n自洽性开头用一两句话回答：在内容相同、可以对照的图像中，标注是否一致；程序标出的差异经过模型看图后，哪些仍然成立。两套统计由程序计算并在页面展示，按主图计数，同一张图在同一类只记一次。随后按实际类型解释程序发现和模型复核的差别，直接说两侧标注哪里不同、为何保留或排除，配3至8张相关完整原图。\n\n无候选、无有效候选、标注一致等非空范围各自说明对照图的情况和跨图比较结果，精选3至8张属于该范围的完整原图。范围由记录中的consistency.source_status确定。单张图是否漏标、圈多了或把一个目标分成几个，放在标注质量章节；形态、亮度和纹理变化放在视觉覆盖或模型能力章节。章节概述聚焦标注是否一致，具体图像细节在对应小节说明。\n\n覆盖按实际形态、方向、尺度感受、可见度、背景和结构关系形成主题。独立性说清哪些图片重复、哪些可能拍自同一件物品；缺少登记时，直接列出需要补记的物品、批次或采集来源，以及完成后可以怎样分组。\n\n能力专题从真实视觉困难形成。每个小点说明观察、跨图共性与差别、可能检验的模型表现，并引用有完整原图的案例。单图特殊现象按个例解释，尚缺的能力场景集中列出。固定标签供内部统计，正文专题按证据组织。\n\n每条所选知识分别说明检查动作、适用情况、实际图像观察与对照，以及对本次判断的作用。精选主 Agent 已查看的完整原图解释应用。标题及知识状态来自冻结条目，逐图核对数量来自程序统计。知识章节使用标题、描述、图像证据和结构化分析；知识为空时列表为空。\n\n每个分析点直接讲图里有什么、标注有没有圈对、两图哪里相同或不同，以及可以据此检查模型的什么表现。正文自成一段完整说明，相关原图通过关联字段在该处展示。每张图的说明指出应看哪里、具体形态或差别。分析和图证关联当前有效图级版本。\n\n分别评价视觉探索、训练实验、内部调试、图像级评测、矩形框定位评测、像素区域评测及正式评测基准。各项说明可开展的工作和实际条件。共同缺项集中在用途章节，各主题只补充特有条件。\n\n先写具体事实，再解释原因或下一步。一句话只讲一个要点，主语是图中的部位、已有标注或要做的检查。提交前逐段按普通读者的视角重读：读者能否指着图片找到你说的地方，能否直接知道你的判断或下一步动作；读不顺的句子用日常用语重写。整体统计由页面交代，技术明细保留在结构化记录中。\n\n报告帮助读者看懂这批图像、标注和后续工作，回答自洽性、标注质量、视觉覆盖、独立性与代表性、模型能力和数据用途六个问题。开头直接说现在能用来做什么、主要发现什么。\n\n每段围绕一个要点，通常用两三句话讲清楚：图里哪里值得看，标注或两张图有什么相同和不同，这对使用数据有什么影响。直接下有依据的判断。需要读者复看时，说清看哪个部位、要确认什么。\n\n正文使用日常动词，少用抽象名词串。说“这两张图拍的是同一处”“几个框圈住同一条边”“补充其他批次的图片”，把判断过程讲成具体的图像事实和动作。不要照搬工具输出的判定术语，或用一串限制声明代替结果。任务规则、系统状态和保存过程留在配置与记录里。\n\n标题只写主题，层级编号由页面统一添加，数量在正文统计或图表中单独展示。\n\n数量和来源状态由页面统计展示，正文解释具体事实。数据分布由程序从冻结原始图像和标注计算，按需通过audit_distribution读取；分布图表由页面展示，正文引用数字直接采用工具结果。共同缺少的材料集中写成下一步：补哪类图片、确认哪些参考标注、登记哪些来源，再开展什么工作。各主题只补充自己特有的准备事项，不在每段重复同一条件。\n\n主 Agent 综合全部有效图级事实和发现，各小点独立说明并关联3至8张相关原图，读者在当前小节就能对照图片读懂。案例及图像编号只填关联字段，由页面在正文旁展示图片。案例保存可复用的图像依据；知识描述说清教我们看哪里、这次看到了什么。\n\n正式图证使用主 Agent 实际查看的完整原图及原始标注。局部视图用于核查，正文图库使用完整原图。每处需要图证的分析精选3至8张能够共同说明问题的原图，说明各图的现象或关键差别。有对照关系时将对照原图标为counter，界面以Tab组织当前图组和对照图组。证据不足时继续查图或收拢主题。\n\n视觉覆盖围绕形态、方向、可见度、背景、结构关系和正常变化组织。用途说清这些场景可以检查模型的什么表现，以及具体需要做的准备。";
+        readonly default: "综合全部有效图级结果、全局发现、程序统计、来源信息和选用的评测成果，形成面向非项目人员的质量与评测能力报告，按工具合同提交。\n\n结论只概括当前用途和主要视觉发现，数量由页面统计展示。随后回答自洽性、标注复核重点、视觉覆盖、独立性与代表性、模型能力和使用条件。\n\n自洽性开头用一两句话回答：在内容相同、可以对照的图像中，标注是否一致；程序标出的差异经过模型看图后，哪些仍然成立。两套统计由程序计算并在页面展示，按主图计数，同一张图在同一类只记一次。随后按实际类型解释程序发现和模型复核的差别，直接说两侧标注哪里不同、为何保留或排除，配3至8张相关完整原图。\n\n无候选、无有效候选、标注一致等非空范围各自说明对照图的情况和跨图比较结果，精选3至8张属于该范围的完整原图。范围由记录中的consistency.source_status确定。单张图是否漏标、圈多了或把一个目标分成几个，放在标注质量章节；形态、亮度和纹理变化放在视觉覆盖或模型能力章节。章节概述聚焦标注是否一致，具体图像细节在对应小节说明。\n\n覆盖按实际形态、方向、尺度感受、可见度、背景和结构关系形成主题。独立性说清哪些图片重复、哪些可能拍自同一件物品；缺少登记时，直接列出需要补记的物品、批次或采集来源，以及完成后可以怎样分组。\n\n能力专题从真实视觉困难形成。每个小点说明观察、跨图共性与差别、可能检验的模型表现，并引用有完整原图的案例。单图特殊现象按个例解释，尚缺的能力场景集中列出。固定标签供内部统计，正文专题按证据组织。\n\n每条所选知识分别说明检查动作、适用情况、实际图像观察与对照，以及对本次判断的作用。精选主 Agent 已查看的完整原图解释应用。标题及知识状态来自冻结条目，逐图核对数量来自程序统计。知识章节使用标题、描述、图像证据和结构化分析；知识为空时列表为空。\n\n每个分析点直接讲图里有什么、标注有没有圈对、两图哪里相同或不同，以及可以据此检查模型的什么表现。正文自成一段完整说明，相关原图通过关联字段在该处展示。每张图的说明指出应看哪里、具体形态或差别。分析和图证关联当前有效图级版本。\n\n分别评价视觉探索、训练实验、内部调试、图像级评测、矩形框定位评测、像素区域评测及正式评测基准。各项说明可开展的工作和实际条件。共同缺项集中在用途章节，各主题只补充特有条件。\n\n先写具体事实，再解释原因或下一步。一句话只讲一个要点，主语是图中的部位、已有标注或要做的检查。提交前逐段按普通读者的视角重读：读者能否指着图片找到你说的地方，能否直接知道你的判断或下一步动作；读不顺的句子用日常用语重写。整体统计由页面交代，技术明细保留在结构化记录中。\n\n报告帮助读者看懂这批图像、标注和后续工作，回答自洽性、标注质量、视觉覆盖、独立性与代表性、模型能力和数据用途六个问题。开头直接说现在能用来做什么、主要发现什么。\n\n每段围绕一个要点，通常用两三句话讲清楚：图里哪里值得看，标注或两张图有什么相同和不同，这对使用数据有什么影响。直接下有依据的判断。需要读者复看时，说清看哪个部位、要确认什么。\n\n正文使用日常动词，少用抽象名词串。说“这两张图拍的是同一处”“几个框圈住同一条边”“补充其他批次的图片”，把判断过程讲成具体的图像事实和动作。不要照搬工具输出的判定术语，或用一串限制声明代替结果。任务规则、系统状态和保存过程留在配置与记录里。\n\n标题只写主题，层级编号由页面统一添加，数量在正文统计或图表中单独展示。\n\n数量和来源状态由页面统计展示，正文解释具体事实。新作业具有quality_score_version时，最终报告前调用audit_quality_score。主Agent归并同义场景（aliases），只有同一种实际原因才使用相同canonical；尺寸与位置是独立原因。低信息增量组逐图引用当前有效版本，实际打开dataset_profile.near_candidate_members中的候选原图后再确认redundancy_reviewed；候选相似度不等于冗余。没有低信息增量组时提交空组，不编造组。复核主要扣分场景的原图，读取程序计算结果解释分数，quality_assessment原样采用工具返回的assessment。综合分及三项分数由第一章图表展示，第二章展示具体扣分、数量、占比与图证。数据分布由程序从冻结原始图像和标注计算，按需通过audit_distribution读取；分布图表由页面展示，正文引用数字直接采用工具结果。共同缺少的材料集中写成下一步：补哪类图片、确认哪些参考标注、登记哪些来源，再开展什么工作。各主题只补充自己特有的准备事项，不在每段重复同一条件。\n\n主 Agent 综合全部有效图级事实和发现，各小点独立说明并关联3至8张相关原图，读者在当前小节就能对照图片读懂。案例及图像编号只填关联字段，由页面在正文旁展示图片。案例保存可复用的图像依据；知识描述说清教我们看哪里、这次看到了什么。\n\n正式图证使用主 Agent 实际查看的完整原图及原始标注。局部视图用于核查，正文图库使用完整原图。每处需要图证的分析精选3至8张能够共同说明问题的原图，说明各图的现象或关键差别。有对照关系时将对照原图标为counter，界面以Tab组织当前图组和对照图组。证据不足时继续查图或收拢主题。\n\n视觉覆盖围绕形态、方向、可见度、背景、结构关系和正常变化组织。用途说清这些场景可以检查模型的什么表现，以及具体需要做的准备。";
     };
     readonly observer_prompt: {
         readonly type: "object";

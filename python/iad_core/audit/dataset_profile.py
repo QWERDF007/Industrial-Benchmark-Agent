@@ -66,5 +66,7 @@ class AuditDatasetProfiles:
                 leakage=leakage,readiness=readiness,source_hashes={name:hashlib.sha256(content).hexdigest() for name,content in contents.items()})
         return AuditDatasetProfile(total_images=len(records),dataset_format=records[0].dataset_format,
             registered_quality=dict(Counter(record.sample.quality_status.value for record in records)),geometry=geometry,metadata=metadata,
+            strict_duplicate_members=sorted(sorted(group) for group in duplicates) if covered else None,
+            near_candidate_members=sorted([pair.sample_id_a, pair.sample_id_b] for pair in pairs),
             strict_duplicate_groups=len(duplicates) if covered else None,
             strict_duplicate_images=len(set().union(*duplicates)) if covered else None,near_candidate_pairs=len(pairs),benchmark=benchmark)

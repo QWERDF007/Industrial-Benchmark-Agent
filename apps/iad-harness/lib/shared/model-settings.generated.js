@@ -11,8 +11,11 @@ export const defaultModelLimits = {
     "pool_timeout_seconds": null
 };
 export const reasoningEffortLabels = {
+    "off": "Off",
+    "minimal": "Minimal",
     "low": "Low",
     "medium": "Medium",
     "high": "High",
-    "xhigh": "XHigh"
+    "xhigh": "XHigh",
+    "max": "Max"
 };

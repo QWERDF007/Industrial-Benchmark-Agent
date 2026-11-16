@@ -4,6 +4,7 @@ from pydantic import Field, computed_field, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
+from iad_core.audit.quality_models import QualityAssessment, QualityScore
 from iad_core.workbench.job_models import JobStatus
 from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES, IssueType, ISSUE_TYPES_BY_FORMAT as AUDIT_ISSUE_TYPES_BY_FORMAT
 from iad_core.consistency.conflict_categories import CONFLICT_CATEGORY_LABELS, CONFLICT_CATEGORY_DESCRIPTIONS
@@ -292,6 +293,7 @@ class AuditCapabilityTopic(AnalysisModel):
 
 
 class AuditReportCommit(AnalysisModel):
+    quality_assessment: QualityAssessment | None = None
     commit_key: NonBlankText
     discovery_ids: list[NonBlankText]
     conclusion: NonBlankText = Field(description='概括当前用途及最重要的视觉发现；图像数、疑点数和来源状态由页面另行展示。')
@@ -339,12 +341,16 @@ class AuditReportCommit(AnalysisModel):
         return self
 
 
+class AuditStoredReport(AuditReportCommit):
+    quality_score: QualityScore | None = None
+
+
 class AuditReportSession(AnalysisModel):
     job_id: str
     session_id: str
     session_created: bool
     state: JobStatus
-    result: AuditReportCommit | None
+    result: AuditStoredReport | None
     error: str | None
     revision: int = 0
     discoveries: list[AuditDiscovery] = Field(default_factory=list)

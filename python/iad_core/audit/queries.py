@@ -124,7 +124,7 @@ class AuditQueries:
             readiness=getattr(source.readiness,track) if source and source.source_matches_scope and track else None
             capabilities.append(AuditReportedCapability(**item.model_dump(),readiness_status=readiness.status.value.lower() if readiness else 'not_evaluated',
                 readiness_track=readiness.track_name if readiness else None))
-        return AuditRunReport(run_id=run_id,dataset_id=job.dataset_id,status=job.status,total_samples=statistics.total_images,
+        return AuditRunReport(quality_score=final.quality_score if final else None,run_id=run_id,dataset_id=job.dataset_id,status=job.status,total_samples=statistics.total_images,
             audited_samples=statistics.completed_images,coverage_percent=round(100*statistics.completion_rate,2) if statistics.completion_rate is not None else None,
             suspect_samples=statistics.suspect_images,insufficient_samples=statistics.incomplete_images,
             consistency_pending_samples=sum(item.consistency_pending for item in items),

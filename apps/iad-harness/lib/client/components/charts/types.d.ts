@@ -1,5 +1,5 @@
 import type { AuditBoxSummary, AuditHeatmap, AuditHistogram } from '../../../shared/domain.generated.js';
-export type ChartFormat = 'count' | 'decimal' | 'percent';
+export type ChartFormat = 'count' | 'decimal' | 'percent' | 'score';
 export type ChartTone = 'primary' | 'success' | 'warning' | 'danger' | 'muted';
 export interface ChartDatum {
     id: string;
@@ -22,11 +22,13 @@ export type ChartSpec = {
     rows: readonly {
         id: string;
         label: string;
-        values: readonly number[];
+        values: readonly (number | null)[];
+        details?: string;
     }[];
     series: readonly ChartSeries[];
     maximum?: number;
     legendSelectable?: boolean;
+    format?: ChartFormat;
 } | {
     type: 'donut';
     rows: readonly ChartDatum[];

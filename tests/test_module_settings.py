@@ -219,3 +219,20 @@ def test_old_model_settings_are_migrated_to_one_selection_without_changing_histo
     with pytest.raises(ValueError):
         ModuleSettings(reopened).save({'module': 'consistency', 'expected_revision': 3,
             'settings': {'agent_model': {'provider_id': 'agent', 'model_id': 'planner'}}})
+
+
+def test_quality_weights_partial_updates_preserve_other_coefficients(dataset):
+    from iad_core.workbench.module_settings import ModuleSettings
+    db, _, _ = dataset
+    store = ModuleSettings(db)
+    assert store.read('audit').settings.quality_score_weights.consistency == .8
+    first = store.save(dict(module='audit', expected_revision=0,
+        settings={'quality_score_weights': {'consistency': 8}}))
+    second = store.save(dict(module='audit', expected_revision=first.revision,
+        settings={'quality_score_weights': {'diversity': 1.5}}))
+    assert second.settings.quality_score_weights.model_dump() == {'consistency': 8, 'diversity': 1.5, 'redundancy': .05}
+    assert store.read('audit') == second
+    with pytest.raises(ValueError):
+        store.save(dict(module='audit', expected_revision=second.revision,
+            settings={'quality_score_weights': {'consistency': 0, 'diversity': 0, 'redundancy': 0}}))
+    assert store.read('audit') == second

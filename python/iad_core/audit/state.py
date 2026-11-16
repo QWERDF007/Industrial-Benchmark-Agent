@@ -57,7 +57,7 @@ class AuditState:
         from iad_core.audit.batches import AuditBatches
         snapshot, sample = self.snapshot(run_id), self.sample(run_id, sample_id)
         review = next((item for item in AuditBatches(self).rechecks(run_id) if item.sample_id==sample_id),None)
-        return AuditAgentContext(job_id=run_id, sample_id=sample_id, session_id=sample.session_id,
+        return AuditAgentContext(quality_score_version=snapshot.quality_score_version,job_id=run_id, sample_id=sample_id, session_id=sample.session_id,
             target=next(record for record in snapshot.manifest.records if record.sample.sample_id == sample_id),
             consistency=AuditConsistencyContext(**sample.consistency.model_dump(include=set(AuditConsistencyContext.model_fields))),
             knowledge=snapshot.knowledge,saved_progress=sample.result if sample.result and sample.result.execution_status!='completed' else None,

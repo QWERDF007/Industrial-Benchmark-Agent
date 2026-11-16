@@ -312,6 +312,122 @@ export declare const auditEvidenceCommitParameters: {
         readonly type: "object";
         readonly additionalProperties: false;
         readonly properties: {
+            readonly quality_observation: {
+                readonly type: "object";
+                readonly additionalProperties: false;
+                readonly properties: {
+                    readonly complete: {
+                        readonly type: "boolean";
+                        readonly description: "是否有充分原图证据完成场景归类；缺证时填false，不猜测。";
+                        readonly title: "Complete";
+                        readonly required: true;
+                    };
+                    readonly defects: {
+                        readonly type: "array";
+                        readonly items: {
+                            readonly type: "object";
+                            readonly additionalProperties: false;
+                            readonly properties: {
+                                readonly annotation_id: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly title: "Annotation Id";
+                                    readonly required: true;
+                                };
+                                readonly morphology: {
+                                    readonly type: "string";
+                                    readonly title: "Morphology";
+                                    readonly required: true;
+                                };
+                                readonly special_morphology: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly title: "Special Morphology";
+                                };
+                                readonly appearance: {
+                                    readonly type: "string";
+                                    readonly title: "Appearance";
+                                    readonly required: true;
+                                };
+                                readonly size: {
+                                    readonly type: "string";
+                                    readonly enum: readonly ["tiny", "small", "medium", "large"];
+                                    readonly title: "Size";
+                                    readonly required: true;
+                                };
+                                readonly location: {
+                                    readonly type: "string";
+                                    readonly enum: readonly ["center", "edge", "corner"];
+                                    readonly title: "Location";
+                                    readonly required: true;
+                                };
+                                readonly structural_region: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly title: "Structural Region";
+                                };
+                                readonly contrast: {
+                                    readonly type: "string";
+                                    readonly enum: readonly ["low", "medium", "high"];
+                                    readonly title: "Contrast";
+                                    readonly required: true;
+                                };
+                            };
+                            readonly title: "QualityDefectScene";
+                        };
+                        readonly title: "Defects";
+                    };
+                    readonly normal: {
+                        readonly type: "object";
+                        readonly additionalProperties: false;
+                        readonly properties: {
+                            readonly hard: {
+                                readonly type: "boolean";
+                                readonly title: "Hard";
+                                readonly required: true;
+                            };
+                            readonly hard_type: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "string";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Hard Type";
+                            };
+                            readonly confusable: {
+                                readonly type: "boolean";
+                                readonly title: "Confusable";
+                                readonly required: true;
+                            };
+                            readonly texture: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "string";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Texture";
+                            };
+                        };
+                        readonly title: "QualityNormalScene";
+                    };
+                    readonly limitation: {
+                        readonly type: "string";
+                        readonly title: "Limitation";
+                        readonly default: "";
+                    };
+                };
+                readonly title: "QualityObservation";
+                readonly description: "本图实际观察的评分场景，新作业须填写；程序读取原始类别计数和评分，不在此填写分数。";
+            };
             readonly execution_status: {
                 readonly type: "string";
                 readonly enum: readonly ["completed", "incomplete", "failed"];

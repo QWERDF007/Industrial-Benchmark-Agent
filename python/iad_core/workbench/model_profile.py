@@ -8,8 +8,8 @@ from iad_core.advisory.analysis import AnalysisModel
 
 CapacityMode = Literal['vllm_tokenize', 'provider_managed']
 ModelApi = Literal['openai-completions', 'openai-responses']
-ReasoningEffort = Literal['low', 'medium', 'high', 'xhigh']
-REASONING_EFFORT_LABELS = {'low':'Low', 'medium':'Medium', 'high':'High', 'xhigh':'XHigh'}
+ReasoningEffort = Literal['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']
+REASONING_EFFORT_LABELS = {'off':'Off', 'minimal':'Minimal', 'low':'Low', 'medium':'Medium', 'high':'High', 'xhigh':'XHigh', 'max':'Max'}
 
 
 class JsonObjectResponseFormat(AnalysisModel):
@@ -48,6 +48,14 @@ class ModelProfile(ModelLimits):
     credential_ref: Optional[str] = None
     api: ModelApi = 'openai-completions'
     reasoning_effort: ReasoningEffort | None = None
+    reasoning_parameters: dict | None = None
+
+    @model_validator(mode='after')
+    def reasoning_wire_fields(self):
+        if self.reasoning_parameters is not None and set(self.reasoning_parameters) - {
+                'reasoning', 'reasoning_effort', 'thinking', 'enable_thinking', 'chat_template_kwargs', 'chat_template_args'}:
+            raise ValueError('推理参数只能包含提供商的推理协议字段')
+        return self
 
     @classmethod
     def configured(cls, endpoint: str):

@@ -1,9 +1,10 @@
 import type {EChartsOption} from 'echarts';
 import type {ChartFormat,ChartSpec,ChartTheme} from './types.js';
 
-export function chartNumber(value:number,format:ChartFormat='count'):string {
+export function chartNumber(value:number|null,format:ChartFormat='count'):string {
+  if(value===null)return '证据不足';
   return value.toLocaleString('zh-CN',format==='percent'?{style:'percent',maximumSignificantDigits:4}
-    :format==='count'?{maximumFractionDigits:0}:{maximumSignificantDigits:5});
+    :format==='score'?{minimumFractionDigits:1,maximumFractionDigits:1}:format==='count'?{maximumFractionDigits:0}:{maximumSignificantDigits:5});
 }
 
 function distributionSeries(spec:Extract<ChartSpec,{type:'distribution'}>) {
@@ -22,7 +23,7 @@ function distributionSeries(spec:Extract<ChartSpec,{type:'distribution'}>) {
 export function chartReadings(spec:ChartSpec):string[] {
   switch(spec.type){
     case 'bar':return spec.rows.map(row=>[row.label,...spec.series.map((series,index)=>
-      `${series.label}（${series.unit}）：${chartNumber(row.values[index])}`)].join('\n'));
+      `${series.label}（${series.unit}）：${chartNumber(row.values[index],spec.format)}`),row.details].filter(Boolean).join('\n'));
     case 'donut':return spec.rows.map(row=>`${row.label}\n数量（${spec.unit}）：${chartNumber(row.value)}`);
     case 'distribution':{
       const curves=distributionSeries(spec);
@@ -55,10 +56,11 @@ export function chartOptions(spec:ChartSpec,theme:ChartTheme):EChartsOption {
       legend:{...common.legend,selectedMode:spec.legendSelectable},
       xAxis:{...axis,type:'category',data:spec.rows.map(row=>row.label),splitLine:{show:false},
         axisLabel:{...axis.axisLabel,width:110,overflow:'truncate'}},
-      yAxis:{...axis,type:'value',min:0,max:spec.maximum,minInterval:1},
+      yAxis:{...axis,type:'value',min:0,max:spec.maximum,minInterval:spec.format==='score'?.1:1},
+      tooltip:{...common.tooltip,trigger:'axis',formatter:params=>chartReadings(spec)[(Array.isArray(params)?params[0]:params).dataIndex]},
       series:spec.series.map((series,index)=>({type:'bar',name:`${series.label}（${series.unit}）`,barMaxWidth:32,
         itemStyle:{color:series.tone?theme.tones[series.tone]:theme.palette[index%theme.palette.length],borderRadius:[3,3,0,0]},
-        label:{show:true,position:'top',color:theme.ink,formatter:params=>chartNumber(Number(params.value))},
+        label:{show:true,position:'top',color:theme.ink,formatter:params=>chartNumber(params.value===null?null:Number(params.value),spec.format)},
         data:spec.rows.map(row=>({id:row.id,value:row.values[index]}))}))};
     case 'donut':return {...common,legend:{...common.legend,bottom:0,top:undefined},
       tooltip:{...common.tooltip,formatter:`{b}\n{c} ${spec.unit}（{d}%）`},

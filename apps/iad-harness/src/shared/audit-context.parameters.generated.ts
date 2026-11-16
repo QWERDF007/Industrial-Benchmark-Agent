@@ -361,6 +361,150 @@ export const auditEvidenceCommitParameters = {
     "type": "object",
     "additionalProperties": false,
     "properties": {
+      "quality_observation": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "complete": {
+            "type": "boolean",
+            "description": "是否有充分原图证据完成场景归类；缺证时填false，不猜测。",
+            "title": "Complete",
+            "required": true
+          },
+          "defects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "annotation_id": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Annotation Id",
+                  "required": true
+                },
+                "morphology": {
+                  "type": "string",
+                  "title": "Morphology",
+                  "required": true
+                },
+                "special_morphology": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Special Morphology"
+                },
+                "appearance": {
+                  "type": "string",
+                  "title": "Appearance",
+                  "required": true
+                },
+                "size": {
+                  "type": "string",
+                  "enum": [
+                    "tiny",
+                    "small",
+                    "medium",
+                    "large"
+                  ],
+                  "title": "Size",
+                  "required": true
+                },
+                "location": {
+                  "type": "string",
+                  "enum": [
+                    "center",
+                    "edge",
+                    "corner"
+                  ],
+                  "title": "Location",
+                  "required": true
+                },
+                "structural_region": {
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Structural Region"
+                },
+                "contrast": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ],
+                  "title": "Contrast",
+                  "required": true
+                }
+              },
+              "title": "QualityDefectScene"
+            },
+            "title": "Defects"
+          },
+          "normal": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "hard": {
+                "type": "boolean",
+                "title": "Hard",
+                "required": true
+              },
+              "hard_type": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Hard Type"
+              },
+              "confusable": {
+                "type": "boolean",
+                "title": "Confusable",
+                "required": true
+              },
+              "texture": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Texture"
+              }
+            },
+            "title": "QualityNormalScene"
+          },
+          "limitation": {
+            "type": "string",
+            "title": "Limitation",
+            "default": ""
+          }
+        },
+        "title": "QualityObservation",
+        "description": "本图实际观察的评分场景，新作业须填写；程序读取原始类别计数和评分，不在此填写分数。"
+      },
       "execution_status": {
         "type": "string",
         "enum": [

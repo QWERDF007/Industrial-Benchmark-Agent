@@ -1,5 +1,5 @@
 import { Fragment as _Fragment, jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-import { auditReportSections } from '../audit-report.js';
+import { useAuditReportSections } from '../audit-report.js';
 import { AuditReportSection } from './AuditReportSection.js';
 import { auditConsistencyLabels, auditConsistencyDescriptions, auditIssueLabels, auditIssueDescriptions, auditIssueTypesByFormat } from '../../shared/audit.generated.js';
 import { AuditEvidenceSection } from './AuditEvidenceSection.js';
@@ -8,6 +8,7 @@ import { auditCaseImages } from './AuditReportCases.js';
 import { AuditEvidenceGallery } from './AuditEvidenceGallery.js';
 import { AuditReportHeading } from './AuditReportHeading.js';
 export function AuditReportConsistency({ report, sources, imageUrl }) {
+    const auditReportSections = useAuditReportSections();
     const analyses = report.consistency_analyses || [];
     const conflicts = report.statistics?.upstream_issue_types || {};
     const program = report.statistics?.program_issue_types;

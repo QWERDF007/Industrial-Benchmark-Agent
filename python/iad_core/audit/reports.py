@@ -268,12 +268,16 @@ class AuditReports:
                 raise ValueError('像素区域评测需要经过确认的像素边界标注')
             if assessment.purpose=='bbox_evaluation' and source.readiness.small_weak.status!='READY':
                 raise ValueError('框级评测缺少真实定位就绪证据')
+        from iad_core.audit.quality_reports import AuditQualityReports
+        from iad_core.audit.report_models import AuditStoredReport
+        score = AuditQualityReports(self.db).finalize(run_id, submission.quality_assessment) if snapshot.quality_score_version else None
+        stored = AuditStoredReport(**submission.model_dump(), quality_score=score).model_dump_json(exclude_computed_fields=True)
         with self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
             if connection.execute('SELECT status FROM job_runs WHERE job_id=?',(run_id,)).fetchone()[0]!='RUNNING':
                 raise ValueError('作业已停止，不能提交报告')
             connection.execute('INSERT INTO audit_report_commits VALUES(?,?,?)',(run_id,submission.commit_key,canonical))
-            connection.execute("UPDATE audit_report_runs SET result_json=?,state='COMPLETED',error=NULL WHERE job_id=?",(canonical,run_id))
+            connection.execute("UPDATE audit_report_runs SET result_json=?,state='COMPLETED',error=NULL WHERE job_id=?",(stored,run_id))
         return self.session(run_id)
 
     def evidence(self, run_id: str, sample_id: str, evidence_id: str):

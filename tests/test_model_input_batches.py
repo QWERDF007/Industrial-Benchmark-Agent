@@ -209,3 +209,31 @@ def test_correction_counts_the_complete_conversation_before_generating():
     assert len(generated)==1,'纠正对话超出容量时不能发送第二次生成'
     assert [m['role'] for m in tokenized[1]['messages']]==['user','assistant','user']
     assert tokenized[1]['messages'][0]==generated[0]['messages'][0]
+
+
+@pytest.mark.parametrize('parameters', [
+    {'reasoning_effort': 'heavy'},
+    {'chat_template_kwargs': {'enable_thinking': True, 'thinking_level': 'heavy'}},
+    {},
+])
+def test_chat_transport_sends_frozen_reasoning_parameters_on_the_actual_wire(parameters):
+    from iad_core.workbench.model_profile import ModelProfile
+    wires = []
+    def respond(request):
+        body = json.loads(request.content)
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 100, 'max_model_len': 65536})
+        wires.append(body)
+        result = json.dumps({'summary': '完成', 'directions': [], 'limitations': []}, ensure_ascii=False)
+        return httpx.Response(200, text='data: ' + json.dumps({'choices': [
+            {'index': 0, 'delta': {'content': result}, 'finish_reason': 'stop'}]}) + '\n\ndata: [DONE]\n\n',
+            headers={'Content-Type': 'text/event-stream'})
+    with httpx.Client(transport=httpx.MockTransport(respond)) as http:
+        client = VlmClient(http_client=http, profile=ModelProfile(endpoint='http://reasoner/v1/chat/completions',
+            capacity_mode='vllm_tokenize', reasoning_effort='high', reasoning_parameters=parameters))
+        assert client.generate(client.plan(DirectionDraft, '核对图像', [], 'reasoner')).summary == '完成'
+    assert len(wires) == 1
+    for key, value in parameters.items():
+        assert wires[0][key] == value
+    if not parameters:
+        assert 'reasoning_effort' not in wires[0]

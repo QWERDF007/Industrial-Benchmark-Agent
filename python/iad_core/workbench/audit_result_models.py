@@ -5,6 +5,7 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.workbench.job_models import JobStatus
 from iad_core.audit.profile_models import AuditDatasetProfile
+from iad_core.audit.quality_models import QualityScore
 from iad_core.audit.distribution_models import AuditDataDistribution
 from iad_core.audit.report_models import AuditStatistics, AuditReportImage, AuditDiscovery, AuditReportedCapability, AuditUsabilityAssessment, AuditCoverageTopic, AuditConsistencyAnalysis, AuditReportCase, AuditCapabilityTopic
 from iad_core.audit.report_models import AuditKnowledgeAnalysis, AuditConsistencyScope
@@ -60,6 +61,7 @@ class AuditReportedKnowledge(AnalysisModel):
 
 
 class AuditRunReport(AnalysisModel):
+    quality_score: QualityScore | None = None
     run_id: str
     dataset_id: str
     status: JobStatus

@@ -1,5 +1,14 @@
 import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
 import { message, request } from './api.js';
+export function mergeSettingFields(current, patch) {
+    const result = Object.fromEntries(Object.entries(current));
+    for (const [key, value] of Object.entries(patch)) {
+        const previous = result[key];
+        result[key] = value && typeof value === 'object' && !Array.isArray(value) && previous && typeof previous === 'object' && !Array.isArray(previous)
+            ? { ...previous, ...value } : value;
+    }
+    return Object.assign({ ...current }, result);
+}
 export function useModuleSettings(module) {
     const client = useQueryClient(), key = ['iad', 'module-settings', module], path = `/settings/modules/${module}`;
     const resource = useQuery({ queryKey: key, queryFn: ({ signal }) => request(path, undefined, undefined, signal) });
@@ -10,11 +19,11 @@ export function useModuleSettings(module) {
             if (state.status === 'success')
                 edits.delete(field);
             else if (state.status === 'pending' || state.status === 'error')
-                edits.set(field, { value, status: state.status, error: state.error });
+                edits.set(field, { value: mergeSettingFields({ value: edits.get(field)?.value }, { value }).value, status: state.status, error: state.error });
         }
     }
     const failed = [...edits].filter(([, edit]) => edit.status === 'error');
-    const settings = resource.data ? { ...resource.data.settings, ...Object.fromEntries([...edits].map(([field, edit]) => [field, edit.value])) } : undefined;
+    const settings = resource.data ? mergeSettingFields(resource.data.settings, Object.fromEntries([...edits].map(([field, edit]) => [field, edit.value]))) : undefined;
     const mutation = useMutation({ mutationKey: key, scope: { id: `iad-module-settings-${module}` }, retry: false,
         mutationFn: async (patch) => {
             const current = client.getQueryData(key);

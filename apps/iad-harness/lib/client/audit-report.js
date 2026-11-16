@@ -1,3 +1,4 @@
+import { createContext, useContext } from 'react';
 const sections = [
     ['conclusion', '总体结论'], ['distribution', '数据分布'], ['consistency', '数据是否自洽'],
     ['quality', '标注质量与复核重点'], ['coverage', '覆盖了哪些视觉场景'],
@@ -7,6 +8,10 @@ const sections = [
 export const auditReportSections = Object.fromEntries(sections.map(([key, title], index) => [key, {
         title: `${['一', '二', '三', '四', '五', '六', '七', '八', '九'][index]}、${title}`, prefix: `${index + 1}.`,
     }]));
+export const scoredAuditReportSections = Object.fromEntries([...sections.slice(0, 1), ['score', '得分细分'], ...sections.slice(1)]
+    .map(([key, title], index) => [key, { title: `${['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][index]}、${title}`, prefix: `${index + 1}.` }]));
+export const AuditReportSectionsContext = createContext(auditReportSections);
+export const useAuditReportSections = () => useContext(AuditReportSectionsContext);
 export const auditMetadataLabels = { physical_sample_id: '物理件', capture_sequence_id: '采集序列',
     batch_id: '批次', station: '站点', camera: '相机', data_origin: '来源' };
 const originLabels = { LEGACY_TRAIN: '原训练集', LEGACY_TEST: '原测试集', AUGMENTED: '增强数据',

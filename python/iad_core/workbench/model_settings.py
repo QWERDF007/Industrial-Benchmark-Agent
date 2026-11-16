@@ -15,6 +15,15 @@ class ProviderModel(AnalysisModel):
     reasoning_efforts: list[ReasoningEffort] = Field(default_factory=list)
 
 
+    @model_validator(mode='after')
+    def reasoning_levels(self):
+        if len(set(self.reasoning_efforts)) != len(self.reasoning_efforts):
+            raise ValueError('推理强度不能重复')
+        if self.reasoning_efforts == ['off']:
+            raise ValueError('可选推理强度至少需要一种开启推理的档位')
+        return self
+
+
 class WorkbenchProvider(AnalysisModel):
     provider_id: str
     name: str

@@ -77,6 +77,9 @@ class AuditCommits:
             if any(set(item.evidence_ids) - delivered for item in final.consistency_review):
                 raise ValueError('一致性处理引用没有本场实发证据')
             record = next(record for record in snapshot.manifest.records if record.sample.sample_id == sample_id)
+            if final.quality_observation is not None:
+                from iad_core.audit.quality_reports import AuditQualityReports
+                AuditQualityReports.validate_observation(record, final.quality_observation)
             annotation_ids = {item.annotation_id for item in record.annotations}
             if any(set(observation.annotation_ids) - annotation_ids for observation in final.observations):
                 raise ValueError('观察引用不属于本图冻结标注')

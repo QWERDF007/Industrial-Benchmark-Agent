@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { LlmError, MessageId } from '@deepseek-ai/dsh-llm';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
 import { defineTool } from '@deepseek-ai/dsh-tools';
-import { auditBatchParameters, auditRecordParameters, auditReportParameters, auditReportEvidenceParameters } from '../../shared/audit.parameters.generated.js';
+import { auditQualityScoreParameters, auditBatchParameters, auditRecordParameters, auditReportParameters, auditReportEvidenceParameters } from '../../shared/audit.parameters.generated.js';
 import { auditBatchDeltaParameters, auditDiscoveryParameters } from '../../shared/audit-context.parameters.generated.js';
 import { auditDistributionParameters } from '../../shared/distribution.parameters.generated.js';
 import { NativeMediaAttachments, nativeMediaOutput } from '../sessions/media.js';
@@ -11,7 +11,7 @@ import { NativeModelCalls } from '../sessions/model-calls.js';
 import { workbenchJsonOutput } from '../tool-output.js';
 import { auditSessionPath } from './session-path.js';
 import { AuditImageAgents } from './images.js';
-const masterTools = ['audit_statistics', 'audit_distribution', 'audit_records', 'audit_report_evidence', 'audit_batch_commit', 'audit_report_commit'];
+const masterTools = ['audit_quality_score', 'audit_statistics', 'audit_distribution', 'audit_records', 'audit_report_evidence', 'audit_batch_commit', 'audit_report_commit'];
 export class AuditMasterAgent {
     bridge;
     host;
@@ -79,6 +79,9 @@ export class AuditMasterAgent {
                     text: ({ agent }) => (agent?.id === state.session_id ? master : snapshot.observer_prompt).system_prompt || '' });
                 scope.tools.register(defineTool({ name: 'audit_statistics', description: '读取按有效图级版本计算的覆盖、疑点、观察、一致性交叉和知识作用统计。', parameters: {}, output: workbenchJsonOutput,
                     execute: (_args, execution) => this.bridge.execute('audit_agent_report_statistics', identity, execution.signal) }));
+                scope.tools.register(defineTool({ name: 'audit_quality_score', description: '由程序按冻结系数和当前有效图级记录计算综合分、三维分和完整扣分明细。归并同义场景，实际观察相似候选后确认低信息增量组；不得填入分数或推测数量。正式报告的quality_assessment原样采用返回的assessment，图级复审变化后重新预览。',
+                    parameters: auditQualityScoreParameters, output: workbenchJsonOutput,
+                    execute: (assessment, execution) => this.bridge.execute('audit_agent_quality_score', { ...identity, assessment }, execution.signal) }));
                 scope.tools.register(defineTool({ name: 'audit_distribution', description: '读取程序从冻结原图尺寸和原始标注计算的类别图数、框数、几何分布、分位数、密度和来源分布。可按子数据集和类别筛选，数字直接采用工具结果。',
                     parameters: auditDistributionParameters, output: workbenchJsonOutput,
                     execute: (query, execution) => this.bridge.execute('audit_agent_distribution', { ...identity, query }, execution.signal) }));

@@ -3,6 +3,7 @@ import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import type {} from '@deepseek-ai/dsh-settings';
 import {assertUsableApiKey} from '@deepseek-ai/dsh-llm';
 import type { FrozenModelRole, GenerationLimits, ModelExecution, ModelLimits, ModelProfile, ModuleModelReference, ProviderEdit, ProviderDiscovery, ProviderReference, ProviderModel, WorkbenchProvider } from '../../shared/domain.generated.js';
+import {reasoningParameters} from './reasoning.js';
 import {defaultModelLimits,reasoningEffortLabels} from '../../shared/model-settings.generated.js';
 
 export class ModelConfigurationError extends Error {readonly statusCode = 422;}
@@ -74,8 +75,8 @@ export class NativeProviders {
           return {model_id: model.id, name: model.name, input_modalities: model.inputModalities ? [...model.inputModalities] : null,
             context_tokens: typeof configured.contextWindow === 'number' ? configured.contextWindow : null,
             max_output_tokens: typeof configured.maxTokens === 'number' ? configured.maxTokens : null,
-            reasoning_efforts:source.api==='openai-responses'?Object.keys(reasoningEffortLabels).filter(effort=>
-              metadata.reasoning?.efforts.some(option=>option.id===effort)) as NonNullable<ModelProfile['reasoning_effort']>[]:[]};
+            reasoning_efforts:Object.keys(reasoningEffortLabels).filter(effort=>
+              metadata.reasoning?.efforts.some(option=>option.id===effort)) as NonNullable<ModelProfile['reasoning_effort']>[]};
         }));
       } catch (error) {row.error = error instanceof Error ? error.message : String(error);}
       return row;
@@ -100,7 +101,7 @@ export class NativeProviders {
     const declared = Array.isArray(source.profile.models)
       ? object(source.profile.models.find(item => object(item).id === selection.model_id))
       : object(object(source.profile.modelOverrides)[selection.model_id]);
-    const profile: ModelProfile = {...selection.limits, endpoint, api,reasoning_effort:null,
+    const profile: ModelProfile = {...selection.limits, endpoint, api,reasoning_effort:null,reasoning_parameters:null,
       capacity_mode: api === 'openai-responses' ? 'provider_managed' : selection.limits.capacity_mode,
       provider_id: selection.provider_id, provider_name: source.entry.displayName, model_id: selection.model_id,
       credential_ref: typeof source.profile.apiKeyEnv === 'string' && source.profile.apiKeyEnv ? source.profile.apiKeyEnv : null,
@@ -118,12 +119,11 @@ export class NativeProviders {
         ...(profile.max_output_tokens === null ? {} : {maxTokens: profile.max_output_tokens}), input: metadata.inputModalities};
       const native: Record<string, unknown> = {...source.profile, models: [model]};
       if(reasoningEffort!==null) {
-        if(profile.api!=='openai-responses'||!metadata.reasoning?.efforts.some(option=>option.id===reasoningEffort))
+        if(!metadata.reasoning?.efforts.some(option=>option.id===reasoningEffort))
           throw new ModelConfigurationError('所选模型未声明支持该推理强度，请重新选择');
-        const wire=object(declared.reasoningEfforts)[reasoningEffort]??reasoningEffort;
-        if(typeof wire!=='string'||!Object.hasOwn(reasoningEffortLabels,wire))
-          throw new ModelConfigurationError('模型推理强度映射不属于 Responses 支持的强度');
-        profile.reasoning_effort=wire as NonNullable<ModelProfile['reasoning_effort']>;
+        profile.reasoning_effort=reasoningEffort;
+        profile.reasoning_parameters=reasoningParameters(profile.api,reasoningEffort,declared,
+          {...object(source.profile.compat),...object(declared.compat)});
         native.reasoning=reasoningEffort;
       }
       delete native.modelOverrides;
@@ -159,7 +159,11 @@ export class NativeProviders {
     const profile = {displayName: edit.name, api: previous.api || 'openai-completions', baseURL: endpoint,
       models: edit.models.map(model => {
         const {contextWindow,maxTokens,...metadata}=Array.isArray(previous.models)?object(previous.models.find(item=>object(item).id===model.model_id)):{};
-        return {...metadata,id: model.model_id, name: model.name || model.model_id, input: model.input_modalities || [],
+        const previousEfforts=object(metadata.reasoningEfforts);
+        const reasoning=model.reasoning_efforts===undefined?{}:{reasoningEfforts:model.reasoning_efforts.length
+          ? Object.fromEntries(model.reasoning_efforts.map(effort=>[effort,Object.hasOwn(previousEfforts,effort)
+            ?previousEfforts[effort]:effort==='off'?null:effort])):false};
+        return {...metadata,...reasoning,id: model.model_id, name: model.name || model.model_id, input: model.input_modalities || [],
           ...(model.context_tokens ? {contextWindow: model.context_tokens} : {}), ...(model.max_output_tokens ? {maxTokens: model.max_output_tokens} : {})};
       }),
       ...(key && !previous.apiKeyEnv ? {apiKeyEnv: reference} : {})};
@@ -193,9 +197,10 @@ export class NativeProviders {
       }
     }
     const models = await this.ctx.llm.discoverModels(namespace.ns, {baseURL: apiEndpoint(request.endpoint), api: 'openai-completions', ...(key ? {apiKey: key} : {})}, signal);
+    const existing=request.provider_id?(await this.catalog()).find(provider=>provider.provider_id===request.provider_id&&provider.endpoint===apiEndpoint(request.endpoint))?.models:[];
     return models.map(model => ({model_id: model.id, name: model.name || model.id,
       input_modalities: model.inputModalities ? [...model.inputModalities] : null,
-      context_tokens: model.contextWindow ?? null, max_output_tokens: model.maxTokens ?? null,reasoning_efforts:[]}));
+      context_tokens: model.contextWindow ?? null, max_output_tokens: model.maxTokens ?? null,reasoning_efforts:existing?.find(row=>row.model_id===model.id)?.reasoning_efforts??[]}));
   }
 
   async credentialsFor(profile: ModelProfile): Promise<ModelExecution> {

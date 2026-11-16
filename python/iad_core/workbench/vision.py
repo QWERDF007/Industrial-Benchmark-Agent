@@ -148,12 +148,16 @@ class VlmClient:
                     {'schema_validation_errors': correction.issues}, ensure_ascii=False)}])
         body = ResponsesProtocol.request(model_name, messages,
             {'name':response_type.__name__,'strict':True,'schema':schema}, self.profile.request_parameters,
-            self.profile.reasoning_effort) if self.profile.api == 'openai-responses' else {
+            self.profile.reasoning_effort if self.profile.reasoning_parameters is None else None) if self.profile.api == 'openai-responses' else {
             "model": model_name, "messages": messages,
             "response_format": {"type": "json_schema", "json_schema": {"name": response_type.__name__, "strict": True, "schema": schema}},
             "stream": True, "stream_options": {"include_usage": True},
             **GENERATION_PARAMETERS, **self.profile.request_parameters,
         }
+        if self.profile.reasoning_parameters is not None:
+            body.update(self.profile.reasoning_parameters)
+        elif self.profile.api == 'openai-completions' and self.profile.reasoning_effort is not None:
+            body['reasoning_effort'] = self.profile.reasoning_effort
         if not self.within_limits(body, visual_inputs):
             raise ModelCapacityError(f'完整图组请求体超过已配置上限 {self.profile.max_request_bytes} 字节；未拆组，请确认是否减少图像数量')
         if self.profile.capacity_mode == 'provider_managed':

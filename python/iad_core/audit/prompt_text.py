@@ -1,3 +1,5 @@
+QUALITY_OBSERVATION_GUIDANCE = """评分场景写入quality_observation。按target.sampling_group区分原始标注约定的normal、abnormal；unclassified标记观察不完整，不把图级审计结论normal当成良品标签。完整观察后complete填true：Labelme逐个原始非忽略标注填写defects，每个annotation_id恰好一次；分类异常图只填写一个annotation_id为null的整图场景。类别由程序读取原始类别，不重新命名类别。每个场景记录形态morphology、特殊形态special_morphology（未出现填null）、外观appearance、相对尺寸size（tiny/small/medium/large）、位置location（center/edge/corner）、结构区域structural_region（无则null）、对比度contrast（low/medium/high）。尺寸按本任务主体和原始框的相对面积及宽高判断，不用统一像素阈值。同一实际形态使用简短一致的名称。良品填写normal：hard及hard_type、confusable、特殊正常纹理texture；常规良品hard和confusable填false、其余填null。不要捏造未出现的场景或重复实例，图证不足时complete填false并写limitation。评分场景只记录视觉事实，不自动作为标注疑点。"""
+
 CORE_AUDIT_PROMPT = """依据冻结原图、原始标注、一致性结果和所选知识，审核标注与可见现象的对应、覆盖、定位及实例组织，对提供的同内容图像核对标注一致性。
 
 类别按原值核对同一对象的分组一致性；类别定义和缺陷命名由数据集配置管理，不纳入本审计的结论和缺项。
@@ -16,7 +18,7 @@ REPORT_EVIDENCE_GUIDANCE = """报告帮助读者看懂这批图像、标注和�
 
 标题只写主题，层级编号由页面统一添加，数量在正文统计或图表中单独展示。
 
-数量和来源状态由页面统计展示，正文解释具体事实。数据分布由程序从冻结原始图像和标注计算，按需通过audit_distribution读取；分布图表由页面展示，正文引用数字直接采用工具结果。共同缺少的材料集中写成下一步：补哪类图片、确认哪些参考标注、登记哪些来源，再开展什么工作。各主题只补充自己特有的准备事项，不在每段重复同一条件。
+数量和来源状态由页面统计展示，正文解释具体事实。新作业具有quality_score_version时，最终报告前调用audit_quality_score。主Agent归并同义场景（aliases），只有同一种实际原因才使用相同canonical；尺寸与位置是独立原因。低信息增量组逐图引用当前有效版本，实际打开dataset_profile.near_candidate_members中的候选原图后再确认redundancy_reviewed；候选相似度不等于冗余。没有低信息增量组时提交空组，不编造组。复核主要扣分场景的原图，读取程序计算结果解释分数，quality_assessment原样采用工具返回的assessment。综合分及三项分数由第一章图表展示，第二章展示具体扣分、数量、占比与图证。数据分布由程序从冻结原始图像和标注计算，按需通过audit_distribution读取；分布图表由页面展示，正文引用数字直接采用工具结果。共同缺少的材料集中写成下一步：补哪类图片、确认哪些参考标注、登记哪些来源，再开展什么工作。各主题只补充自己特有的准备事项，不在每段重复同一条件。
 
 主 Agent 综合全部有效图级事实和发现，各小点独立说明并关联3至8张相关原图，读者在当前小节就能对照图片读懂。案例及图像编号只填关联字段，由页面在正文旁展示图片。案例保存可复用的图像依据；知识描述说清教我们看哪里、这次看到了什么。
 
@@ -24,7 +26,7 @@ REPORT_EVIDENCE_GUIDANCE = """报告帮助读者看懂这批图像、标注和�
 
 视觉覆盖围绕形态、方向、可见度、背景、结构关系和正常变化组织。用途说清这些场景可以检查模型的什么表现，以及具体需要做的准备。"""
 
-MASTER_AUDIT_SYSTEM_PROMPT = CORE_AUDIT_PROMPT + """
+MASTER_AUDIT_SYSTEM_PROMPT = CORE_AUDIT_PROMPT + "\n\n" + QUALITY_OBSERVATION_GUIDANCE + """
 
 你是持续主 Agent，维护批次联合分析、发现账本、下一批观察线索、明确冲突的定向复审及最终报告。对应子 Agent 负责独立图级判断和终稿。
 
@@ -36,7 +38,7 @@ MASTER_AUDIT_SYSTEM_PROMPT = CORE_AUDIT_PROMPT + """
 
 独立性使用真实重复检查及物理件、序列、批次和来源记录；正式评测使用明确选用的参考标注、独立划分、泄漏检查和就绪结果。共同缺项集中说明。最终综合整个冻结范围，零疑点也解释覆盖、独立性、能力和用途。""" + '\n\n' + REPORT_EVIDENCE_GUIDANCE
 
-OBSERVER_AUDIT_SYSTEM_PROMPT = CORE_AUDIT_PROMPT + """
+OBSERVER_AUDIT_SYSTEM_PROMPT = CORE_AUDIT_PROMPT + "\n\n" + QUALITY_OBSERVATION_GUIDANCE + """
 
 你是当前主图的独立子 Agent，观察当前图并提交图级判断。
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import {auditReportSections,auditMetadataLabels} from '../audit-report.js';
+import {auditReportSections,scoredAuditReportSections,AuditReportSectionsContext,useAuditReportSections,auditMetadataLabels} from '../audit-report.js';
+import {AuditScoreSummary,AuditReportScore} from './AuditReportScore.js';
 import {AuditReportSection} from './AuditReportSection.js';
 import {AuditReportDistribution} from './AuditReportDistribution.js';
 import type {AuditRunReport,AuditReportImage} from '../../shared/domain.generated.js';
@@ -13,6 +14,13 @@ import {AuditReportKnowledge} from './AuditReportKnowledge.js';
 import {AuditReportHeading} from './AuditReportHeading.js';
 
 export function AuditReportContent({report,imageUrl}:{report:AuditRunReport;imageUrl(item:AuditReportImage):string}) {
+  return <AuditReportSectionsContext.Provider value={report.quality_score?scoredAuditReportSections:auditReportSections}>
+    <AuditReportBody report={report} imageUrl={imageUrl}/>
+  </AuditReportSectionsContext.Provider>;
+}
+
+function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:AuditReportImage):string}) {
+  const auditReportSections=useAuditReportSections();
   const stats=report.statistics,profile=report.dataset_profile;
   const {coverage_topics:topics=[],report_cases:cases=[],capability_topics:capabilityTopics=[]}=report;
   const kinds=profile?auditIssueTypesByFormat[profile.dataset_format]:Object.keys(stats?.issue_types||{}) as (keyof typeof auditIssueLabels)[];
@@ -34,10 +42,12 @@ export function AuditReportContent({report,imageUrl}:{report:AuditRunReport;imag
       <p>{report.conclusion||'整体分析尚未完成。'}</p>
       {stats&&<p>已检查 {stats.completed_images} 张图像，其中 {stats.suspect_images} 张需要复核。
         {!!sources.length&&<>已有的一致性检查对 {compared} 张图像做过跨图比较。</>}</p>}
+      {report.quality_score&&<AuditScoreSummary score={report.quality_score}/>}
       <AuditReportChart kind="outcomes" title="本轮审计结果" unit="张" rows={[
         {label:'审计正常',value:stats?.normal_images??report.distribution.normal??0},
         {label:'发现疑点',value:report.suspect_samples},{label:'未完成',value:report.total_samples-report.audited_samples}]}/>
     </AuditReportSection>
+    {report.quality_score&&<AuditReportScore report={report} imageUrl={imageUrl}/>}
     <AuditReportDistribution key={report.run_id} report={report}/>
     <AuditReportConsistency report={report} sources={sources} imageUrl={imageUrl}/>
     <AuditReportSection section="quality">

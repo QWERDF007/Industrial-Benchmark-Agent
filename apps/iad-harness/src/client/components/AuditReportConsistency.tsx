@@ -1,5 +1,5 @@
 import React from 'react';
-import {auditReportSections} from '../audit-report.js';
+import {useAuditReportSections} from '../audit-report.js';
 import {AuditReportSection} from './AuditReportSection.js';
 import type {AuditRunReport,AuditReportImage} from '../../shared/domain.generated.js';
 import {auditConsistencyLabels,auditConsistencyDescriptions,auditIssueLabels,auditIssueDescriptions,auditIssueTypesByFormat} from '../../shared/audit.generated.js';
@@ -11,6 +11,7 @@ import {AuditReportHeading} from './AuditReportHeading.js';
 
 export function AuditReportConsistency({report,sources,imageUrl}:{report:AuditRunReport;
   sources:readonly {key:string;label:string;value:number}[];imageUrl(item:AuditReportImage):string}) {
+  const auditReportSections=useAuditReportSections();
   const analyses=report.consistency_analyses||[];
   const conflicts=report.statistics?.upstream_issue_types||{};
   const program=report.statistics?.program_issue_types;

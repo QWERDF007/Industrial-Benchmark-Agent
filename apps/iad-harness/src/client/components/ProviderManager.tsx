@@ -4,6 +4,7 @@ import {IconButton} from "./IconButton.js";
 import React, {useState} from 'react';
 import {v4 as uuid} from 'uuid';
 import type {ProviderEdit, ProviderModel, WorkbenchProvider} from '../../shared/domain.generated.js';
+import {reasoningEffortLabels} from '../../shared/model-settings.generated.js';
 import {message, request} from '../api.js';
 import {useModelProviders} from '../models.js';
 import {Modal} from './Modal.js';
@@ -67,6 +68,13 @@ function ProviderEditor({provider, revision, onClose, onSaved}: {provider?: Work
           <label className="iad-field">显示名称<input aria-label={`模型名称 ${index + 1}`} value={model.name} onChange={event => setModels(models.map((row, position) => position === index ? {...row, name: event.target.value} : row))} /></label>
           <label className="iad-field">上下文上限<input type="number" min="1" placeholder="未声明" value={model.context_tokens ?? ''} onChange={event => setModels(models.map((row, position) => position === index ? {...row, context_tokens: event.target.value ? Number(event.target.value) : null} : row))} /></label>
           <label className="iad-field">输出上限<input type="number" min="1" placeholder="未声明" value={model.max_output_tokens ?? ''} onChange={event => setModels(models.map((row, position) => position === index ? {...row, max_output_tokens: event.target.value ? Number(event.target.value) : null} : row))} /></label></div>
+        <div className="iad-row" role="group" aria-label={`可选推理强度 ${index + 1}`}><span>可选推理强度</span>
+          {Object.entries(reasoningEffortLabels).map(([value,label]) => <label key={value}><input type="checkbox"
+            checked={model.reasoning_efforts?.includes(value as NonNullable<ProviderModel['reasoning_efforts']>[number])??false}
+            onChange={event=>setModels(models.map((row,position)=>position===index?{...row,reasoning_efforts:event.target.checked
+              ?[...(row.reasoning_efforts??[]),value as NonNullable<ProviderModel['reasoning_efforts']>[number]]
+              :(row.reasoning_efforts??[]).filter(effort=>effort!==value)}:row))}/>{label}</label>)}
+        </div>
         <div className="iad-row"><label><input type="checkbox" checked={model.input_modalities?.includes('image') || false} onChange={event => setModels(models.map((row, position) => position === index ? {...row, input_modalities: event.target.checked ? ['text', 'image'] : ['text']} : row))} /> 支持图像输入</label>
           <IconButton icon="delete" label={`移除模型 ${model.name || model.model_id || index + 1}`} title="移除模型" onClick={() => setModels(models.filter((_, position) => position !== index))} /></div>
       </div>)}

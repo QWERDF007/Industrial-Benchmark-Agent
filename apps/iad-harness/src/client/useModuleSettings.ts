@@ -7,6 +7,16 @@ type Values=ModuleSettingsSnapshot['settings'];
 type Patch=ModuleSettingsEdit['settings'];
 interface ModuleSettingsState {settings:Values|undefined;save(patch:Patch):void;saveAsync(patch:Patch):Promise<ModuleSettingsSnapshot>;retry():void;loading:boolean;saving:boolean;saved:boolean;error:string}
 
+export function mergeSettingFields<T extends object>(current:T,patch:object):T {
+  const result:Record<string,unknown>=Object.fromEntries(Object.entries(current));
+  for(const [key,value] of Object.entries(patch)) {
+    const previous=result[key];
+    result[key]=value&&typeof value==='object'&&!Array.isArray(value)&&previous&&typeof previous==='object'&&!Array.isArray(previous)
+      ?{...previous,...value}:value;
+  }
+  return Object.assign({...current},result);
+}
+
 export function useModuleSettings(module:BusinessModule):ModuleSettingsState {
   const client=useQueryClient(),key=['iad','module-settings',module] as const,path=`/settings/modules/${module}`;
   const resource=useQuery({queryKey:key,queryFn:({signal})=>request<ModuleSettingsSnapshot>(path,undefined,undefined,signal)});
@@ -15,11 +25,11 @@ export function useModuleSettings(module:BusinessModule):ModuleSettingsState {
   for(const state of mutations){
     for(const [field,value] of Object.entries(state.variables as Patch ?? {})){
       if(state.status==='success')edits.delete(field);
-      else if(state.status==='pending'||state.status==='error')edits.set(field,{value,status:state.status,error:state.error});
+      else if(state.status==='pending'||state.status==='error')edits.set(field,{value:mergeSettingFields({value:edits.get(field)?.value},{value}).value,status:state.status,error:state.error});
     }
   }
   const failed=[...edits].filter(([,edit])=>edit.status==='error');
-  const settings=resource.data ? {...resource.data.settings,...Object.fromEntries([...edits].map(([field,edit])=>[field,edit.value]))} as Values : undefined;
+  const settings=resource.data ? mergeSettingFields(resource.data.settings,Object.fromEntries([...edits].map(([field,edit])=>[field,edit.value]))) : undefined;
   const mutation=useMutation({mutationKey:key,scope:{id:`iad-module-settings-${module}`},retry:false,
     mutationFn:async(patch:Patch)=>{
       const current=client.getQueryData<ModuleSettingsSnapshot>(key);

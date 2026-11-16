@@ -1,3 +1,5 @@
+from iad_core.consistency.agent_preparation import ConsistencyAgentPreparation
+from tests.test_consistency_agent_preparation import wait_for_preparation
 from uuid import uuid4
 
 import pytest
@@ -32,6 +34,7 @@ def test_consistency_statistics_keep_program_matches_separate_from_visual_review
     DatasetRegistry(jobs.db).rescan(dataset_id)
     checks = ConsistencyAgentJobs(jobs.runtime)
     source = checks.start(dict(submission_id=str(uuid4()), dataset_ids=[dataset_id], mode='exact'))['run_id']
+    wait_for_preparation(ConsistencyAgentPreparation(jobs.runtime), source)
 
     def respond(request):
         if request.url.path.endswith('/tokenize'):
@@ -234,6 +237,7 @@ def test_short_annotation_references_are_readable_without_rewriting_original_ids
     config=DatasetRegistry(jobs.db).import_dataset(dict(format='labelme',name='原始框引用',image_dir=str(root),annotation_dir=str(root)))
     checks=ConsistencyAgentJobs(jobs.runtime)
     upstream=checks.start(dict(submission_id=str(uuid4()),dataset_ids=[config.dataset.id],mode='exact'))['run_id']
+    wait_for_preparation(ConsistencyAgentPreparation(jobs.runtime), upstream)
     anchor=checks.anchors(upstream)[0]
     checks.session_created(upstream,anchor.anchor_id);checks.retrieve(upstream,anchor.anchor_id);checks.submit_empty(upstream,anchor.anchor_id);checks.finish(upstream)
     run=jobs.start(dict(submission_id=str(uuid4()),subset_ids=[config.dataset.id],consistency_job_id=upstream),agent=role)['run_id']
@@ -368,6 +372,7 @@ def test_each_frozen_upstream_difference_gets_an_independent_quality_assessment(
         rules=[rule.model_dump() for rule in rules],preview_fingerprint=preview.preview_fingerprint))
     checks=ConsistencyAgentJobs(jobs.runtime)
     upstream=checks.start(dict(submission_id=str(uuid4()),dataset_ids=[config.dataset.id],mode='exact'))['run_id']
+    wait_for_preparation(ConsistencyAgentPreparation(jobs.runtime), upstream)
     review=ConsistencyAgentReview(jobs.runtime)
     for anchor in checks.anchors(upstream):
         checks.session_created(upstream,anchor.anchor_id)
@@ -419,6 +424,7 @@ def test_creation_catalog_excludes_partial_scope_and_rejects_stale_source(native
     checks=ConsistencyAgentJobs(jobs.runtime)
     first=checks.snapshot(upstream).scopes.subjects.samples[0].sample_id
     small=checks.start(dict(submission_id=str(uuid4()),dataset_ids=[dataset_id],mode='exact',subjects={'kind':'samples','sample_ids':[first]}))['run_id']
+    wait_for_preparation(ConsistencyAgentPreparation(jobs.runtime), small)
     checks.session_created(small,first);checks.retrieve(small,first);checks.submit_empty(small,first);checks.finish(small)
     catalog=AuditSources(jobs.db).catalog([dataset_id])
     assert upstream in {source.job_id for source in catalog.consistency_jobs}
@@ -493,6 +499,7 @@ def test_audit_freezes_completed_consistency_retry_history_without_serializing_d
     jobs, dataset_id, _, role = native_audit
     checks = ConsistencyAgentJobs(jobs.runtime)
     upstream = checks.start(dict(submission_id=str(uuid4()),dataset_ids=[dataset_id],mode='exact'))['run_id']
+    wait_for_preparation(ConsistencyAgentPreparation(jobs.runtime), upstream)
     anchors = checks.anchors(upstream)
     for index, anchor in enumerate(anchors):
         checks.session_created(upstream,anchor.anchor_id)

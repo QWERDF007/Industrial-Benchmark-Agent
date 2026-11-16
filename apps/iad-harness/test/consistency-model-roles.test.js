@@ -124,3 +124,66 @@ test('Responses providers remain selectable and freeze their native image and Ag
     assert.equal(invalid.profile,null);assert.match(invalid.error,/推理强度/);
   } finally {await fork.dispose();}
 });
+
+test('Chat and Responses expose declared levels and preserve nonstandard wire values', async () => {
+  const providers = {
+    chat: {api:'openai-completions',baseURL:'http://127.0.0.1:1/v1',models:[
+      {id:'reasoner',input:['text','image'],reasoningEfforts:{off:null,minimal:'light',high:'heavy',max:'maximum'}},
+      {id:'plain',input:['text'],reasoningEfforts:false}]},
+    responses: {api:'openai-responses',baseURL:'http://127.0.0.1:1/v1',models:[
+      {id:'reasoner',input:['text','image'],reasoningEfforts:{minimal:'minimal',high:'high',max:'max'}}]},
+  };
+  const ctx=new Context();new LlmRuntime(ctx);
+  ctx.provide('settings',{configure:()=>()=>{},describe:()=>[{ns:'llm-pi-ai',revision:1,value:{providers}}]});
+  ctx.provide('credentials',{describe:async()=>({configured:true,writable:true})});
+  const fork=await ctx.plugin(piAi,{providers});
+  try {
+    const native=new NativeProviders(()=>ctx),catalog=await native.catalog();
+    assert.deepEqual(catalog.find(row=>row.provider_id==='chat').models[0].reasoning_efforts,['off','minimal','high','max']);
+    for (const role of ['agent','vision']) {
+      const frozen=await native.freeze({provider_id:'chat',model_id:'reasoner'},
+        {...defaultModelLimits,capacity_mode:'vllm_tokenize'},role,'minimal');
+      assert.equal(frozen.error,null);
+      assert.equal(frozen.native_profile.reasoning,'minimal');
+      assert.deepEqual(frozen.profile.reasoning_parameters,{reasoning_effort:'light'});
+      const off=await native.freeze({provider_id:'chat',model_id:'reasoner'},defaultModelLimits,'agent','off');
+      assert.equal(off.error,null);assert.deepEqual(off.profile.reasoning_parameters,{});
+    }
+    const absent=await native.freeze({provider_id:'chat',model_id:'plain'},defaultModelLimits,'agent','high');
+    assert.match(absent.error,/未声明/);
+  } finally {await fork.dispose();}
+});
+
+test('frozen visual reasoning parameters match the actual native SDK for declared Chat formats', async () => {
+  let wire;
+  const server=http.createServer(async(req,res)=>{
+    let body='';for await(const chunk of req)body+=chunk;wire=JSON.parse(body);
+    res.writeHead(200,{'Content-Type':'text/event-stream'});
+    res.end('data: '+JSON.stringify({id:'reasoning-parity',object:'chat.completion.chunk',model:'reasoner',
+      choices:[{index:0,delta:{content:'完成'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');
+  });
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  try {
+    for(const format of ['openai','deepseek','zai','qwen','qwen-chat-template','openrouter','together','string-thinking','ant-ling','chat-template','baseten']){
+      const compat={thinkingFormat:format,supportsReasoningEffort:true,
+        ...(['chat-template','baseten'].includes(format)?{[format==='baseten'?'chatTemplateArgs':'chatTemplateKwargs']:{
+          enable_thinking:{$var:'thinking.enabled'},effort:{$var:'thinking.effort',omitWhenOff:true}}}:{})};
+      const providers={source:{api:'openai-completions',baseURL:`http://127.0.0.1:${server.address().port}/v1`,apiKeyEnv:'PARITY_KEY',
+        models:[{id:'reasoner',input:['text'],reasoningEfforts:{off:null,low:'light'},compat}]}};
+      const ctx=new Context();new LlmRuntime(ctx);
+      ctx.provide('settings',{configure:()=>()=>{},describe:()=>[{ns:'llm-pi-ai',revision:1,value:{providers}}]});
+      ctx.provide('credentials',{resolve:async()=>({value:'test-parity-key'})});
+      const fork=await ctx.plugin(piAi,{providers});
+      try {
+        for(const effort of ['off','low']) {
+          const frozen=await new NativeProviders(()=>ctx).freeze({provider_id:'source',model_id:'reasoner'},defaultModelLimits,'agent',effort);
+          assert.equal(frozen.error,null,format);
+          for await(const _chunk of ctx.llm.stream({provider:'source',model:'reasoner',reasoningEffort:effort,maxTokens:128,
+            messages:[{role:'user',content:[{type:'text',text:'核对参数'}]}]})){}
+          const actual=Object.fromEntries(Object.entries(wire).filter(([key])=>['reasoning','reasoning_effort','thinking','enable_thinking','chat_template_kwargs','chat_template_args'].includes(key)));
+          assert.deepEqual(frozen.profile.reasoning_parameters,actual,format+' '+effort);
+        }
+      }finally{await fork.dispose();}
+    }
+  }finally{await new Promise(resolve=>server.close(resolve));}
+});

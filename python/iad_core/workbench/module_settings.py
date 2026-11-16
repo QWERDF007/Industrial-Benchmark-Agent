@@ -2,6 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
+from iad_core.audit.quality_models import AuditScoreWeights
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.consistency.models import ConsistencyRetrievalSettings
 from iad_core.consistency.position import PositionTolerancePolicy
@@ -40,6 +41,7 @@ class KnowledgeSettingsValues(AnalysisSamplingSettingsValues):
 
 
 class AuditSettingsValues(ModuleSettingsValues):
+    quality_score_weights: AuditScoreWeights = Field(default_factory=AuditScoreWeights)
     whole_image_max_side: int | None = Field(default=None, ge=1, strict=True)
     batch_size: int = Field(default=8, ge=1, strict=True)
     concurrency: JobConcurrency = 2
@@ -100,7 +102,12 @@ class ModuleSettings:
                 raise ValueError('模块配置已变化，请刷新后再保存')
             schema = type(ModuleSettingsSnapshot(module=edit.module, revision=0, settings={}).settings)
             current = schema.model_validate_json(row['settings_json']) if row else schema()
-            values = schema.model_validate({**current.model_dump(), **edit.settings.model_dump(exclude_unset=True)})
+            patch = edit.settings.model_dump(exclude_unset=True)
+            for name in patch:
+                previous, incoming = getattr(current, name), getattr(edit.settings, name)
+                if isinstance(previous, AnalysisModel) and isinstance(incoming, AnalysisModel):
+                    patch[name] = {**previous.model_dump(), **incoming.model_dump(exclude_unset=True)}
+            values = schema.model_validate({**current.model_dump(), **patch})
             conn.execute('''INSERT INTO workbench_module_settings(module,revision,settings_json) VALUES(?,?,?)
                 ON CONFLICT(module) DO UPDATE SET revision=excluded.revision,settings_json=excluded.settings_json''',
                 (edit.module, revision + 1, values.model_dump_json()))

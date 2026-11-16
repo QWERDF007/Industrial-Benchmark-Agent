@@ -1,11 +1,12 @@
 import React from 'react';
-import {auditReportSections} from '../audit-report.js';
+import {useAuditReportSections} from '../audit-report.js';
 import {AuditReportSection} from './AuditReportSection.js';
 import type {AuditRunReport,AuditReportImage} from '../../shared/domain.generated.js';
 import {knowledgeStatuses} from '../../shared/knowledge-presentation.js';
 import {AuditEvidenceSection} from './AuditEvidenceSection.js';
 
 export function AuditReportKnowledge({report,imageUrl}:{report:AuditRunReport;imageUrl(item:AuditReportImage):string}) {
+  const auditReportSections=useAuditReportSections();
   const entries=report.knowledge_entries||[];
   return <AuditReportSection section="knowledge">
     {report.knowledge_analysis&&<p>{report.knowledge_analysis}</p>}

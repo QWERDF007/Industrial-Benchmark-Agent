@@ -76,7 +76,7 @@ class AuditBatches:
         snapshot = self.state.snapshot(run_id)
         on_demand = snapshot.context_policy == 'evidence-on-demand-v1'
         selected = [] if on_demand and batch is None else self.results(run_id,batch)
-        return AuditMasterContext.model_validate(dict(kind='audit_records',job_id=run_id,phase='review' if batch else 'report',
+        return AuditMasterContext.model_validate(dict(quality_score_version=snapshot.quality_score_version,kind='audit_records',job_id=run_id,phase='review' if batch else 'report',
             batch=batch.model_dump(mode='json') if batch else None,revision=session.revision,
             items=[AuditMasterRecord.capture(sample) for sample in selected],
             discoveries=[AuditDiscoveryIndex.capture(item) for item in session.discoveries] if on_demand else session.discoveries,

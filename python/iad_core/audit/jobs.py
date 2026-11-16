@@ -81,7 +81,7 @@ class AuditAgentJobs(AuditState):
         anchors = [results.detail(request.consistency_job_id, record.sample.sample_id) for record in manifest.records]
         if any(anchor.result is None or anchor.state != 'COMPLETED' for anchor in anchors):
             raise ValueError('一致性作业尚未形成所选主图的终稿')
-        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=4, context_policy='evidence-on-demand-v1', manifest=manifest, agent=role,
+        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=4, quality_score_version='1.1', context_policy='evidence-on-demand-v1', manifest=manifest, agent=role,
             report_instruction=request.report_instruction, consistency_job_id=request.consistency_job_id,
             knowledge=self.freeze_knowledge(request.knowledge),
             master_prompt=request.master_prompt,observer_prompt=request.observer_prompt,

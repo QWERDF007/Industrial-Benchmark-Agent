@@ -3,5 +3,5 @@ import { type AuditReportSectionKey } from '../audit-report.js';
 export declare function AuditReportSection({ section, children }: {
     section: AuditReportSectionKey;
     children: React.ReactNode;
-}): React.JSX.Element;
+}): React.JSX.Element | null;
 //# sourceMappingURL=AuditReportSection.d.ts.map

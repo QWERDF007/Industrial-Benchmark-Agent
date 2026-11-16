@@ -13,7 +13,7 @@ docs/
 WORKLOG*.md
 node_modules/
 backbones/
-models/
+/models/
 runs/
 *.log
 data/cache/

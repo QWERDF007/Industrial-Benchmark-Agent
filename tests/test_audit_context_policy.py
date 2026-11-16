@@ -1,3 +1,5 @@
+from iad_core.consistency.agent_preparation import ConsistencyAgentPreparation
+from tests.test_consistency_agent_preparation import wait_for_preparation
 import json
 from uuid import uuid4
 
@@ -137,6 +139,7 @@ def test_reread_defaults_to_whole_but_initial_delivery_still_contains_every_anno
     dataset = DatasetRegistry(jobs.db).import_dataset(dict(format='labelme', name='完整标注输入', image_dir=str(source), annotation_dir=str(source)))
     checks = ConsistencyAgentJobs(jobs.runtime)
     upstream = checks.start(dict(submission_id=str(uuid4()), dataset_ids=[dataset.dataset.id], mode='exact'))
+    wait_for_preparation(ConsistencyAgentPreparation(jobs.runtime), upstream['run_id'])
     for anchor in checks.anchors(upstream['run_id']):
         checks.session_created(upstream['run_id'], anchor.anchor_id)
         checks.retrieve(upstream['run_id'], anchor.anchor_id)

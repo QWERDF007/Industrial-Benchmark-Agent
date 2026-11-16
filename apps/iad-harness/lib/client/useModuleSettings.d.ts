@@ -12,6 +12,7 @@ interface ModuleSettingsState {
     saved: boolean;
     error: string;
 }
+export declare function mergeSettingFields<T extends object>(current: T, patch: object): T;
 export declare function useModuleSettings(module: BusinessModule): ModuleSettingsState;
 export {};
 //# sourceMappingURL=useModuleSettings.d.ts.map

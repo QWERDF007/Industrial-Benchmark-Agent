@@ -29,6 +29,14 @@ export function ModuleSettingsSection({module}:{module:Exclude<BusinessModule,'c
         <ModuleSelectSetting label="整图输入分辨率" value="original" disabled onChange={()=>{}}
           options={[{value:'original',label:'使用原图'}]}/>
       </>}
+      {'quality_score_weights' in settings&&<>
+        <h3>综合得分</h3>
+        {([['consistency','数据一致性'],['diversity','数据多样性'],['redundancy','数据冗余度']] as const).map(([key,label])=>
+          <ModuleNumberSetting key={key} label={`${label}系数`} value={settings.quality_score_weights[key]} min={0} step={.01}
+            validationMessage="系数需为非负数，且不能全部为零"
+            validate={value=>value+Object.entries(settings.quality_score_weights).reduce((total,[name,weight])=>total+(name===key?0:weight),0)>0}
+            onSave={value=>save({quality_score_weights:{[key]:value}})}/>)}
+      </>}
       <p className="iad-module-status" role="status" aria-live="polite">{saving?'正在保存…':!error&&saved?'已保存':''}</p>
     </div>}
     {error&&<div className="iad-module-error" role="alert"><span>{error}</span>{settings&&<Button variant="outline" onClick={retry}>重试保存</Button>}</div>}

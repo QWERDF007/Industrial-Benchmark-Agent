@@ -89,7 +89,7 @@ test('audit report answers the six questions and explains selected knowledge whi
   assert.match(html,/没有物理件登记，独立性未评价/);
   assert.match(html,/可用于梳理可见结构关系/);
   assert.match(html,/已有的一致性检查对 4 张图像做过跨图比较/);
-  assert.match(html,/无候选，数量（张）：6；无有效候选，数量（张）：2；标注一致，数量（张）：4/);
+  assert.match(html,/无候选，数量（张）：6；无有效候选，数量（张）：2；无标注一致，数量（张）：0；标注一致，数量（张）：4/);
   assert.match(html,/标注冲突，数量（张）：0/);
   assert.equal((html.match(/data-consistency-definitions=/g)||[]).length,2,'结果状态和具体冲突类别分别使用解释表格');
 });
@@ -190,7 +190,7 @@ test('consistency shows source scopes and upstream conflicts even when the audit
     consistency_analyses:[{issue_type:'position_difference',title:'边缘转向对应位置变化',description:'两处边缘朝向不同。',
       analysis:'转向处的标注随实际轮廓变化。',audit_result:'本次未保留位置疑点。',representatives:[],evidence_refs:[]}]});
   const chapter=html.split('<h2>三、数据是否自洽</h2>')[1].split('<h2>四、标注质量与复核重点</h2>')[0];
-  for(const [index,label] of ['无候选','无有效候选','标注一致'].entries())assert.match(chapter,new RegExp('<h3[^>]*>3\\.'+(index+3)+' '+label+'</h3>'));
+  for(const [index,label] of ['无候选','无有效候选','无标注一致','标注一致'].entries())assert.match(chapter,new RegExp('<h3[^>]*>3\\.'+(index+3)+' '+label+'</h3>'));
   for(const text of ['没有找到内容对应的对照图','相近图像的可见结构不同','对应区域的分组与覆盖相符','边缘转向对应位置变化','本次未保留位置疑点'])assert.ok(chapter.includes(text));
   assert.match(chapter,/data-chart="model-conflicts"/);assert.match(chapter,/2 张图像，3 项/);
   assert.equal((chapter.match(/data-consistency-definitions=/g)||[]).length,2);
@@ -247,4 +247,33 @@ test('consistency compares program and reviewed categories with plain definition
     .split('<h2>三、数据是否自洽</h2>')[1].split('<h2>四、标注质量与复核重点</h2>')[0];
   assert.equal((classification.match(/类别不一致，数量（张）：2/g)||[]).length,2);
   assert.doesNotMatch(classification,/<th scope="row">多标<\/th>|类别不一致，数量（张）：4/);
+});
+
+test('scored reports put composite and dimension scores in conclusion and chart details in chapter two',()=>{
+  const score={status:'complete',total:89.6345,weights:{consistency:.8,diversity:.15,redundancy:.05},
+    completed_images:10,total_images:10,observed_images:10,limitations:[],dataset_scores:[],dimensions:{
+      consistency:{label:'数据一致性',score:93.3,deduction:6.7},diversity:{label:'数据多样性',score:68.88,deduction:31.12},
+      redundancy:{label:'数据冗余度',score:93.25,deduction:6.75}},items:[
+        {code:'category_mismatch',dimension:'consistency',direction:'标注一致性',label:'类别不一致',maximum:100,
+          count:1,denominator:10,ratio:.1,deduction:10,scenario:'',sample_ids:[]},
+        {code:'A2',dimension:'diversity',direction:'缺陷类别与形态',label:'同类缺陷形态稀缺',maximum:8,
+          count:3,denominator:203,ratio:3/203,deduction:7.578947368,scenario:'弯曲划痕',sample_ids:[]},
+        {code:'A3',dimension:'diversity',direction:'缺陷类别与形态',label:'特殊形态样本稀缺',maximum:6,
+          count:3,denominator:203,ratio:3/203,deduction:0,scenario:'弯曲划痕',suppressed_by:'A2',sample_ids:[]},
+      ]};
+  const html=render({...report,quality_score:score});
+  const conclusion=html.split('data-report-section="conclusion"')[1].split('data-report-section="score"')[0];
+  assert.match(conclusion,/综合得分[^<]*89\.6/);
+  for(const label of ['数据一致性','数据多样性','数据冗余度'])assert.match(conclusion,new RegExp(label));
+  assert.match(conclusion,/93\.3/);
+  assert.match(html,/<h2[^>]*>二、得分细分<\/h2>/);
+  assert.match(html,/<h2[^>]*>三、数据分布<\/h2>/);
+  assert.match(html,/<h2[^>]*>十、引用知识及审计结果<\/h2>/);
+  const details=html.split('data-report-section="score"')[1].split('data-report-section="distribution"')[0];
+  assert.match(details,/data-chart-type="bar"/);
+  assert.match(details,/3 \/ 203/);
+  assert.match(details,/弯曲划痕/);
+  assert.match(details,/同一原因已计入 A2/);
+  assert.doesNotMatch(details,/<table|category_mismatch/);
+  assert.match(details,/类别不一致/);
 });

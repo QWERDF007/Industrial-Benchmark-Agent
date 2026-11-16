@@ -13,6 +13,7 @@ from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisRegis
 from iad_core.workbench.job_models import JobStatus
 from iad_core.workbench.model_profile import FrozenModelRole
 from iad_core.workbench.module_settings import AuditSettingsValues
+from iad_core.audit.quality_models import QualityObservation
 from iad_core.audit.knowledge_models import AuditKnowledge, AuditKnowledgeSelection
 from iad_core.audit.prompt_text import (DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDIT_SYSTEM_PROMPT,
     MASTER_AUDIT_SYSTEM_PROMPT, DEFAULT_AUDIT_BATCH_PROMPT, DEFAULT_AUDIT_REPORT_PROMPT)
@@ -45,6 +46,7 @@ class AuditAgentConfiguration(AnalysisModel):
 
 class AuditWorkflowSnapshot(AuditAgentConfiguration):
     schema_version: Literal[4] = 4
+    quality_score_version: Literal['1.1'] | None = None
     context_policy: ContextPolicy = 'legacy'
     manifest: AnalysisManifest
     agent: FrozenModelRole
@@ -103,6 +105,7 @@ class AuditObservation(AnalysisModel):
 
 
 class AuditFinal(AnalysisModel):
+    quality_observation: QualityObservation | None = Field(default=None, description='本图实际观察的评分场景，新作业须填写；程序读取原始类别计数和评分，不在此填写分数。')
     execution_status: Literal['completed','incomplete','failed']
     state: Literal['normal','suspect'] | None
     analysis: NonBlankText = Field(description='只概括本图可见形态及标注覆盖、定位、实例关系。上游与知识评估分别填写对应字段。')
@@ -171,6 +174,7 @@ class AuditConsistencyContext(AnchorResultSummary):
 
 
 class AuditAgentContext(AnalysisModel):
+    quality_score_version: Literal['1.1'] | None = None
     job_id: str
     sample_id: str
     session_id: str

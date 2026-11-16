@@ -49,6 +49,7 @@ class AuditMasterRecord(AnalysisModel):
 
 
 class AuditMasterContext(AnalysisModel):
+    quality_score_version: Literal['1.1'] | None = None
     kind: Literal['audit_records'] = 'audit_records'
     job_id: str
     phase: Literal['review', 'report']

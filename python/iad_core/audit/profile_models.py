@@ -1,4 +1,5 @@
 from typing import Literal
+from pydantic import Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.benchmark.readiness import BenchmarkReadiness
@@ -50,6 +51,8 @@ class AuditDatasetProfile(AnalysisModel):
     registered_quality: dict[str,int]
     geometry: AuditGeometryProfile | None
     metadata: dict[str,AuditMetadataCoverage]
+    strict_duplicate_members: list[list[str]] | None = None
+    near_candidate_members: list[list[str]] = Field(default_factory=list)
     strict_duplicate_groups: int | None
     strict_duplicate_images: int | None
     near_candidate_pairs: int

@@ -8,7 +8,7 @@ from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeMod
 
 
 def save_image(jobs, run_id, sample, findings=(), *, reviews=(), source_refs=(), check_assessments=(), observations=(),
-        hypothesis_assessments=(),visual_features=(),selected_evidence=(),media_view=None,commit_key='final',analysis='已观察主图及全部局部。'):
+        hypothesis_assessments=(),visual_features=(),quality_observation=None,selected_evidence=(),media_view=None,commit_key='final',analysis='已观察主图及全部局部。'):
     jobs.session_created(run_id, sample.sample_id)
     query = {'sample_id':sample.sample_id}
     if jobs.snapshot(run_id).context_policy == 'evidence-on-demand-v1': query['view'] = media_view or 'all'
@@ -19,7 +19,7 @@ def save_image(jobs, run_id, sample, findings=(), *, reviews=(), source_refs=(),
     calls.start_native(run_id, call, sample_id=sample.sample_id, session_id=sample.session_id, attempt=1)
     AuditEvidence(jobs).delivered(run_id, sample.sample_id, call.call_id, [image.image.evidence_id for image in page.images])
     calls.finish_native(run_id, sample.sample_id, NativeModelCallEnd(call_id=call.call_id, finished_at='2026-11-10T12:00:01+08:00', elapsed_ms=1000, finish_reason='tool-calls'))
-    final = dict(execution_status='completed', state='suspect' if findings else 'normal', analysis=analysis,
+    final = dict(quality_observation=quality_observation,execution_status='completed', state='suspect' if findings else 'normal', analysis=analysis,
         conclusion='发现独立疑点。' if findings else '本次未发现疑点。', basis=['冻结原图。'], evidence_ids=ids, check_assessments=list(check_assessments), consistency_review=list(reviews),
         observations=list(observations),hypothesis_assessments=list(hypothesis_assessments),visual_features=list(visual_features),selected_evidence=list(selected_evidence),findings=[dict(finding_id=fid,type='image_label_mismatch' if jobs.context(run_id,sample.sample_id).target.dataset_format=='folder_classification' else 'missing_annotation',description='有效覆盖需复核。',location='主体',annotation_ids=[],
             consistency_issue_refs=list(source_refs),check_ids=[],evidence_ids=ids,normal_explanation='需排除成像影响。',limitations=[]) for fid in findings],limitations=[])
