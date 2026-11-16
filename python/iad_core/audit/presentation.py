@@ -6,6 +6,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from iad_core.audit.report_models import AuditReportImage
+from iad_core.audit.quality_models import QualityScore
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.workbench.audit_result_models import AuditRunReport
 
@@ -101,9 +102,11 @@ class AuditPresentation:
                 for item in selected]
         return report.model_copy(update={'evidence_groups':groups})
 
-    def report(self, run_id):
+    def report(self, run_id, *, quality_score: QualityScore | None = None):
         from iad_core.audit.evidence import AuditEvidence
         report = self.queries.report_data(run_id)
+        if quality_score is not None:
+            report = report.model_copy(update={'quality_score':quality_score})
         narrative = AuditNarrative(self.queries.state,run_id)
         evidence = AuditEvidence(self.queries.state)
         groups = {}

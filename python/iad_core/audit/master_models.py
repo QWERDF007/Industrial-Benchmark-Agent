@@ -3,6 +3,7 @@ from typing import Literal
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.audit.delegation_models import AuditBatch, AuditRecheck
 from iad_core.audit.models import AuditFinal, AuditSampleRun
+from iad_core.audit.quality_models import QualityScoreVersion
 from iad_core.audit.knowledge_models import AuditKnowledge
 from iad_core.audit.profile_models import AuditDatasetProfile
 from iad_core.audit.report_models import AuditDiscovery, AuditDiscoveryIndex, AuditStatistics
@@ -49,7 +50,7 @@ class AuditMasterRecord(AnalysisModel):
 
 
 class AuditMasterContext(AnalysisModel):
-    quality_score_version: Literal['1.1'] | None = None
+    quality_score_version: QualityScoreVersion | None = None
     kind: Literal['audit_records'] = 'audit_records'
     job_id: str
     phase: Literal['review', 'report']

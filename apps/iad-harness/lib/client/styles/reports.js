@@ -14,6 +14,7 @@ export const reportStyles = `
 #audit-page .iad-audit-document h3{font-size:20px;line-height:1.55;margin:18px 0 0;font-weight:650}
 #audit-page .iad-audit-document h4{font-size:17px;line-height:1.6;margin:6px 0 0;font-weight:650}
 #audit-page .iad-audit-document h5{font-size:15px;line-height:1.6;margin:4px 0 0;font-weight:650}
+#audit-page .iad-audit-document h6{font-size:14px;line-height:1.6;margin:4px 0 0;font-weight:650}
 [data-capability-point]{display:grid;gap:10px;padding:8px 0}
 #audit-page .iad-audit-document p{font-size:14px;line-height:1.9;margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .iad-audit-report-intro{display:grid;gap:10px;padding:2px 0 28px}

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {Chart} from '../lib/client/components/charts/Chart.js';
+import {chartOptions} from '../lib/client/components/charts/options.js';
+import {init} from 'echarts/core';
 
 test('shared charts expose counts accessibly without duplicating the chart as a table',()=>{
   const html=renderToStaticMarkup(React.createElement(Chart,{title:'类别分布',spec:{type:'bar',
@@ -30,6 +32,30 @@ test('shared charts preserve zero results and expose box statistics without fabr
   assert.match(box,/data-chart-type="boxplot"/);
   assert.match(box,/aria-label="[^"]*中位数：2%/);
   assert.match(box,/离群/);
+});
+
+test('donuts render composite centers and decimal contributions while preserving count percentages',()=>{
+  const theme={ink:'#172338',muted:'#536174',grid:'#e2e8f0',surface:'#fff',font:'sans-serif',
+    palette:['#285ed6','#166344'],tones:{muted:'#536174'},reducedMotion:true};
+  const spec={type:'donut',unit:'分',format:'score',center:{label:'综合得分',value:89.19744333660238},rows:[
+    {id:'consistency',label:'数据一致性',value:80,details:'100.0 × 0.8 = 80.0 分'},
+    {id:'diversity',label:'数据多样性',value:4.534943336602376,details:'30.2 × 0.15 = 4.5 分'},
+    {id:'redundancy',label:'数据冗余度',value:4.6625},{id:'unearned',label:'未得分',value:10.80255666339762,tone:'muted'}]};
+  const chart=init(null,undefined,{renderer:'svg',ssr:true,width:640,height:320});
+  try {
+    const options=chartOptions(spec,theme);chart.setOption(options);
+    assert.match(chart.renderToSVGString(),/>89\.2<\/text>/);
+    assert.doesNotMatch(chart.renderToSVGString(),/>80\.0 分<\/text>|>4\.5 分<\/text>|>4\.7 分<\/text>|<polyline/,'只保留圆环、圆心和图例，计算明细通过悬浮提示展示');
+    assert.match(options.tooltip.formatter({dataIndex:1}),/得分（分）：4\.5/);
+    assert.match(options.tooltip.formatter({dataIndex:1}),/30\.2 × 0\.15 = 4\.5 分/);
+    assert.match(options.tooltip.formatter({dataIndex:0,percent:80}),/占比：80%/);
+    const counts=chartOptions({type:'donut',unit:'张',rows:[{id:'normal',label:'正常',value:3},{id:'suspect',label:'疑点',value:1}]},theme);
+    assert.match(counts.tooltip.formatter({dataIndex:1,percent:25}),/25%/);
+    chart.setOption(chartOptions({...spec,center:{label:'综合得分',value:null},rows:[]},theme),{notMerge:true});
+    assert.match(chart.renderToSVGString(),/>证据不足<\/text>/);
+    chart.setOption(chartOptions({...spec,center:{label:'综合得分',value:0},rows:[]},theme),{notMerge:true});
+    assert.match(chart.renderToSVGString(),/>0\.0<\/text>/);
+  } finally {chart.dispose();}
 });
 
 test('distribution curves expose actual bin counts and per-subset percentages including constant samples',()=>{

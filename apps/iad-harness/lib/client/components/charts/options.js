@@ -20,7 +20,8 @@ function distributionSeries(spec) {
 export function chartReadings(spec) {
     switch (spec.type) {
         case 'bar': return spec.rows.map(row => [row.label, ...spec.series.map((series, index) => `${series.label}（${series.unit}）：${chartNumber(row.values[index], spec.format)}`), row.details].filter(Boolean).join('\n'));
-        case 'donut': return spec.rows.map(row => `${row.label}\n数量（${spec.unit}）：${chartNumber(row.value)}`);
+        case 'donut': return [...(spec.center ? [`${spec.center.label} ${chartNumber(spec.center.value, spec.format)} ${spec.unit}`] : []),
+            ...spec.rows.map(row => [row.label, `${spec.format === 'score' ? '得分' : '数量'}（${spec.unit}）：${chartNumber(row.value, spec.format)}`, row.details].filter(Boolean).join('\n'))];
         case 'distribution': {
             const curves = distributionSeries(spec);
             return curves.length ? curves.flatMap(curve => curve.points.map(point => point.description)) : ['暂无统计数据'];
@@ -57,14 +58,23 @@ export function chartOptions(spec, theme) {
                 itemStyle: { color: series.tone ? theme.tones[series.tone] : theme.palette[index % theme.palette.length], borderRadius: [3, 3, 0, 0] },
                 label: { show: true, position: 'top', color: theme.ink, formatter: params => chartNumber(params.value === null ? null : Number(params.value), spec.format) },
                 data: spec.rows.map(row => ({ id: row.id, value: row.values[index] })) })) };
-        case 'donut': return { ...common, legend: { ...common.legend, bottom: 0, top: undefined },
-            tooltip: { ...common.tooltip, formatter: `{b}\n{c} ${spec.unit}（{d}%）` },
+        case 'donut': return { ...common, legend: { ...common.legend, bottom: 0, top: undefined, selectedMode: spec.center ? false : undefined },
+            graphic: spec.center ? { type: 'group', left: 'center', top: '45%', bounding: 'raw', silent: true, children: [
+                    { type: 'text', style: { text: chartNumber(spec.center.value, spec.format), x: 0, y: -12, align: 'center', verticalAlign: 'middle',
+                            fill: theme.ink, fontFamily: theme.font, fontSize: spec.center.value === null ? 22 : 36, fontWeight: 650 } },
+                    { type: 'text', style: { text: spec.center.label, x: 0, y: 24, align: 'center', verticalAlign: 'middle',
+                            fill: theme.muted, fontFamily: theme.font, fontSize: 14 } },
+                ] } : undefined,
+            tooltip: { ...common.tooltip, formatter: params => {
+                    const item = Array.isArray(params) ? params[0] : params;
+                    return chartReadings(spec)[item.dataIndex + (spec.center ? 1 : 0)]
+                        + (item.percent === undefined ? '' : `\n占比：${chartNumber(item.percent / 100, 'percent')}`);
+                } },
             series: [{ type: 'pie', radius: ['45%', '70%'], center: ['50%', '45%'], avoidLabelOverlap: true, stillShowZeroSum: false,
                     emptyCircleStyle: { color: theme.grid },
-                    label: { color: theme.ink, formatter: `{b}\n{c} ${spec.unit}` },
-                    labelLine: { lineStyle: { color: theme.grid } }, itemStyle: { borderColor: theme.surface, borderWidth: 2 },
+                    label: { show: false }, labelLine: { show: false }, itemStyle: { borderColor: theme.surface, borderWidth: 2 },
                     data: spec.rows.map(row => ({ id: row.id, name: row.label, value: row.value,
-                        label: { show: row.value > 0 }, itemStyle: row.tone ? { color: theme.tones[row.tone] } : undefined })) }] };
+                        itemStyle: row.tone ? { color: theme.tones[row.tone] } : undefined })) }] };
         case 'distribution': {
             const curves = distributionSeries(spec);
             if (!curves.length)

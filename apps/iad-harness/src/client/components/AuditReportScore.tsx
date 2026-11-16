@@ -5,16 +5,25 @@ import {chartNumber} from './charts/options.js';
 import {AuditReportSection} from './AuditReportSection.js';
 import {AuditReportHeading} from './AuditReportHeading.js';
 import {AuditEvidenceGallery} from './AuditEvidenceGallery.js';
+import {AuditEvidenceSection} from './AuditEvidenceSection.js';
+import {auditScoreItemDetails} from '../audit-score-item.js';
 import {useAuditReportSections} from '../audit-report.js';
 
 export function AuditScoreSummary({score}:{score:QualityScore}) {
-  return <>
-    <p><strong>综合得分 {score.total===null?'证据不足':chartNumber(score.total,'score')+' 分'}</strong></p>
-    <Chart id="quality-score-summary" title="数据集质量得分" spec={{type:'bar',maximum:100,format:'score',
-      series:[{label:'得分',unit:'分'}],rows:[{id:'total',label:'综合得分',values:[score.total]},
-        ...Object.entries(score.dimensions).map(([id,dimension])=>({id,label:dimension.label,values:[dimension.score]}))]}}/>
+  const contributions=Object.entries(score.dimensions).map(([id,dimension])=>{
+    const weight=score.weights[id],value=dimension.score===null?null:dimension.score*weight;
+    return {id,label:dimension.label,value,details:dimension.label+'：'+(dimension.score===null
+      ?`证据不足（系数 ${chartNumber(weight,'decimal')}）`
+      :`${chartNumber(dimension.score,'score')} × ${chartNumber(weight,'decimal')} = ${chartNumber(value,'score')} 分`)};
+  });
+  return <div className="iad-score-summary">
+    <Chart id="quality-score-summary" title="综合得分" spec={{type:'donut',unit:'分',format:'score',
+      center:{label:'综合得分',value:score.total},rows:score.total===null?[]:[
+        ...contributions.flatMap(row=>row.value===null?[]:[{...row,value:row.value}]),
+        {id:'unearned',label:'未得分',value:100-score.total,tone:'muted'},
+      ]}}/>
     {!!score.limitations.length&&<p>{score.limitations.join('；')}</p>}
-  </>;
+  </div>;
 }
 
 export function AuditReportScore({report,imageUrl}:{report:AuditRunReport;imageUrl(item:AuditReportImage):string}) {
@@ -36,19 +45,28 @@ export function AuditReportScore({report,imageUrl}:{report:AuditRunReport;imageU
       const dimension=score.dimensions[items[0].dimension];
       return <section key={direction}>
         <AuditReportHeading level={3} number={heading.prefix+(index+1)}>{direction}</AuditReportHeading>
+        <p>下图展示各评分项的扣分；具体场景、分析与图像证据见下方分项。</p>
         <Chart id={`score-${index}`} title={`${direction}扣分`} spec={{type:'bar',format:'score',
-          series:[{label:'扣分',unit:'分',tone:'warning'}],rows:items.map(item=>({id:item.code,
-            label:`${item.dimension==='consistency'?'':item.code+' '}${item.label}`,values:[item.deduction],details:[
-              item.scenario,`${item.count} / ${item.denominator}，占比 ${item.ratio===null?'不适用':chartNumber(item.ratio,'percent')}`,
-              `扣分上限 ${chartNumber(item.maximum,'score')} 分`,
-              item.deduction===null?'证据不足':item.suppressed_by?`同一原因已计入 ${item.suppressed_by}`:
-                item.count===0?'未出现，不扣分':'',
-            ].filter(Boolean).join('\n')}))}}/>
+          series:[{label:'扣分',unit:'分',tone:'warning'}],rows:items.map(item=>{
+            const details=auditScoreItemDetails(item,score.items);
+            return {id:item.code,label:item.label,values:[item.deduction],details:[details.scenarioTitle,details.analysis,
+              `扣分上限 ${chartNumber(item.maximum,'score')} 分`].filter(Boolean).join('\n')};
+          })}}/>
         {score.items.findIndex(item=>item.dimension===items[0].dimension)===score.items.indexOf(items[0])
           ?<p>{dimension.label}得分 {dimension.score===null?'证据不足':chartNumber(dimension.score,'score')+' 分'}。</p>:null}
-        {items.filter(item=>(item.deduction??0)>0).map(item=><AuditEvidenceGallery key={item.code}
-          items={report.evidence_groups['score:'+(score.dataset_id?score.dataset_id+':':'')+item.code]??[]} imageUrl={imageUrl}
-          title={`${item.dimension==='consistency'?'':item.code+' '}${item.scenario||item.label}`}/>) }
+        {items.map((item,itemIndex)=>{
+          const details=auditScoreItemDetails(item,score.items),number=heading.prefix+(index+1)+'.'+(itemIndex+1);
+          const images=report.evidence_groups['score:'+(score.dataset_id?score.dataset_id+':':'')+item.code]??[];
+          return <article className="iad-audit-discovery" data-score-rule={item.code} key={item.code}>
+            <AuditReportHeading level={4} number={number}>{item.label}</AuditReportHeading>
+            <p>{details.description}</p>
+            {details.scenarioTitle?<AuditEvidenceSection level={5} content={{number:number+'.1',title:details.scenarioTitle,
+              description:details.analysis,galleries:[{title:'图像证据',images}],analysis:[]}} imageUrl={imageUrl}/>
+              :<><p>{details.analysis}</p><AuditEvidenceGallery items={images} imageUrl={imageUrl}
+                heading={{level:5,number:number+'.1'}}/></>}
+          </article>;
+        })}
+
       </section>;
     })}
   </AuditReportSection>;

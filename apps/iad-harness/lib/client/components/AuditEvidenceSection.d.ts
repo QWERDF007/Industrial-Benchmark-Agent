@@ -1,6 +1,7 @@
 import React from 'react';
 import type { AuditReportImage } from '../../shared/domain.generated.js';
-export declare function AuditEvidenceSection({ content, imageUrl }: {
+export declare function AuditEvidenceSection({ content, imageUrl, level }: {
+    level?: 3 | 4 | 5;
     content: {
         number: string;
         title: string;

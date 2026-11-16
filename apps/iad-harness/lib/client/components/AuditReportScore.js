@@ -5,11 +5,21 @@ import { chartNumber } from './charts/options.js';
 import { AuditReportSection } from './AuditReportSection.js';
 import { AuditReportHeading } from './AuditReportHeading.js';
 import { AuditEvidenceGallery } from './AuditEvidenceGallery.js';
+import { AuditEvidenceSection } from './AuditEvidenceSection.js';
+import { auditScoreItemDetails } from '../audit-score-item.js';
 import { useAuditReportSections } from '../audit-report.js';
 export function AuditScoreSummary({ score }) {
-    return _jsxs(_Fragment, { children: [_jsx("p", { children: _jsxs("strong", { children: ["\u7EFC\u5408\u5F97\u5206 ", score.total === null ? '证据不足' : chartNumber(score.total, 'score') + ' 分'] }) }), _jsx(Chart, { id: "quality-score-summary", title: "\u6570\u636E\u96C6\u8D28\u91CF\u5F97\u5206", spec: { type: 'bar', maximum: 100, format: 'score',
-                    series: [{ label: '得分', unit: '分' }], rows: [{ id: 'total', label: '综合得分', values: [score.total] },
-                        ...Object.entries(score.dimensions).map(([id, dimension]) => ({ id, label: dimension.label, values: [dimension.score] }))] } }), !!score.limitations.length && _jsx("p", { children: score.limitations.join('；') })] });
+    const contributions = Object.entries(score.dimensions).map(([id, dimension]) => {
+        const weight = score.weights[id], value = dimension.score === null ? null : dimension.score * weight;
+        return { id, label: dimension.label, value, details: dimension.label + '：' + (dimension.score === null
+                ? `证据不足（系数 ${chartNumber(weight, 'decimal')}）`
+                : `${chartNumber(dimension.score, 'score')} × ${chartNumber(weight, 'decimal')} = ${chartNumber(value, 'score')} 分`) };
+    });
+    return _jsxs("div", { className: "iad-score-summary", children: [_jsx(Chart, { id: "quality-score-summary", title: "\u7EFC\u5408\u5F97\u5206", spec: { type: 'donut', unit: '分', format: 'score',
+                    center: { label: '综合得分', value: score.total }, rows: score.total === null ? [] : [
+                        ...contributions.flatMap(row => row.value === null ? [] : [{ ...row, value: row.value }]),
+                        { id: 'unearned', label: '未得分', value: 100 - score.total, tone: 'muted' },
+                    ] } }), !!score.limitations.length && _jsx("p", { children: score.limitations.join('；') })] });
 }
 export function AuditReportScore({ report, imageUrl }) {
     const [dataset, setDataset] = useState('');
@@ -22,14 +32,18 @@ export function AuditReportScore({ report, imageUrl }) {
     return _jsxs(AuditReportSection, { section: "score", children: [overall.dataset_scores.length > 1 && _jsxs("label", { children: ["\u8BC4\u5206\u8303\u56F4 ", _jsxs("select", { "aria-label": "\u8BC4\u5206\u8303\u56F4", value: dataset, onChange: event => setDataset(event.target.value), children: [_jsx("option", { value: "", children: "\u6574\u4F53" }), overall.dataset_scores.map(item => _jsx("option", { value: item.dataset_id ?? '', children: report.dataset_names[item.dataset_id ?? ''] ?? item.dataset_id }, item.dataset_id))] })] }), dataset && _jsx(AuditScoreSummary, { score: score }), _jsxs("p", { children: ["\u8BC4\u5206\u8986\u76D6 ", score.completed_images, " / ", score.total_images, " \u5F20\uFF0C\u573A\u666F\u5F52\u7C7B ", score.observed_images, " \u5F20\u3002 \u7EFC\u5408\u5F97\u5206\u7CFB\u6570\uFF1A", Object.entries(score.weights).map(([key, weight]) => `${score.dimensions[key].label} ${chartNumber(weight, 'percent')}`).join('，'), "\u3002"] }), directions.map((direction, index) => {
                 const items = score.items.filter(item => item.direction === direction);
                 const dimension = score.dimensions[items[0].dimension];
-                return _jsxs("section", { children: [_jsx(AuditReportHeading, { level: 3, number: heading.prefix + (index + 1), children: direction }), _jsx(Chart, { id: `score-${index}`, title: `${direction}扣分`, spec: { type: 'bar', format: 'score',
-                                series: [{ label: '扣分', unit: '分', tone: 'warning' }], rows: items.map(item => ({ id: item.code,
-                                    label: `${item.dimension === 'consistency' ? '' : item.code + ' '}${item.label}`, values: [item.deduction], details: [
-                                        item.scenario, `${item.count} / ${item.denominator}，占比 ${item.ratio === null ? '不适用' : chartNumber(item.ratio, 'percent')}`,
-                                        `扣分上限 ${chartNumber(item.maximum, 'score')} 分`,
-                                        item.deduction === null ? '证据不足' : item.suppressed_by ? `同一原因已计入 ${item.suppressed_by}` :
-                                            item.count === 0 ? '未出现，不扣分' : '',
-                                    ].filter(Boolean).join('\n') })) } }), score.items.findIndex(item => item.dimension === items[0].dimension) === score.items.indexOf(items[0])
-                            ? _jsxs("p", { children: [dimension.label, "\u5F97\u5206 ", dimension.score === null ? '证据不足' : chartNumber(dimension.score, 'score') + ' 分', "\u3002"] }) : null, items.filter(item => (item.deduction ?? 0) > 0).map(item => _jsx(AuditEvidenceGallery, { items: report.evidence_groups['score:' + (score.dataset_id ? score.dataset_id + ':' : '') + item.code] ?? [], imageUrl: imageUrl, title: `${item.dimension === 'consistency' ? '' : item.code + ' '}${item.scenario || item.label}` }, item.code))] }, direction);
+                return _jsxs("section", { children: [_jsx(AuditReportHeading, { level: 3, number: heading.prefix + (index + 1), children: direction }), _jsx("p", { children: "\u4E0B\u56FE\u5C55\u793A\u5404\u8BC4\u5206\u9879\u7684\u6263\u5206\uFF1B\u5177\u4F53\u573A\u666F\u3001\u5206\u6790\u4E0E\u56FE\u50CF\u8BC1\u636E\u89C1\u4E0B\u65B9\u5206\u9879\u3002" }), _jsx(Chart, { id: `score-${index}`, title: `${direction}扣分`, spec: { type: 'bar', format: 'score',
+                                series: [{ label: '扣分', unit: '分', tone: 'warning' }], rows: items.map(item => {
+                                    const details = auditScoreItemDetails(item, score.items);
+                                    return { id: item.code, label: item.label, values: [item.deduction], details: [details.scenarioTitle, details.analysis,
+                                            `扣分上限 ${chartNumber(item.maximum, 'score')} 分`].filter(Boolean).join('\n') };
+                                }) } }), score.items.findIndex(item => item.dimension === items[0].dimension) === score.items.indexOf(items[0])
+                            ? _jsxs("p", { children: [dimension.label, "\u5F97\u5206 ", dimension.score === null ? '证据不足' : chartNumber(dimension.score, 'score') + ' 分', "\u3002"] }) : null, items.map((item, itemIndex) => {
+                            const details = auditScoreItemDetails(item, score.items), number = heading.prefix + (index + 1) + '.' + (itemIndex + 1);
+                            const images = report.evidence_groups['score:' + (score.dataset_id ? score.dataset_id + ':' : '') + item.code] ?? [];
+                            return _jsxs("article", { className: "iad-audit-discovery", "data-score-rule": item.code, children: [_jsx(AuditReportHeading, { level: 4, number: number, children: item.label }), _jsx("p", { children: details.description }), details.scenarioTitle ? _jsx(AuditEvidenceSection, { level: 5, content: { number: number + '.1', title: details.scenarioTitle,
+                                            description: details.analysis, galleries: [{ title: '图像证据', images }], analysis: [] }, imageUrl: imageUrl })
+                                        : _jsxs(_Fragment, { children: [_jsx("p", { children: details.analysis }), _jsx(AuditEvidenceGallery, { items: images, imageUrl: imageUrl, heading: { level: 5, number: number + '.1' } })] })] }, item.code);
+                        })] }, direction);
             })] });
 }

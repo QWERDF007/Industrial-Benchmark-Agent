@@ -2,7 +2,7 @@ import hashlib
 import json
 
 from iad_core.audit.quality_models import (
-    QualityAssessment, QualityDefect, QualityImage, QualityObservation, QualityScore, QualityScorePreview,
+    QUALITY_SCORE_VERSION, QualityAssessment, QualityDefect, QualityImage, QualityObservation, QualityScore, QualityScorePreview,
 )
 from iad_core.audit.quality_scoring import AuditQualityScorer
 from iad_core.audit.state import AuditState
@@ -88,7 +88,44 @@ class AuditQualityReports:
         return QualityScorePreview(assessment=assessment.model_copy(update={'preview_id': preview_id}), score=score)
 
     def finalize(self, run_id: str, assessment: QualityAssessment | None) -> QualityScore:
+        if self.state.snapshot(run_id).quality_score_version != QUALITY_SCORE_VERSION:
+            raise ValueError('评分规则已更新，请新建审计作业')
         preview = self.preview(run_id, assessment or QualityAssessment(redundancy_reviewed=False))
         if assessment is not None and assessment.preview_id != preview.assessment.preview_id:
             raise ValueError('评分预览已变化，请重新调用 audit_quality_score 并原样提交 assessment')
+        return preview.score
+
+    def recalculate(self, run_id: str) -> QualityScore:
+        from iad_core.audit.presentation import AuditPresentation
+        from iad_core.audit.queries import AuditQueries
+        from iad_core.audit.report_models import AuditStoredReport
+        from iad_core.workbench.audit_html import AuditHtmlReport
+
+        with self.db.connection() as connection:
+            original = connection.execute('SELECT r.result_json,w.snapshot_json,j.status FROM audit_report_runs r '
+                'JOIN audit_workflow_runs w USING(job_id) JOIN job_runs j USING(job_id) WHERE r.job_id=?', (run_id,)).fetchone()
+        if original is None or original['status'] != 'COMPLETED':
+            raise ValueError('只能重新计算已完成的评分报告')
+        stored = AuditStoredReport.model_validate_json(original['result_json'])
+        if stored.quality_score is None:
+            raise ValueError('历史审计没有完整评分观察，不追加评分')
+        preview = self.preview(run_id, stored.quality_assessment)
+        if preview.score.status != 'complete':
+            raise ValueError('评分证据不完整，不能更新已完成报告')
+        stored = stored.model_copy(update={'quality_score':preview.score, 'quality_assessment':preview.assessment})
+        queries = AuditQueries(self.db)
+        report = AuditPresentation(queries).report(run_id, quality_score=preview.score)
+        html = AuditHtmlReport(queries).render(run_id, report=report)['html']
+        with self.db.connection() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            current = connection.execute('SELECT status FROM job_runs WHERE job_id=?', (run_id,)).fetchone()
+            if current is None or current['status'] != 'COMPLETED':
+                raise ValueError('作业状态已变化，未更新评分')
+            result = connection.execute('UPDATE audit_report_runs SET result_json=? WHERE job_id=? AND result_json=?',
+                (stored.model_dump_json(exclude_computed_fields=True), run_id, original['result_json']))
+            workflow = connection.execute("UPDATE audit_workflow_runs SET snapshot_json=json_set(snapshot_json,'$.quality_score_version',?),"
+                'summary_json=?,report_html=? WHERE job_id=? AND snapshot_json=?',
+                (QUALITY_SCORE_VERSION, report.model_dump_json(exclude_computed_fields=True), html, run_id, original['snapshot_json']))
+            if result.rowcount != 1 or workflow.rowcount != 1:
+                raise ValueError('评分输入已变化，未更新评分')
         return preview.score

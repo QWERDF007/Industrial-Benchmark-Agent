@@ -13,7 +13,7 @@ from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisRegis
 from iad_core.workbench.job_models import JobStatus
 from iad_core.workbench.model_profile import FrozenModelRole
 from iad_core.workbench.module_settings import AuditSettingsValues
-from iad_core.audit.quality_models import QualityObservation
+from iad_core.audit.quality_models import QualityObservation, QualityScoreVersion
 from iad_core.audit.knowledge_models import AuditKnowledge, AuditKnowledgeSelection
 from iad_core.audit.prompt_text import (DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDIT_SYSTEM_PROMPT,
     MASTER_AUDIT_SYSTEM_PROMPT, DEFAULT_AUDIT_BATCH_PROMPT, DEFAULT_AUDIT_REPORT_PROMPT)
@@ -46,7 +46,7 @@ class AuditAgentConfiguration(AnalysisModel):
 
 class AuditWorkflowSnapshot(AuditAgentConfiguration):
     schema_version: Literal[4] = 4
-    quality_score_version: Literal['1.1'] | None = None
+    quality_score_version: QualityScoreVersion | None = None
     context_policy: ContextPolicy = 'legacy'
     manifest: AnalysisManifest
     agent: FrozenModelRole
@@ -174,7 +174,7 @@ class AuditConsistencyContext(AnchorResultSummary):
 
 
 class AuditAgentContext(AnalysisModel):
-    quality_score_version: Literal['1.1'] | None = None
+    quality_score_version: QualityScoreVersion | None = None
     job_id: str
     sample_id: str
     session_id: str

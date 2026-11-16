@@ -6,6 +6,10 @@ from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.audit.delegation_models import AuditResultReference
 
 
+QualityScoreVersion = Literal['1.1', '1.2']
+QUALITY_SCORE_VERSION: QualityScoreVersion = '1.2'
+
+
 class AuditScoreWeights(AnalysisModel):
     consistency: float = Field(default=.8, ge=0, allow_inf_nan=False)
     diversity: float = Field(default=.15, ge=0, allow_inf_nan=False)
@@ -99,7 +103,7 @@ class QualityDimension(AnalysisModel):
 
 
 class QualityScore(AnalysisModel):
-    version: Literal['1.1'] = '1.1'
+    version: QualityScoreVersion = QUALITY_SCORE_VERSION
     dataset_id: str | None = None
     status: Literal['complete', 'insufficient']
     total: float | None

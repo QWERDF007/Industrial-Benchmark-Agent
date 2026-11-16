@@ -57,15 +57,18 @@ def test_diversity_uses_instance_scope_and_does_not_penalize_absent_scenes():
     items = {item.code: item for item in score.items}
     assert items['A2'].count == 3
     assert items['A2'].denominator == 203
-    expected = 8 / 2 * ((20-3)/19 + 1)
+    expected = 9.473684210526315
     assert items['A2'].deduction == pytest.approx(expected)
-    assert items['A3'].deduction == 0
-    assert items['A3'].suppressed_by == 'A2'
-    assert items['B1'].deduction == pytest.approx(expected)
+    assert items['A1'].label == '缺陷类别覆盖不足'
+    assert items['A2'].label == '类内视觉变化覆盖不足'
+    assert items['A1'].maximum == 20
+    assert items['A2'].maximum == 10
+    assert 'A3' not in items and 'A4' not in items
+    assert items['B1'].deduction == pytest.approx(7.578947368421053)
     assert items['B3'].deduction > 0  # independent size and location causes
     assert items['B2'].deduction == 0
     assert items['C1'].deduction == 0
-    assert len([item for item in score.items if item.dimension == 'diversity']) == 16
+    assert len([item for item in score.items if item.dimension == 'diversity']) == 14
     assert score.total is not None
 
 
@@ -107,3 +110,54 @@ def test_exact_content_can_connect_separate_visual_groups_without_losing_redunda
     assert items['E'].count == 1
     assert items['V'].count == 2
     assert score.dimensions['redundancy'].score == 70
+
+
+@pytest.mark.parametrize('axis', ['morphology', 'special_morphology', 'appearance'])
+def test_visual_variations_share_one_budget_across_descriptions(axis):
+    images = [image(i, observation_complete=True, defects=[defect(i)]) for i in range(203)]
+    for item in images[:3]:
+        setattr(item.defects[0], axis, '弯曲细线')
+    if axis == 'special_morphology':
+        for item in images[3:]:
+            item.defects[0].special_morphology = '平直细线'
+    score = AuditQualityScorer().score(images, exact_groups=[], redundant_groups=[])
+    visual = [item for item in score.items if item.direction == '缺陷类别与形态']
+    assert [item.label for item in visual] == ['缺陷类别覆盖不足', '类内视觉变化覆盖不足']
+    assert visual[1].count == 3 and visual[1].denominator == 203
+    assert visual[1].deduction == pytest.approx(9.473684210526315)
+    assert visual[1].sample_ids == ['0', '1', '2']
+    assert score.dimensions['diversity'].deduction == pytest.approx(9.473684210526315)
+
+
+def test_visual_variations_use_worst_coverage_once_without_combining_axes():
+    images = [image(i, observation_complete=True, defects=[defect(i)]) for i in range(203)]
+    for item in images[:3]:
+        item.defects[0].morphology = '弯曲'
+    for item in images[1:6]:
+        item.defects[0].appearance = '暗色细线'
+    for item in images[2:8]:
+        item.defects[0].special_morphology = '分叉'
+    for item in images[8:]:
+        item.defects[0].special_morphology = '平直'
+    score = AuditQualityScorer().score(images, exact_groups=[], redundant_groups=[])
+    visual = next(item for item in score.items if item.code == 'A2')
+    assert visual.scenario == '划痕：弯曲'
+    assert visual.count == 3 and visual.denominator == 203
+    assert visual.deduction == pytest.approx(9.473684210526315)
+    assert score.dimensions['diversity'].deduction == pytest.approx(9.473684210526315)
+
+
+def test_rare_category_has_twenty_point_budget_and_visual_coverage_has_ten():
+    images = [image(i, observation_complete=True, defects=[defect(i)]) for i in range(100)]
+    images[0].defects[0].category = '稀有类别'
+    score = AuditQualityScorer().score(images, exact_groups=[], redundant_groups=[])
+    category = next(item for item in score.items if item.code == 'A1')
+    assert category.maximum == category.deduction == 20
+    assert category.scenario == '稀有类别'
+    assert category.count == 1 and category.denominator == 100
+    visual = next(item for item in score.items if item.code == 'A2')
+    assert visual.maximum == 10 and visual.deduction == 0
+    assert score.dimensions['diversity'].score == 80
+    assert score.total == pytest.approx(97)
+    assert [(item.code, item.direction) for item in score.items if item.code.startswith('C')] == [
+        ('C1', '对比度'), ('C2', '对比度'), ('C3', '缺陷组合'), ('C4', '缺陷组合')]

@@ -3,6 +3,7 @@ import test from 'node:test';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {AuditReportContent} from '../lib/client/components/AuditReportContent.js';
+import {AuditScoreSummary} from '../lib/client/components/AuditReportScore.js';
 
 const report = {
   total_samples:12,audited_samples:10,suspect_samples:2,distribution:{normal:8,suspect:2,incomplete:2},
@@ -28,6 +29,25 @@ const report = {
   usability:[{purpose:'exploration',status:'usable',reason:'可用于梳理可见结构关系。'}],evidence_groups:{},
 };
 const render=value=>renderToStaticMarkup(React.createElement(AuditReportContent,{report:value,imageUrl:()=>'/original.png'}));
+
+test('score summary shows a composite donut and each frozen weighted contribution',()=>{
+  const score={total:89.19744333660238,weights:{consistency:.8,diversity:.15,redundancy:.05},limitations:[],dimensions:{
+    consistency:{label:'数据一致性',score:100},diversity:{label:'数据多样性',score:30.232955577349173},
+    redundancy:{label:'数据冗余度',score:93.25}}};
+  const renderSummary=value=>renderToStaticMarkup(React.createElement(AuditScoreSummary,{score:value}));
+  const html=renderSummary(score);
+  assert.match(html,/data-chart="quality-score-summary" data-chart-type="donut"/);
+  assert.match(html,/综合得分[^<]*89\.2/);
+  for(const formula of ['数据一致性：100.0 × 0.8 = 80.0 分','数据多样性：30.2 × 0.15 = 4.5 分','数据冗余度：93.3 × 0.05 = 4.7 分'])
+    assert.ok(html.includes(formula),formula);
+  assert.match(html,/未得分[^"<]*10\.8/,'圆环补齐未得分部分，并保留图例和悬浮提示');
+  assert.doesNotMatch(html,/<p>|<ul>|<dl>/,'计算明细放在图表悬浮提示中，不附带文字列表');
+  const changed=renderSummary({...score,total:69.39318223093967,weights:{consistency:.2,diversity:.4,redundancy:.4}});
+  assert.ok(changed.includes('数据一致性：100.0 × 0.2 = 20.0 分'));
+  const incomplete=renderSummary({...score,total:null,dimensions:{...score.dimensions,diversity:{label:'数据多样性',score:null}},limitations:['缺少场景观察']});
+  assert.match(incomplete,/证据不足/);assert.match(incomplete,/缺少场景观察/);
+  assert.doesNotMatch(incomplete,/未得分|数据多样性：0\.0 ×/);
+});
 
 test('audit distribution presents program aggregates as charts while retaining necessary explanation tables',()=>{
   const summary={minimum:.005,q25:.00875,median:.015,q75:.025,maximum:.04,lower_whisker:.005,upper_whisker:.04,count:4,outliers:[]};
@@ -256,10 +276,12 @@ test('scored reports put composite and dimension scores in conclusion and chart 
       redundancy:{label:'数据冗余度',score:93.25,deduction:6.75}},items:[
         {code:'category_mismatch',dimension:'consistency',direction:'标注一致性',label:'类别不一致',maximum:100,
           count:1,denominator:10,ratio:.1,deduction:10,scenario:'',sample_ids:[]},
-        {code:'A2',dimension:'diversity',direction:'缺陷类别与形态',label:'同类缺陷形态稀缺',maximum:8,
+        {code:'A2',dimension:'diversity',direction:'缺陷类别与形态',label:'类内视觉变化覆盖不足',maximum:10,
           count:3,denominator:203,ratio:3/203,deduction:7.578947368,scenario:'弯曲划痕',sample_ids:[]},
-        {code:'A3',dimension:'diversity',direction:'缺陷类别与形态',label:'特殊形态样本稀缺',maximum:6,
-          count:3,denominator:203,ratio:3/203,deduction:0,scenario:'弯曲划痕',suppressed_by:'A2',sample_ids:[]},
+        {code:'D1',dimension:'diversity',direction:'困难良品',label:'困难良品稀缺',maximum:10,
+          count:3,denominator:203,ratio:3/203,deduction:5,scenario:'正常边带',sample_ids:[]},
+        {code:'D2',dimension:'diversity',direction:'困难良品',label:'困难良品内部类型稀缺',maximum:5,
+          count:3,denominator:203,ratio:3/203,deduction:0,scenario:'正常边带',suppressed_by:'D1',sample_ids:[]},
       ]};
   const html=render({...report,quality_score:score});
   const conclusion=html.split('data-report-section="conclusion"')[1].split('data-report-section="score"')[0];
@@ -271,9 +293,65 @@ test('scored reports put composite and dimension scores in conclusion and chart 
   assert.match(html,/<h2[^>]*>十、引用知识及审计结果<\/h2>/);
   const details=html.split('data-report-section="score"')[1].split('data-report-section="distribution"')[0];
   assert.match(details,/data-chart-type="bar"/);
-  assert.match(details,/3 \/ 203/);
+  assert.match(details,/该类别已归类缺陷实例共 203 个，该场景有 3 个/);
   assert.match(details,/弯曲划痕/);
-  assert.match(details,/同一原因已计入 A2/);
-  assert.doesNotMatch(details,/<table|category_mismatch/);
+  assert.match(details,/统一检查同一缺陷类别内部的形态与外观变化/);
+  assert.match(details,/只计算一次扣分/);
+  assert.doesNotMatch(details,/特殊形态样本稀缺|同类缺陷形态稀缺|同类缺陷外观变体稀缺/);
+  assert.match(details,/同一原因已计入「困难良品稀缺」/);
+  assert.doesNotMatch(details,/<table|>category_mismatch</);
   assert.match(details,/类别不一致/);
+});
+
+
+test('score details nest rule scene analysis and numbered image evidence with readable category names',()=>{
+  const image={sample_id:'rare',role:'representative',reason:'19',image:{evidence_id:'rare',original_size:[900,634]},
+    source:{dataset_format:'labelme',sample:{relative_path:'rare.png',width:900,height:634,quality_status:'UNCERTAIN'},annotations:[]}};
+  const score={total:89.19744333660238,weights:{consistency:.8,diversity:.15,redundancy:.05},completed_images:100,
+    total_images:100,observed_images:100,limitations:[],dataset_scores:[],dimensions:{
+      consistency:{label:'数据一致性',score:100},diversity:{label:'数据多样性',score:30.232955577349173},redundancy:{label:'数据冗余度',score:93.25}},items:[
+      {code:'missing_annotation',dimension:'consistency',direction:'标注一致性',label:'少标',maximum:100,count:0,denominator:100,ratio:0,deduction:0,scenario:'',sample_ids:[]},
+      {code:'A1',dimension:'diversity',direction:'缺陷类别与形态',label:'缺陷类别覆盖不足',maximum:20,count:1,denominator:92,ratio:1/92,deduction:20,scenario:'19',sample_ids:['rare']},
+    ]};
+  const html=render({...report,quality_score:score,evidence_groups:{'score:A1':[image]}});
+  const details=html.split('data-report-section="score"')[1].split('data-report-section="distribution"')[0];
+  assert.match(details,/<h3>2\.2 缺陷类别与形态<\/h3>/);
+  assert.match(details,/<h4>2\.2\.1 缺陷类别覆盖不足<\/h4><p>/);
+  assert.match(details,/<h5>2\.2\.1\.1 类别 19<\/h5><p>/);
+  assert.match(details,/全部已归类缺陷实例共 92 个/);
+  assert.match(details,/该场景有 1 个，占比 1\.087%/);
+  assert.doesNotMatch(details,/该场景样本覆盖不足|本项扣|这反映当前样本的覆盖情况|不表示原始标注错误/);
+  assert.match(details,/扣分上限 20\.0 分/);
+  assert.match(details,/<h6>2\.2\.1\.1\.1 图像证据<\/h6>/);
+  assert.match(details,/<h6>2\.2\.1\.1\.1 图像证据<\/h6><div class="iad-thumbnail-grid"/);
+  assert.doesNotMatch(details,/下方原图展示参与|样本覆盖程度由上述统计确定/);
+  assert.ok(details.indexOf('该场景有 1 个，占比 1.087%')<details.indexOf('<h6>2.2.1.1.1 图像证据</h6>'));
+  assert.doesNotMatch(details,/A1 19|aria-label="19"/);
+  const noEvidence=render({...report,quality_score:{...score,items:[score.items[0],{...score.items[1],deduction:null}]}});
+  assert.match(noEvidence,/证据不足/);assert.doesNotMatch(noEvidence,/<h6[^>]*>[^<]*图像证据/);
+});
+
+
+test('score analysis respects image units normal evidence and translated scene names',()=>{
+  const score={total:95,weights:{consistency:.8,diversity:.15,redundancy:.05},completed_images:100,
+    total_images:100,observed_images:100,limitations:[],dataset_scores:[],dimensions:{
+      diversity:{label:'数据多样性',score:80,deduction:20},consistency:{label:'数据一致性',score:100,deduction:0},
+      redundancy:{label:'数据冗余度',score:100,deduction:0}},items:[
+      {code:'B1',dimension:'diversity',direction:'尺寸与位置',label:'微小缺陷样本稀缺',maximum:8,count:2,denominator:23,ratio:2/23,deduction:4.4,scenario:'13：tiny',sample_ids:[]},
+      {code:'C3',dimension:'diversity',direction:'缺陷组合',label:'同类多缺陷样本稀缺',maximum:4,count:1,denominator:50,ratio:.02,deduction:4,scenario:'14',sample_ids:[]},
+      {code:'C1',dimension:'diversity',direction:'对比度',label:'低对比度样本稀缺',maximum:8,count:1,denominator:36,ratio:1/36,deduction:7.6,scenario:'15：low',sample_ids:[]},
+      {code:'D2',dimension:'diversity',direction:'良品',label:'困难类型样本稀缺',maximum:5,count:1,denominator:42,ratio:1/42,deduction:4.9,scenario:'正常边带起伏',sample_ids:['normal']},
+      {code:'split',dimension:'consistency',direction:'标注一致性',label:'拆分',maximum:0,count:8,denominator:100,ratio:.08,deduction:0,scenario:'',sample_ids:[]},
+    ]};
+  const image={sample_id:'normal',role:'representative',reason:'正常边带起伏',image:{evidence_id:'normal',original_size:[900,634]},
+    source:{dataset_format:'labelme',sample:{relative_path:'normal.png',width:900,height:634,quality_status:'UNCERTAIN'},annotations:[]}};
+  const html=render({...report,quality_score:score,evidence_groups:{'score:D2':[image]}});
+  const details=html.split('data-report-section="score"')[1].split('data-report-section="distribution"')[0];
+  assert.match(details,/类别 13：微小缺陷/);assert.match(details,/类别 15：低对比度/);
+  assert.match(details,/异常图像共 50 张，该场景有 1 张，占比 2%/);
+  assert.match(details,/困难良品图像共 42 张，该场景有 1 张/);
+  assert.match(details,/图像证据<\/h6><div class="iad-thumbnail-grid"/);
+  assert.doesNotMatch(details,/下方原图展示参与|核对正常纹理与困难场景/);
+  assert.match(details,/本项只记录观察到的现象，不参与扣分/);
+  assert.doesNotMatch(details,/>[^<]*(?:tiny|15：low)[^<]*</);
 });

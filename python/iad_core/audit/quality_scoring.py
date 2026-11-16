@@ -7,18 +7,16 @@ from iad_core.audit.quality_models import (
 )
 
 DIVERSITY_RULES = (
-    ('A1', '缺陷类别与形态', '缺陷类别样本稀缺', 10),
-    ('A2', '缺陷类别与形态', '同类缺陷形态稀缺', 8),
-    ('A3', '缺陷类别与形态', '特殊形态样本稀缺', 6),
-    ('A4', '缺陷类别与形态', '同类缺陷外观变体稀缺', 6),
+    ('A1', '缺陷类别与形态', '缺陷类别覆盖不足', 20),
+    ('A2', '缺陷类别与形态', '类内视觉变化覆盖不足', 10),
     ('B1', '缺陷尺寸与位置', '微小缺陷样本稀缺', 8),
     ('B2', '缺陷尺寸与位置', '其他尺寸层次失衡', 7),
     ('B3', '缺陷尺寸与位置', '边缘、角落位置稀缺', 6),
     ('B4', '缺陷尺寸与位置', '关键结构区域缺陷稀缺', 4),
-    ('C1', '对比度与组合', '低对比度缺陷稀缺', 8),
-    ('C2', '对比度与组合', '其他对比度层次失衡', 5),
-    ('C3', '对比度与组合', '同类多缺陷图像稀缺', 4),
-    ('C4', '对比度与组合', '跨类别组合图像稀缺', 3),
+    ('C1', '对比度', '低对比度缺陷稀缺', 8),
+    ('C2', '对比度', '其他对比度层次失衡', 5),
+    ('C3', '缺陷组合', '同类多缺陷图像稀缺', 4),
+    ('C4', '缺陷组合', '跨类别组合图像稀缺', 3),
     ('D1', '困难良品', '困难良品稀缺', 10),
     ('D2', '困难良品', '困难良品内部类型稀缺', 5),
     ('D3', '困难良品', '易混淆良品稀缺', 6),
@@ -111,7 +109,7 @@ class AuditQualityScorer:
         for category in categories:
             group = [(image, defect, identity) for image, defect, identity in defects if defect.category == category]
             for code, axis, selected in (
-                ('A2', 'morphology', None), ('A3', 'special_morphology', None), ('A4', 'appearance', None),
+                ('A2', 'morphology', None), ('A2', 'special_morphology', None), ('A2', 'appearance', None),
                 ('B1', 'size', lambda value: value == 'tiny'), ('B2', 'size', lambda value: value != 'tiny'),
                 ('B3', 'location', lambda value: value in ('edge', 'corner')), ('B4', 'structural_region', None),
                 ('C1', 'contrast', lambda value: value == 'low'), ('C2', 'contrast', lambda value: value != 'low')):

@@ -11,7 +11,7 @@ def test_new_jobs_freeze_scoring_and_preview_tracks_effective_versions(native_au
     jobs, dataset_id, upstream, role = native_audit
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
     snapshot = jobs.snapshot(run_id)
-    assert snapshot.quality_score_version == '1.1'
+    assert snapshot.quality_score_version == '1.2'
     ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1, settings={'quality_score_weights': {'consistency': 9}}))
     assert jobs.snapshot(run_id).settings.quality_score_weights.consistency == .8
     for sample in jobs.samples(run_id):
@@ -67,3 +67,51 @@ def test_final_report_stores_program_score_and_legacy_preview_is_rejected(native
     assert jobs.snapshot(run_id).quality_score_version is None
     with pytest.raises(ValueError, match='历史'):
         AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True))
+
+
+def test_recalculate_updates_completed_report_and_export_from_frozen_observations(native_audit):
+    import json
+    from iad_core.audit.quality_reports import AuditQualityReports
+    from iad_core.audit.queries import AuditQueries
+    from iad_core.audit.reports import AuditReports
+    from iad_core.workbench.module_settings import ModuleSettings
+    from tests.audit_support import publish_batch, master_observed, report_submission
+    from iad_core.audit.evidence import AuditEvidence
+    jobs, dataset_id, upstream, role = native_audit
+    run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
+    service = AuditQualityReports(jobs.db)
+    with pytest.raises(ValueError, match='已完成'):
+        service.recalculate(run_id)
+    for sample in jobs.samples(run_id):
+        save_image(jobs, run_id, sample, quality_observation=dict(complete=True,
+            defects=[], normal=dict(hard=True, hard_type='结构边缘', confusable=False, texture=None)))
+    publish_batch(jobs, run_id)
+    reports = AuditReports(jobs.db)
+    reports.begin(run_id)
+    master_observed(jobs, run_id, reports.records(run_id, {}),
+        [AuditEvidence(jobs).prepare(run_id, sample.sample_id, sample.sample_id).evidence_id for sample in jobs.samples(run_id)])
+    preview = service.preview(run_id, dict(redundancy_reviewed=True))
+    reports.commit(run_id, report_submission(quality_assessment=preview.assessment.model_dump()))
+    assert jobs.finish(run_id)['status'] == 'COMPLETED'
+    originals = [sample.model_dump_json() for sample in jobs.samples(run_id)]
+    original_report = AuditQueries(jobs.db).report(run_id)
+    ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1, settings={'quality_score_weights': {'consistency': 9}}))
+    with jobs.db.connection() as connection:
+        connection.execute("UPDATE audit_workflow_runs SET snapshot_json=json_set(snapshot_json,'$.quality_score_version','1.1') WHERE job_id=?", (run_id,))
+    with pytest.raises(ValueError, match='评分规则'):
+        service.finalize(run_id, preview.assessment)
+    score = service.recalculate(run_id)
+    assert score.version == '1.2'
+    assert score.weights == pytest.approx({'consistency': .8, 'diversity': .15, 'redundancy': .05})
+    assert jobs.snapshot(run_id).quality_score_version == '1.2'
+    assert reports.session(run_id).result.quality_score == score
+    view = AuditQueries(jobs.db).report(run_id)
+    assert view.quality_score == score
+    assert view.conclusion == original_report.conclusion
+    assert view.report_cases == original_report.report_cases
+    assert view.evidence_groups.keys() == original_report.evidence_groups.keys()
+    exported = AuditQueries(jobs.db).export(run_id)['html']
+    payload = json.loads(exported.split('<script id="audit-report-data" type="application/json">')[1].split('</script>')[0])
+    assert payload['report']['quality_score'] == score.model_dump(mode='json')
+    assert [sample.model_dump_json() for sample in jobs.samples(run_id)] == originals
+    assert service.recalculate(run_id) == score

@@ -6,6 +6,7 @@ export interface ChartDatum {
     label: string;
     value: number;
     tone?: ChartTone;
+    details?: string;
 }
 export interface ChartSeries {
     label: string;
@@ -33,6 +34,11 @@ export type ChartSpec = {
     type: 'donut';
     rows: readonly ChartDatum[];
     unit: string;
+    format?: ChartFormat;
+    center?: {
+        label: string;
+        value: number | null;
+    };
 } | {
     type: 'distribution';
     series: readonly HistogramSeries[];

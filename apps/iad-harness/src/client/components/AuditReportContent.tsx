@@ -42,10 +42,12 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
       <p>{report.conclusion||'整体分析尚未完成。'}</p>
       {stats&&<p>已检查 {stats.completed_images} 张图像，其中 {stats.suspect_images} 张需要复核。
         {!!sources.length&&<>已有的一致性检查对 {compared} 张图像做过跨图比较。</>}</p>}
-      {report.quality_score&&<AuditScoreSummary score={report.quality_score}/>}
-      <AuditReportChart kind="outcomes" title="本轮审计结果" unit="张" rows={[
-        {label:'审计正常',value:stats?.normal_images??report.distribution.normal??0},
-        {label:'发现疑点',value:report.suspect_samples},{label:'未完成',value:report.total_samples-report.audited_samples}]}/>
+      <div className="iad-chart-pair">
+        {report.quality_score&&<AuditScoreSummary score={report.quality_score}/>}
+        <AuditReportChart kind="outcomes" title="本轮审计结果" unit="张" rows={[
+          {label:'审计正常',value:stats?.normal_images??report.distribution.normal??0},
+          {label:'发现疑点',value:report.suspect_samples},{label:'未完成',value:report.total_samples-report.audited_samples}]}/>
+      </div>
     </AuditReportSection>
     {report.quality_score&&<AuditReportScore report={report} imageUrl={imageUrl}/>}
     <AuditReportDistribution key={report.run_id} report={report}/>
