@@ -52,7 +52,7 @@ class AuditQualityReports:
             labels = {item.annotation_id: item.raw_label for item in record.annotations}
             images.append(QualityImage(sample_id=sample.sample_id, dataset_id=record.sample.dataset_id,
                 completed=sample.state == 'COMPLETED' and final is not None and final.execution_status == 'completed',
-                findings=[item.type for item in final.findings] if final else [],
+                consistency_categories=sample.consistency.categories,
                 observation_complete=observation.complete if observation else False,
                 is_normal=AnalysisSourceRoles.resolve(record.dataset_format, record.sample.quality_status,
                     record.sample.annotation_availability.status, len(record.annotations)) == 'normal',
@@ -114,7 +114,7 @@ class AuditQualityReports:
             raise ValueError('评分证据不完整，不能更新已完成报告')
         stored = stored.model_copy(update={'quality_score':preview.score, 'quality_assessment':preview.assessment})
         queries = AuditQueries(self.db)
-        report = AuditPresentation(queries).report(run_id, quality_score=preview.score)
+        report = AuditPresentation(queries).report(run_id, quality_score=preview.score).model_copy(update={'export_ready':True})
         html = AuditHtmlReport(queries).render(run_id, report=report)['html']
         with self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')

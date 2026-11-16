@@ -43,7 +43,7 @@ def batch_submission(jobs, run_id, discoveries=(), review_requests=(), *, commit
     from iad_core.audit.batches import AuditBatches
     from iad_core.audit.report_models import AuditDiscovery, AuditDiscoveryBody
     context = AuditBatches(jobs).context(run_id)
-    submission = dict(commit_key=commit_key or str(uuid4()), batch_number=context['batch']['number'],
+    submission = dict(commit_key=commit_key or str(uuid4()),
         base_revision=context['revision'], discoveries=list(discoveries), review_requests=list(review_requests))
     if jobs.snapshot(run_id).context_policy != 'evidence-on-demand-v1': return submission
     prior = {item.group_id:item for item in AuditReports(jobs.db).session(run_id).discoveries}

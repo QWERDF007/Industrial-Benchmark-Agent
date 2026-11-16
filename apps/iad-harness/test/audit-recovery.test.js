@@ -57,6 +57,7 @@ test('killing the audit owner after a committed image preserves its final and re
   const settings=await runtime.bridge.execute('module_settings_get',{module:'audit'});
   await runtime.bridge.execute('module_settings_save',{module:'audit',expected_revision:settings.revision,settings:{model:null,concurrency:2}});
   await runtime.scheduler.resume(committed.run_id);await runtime.scheduler.whenIdle();
+  const restoredCalls=wire.length;
   await runtime.scheduler.resume(committed.run_id);await runtime.scheduler.whenIdle();
   const status=await runtime.bridge.execute('audit_status',{run_id:committed.run_id});
   assert.equal(status.status,'COMPLETED',JSON.stringify(status));assert.equal(status.completed,2);assert.equal(status.failed,0);
@@ -65,7 +66,8 @@ test('killing the audit owner after a committed image preserves its final and re
   assert.equal(samples.length,2);assert.equal(new Set(samples.map(item=>item.session_id)).size,2);
   assert.deepEqual(samples.find(item=>item.sample_id===committed.sample.sample_id).result,committed.final);
   assert.equal(wire.filter(item=>item.sample_id===committed.sample.sample_id).length,1);
-  assert.equal(wire.length,4);assert.deepEqual(errors,[]);
+  assert.equal(wire.filter(item=>item.sample_id!==null).length,2);
+  assert.equal(wire.length,restoredCalls,'已完成作业再次恢复不增加模型请求');assert.deepEqual(errors,[]);
   for(const sample of samples){
     const trace=await runtime.host.read(sample.session_id);
     assert.equal(trace.events.filter(event=>event.type==='iad/job'&&event.data.value?.kind==='audit-final').length,1);

@@ -4,7 +4,7 @@ export declare class AnalysisPromptContext {
     constructor(snapshot: AnalysisWorkflowSnapshot);
     catalog(catalog: AnalysisCatalog): {
         summary: import("../../shared/domain.generated.js").Summary6;
-        limitations: import("../../shared/domain.generated.js").Limitations31;
+        limitations: import("../../shared/domain.generated.js").Limitations32;
         unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
         directions: {
             change_reason: import("../../shared/domain.generated.js").ChangeReason1;
@@ -13,7 +13,7 @@ export declare class AnalysisPromptContext {
             instruction: import("../../shared/domain.generated.js").Instruction11;
             applies_to: import("../../shared/domain.generated.js").AppliesTo1;
             rationale: import("../../shared/domain.generated.js").Rationale1;
-            limitations: import("../../shared/domain.generated.js").Limitations30;
+            limitations: import("../../shared/domain.generated.js").Limitations31;
             direction_id: import("../../shared/domain.generated.js").DirectionId7;
             dataset_ids: import("../../shared/domain.generated.js").DatasetIds9;
             predecessor_direction_ids: import("../../shared/domain.generated.js").PredecessorDirectionIds;
@@ -74,7 +74,7 @@ export declare class AnalysisPromptContext {
         context_policy: string;
         catalog: {
             summary: import("../../shared/domain.generated.js").Summary6;
-            limitations: import("../../shared/domain.generated.js").Limitations31;
+            limitations: import("../../shared/domain.generated.js").Limitations32;
             unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
             directions: {
                 change_reason: import("../../shared/domain.generated.js").ChangeReason1;
@@ -83,7 +83,7 @@ export declare class AnalysisPromptContext {
                 instruction: import("../../shared/domain.generated.js").Instruction11;
                 applies_to: import("../../shared/domain.generated.js").AppliesTo1;
                 rationale: import("../../shared/domain.generated.js").Rationale1;
-                limitations: import("../../shared/domain.generated.js").Limitations30;
+                limitations: import("../../shared/domain.generated.js").Limitations31;
                 direction_id: import("../../shared/domain.generated.js").DirectionId7;
                 dataset_ids: import("../../shared/domain.generated.js").DatasetIds9;
                 predecessor_direction_ids: import("../../shared/domain.generated.js").PredecessorDirectionIds;
@@ -166,7 +166,7 @@ export declare class AnalysisPromptContext {
             reviewed: import("../../shared/domain.generated.js").Reviewed;
             catalog: {
                 summary: import("../../shared/domain.generated.js").Summary6;
-                limitations: import("../../shared/domain.generated.js").Limitations31;
+                limitations: import("../../shared/domain.generated.js").Limitations32;
                 unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
                 directions: {
                     change_reason: import("../../shared/domain.generated.js").ChangeReason1;
@@ -175,7 +175,7 @@ export declare class AnalysisPromptContext {
                     instruction: import("../../shared/domain.generated.js").Instruction11;
                     applies_to: import("../../shared/domain.generated.js").AppliesTo1;
                     rationale: import("../../shared/domain.generated.js").Rationale1;
-                    limitations: import("../../shared/domain.generated.js").Limitations30;
+                    limitations: import("../../shared/domain.generated.js").Limitations31;
                     direction_id: import("../../shared/domain.generated.js").DirectionId7;
                     dataset_ids: import("../../shared/domain.generated.js").DatasetIds9;
                     predecessor_direction_ids: import("../../shared/domain.generated.js").PredecessorDirectionIds;
@@ -235,7 +235,7 @@ export declare class AnalysisPromptContext {
         }[];
     };
     finalization(context: AnalysisFinalizationContext): AnalysisFinalizationContext | {
-        base_revision: import("../../shared/domain.generated.js").BaseRevision8;
+        base_revision: import("../../shared/domain.generated.js").BaseRevision9;
         reviewed_entry_ids: import("../../shared/domain.generated.js").ReviewedEntryIds;
         pending_entry_ids: import("../../shared/domain.generated.js").PendingEntryIds;
         direction_reviews: import("../../shared/domain.generated.js").DirectionReviews2;
@@ -249,7 +249,7 @@ export declare class AnalysisPromptContext {
         entries: import("../../shared/domain.generated.js").Entries2;
         directions: import("../../shared/domain.generated.js").Directions14;
         summary: import("../../shared/domain.generated.js").Summary13;
-        limitations: import("../../shared/domain.generated.js").Limitations56;
+        limitations: import("../../shared/domain.generated.js").Limitations57;
         unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions15;
         selected_directions: {
             ref: import("../../shared/domain.generated.js").Ref;
@@ -273,7 +273,7 @@ export declare class AnalysisPromptContext {
         context_policy: string;
         catalog: {
             summary: import("../../shared/domain.generated.js").Summary6;
-            limitations: import("../../shared/domain.generated.js").Limitations31;
+            limitations: import("../../shared/domain.generated.js").Limitations32;
             unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
             directions: {
                 change_reason: import("../../shared/domain.generated.js").ChangeReason1;
@@ -282,7 +282,7 @@ export declare class AnalysisPromptContext {
                 instruction: import("../../shared/domain.generated.js").Instruction11;
                 applies_to: import("../../shared/domain.generated.js").AppliesTo1;
                 rationale: import("../../shared/domain.generated.js").Rationale1;
-                limitations: import("../../shared/domain.generated.js").Limitations30;
+                limitations: import("../../shared/domain.generated.js").Limitations31;
                 direction_id: import("../../shared/domain.generated.js").DirectionId7;
                 dataset_ids: import("../../shared/domain.generated.js").DatasetIds9;
                 predecessor_direction_ids: import("../../shared/domain.generated.js").PredecessorDirectionIds;
@@ -352,7 +352,7 @@ export declare class AnalysisPromptContext {
         }[];
         observation_catalog?: {
             summary: import("../../shared/domain.generated.js").Summary6;
-            limitations: import("../../shared/domain.generated.js").Limitations31;
+            limitations: import("../../shared/domain.generated.js").Limitations32;
             unresolved_questions: import("../../shared/domain.generated.js").UnresolvedQuestions;
             directions: {
                 change_reason: import("../../shared/domain.generated.js").ChangeReason1;
@@ -361,7 +361,7 @@ export declare class AnalysisPromptContext {
                 instruction: import("../../shared/domain.generated.js").Instruction11;
                 applies_to: import("../../shared/domain.generated.js").AppliesTo1;
                 rationale: import("../../shared/domain.generated.js").Rationale1;
-                limitations: import("../../shared/domain.generated.js").Limitations30;
+                limitations: import("../../shared/domain.generated.js").Limitations31;
                 direction_id: import("../../shared/domain.generated.js").DirectionId7;
                 dataset_ids: import("../../shared/domain.generated.js").DatasetIds9;
                 predecessor_direction_ids: import("../../shared/domain.generated.js").PredecessorDirectionIds;

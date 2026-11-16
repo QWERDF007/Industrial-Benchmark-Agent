@@ -123,9 +123,8 @@ class AuditDiscovery(AuditDiscoveryBody):
         return len({ref.sample_id for ref in [*self.support_refs,*self.counter_refs]})
 
 
-class AuditBatchCommit(AnalysisModel):
+class AuditGlobalCommit(AnalysisModel):
     commit_key: NonBlankText
-    batch_number: int = Field(ge=1)
     base_revision: int = Field(ge=0)
     discoveries: list[AuditDiscovery]
     review_requests: list[AuditReviewRequest] = Field(default_factory=list)
@@ -144,9 +143,8 @@ class AuditRepresentativeChange(AnalysisModel):
     representatives: list[AuditRepresentative]
 
 
-class AuditBatchDelta(AnalysisModel):
+class AuditReviewCommit(AnalysisModel):
     commit_key: NonBlankText
-    batch_number: int = Field(ge=1)
     base_revision: int = Field(ge=0)
     discoveries: list[AuditDiscoveryBody] = Field(description='只提交新增或正文变化的完整发现。未变传[]；支持、反例和精选分别提交。')
     evidence_changes: list[AuditEvidenceChange] = Field(default_factory=list,

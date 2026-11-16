@@ -164,7 +164,19 @@ def audit_agent_discovery(args, db_path):
 
 
 def audit_agent_report_commit(args, db_path):
-    return AuditReports(workbench(db_path).db).commit(args['run_id'],args['submission']).model_dump(mode='json')
+    from iad_core.audit.report_drafts import AuditReportDrafts
+    return AuditReportDrafts(workbench(db_path).db).finalize(args['run_id'],args['submission']).model_dump(mode='json')
+
+
+def audit_agent_report_draft(args, db_path):
+    from iad_core.audit.report_drafts import AuditReportDrafts
+    drafts = AuditReportDrafts(Database(db_path))
+    return (drafts.save(args['run_id'],args['submission']) if 'submission' in args else drafts.read(args['run_id'])).model_dump(mode='json')
+
+
+def audit_agent_observation(args, db_path):
+    from iad_core.audit.observation_notes import AuditObservationNotes
+    return AuditObservationNotes(Database(db_path)).save(args['run_id'],args['session_id'],args['note'])
 
 
 def audit_agent_report_evidence(args, db_path):
@@ -193,22 +205,26 @@ def audit_job_prompts(args, db_path):
         ('报告用户提示词',snapshot.report_instruction))])
 
 
-def audit_agent_batch(args, db_path):
-    batch=AuditBatches(AuditState(Database(db_path))).begin(args['run_id'])
-    return batch.model_dump(mode='json') if batch else None
+def audit_agent_prepare_observations(args, db_path):
+    AuditBatches(AuditState(Database(db_path))).prepare(args['run_id'])
+    return {}
 
 
-def audit_agent_batch_context(args, db_path):
-    return AuditBatches(AuditState(Database(db_path))).context(args['run_id'])
+def audit_agent_review_context(args, db_path):
+    from iad_core.audit.observation_notes import AuditObservationNotes
+    from iad_core.audit.report_drafts import AuditReportDrafts
+    db = Database(db_path)
+    context = AuditBatches(AuditState(db)).context(args['run_id'])
+    session = AuditReports(db).session(args['run_id'])
+    return {**context, 'observation_notes':[note.model_dump(mode='json') for note in AuditObservationNotes(db).read(args['run_id'],session.session_id)],
+        'report_draft':AuditReportDrafts(db).read(args['run_id']).model_dump(mode='json')}
 
 
-def audit_agent_batch_commit(args, db_path):
+def audit_agent_review_commit(args, db_path):
     from iad_core.audit.report_models import AuditDiscoveryIndex
     state = AuditState(workbench(db_path).db)
     result = AuditBatches(state).publish(args['run_id'],args['submission'])
-    if state.snapshot(args['run_id']).context_policy == 'evidence-on-demand-v1':
-        return dict(revision=result.revision, discoveries=[AuditDiscoveryIndex.capture(item).model_dump(mode='json') for item in result.discoveries])
-    return result.model_dump(mode='json')
+    return dict(revision=result.revision, discoveries=[AuditDiscoveryIndex.capture(item).model_dump(mode='json') for item in result.discoveries])
 
 
 def audit_agent_rechecks(args, db_path):
@@ -225,5 +241,5 @@ AUDIT_AGENT_OPERATIONS = (audit_agent_configuration,audit_agent_start,audit_agen
     audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,
     audit_agent_prepare_inputs,audit_agent_report_begin,audit_agent_report_state,audit_agent_report_session_created,
     audit_agent_report_statistics,audit_agent_distribution,audit_agent_quality_score,audit_agent_report_records,audit_agent_discovery,
-    audit_agent_report_commit,audit_agent_report_evidence,audit_agent_report_failure,audit_job_prompts,
-    audit_agent_batch,audit_agent_batch_context,audit_agent_batch_commit,audit_agent_rechecks,audit_agent_versions)
+    audit_agent_report_commit,audit_agent_report_draft,audit_agent_observation,audit_agent_report_evidence,audit_agent_report_failure,audit_job_prompts,
+    audit_agent_prepare_observations,audit_agent_review_context,audit_agent_review_commit,audit_agent_rechecks,audit_agent_versions)

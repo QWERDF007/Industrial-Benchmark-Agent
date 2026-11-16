@@ -122,20 +122,11 @@ class AuditPresentation:
         evidence_sets.extend(('scope:'+item.source_status,item.representatives) for item in report.consistency_scopes)
         if report.quality_score:
             from iad_core.audit.report_models import AuditRepresentative
-            from iad_core.audit.reports import AuditReports
-            observed = AuditReports(self.queries.db).observed(run_id)
             for score in [report.quality_score, *report.quality_score.dataset_scores]:
                 prefix = 'score:' + (score.dataset_id + ':' if score.dataset_id else '')
                 for item in score.items:
-                    if not item.deduction:
-                        continue
-                    representatives = []
-                    for sample_id in item.sample_ids:
-                        if evidence.prepare(run_id,sample_id,sample_id).evidence_id in observed:
-                            representatives.append(AuditRepresentative(sample_id=sample_id,role='representative',
-                                reason=item.scenario or item.label))
-                        if len(representatives) == 4:
-                            break
+                    representatives = [AuditRepresentative(sample_id=sample_id,role='representative',
+                        reason=item.scenario or item.label) for sample_id in item.sample_ids[:4]]
                     evidence_sets.append((prefix+item.code,representatives))
         for group_id,representatives in evidence_sets:
             images, counts = [], Counter()

@@ -2,6 +2,8 @@ from collections import Counter, defaultdict
 
 from scipy.cluster.hierarchy import DisjointSet
 
+from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES
+
 from iad_core.audit.quality_models import (
     AuditScoreWeights, QualityDimension, QualityImage, QualityScore, QualityScoreItem, QualitySceneAlias,
 )
@@ -69,11 +71,11 @@ class AuditQualityScorer:
         buckets = {code: [] for code in ('category_mismatch', 'missing_annotation', 'extra_annotation')}
         for image in images:
             for code in buckets:
-                if code in image.findings or code == 'category_mismatch' and 'image_label_mismatch' in image.findings:
+                if ISSUE_CATEGORIES[code] in image.consistency_categories:
                     buckets[code].append(image.sample_id)
                     break
         for code in ('position_difference', 'split', 'merge'):
-            buckets[code] = [image.sample_id for image in images if code in image.findings]
+            buckets[code] = [image.sample_id for image in images if ISSUE_CATEGORIES[code] in image.consistency_categories]
         return [QualityScoreItem(code=code, dimension='consistency', direction='标注一致性',
             label=label, maximum=100 * severity, count=len(buckets[code]), denominator=len(images),
             ratio=len(buckets[code]) / len(images) if images else None,

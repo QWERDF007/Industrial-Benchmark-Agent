@@ -5,6 +5,11 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 
 
+class AuditObservationNote(AnalysisModel):
+    evidence_ids: list[NonBlankText] = Field(min_length=1)
+    facts: list[NonBlankText] = Field(min_length=1, description='已看清的简短视觉事实及关键差别。成功保存后释放已观察附件，需要复看时显式读图。')
+
+
 class AuditResultReference(AnalysisModel):
     sample_id: NonBlankText
     result_revision: int = Field(ge=1)

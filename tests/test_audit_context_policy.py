@@ -32,7 +32,7 @@ def test_incremental_discoveries_keep_complete_evidence_without_repeating_it_in_
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
     batches, reports = AuditBatches(jobs), AuditReports(jobs.db)
     samples = jobs.samples(run_id)
-    for sample in samples[:2]: save_image(jobs, run_id, sample)
+    for sample in samples: save_image(jobs, run_id, sample)
     first = samples[0]
     page = AuditEvidence(jobs).read(run_id, first.sample_id, dict(sample_id=first.sample_id))
     master_observed(jobs, run_id, batches.context(run_id), [page.evidence_id])
@@ -40,7 +40,7 @@ def test_incremental_discoveries_keep_complete_evidence_without_repeating_it_in_
     body = dict(group_id='edge', kind='visual_pattern', dimension='visual_coverage', status='pending', title='主体边缘',
         description='主体边缘可辨，不能由可见外观直接认定标注错误。', visual_signature='可辨的主体外缘',
         annotation_relation='沿原始标注核查', scope='冻结已审范围')
-    submission = dict(commit_key='first', batch_number=1, base_revision=0, discoveries=[body],
+    submission = dict(commit_key='first', base_revision=0, discoveries=[body],
         evidence_changes=[dict(group_id='edge', action='add', role='support', reference=ref, reason='完整主图可见主体外缘。')],
         representative_changes=[dict(group_id='edge', representatives=[dict(sample_id=first.sample_id, role='representative', reason='保留了主体与背景关系。')])])
     first_state = batches.publish(run_id, submission)
@@ -50,10 +50,9 @@ def test_incremental_discoveries_keep_complete_evidence_without_repeating_it_in_
     assert 'support_refs' not in context['discoveries'][0]
     assert 'description' not in context['discoveries'][0]
     assert context['discoveries'][0]['support_image_count'] == 1
-    for sample in samples[2:4]: save_image(jobs, run_id, sample)
     master_observed(jobs, run_id, batches.context(run_id))
     second_ref = dict(sample_id=samples[2].sample_id, result_revision=1, kind='image', index=None)
-    changes = dict(commit_key='second', batch_number=2, base_revision=1, discoveries=[],
+    changes = dict(commit_key='second', base_revision=1, discoveries=[],
         evidence_changes=[dict(group_id='edge', action='add', role='support', reference=second_ref, reason='另一张完整主图也可辨主体外缘。')])
     invalid = {**changes, 'evidence_changes':[dict(group_id='absent', action='add', role='support', reference=second_ref, reason='不存在的发现。')]}
     with pytest.raises(ValueError, match='发现'): batches.publish(run_id, invalid)
@@ -67,10 +66,9 @@ def test_incremental_discoveries_keep_complete_evidence_without_repeating_it_in_
     detail = reports.discovery(run_id, dict(group_id='edge', page=1, page_size=1))
     assert detail['total'] == 2 and len(detail['items']) == 1
     assert detail['discovery']['description'] == body['description']
-    for sample in samples[4:]: save_image(jobs, run_id, sample)
     master_observed(jobs, run_id, batches.context(run_id))
     revised = {**body, 'description':'主体边缘可辨，但需在相同标注组织下比较。'}
-    final_delta = dict(commit_key='third', batch_number=3, base_revision=2, discoveries=[revised])
+    final_delta = dict(commit_key='third', base_revision=2, discoveries=[revised])
     with pytest.raises(ValueError, match='逐项复核'): batches.publish(run_id, final_delta)
     final_delta['evidence_changes'] = [dict(group_id='edge', action='keep', role='support', reference=item,
         reason='重新核查已有原图结果，仍支持限定后的主张。') for item in (ref, second_ref)]

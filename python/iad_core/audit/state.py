@@ -55,6 +55,7 @@ class AuditState:
 
     def context(self, run_id: str, sample_id: str) -> AuditAgentContext:
         from iad_core.audit.batches import AuditBatches
+        from iad_core.audit.observation_notes import AuditObservationNotes
         snapshot, sample = self.snapshot(run_id), self.sample(run_id, sample_id)
         review = next((item for item in AuditBatches(self).rechecks(run_id) if item.sample_id==sample_id),None)
         return AuditAgentContext(quality_score_version=snapshot.quality_score_version,job_id=run_id, sample_id=sample_id, session_id=sample.session_id,
@@ -62,7 +63,8 @@ class AuditState:
             consistency=AuditConsistencyContext(**sample.consistency.model_dump(include=set(AuditConsistencyContext.model_fields))),
             knowledge=snapshot.knowledge,saved_progress=sample.result if sample.result and sample.result.execution_status!='completed' else None,
             batch=AuditBatches(self).for_sample(run_id,sample_id),review=review,
-            prior_result=sample.result if review else None)
+            prior_result=sample.result if review else None,
+            observation_notes=AuditObservationNotes(self.db).read(run_id,sample.session_id))
 
     def record(self, run_id: str, target_id: str, sample_id: str) -> AnalysisRegistration:
         sample = self.sample(run_id, target_id)

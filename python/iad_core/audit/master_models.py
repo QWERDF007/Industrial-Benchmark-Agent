@@ -57,6 +57,7 @@ class AuditMasterContext(AnalysisModel):
     batch: AuditBatch | None
     revision: int
     items: list[AuditMasterRecord]
+    items_scope: Literal['unread_versions'] = 'unread_versions'
     discoveries: list[AuditDiscovery | AuditDiscoveryIndex]
     context_policy: ContextPolicy = 'legacy'
     reviews: list[AuditRecheck]

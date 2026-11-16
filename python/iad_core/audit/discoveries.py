@@ -1,13 +1,13 @@
 import json
 
-from iad_core.audit.report_models import AuditBatchDelta, AuditDiscovery, AuditDiscoveryBody, AuditDiscoveryQuery
+from iad_core.audit.report_models import AuditReviewCommit, AuditDiscovery, AuditDiscoveryBody, AuditDiscoveryQuery
 
 
 class AuditDiscoveries:
     def __init__(self, reports):
         self.reports = reports
 
-    def apply(self, current: list[AuditDiscovery], submission: AuditBatchDelta) -> list[AuditDiscovery]:
+    def apply(self, current: list[AuditDiscovery], submission: AuditReviewCommit) -> list[AuditDiscovery]:
         entries = {item.group_id:item.model_dump(mode='json', exclude_computed_fields=True) for item in current}
         if len({item.group_id for item in submission.discoveries}) != len(submission.discoveries):
             raise ValueError('同次提交不能重复修改同一发现')

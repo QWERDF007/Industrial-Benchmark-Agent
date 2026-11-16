@@ -4,7 +4,7 @@ import json
 from uuid import uuid4
 
 from iad_core.audit.delegation_models import AuditBatch, AuditClue, AuditClueIndex, AuditRecheck
-from iad_core.audit.report_models import AuditBatchCommit, AuditBatchDelta, AuditDiscovery, AuditDiscoveryIndex, AuditGlobalState
+from iad_core.audit.report_models import AuditGlobalCommit, AuditReviewCommit, AuditDiscovery, AuditDiscoveryIndex, AuditGlobalState
 from iad_core.audit.discoveries import AuditDiscoveries
 from iad_core.audit.reports import AuditReports
 
@@ -50,38 +50,36 @@ class AuditBatches:
                 for row in connection.execute('SELECT * FROM audit_image_versions WHERE job_id=? AND sample_id=? ORDER BY revision',(run_id,sample_id))]
 
     def begin(self, run_id: str) -> AuditBatch | None:
-        with self.db.connection() as connection:
-            row = connection.execute("SELECT * FROM audit_batches WHERE job_id=? AND state!='COMPLETED' ORDER BY number LIMIT 1",(run_id,)).fetchone()
-            if row is None:
-                return None
-            if row['clues_revision'] is None:
-                revision = connection.execute('SELECT COALESCE(MAX(revision),0) FROM audit_global_versions WHERE job_id=?',(run_id,)).fetchone()[0]
-                connection.execute("UPDATE audit_batches SET state='AUDITING',clues_revision=? WHERE job_id=? AND number=?",(revision,run_id,row['number']))
-        return next(batch for batch in self.list(run_id) if batch.number==row['number'])
+        self.prepare(run_id)
+        self.settle(run_id)
+        return next((batch for batch in self.list(run_id) if batch.state != 'COMPLETED'), None)
 
-    def results(self, run_id: str, batch: AuditBatch | None):
-        samples = self.state.samples(run_id)
-        if batch is None:
-            return samples
-        ids = set(batch.sample_ids) | {review.sample_id for review in self.rechecks(run_id,pending_only=False)
-            if review.batch_number==batch.number}
-        return [sample for sample in samples if sample.sample_id in ids]
+    def prepare(self, run_id: str) -> None:
+        self.state.snapshot(run_id)
+        with self.db.connection() as connection:
+            connection.execute("UPDATE audit_batches SET state='AUDITING',clues_revision=0 WHERE job_id=? AND state='PENDING'", (run_id,))
+
+    def settle(self, run_id: str) -> None:
+        with self.db.connection() as connection:
+            connection.execute("""UPDATE audit_batches SET state='COMPLETED' WHERE job_id=? AND NOT EXISTS (
+                SELECT 1 FROM audit_sample_runs s,json_each(audit_batches.sample_ids_json) member
+                WHERE s.job_id=audit_batches.job_id AND s.sample_id=member.value AND s.state IN ('PENDING','RUNNING'))""", (run_id,))
 
     def context(self, run_id: str) -> dict:
         from iad_core.audit.master_models import AuditMasterContext, AuditMasterRecord
         from iad_core.consistency.annotation_issues import ISSUE_TYPES_BY_FORMAT
-        batch = self.begin(run_id)
+        self.settle(run_id)
         reports = AuditReports(self.db)
         session = reports.session(run_id)
         snapshot = self.state.snapshot(run_id)
         on_demand = snapshot.context_policy == 'evidence-on-demand-v1'
-        selected = [] if on_demand and batch is None else self.results(run_id,batch)
-        return AuditMasterContext.model_validate(dict(quality_score_version=snapshot.quality_score_version,kind='audit_records',job_id=run_id,phase='review' if batch else 'report',
-            batch=batch.model_dump(mode='json') if batch else None,revision=session.revision,
+        read = reports.read_versions(run_id)
+        selected = [sample for sample in self.state.samples(run_id) if (sample.sample_id, sample.result_revision) not in read]
+        return AuditMasterContext.model_validate(dict(quality_score_version=snapshot.quality_score_version,kind='audit_records',job_id=run_id,phase='report',
+            batch=None,revision=session.revision,
             items=[AuditMasterRecord.capture(sample) for sample in selected],
             discoveries=[AuditDiscoveryIndex.capture(item) for item in session.discoveries] if on_demand else session.discoveries,
-            reviews=[item.model_dump(mode='json') for item in self.rechecks(run_id,pending_only=False)
-                if not on_demand or batch and item.batch_number == batch.number],
+            reviews=[item.model_dump(mode='json') for item in self.rechecks(run_id,pending_only=False)],
             context_policy=snapshot.context_policy,
             dataset_profile=snapshot.dataset_profile.model_dump(mode='json'),
             applicable_issue_types=ISSUE_TYPES_BY_FORMAT[snapshot.dataset_profile.dataset_format],
@@ -90,7 +88,7 @@ class AuditBatches:
 
     def publish(self, run_id: str, request: dict) -> AuditGlobalState:
         on_demand = self.state.snapshot(run_id).context_policy == 'evidence-on-demand-v1'
-        submission = (AuditBatchDelta if on_demand else AuditBatchCommit).model_validate(request)
+        submission = (AuditReviewCommit if on_demand else AuditGlobalCommit).model_validate(request)
         command = submission.model_dump_json(exclude_computed_fields=True)
         reports = AuditReports(self.db)
         with self.db.connection() as connection:
@@ -101,21 +99,20 @@ class AuditBatches:
                     raise ValueError('同一提交键不能用于不同内容')
                 return AuditGlobalState(revision=saved[0],discoveries=json.loads(saved[1])['discoveries'])
         current = reports.session(run_id)
-        if isinstance(submission, AuditBatchDelta):
+        if isinstance(submission, AuditReviewCommit):
             discoveries = AuditDiscoveries(reports).apply(current.discoveries, submission)
-            materialized = AuditBatchCommit(commit_key=submission.commit_key, batch_number=submission.batch_number,
+            materialized = AuditGlobalCommit(commit_key=submission.commit_key,
                 base_revision=submission.base_revision, discoveries=discoveries, review_requests=submission.review_requests)
         else:
             materialized = submission
         canonical = materialized.model_dump_json(exclude_computed_fields=True)
-        batch = self.begin(run_id)
-        if batch is None or batch.number != submission.batch_number or current.revision != submission.base_revision:
-            raise ValueError('联合分析须对应当前批次与全局版本')
-        samples = self.results(run_id,batch)
+        if current.revision != submission.base_revision:
+            raise ValueError('联合分析须对应当前全局版本')
+        samples = self.state.samples(run_id)
         if any(sample.state in ('PENDING','RUNNING') for sample in samples):
-            raise ValueError('本批图级处理尚未结束')
+            raise ValueError('图级处理尚未结束')
         if {(sample.sample_id,sample.result_revision) for sample in samples} - reports.read_versions(run_id):
-            raise ValueError('主 Agent 尚未实际读取本批全部有效结果')
+            raise ValueError('主 Agent 尚未实际读取全部有效结果')
         if self.rechecks(run_id):
             raise ValueError('定向复审尚未结束')
         reports.validate_discoveries(run_id,materialized.discoveries)
@@ -134,10 +131,8 @@ class AuditBatches:
             if connection.execute('SELECT status FROM job_runs WHERE job_id=?',(run_id,)).fetchone()[0]!='RUNNING':
                 raise ValueError('审计已停止，不能发布联合分析')
             connection.execute('INSERT INTO audit_global_versions(job_id,revision,batch_number,commit_key,submission_json,request_json) VALUES(?,?,?,?,?,?)',
-                (run_id,revision,batch.number,submission.commit_key,canonical,command if on_demand else None))
+                (run_id,revision,0,submission.commit_key,canonical,command if on_demand else None))
             for request in submission.review_requests:
                 connection.execute('''INSERT INTO audit_rechecks(job_id,review_id,batch_number,sample_id,result_revision,request_json)
-                    VALUES(?,?,?,?,?,?)''',(run_id,'review-'+uuid4().hex,batch.number,request.sample_id,request.result_revision,request.model_dump_json()))
-            connection.execute('UPDATE audit_batches SET state=?,review_revision=? WHERE job_id=? AND number=?',
-                ('RECHECKING' if submission.review_requests else 'COMPLETED',revision,run_id,batch.number))
+                    VALUES(?,?,?,?,?,?)''',(run_id,'review-'+uuid4().hex,0,request.sample_id,request.result_revision,request.model_dump_json()))
         return AuditGlobalState(revision=revision,discoveries=materialized.discoveries)

@@ -4,10 +4,11 @@ from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.audit.delegation_models import AuditResultReference
+from iad_core.consistency.conflict_categories import ConflictCategory
 
 
-QualityScoreVersion = Literal['1.1', '1.2']
-QUALITY_SCORE_VERSION: QualityScoreVersion = '1.2'
+QualityScoreVersion = Literal['1.1', '1.2', '1.3']
+QUALITY_SCORE_VERSION: QualityScoreVersion = '1.3'
 
 
 class AuditScoreWeights(AnalysisModel):
@@ -74,7 +75,7 @@ class QualityImage(AnalysisModel):
     sample_id: str
     dataset_id: str
     completed: bool = True
-    findings: list[str] = Field(default_factory=list)
+    consistency_categories: list[ConflictCategory] = Field(default_factory=list)
     observation_complete: bool = False
     is_normal: bool = False
     defects: list[QualityDefect] = Field(default_factory=list)

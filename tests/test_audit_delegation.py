@@ -38,35 +38,24 @@ def test_audit_freezes_roles_and_partitions_the_complete_scope(native_audit):
 
 
 
-def test_published_clues_are_fixed_for_the_next_batch_and_do_not_create_issues(native_audit):
+def test_global_analysis_does_not_add_batch_clues_or_create_issues(native_audit):
     from iad_core.audit.batches import AuditBatches
     jobs,dataset_id,upstream,role = native_audit
     ModuleSettings(jobs.db).save(dict(module='audit',expected_revision=1,settings=dict(batch_size=2)))
     run_id=jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],consistency_job_id=upstream),agent=role)['run_id']
     batches=AuditBatches(jobs)
-    first=batches.begin(run_id)
+    batches.prepare(run_id)
     samples=jobs.samples(run_id)
-    page=AuditEvidence(jobs).read(run_id,samples[0].sample_id,dict(sample_id=samples[0].sample_id))
-    save_image(jobs,run_id,samples[0],observations=[dict(description='边缘亮线。',annotation_ids=[],evidence_ids=[page.evidence_id])])
-    save_image(jobs,run_id,samples[1])
-    discovery=dict(group_id='line',kind='visual_pattern',dimension='visual_coverage',status='pending',title='边缘亮线',
-        description='已观察到亮线，标注关系尚待比较。',visual_signature='沿边缘的细亮线',annotation_relation='原标注未覆盖该现象',
-        scope='冻结已审范围',support_refs=[dict(sample_id=samples[0].sample_id,result_revision=1,kind='observation',index=0)],
-        counter_refs=[],next_batch_focus='核对是否存在相同现象及相反标注关系。',representatives=[
-            dict(sample_id=samples[0].sample_id,role='representative',reason='沿画面边缘可见亮线。')])
-    submission=batch_submission(jobs,run_id,[discovery],commit_key='batch-one')
-    with pytest.raises(ValueError,match='实际读取'):
-        batches.publish(run_id,submission)
-    master_observed(jobs,run_id,batches.context(run_id),[page.evidence_id])
+    for sample in samples: save_image(jobs,run_id,sample)
+    submission=batch_submission(jobs,run_id,commit_key='global')
+    with pytest.raises(ValueError,match='实际读取'): batches.publish(run_id,submission)
+    master_observed(jobs,run_id,batches.context(run_id))
     published=batches.publish(run_id,submission)
-    assert published.revision == 1
-    assert batches.publish(run_id,submission) == published
-    second=batches.begin(run_id)
-    assert second.number == 2 and second.clues_revision == 1
-    context=jobs.context(run_id,samples[2].sample_id)
-    assert context.batch.clues[0].title == '边缘亮线'
-    assert context.batch.clues[0].next_batch_focus == discovery['next_batch_focus']
-    assert AuditReports(jobs.db).statistics(run_id).issue_occurrences == 0
+    assert published.revision==1
+    assert batches.publish(run_id,submission)==published
+    assert batches.begin(run_id) is None
+    assert all(batch.clues==[] and batch.clues_revision==0 for batch in batches.list(run_id))
+    assert AuditReports(jobs.db).statistics(run_id).issue_occurrences==0
 
 
 def test_frozen_profile_uses_original_geometry_and_leaves_unknown_identities_unknown(native_audit):
@@ -131,6 +120,15 @@ def test_selected_benchmark_uses_saved_gold_split_and_leakage_artifacts(dataset,
     registry.save(config,require_existing=True)
     config_path=tmp_path/'benchmark.yaml'
     config_path.write_text(yaml.safe_dump(config.model_dump(mode='json')))
+    from iad_core.duplicate.index import PixelScan
+    from pathlib import Path
+    with db.connection(temporary=True) as connection:
+        scan=PixelScan(connection)
+        for sample in samples.list_by_task(config.task.task_id):
+            path=Path(sample.image_path)
+            scan.stage(sample.sample_id,str(path),hashlib.sha256(path.read_bytes()).hexdigest())
+        published=scan.publish(config.dataset.id)
+        connection.execute('UPDATE main.datasets SET scan_ref=? WHERE dataset_id=?',(published.scan_ref,config.dataset.id))
     output=tmp_path/'benchmark-artifacts'
     built=run_benchmark_pipeline(config.task.task_id,config_path=str(config_path),db_path=db.db_path,
         build_id='real-artifact',output_dir=str(output))
@@ -157,17 +155,18 @@ def test_targeted_recheck_preserves_the_previous_final_and_counts_only_the_activ
     samples=jobs.samples(run_id)
     original=save_image(jobs,run_id,samples[0])
     save_image(jobs,run_id,samples[1])
+    for sample in samples[2:]: save_image(jobs,run_id,sample)
     evidence = AuditEvidence(jobs)
     comparison = evidence.read(run_id, samples[1].sample_id, dict(sample_id=samples[1].sample_id))
     with pytest.raises(ValueError, match='图像不属于'):
         evidence.read(run_id, samples[0].sample_id, dict(sample_id=samples[1].sample_id))
     master_observed(jobs,run_id,batches.context(run_id))
-    batches.publish(run_id,dict(commit_key='request-review',batch_number=1,base_revision=0,discoveries=[],review_requests=[dict(
+    batches.publish(run_id,dict(commit_key='request-review',base_revision=0,discoveries=[],review_requests=[dict(
         sample_id=samples[0].sample_id,result_revision=1,reason='两图的标注关系解释直接冲突，复核当前主图。',
         conflict_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')])]))
     pending=batches.rechecks(run_id)
     assert len(pending)==1
-    assert batches.begin(run_id).number==1
+    assert batches.begin(run_id) is None
     assert jobs.context(run_id,samples[0].sample_id).review.reason.startswith('两图')
     from pathlib import Path
     from PIL import Image
@@ -186,10 +185,10 @@ def test_targeted_recheck_preserves_the_previous_final_and_counts_only_the_activ
     assert batches.history(run_id,samples[0].sample_id)[0].final==original
     assert len(batches.history(run_id,samples[0].sample_id))==2
     statistics=AuditReports(jobs.db).statistics(run_id)
-    assert (statistics.completed_images,statistics.suspect_images,statistics.issue_occurrences)==(2,1,1)
+    assert (statistics.completed_images,statistics.suspect_images,statistics.issue_occurrences)==(6,1,1)
     master_observed(jobs,run_id,batches.context(run_id))
-    batches.publish(run_id,dict(commit_key='review-complete',batch_number=1,base_revision=1,discoveries=[]))
-    assert batches.begin(run_id).number==2
+    batches.publish(run_id,dict(commit_key='review-complete',base_revision=1,discoveries=[]))
+    assert batches.begin(run_id) is None
     assert evidence.read(run_id, samples[0].sample_id, dict(sample_id=samples[1].sample_id)) == comparison
     from iad_core.audit.queries import AuditQueries
     detail=AuditQueries(jobs.db).sample(run_id,samples[0].sample_id)
@@ -206,6 +205,7 @@ def test_incomplete_recheck_keeps_the_previous_effective_final(native_audit):
     samples=jobs.samples(run_id)
     original=save_image(jobs,run_id,samples[0],['coverage'])
     save_image(jobs,run_id,samples[1])
+    for sample in samples[2:]: save_image(jobs,run_id,sample)
     publish_batch(jobs,run_id,review_requests=[dict(sample_id=samples[0].sample_id,result_revision=1,
         reason='对照关系需要复核。',conflict_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')])])
     jobs.session_created(run_id,samples[0].sample_id)
@@ -220,7 +220,7 @@ def test_incomplete_recheck_keeps_the_previous_effective_final(native_audit):
     assert batches.rechecks(run_id,pending_only=False)[0].state=='FAILED'
     assert len(batches.history(run_id,samples[0].sample_id))==1
     statistics=AuditReports(jobs.db).statistics(run_id)
-    assert (statistics.completed_images,statistics.suspect_images,statistics.issue_occurrences)==(2,1,1)
+    assert (statistics.completed_images,statistics.suspect_images,statistics.issue_occurrences)==(6,1,1)
     publish_batch(jobs,run_id,review_requests=[dict(sample_id=samples[0].sample_id,result_revision=1,
         reason='同一处对照仍需核对。',conflict_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')])])
     jobs.session_created(run_id,samples[0].sample_id)
@@ -230,7 +230,7 @@ def test_incomplete_recheck_keeps_the_previous_effective_final(native_audit):
     jobs.resume(run_id)
     reviews=batches.rechecks(run_id,pending_only=False)
     assert [review.state for review in reviews]==['FAILED','PENDING']
-    assert batches.begin(run_id).number==1
+    assert batches.begin(run_id) is None
     assert jobs.sample(run_id,samples[0].sample_id).result==original
     assert AuditEvidence(jobs).read(run_id,samples[0].sample_id,dict(sample_id=samples[1].sample_id)).images
 
@@ -270,7 +270,7 @@ def test_zero_issue_report_still_contains_coverage_capabilities_and_purpose_asse
     for sample in jobs.samples(run_id):
         save_image(jobs,run_id,sample)
     master_observed(jobs,run_id,batches.context(run_id))
-    batches.publish(run_id,dict(commit_key='empty-findings',batch_number=1,base_revision=0,discoveries=[]))
+    batches.publish(run_id,dict(commit_key='empty-findings',base_revision=0,discoveries=[]))
     reports=AuditReports(jobs.db);reports.begin(run_id)
     reports.commit(run_id,dict(commit_key='report',discovery_ids=[],conclusion='可用于视觉探索和内部调试。',
         consistency_analysis='逐图核对，未获得上游候选。',coverage_analysis='覆盖规则背景与主体边缘，尚不能评价未采集场景。',
@@ -363,33 +363,25 @@ def test_model_selects_gallery_size_for_discoveries_and_capabilities(native_audi
 
 
 
-def test_later_batch_receives_the_effective_revision_of_an_earlier_image_recheck(native_audit):
+def test_global_analysis_reads_the_effective_revision_after_recheck(native_audit):
     from iad_core.audit.batches import AuditBatches
     jobs,dataset_id,upstream,role = native_audit
-    ModuleSettings(jobs.db).save(dict(module='audit',expected_revision=1,settings=dict(batch_size=2)))
     run_id=jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],consistency_job_id=upstream),agent=role)['run_id']
     batches=AuditBatches(jobs)
     samples=jobs.samples(run_id)
-    batches.begin(run_id)
-    for sample in samples[:2]:
-        save_image(jobs,run_id,sample)
-    publish_batch(jobs,run_id)
-    batches.begin(run_id)
-    for sample in samples[2:4]:
-        save_image(jobs,run_id,sample)
+    for sample in samples: save_image(jobs,run_id,sample)
     publish_batch(jobs,run_id,review_requests=[dict(sample_id=samples[0].sample_id,result_revision=1,
-        reason='第二批的对照表明首图的覆盖关系需要复核。',
+        reason='跨图对照表明首图的覆盖关系需要复核。',
         conflict_refs=[dict(sample_id=samples[2].sample_id,result_revision=1,kind='image')])])
     save_image(jobs,run_id,samples[0],['revised'],commit_key='recheck')
     context=batches.context(run_id)
     revised=next(item for item in context['items'] if item['sample_id']==samples[0].sample_id)
-    assert revised['result_revision']==2
-    assert revised['final']['state']=='suspect'
-    assert len(context['items'])==3
+    assert revised['result_revision']==2 and revised['final']['state']=='suspect'
+    assert len(context['items'])==1
     with pytest.raises(ValueError,match='实际读取'):
-        batches.publish(run_id,dict(commit_key='unread',batch_number=2,base_revision=2,discoveries=[]))
+        batches.publish(run_id,dict(commit_key='unread',base_revision=1,discoveries=[]))
     publish_batch(jobs,run_id)
-    assert batches.begin(run_id).number==3
+    assert batches.begin(run_id) is None
 
 
 def test_retry_reopens_only_the_batch_with_failed_images(native_audit):
@@ -402,7 +394,7 @@ def test_retry_reopens_only_the_batch_with_failed_images(native_audit):
         save_image(jobs,run_id,sample)
     jobs.failure(run_id,samples[-1].sample_id,'本图模型调用失败')
     master_observed(jobs,run_id,batches.context(run_id))
-    batches.publish(run_id,dict(commit_key='partial',batch_number=1,base_revision=0,discoveries=[]))
+    batches.publish(run_id,dict(commit_key='partial',base_revision=0,discoveries=[]))
     AuditReports(jobs.db).failure(run_id,'整体分析调用失败')
     jobs.finish(run_id)
     jobs.resume(run_id)
@@ -412,7 +404,7 @@ def test_retry_reopens_only_the_batch_with_failed_images(native_audit):
     assert all(sample.result_revision==1 for sample in states[:-1])
 
 
-def test_resume_keeps_unstarted_batches_pending(native_audit):
+def test_resume_preserves_completed_groups_without_waiting_for_master(native_audit):
     from iad_core.audit.batches import AuditBatches
     jobs,dataset_id,upstream,role=native_audit
     ModuleSettings(jobs.db).save(dict(module='audit',expected_revision=1,settings=dict(batch_size=2)))
@@ -420,13 +412,12 @@ def test_resume_keeps_unstarted_batches_pending(native_audit):
     batches=AuditBatches(jobs);batches.begin(run_id)
     for sample in jobs.samples(run_id)[:2]:
         save_image(jobs,run_id,sample)
-    publish_batch(jobs,run_id)
     batches.begin(run_id)
     AuditReports(jobs.db).failure(run_id,'主会话中断')
     jobs.finish(run_id)
     jobs.resume(run_id)
-    assert [batch.state for batch in batches.list(run_id)]==['COMPLETED','AUDITING','PENDING']
-    assert [batch.clues_revision for batch in batches.list(run_id)]==[0,1,None]
+    assert [batch.state for batch in batches.list(run_id)]==['COMPLETED','AUDITING','AUDITING']
+    assert [batch.clues_revision for batch in batches.list(run_id)]==[0,0,0]
 
 
 def test_historical_reports_are_read_only_frozen_artifacts(native_audit):

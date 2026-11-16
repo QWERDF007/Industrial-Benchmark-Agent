@@ -3,9 +3,9 @@ import {randomUUID} from 'node:crypto';
 import {LlmError,MessageId,type ContentBlock} from '@deepseek-ai/dsh-llm';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
 import {defineTool} from '@deepseek-ai/dsh-tools';
-import type {AuditBatch,AuditMasterContext,AuditReportSession,AuditSampleRun,AuditWorkflowSnapshot,ImageSessionLocation,RegistrationMediaPage} from '../../shared/domain.generated.js';
-import {auditQualityScoreParameters,auditBatchParameters,auditRecordParameters,auditReportParameters,auditReportEvidenceParameters} from '../../shared/audit.parameters.generated.js';
-import {auditBatchDeltaParameters,auditDiscoveryParameters} from '../../shared/audit-context.parameters.generated.js';
+import type {AuditMasterContext,AuditReportSession,AuditSampleRun,AuditWorkflowSnapshot,ImageSessionLocation,RegistrationMediaPage} from '../../shared/domain.generated.js';
+import {auditQualityScoreParameters,auditGlobalParameters,auditRecordParameters,auditReportEvidenceParameters} from '../../shared/audit.parameters.generated.js';
+import {auditReviewParameters,auditDiscoveryParameters,auditObservationParameters,auditReportDraftParameters,auditReportFinalizeParameters} from '../../shared/audit-context.parameters.generated.js';
 import {auditDistributionParameters} from '../../shared/distribution.parameters.generated.js';
 import type {PythonBridge} from '../python-bridge/index.js';
 import type {NativeProviders} from '../models/providers.js';
@@ -16,7 +16,7 @@ import {workbenchJsonOutput} from '../tool-output.js';
 import {auditSessionPath} from './session-path.js';
 import {AuditImageAgents} from './images.js';
 
-const masterTools=['audit_quality_score','audit_statistics','audit_distribution','audit_records','audit_report_evidence','audit_batch_commit','audit_report_commit'];
+const masterTools=['audit_observation','audit_report_draft','audit_report_section','audit_quality_score','audit_statistics','audit_distribution','audit_records','audit_report_evidence','audit_review_commit','audit_report_commit'];
 
 export class AuditMasterAgent {
   constructor(private readonly bridge:PythonBridge,private readonly host:JobSessionHost,
@@ -40,7 +40,7 @@ export class AuditMasterAgent {
     const onDemand=snapshot.context_policy==='evidence-on-demand-v1';
     const failures=new Map<string,unknown>();
     let observers!:AuditImageAgents;
-    await this.host.withAgent(state.session_id,{signal,subagents:snapshot.settings.concurrency,evidenceOnDemand:onDemand,
+    await this.host.withAgent(state.session_id,{signal,subagents:snapshot.settings.concurrency,evidenceOnDemand:onDemand,imageHandoffTools:['audit_observation','audit_commit','audit_review_commit','audit_report_section','audit_report_commit'],
       agentOptions:{provider,model:profile.model_id,maxTokens:profile.max_output_tokens??undefined},
       setup:async scope=>{scope.tools.restrict({allow:onDemand?[...masterTools,'audit_discovery']:masterTools});},
       sharedSetup:async scope=>{
@@ -51,6 +51,9 @@ export class AuditMasterAgent {
         const {samples}=await this.bridge.execute<{samples:AuditSampleRun[]}>('audit_agent_samples',identity);
         await scope.inject(['subagents'],injected=>{observers=new AuditImageAgents(this.bridge,runId,attachments,injected.subagents,snapshot,samples,failures);});
         observers.register(scope);
+        scope.tools.register(defineTool({name:'audit_observation',description:'保存当前比较已看清的简短视觉事实及原图引用。成功后释放已观察附件；后续使用文字事实，需要复看时显式读图。最终图级判断仍通过audit_commit提交。',
+          parameters:auditObservationParameters,output:workbenchJsonOutput,
+          execute:(note,execution)=>this.bridge.execute('audit_agent_observation',{...identity,session_id:execution.agent?.id,note},execution.signal)}));
         new NativeModelCalls().attach(scope,{
           start:async request=>{
             const messages=request.request.messages as {content:ContentBlock[]}[];
@@ -89,16 +92,22 @@ export class AuditMasterAgent {
           execute:(query,execution)=>this.bridge.execute('audit_agent_discovery',{...identity,query},execution.signal)}));
         scope.tools.register(defineTool({name:'audit_report_evidence',description:'打开冻结主图的完整原图与原始人工标注，用于跨图比较和选择典型或对照证据。',parameters:auditReportEvidenceParameters,output:nativeMediaOutput,
           execute:async(query,execution)=>attachments.prepare(await this.bridge.execute<RegistrationMediaPage>('audit_agent_report_evidence',{...identity,...query},execution.signal),execution.signal)}));
-        scope.tools.register(defineTool({name:'audit_batch_commit',description:onDemand?
-          '一次提交本批联合分析的发现增量和必要定向复审。discoveries仅新增或正文改变的完整条目；evidence_changes只提交支持、反例引用的add/remove/keep；representative_changes按条目独立替换精选。改变主张或范围须逐项复核旧引用，未改变条目省略。保留撤回历史，不把子报告自动接纳为正式依据。原子成功后结束本轮。':
-          '提交本批联合分析后的完整全局发现账本和必要的定向复审请求。保留支持、反例、范围及撤回记录，下一批只接收发布后的短线索。成功结束本轮。',
-          parameters:onDemand?auditBatchDeltaParameters:auditBatchParameters,output:workbenchJsonOutput,execute:async(submission,execution)=>{
+        scope.tools.register(defineTool({name:'audit_review_commit',description:'提交全范围跨图分析的发现增量和明确冲突的定向复审。discoveries仅新增或正文变化；引用与精选单独变更。成功后结束本轮，有复审时先完成复审再继续报告。无需按批提交，也无需创建没有实际依据的发现。',
+          parameters:onDemand?auditReviewParameters:auditGlobalParameters,output:workbenchJsonOutput,execute:async(submission,execution)=>{
             if(execution.agent?.id!==state.session_id)throw new Error('仅主 Agent 可以发布全局发现');
-            const result=await this.bridge.execute('audit_agent_batch_commit',{...identity,submission},execution.signal);
+            const result=await this.bridge.execute('audit_agent_review_commit',{...identity,submission},execution.signal);
             execution.concludeTurn();return result;
           }}));
-        scope.tools.register(defineTool({name:'audit_report_commit',description:'完成全部批次后提交六维分析和分用途评价，只选择有真实原图的有效全局发现。数量和正式就绪来自程序。成功结束报告。',
-          parameters:auditReportParameters,output:workbenchJsonOutput,execute:async(submission,execution)=>{
+        scope.tools.register(defineTool({name:'audit_report_draft',description:'读取已保存报告草稿及当前版本，用于恢复和局部修正。',parameters:{},output:workbenchJsonOutput,
+          execute:(_query,execution)=>this.bridge.execute('audit_agent_report_draft',identity,execution.signal)}));
+        scope.tools.register(defineTool({name:'audit_report_section',description:'逐章保存或局部修正报告。先保存report_cases及引用，再保存对应分析。fields只填本次变化的字段，省略保留；base_revision取当前草稿版本。成功后释放已观察图片。',
+          parameters:auditReportDraftParameters,output:workbenchJsonOutput,execute:async(submission,execution)=>{
+            if(execution.agent?.id!==state.session_id)throw new Error('仅主 Agent 可以保存整体报告');
+            const result=await this.bridge.execute<{revision:number}>('audit_agent_report_draft',{...identity,submission},execution.signal);
+            return {revision:result.revision,saved_fields:Object.keys(submission.fields)};
+          }}));
+        scope.tools.register(defineTool({name:'audit_report_commit',description:'提交已保存草稿的当前版本，原子生成正式报告。全部字段由audit_report_section保存；验证失败只修正对应字段，再用新草稿版本定稿。成功结束报告。',
+          parameters:auditReportFinalizeParameters,output:workbenchJsonOutput,execute:async(submission,execution)=>{
             if(execution.agent?.id!==state.session_id)throw new Error('仅主 Agent 可以提交整体报告');
             const result=await this.bridge.execute<{job_id:string;state:string;revision:number}>('audit_agent_report_commit',{...identity,submission},execution.signal);
             execution.concludeTurn();return onDemand?{job_id:result.job_id,state:result.state,revision:result.revision}:result;
@@ -107,31 +116,28 @@ export class AuditMasterAgent {
         const abort=()=>agent.cancel({kind:'parent'});
         signal.addEventListener('abort',abort,{once:true});
         try{
+          await this.bridge.execute('audit_agent_prepare_observations',identity,signal);
           while(true){
             signal.throwIfAborted();
-            const batch=await this.bridge.execute<AuditBatch|null>('audit_agent_batch',identity,signal);
-            if(batch)await agent.runMaintenance(async()=>{
-              try{await observers.wave(agent,batch,signal);}
+            await agent.runMaintenance(async()=>{
+              try{await observers.run(agent,signal);}
               finally{
                 for(const message of [...agent.inbox.nextTurn,...agent.inbox.nextStep])
                   if(message.source.kind==='subagent-settled')agent.inbox.remove(message.id);
               }
             });
-            else await this.bridge.execute('audit_agent_report_begin',identity,signal);
-            const context=await this.bridge.execute<AuditMasterContext>('audit_agent_batch_context',identity,signal);
+            await this.bridge.execute('audit_agent_report_begin',identity,signal);
+            const context=await this.bridge.execute<AuditMasterContext>('audit_agent_review_context',identity,signal);
             failures.delete(state.session_id);
             agent.followup({id:MessageId(randomUUID()),role:'user',source:{kind:'user'},content:[
               {type:'text',text:JSON.stringify(context)+'\n\n'},
-              {type:'text',text:batch?master.user_prompt:reportInstruction},
+              {type:'text',text:master.user_prompt+'\n\n'+reportInstruction},
             ]});
             await agent.whenIdle();
             if(failures.has(state.session_id))throw failures.get(state.session_id);
             const saved=await this.bridge.execute<AuditReportSession>('audit_agent_report_state',identity);
-            if(!batch){
-              if(saved.state!=='COMPLETED')throw new Error('主 Agent 结束但未提交整体报告');
-              break;
-            }
-            if(saved.revision===context.revision)throw new Error('主 Agent 结束但未发布本批联合分析');
+            if(saved.state==='COMPLETED')break;
+            if(saved.revision===context.revision)throw new Error('主 Agent 结束但未提交报告或全局复审');
           }
         }finally{signal.removeEventListener('abort',abort);}
       });

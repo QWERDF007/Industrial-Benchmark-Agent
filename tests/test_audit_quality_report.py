@@ -11,7 +11,7 @@ def test_new_jobs_freeze_scoring_and_preview_tracks_effective_versions(native_au
     jobs, dataset_id, upstream, role = native_audit
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
     snapshot = jobs.snapshot(run_id)
-    assert snapshot.quality_score_version == '1.2'
+    assert snapshot.quality_score_version == '1.3'
     ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1, settings={'quality_score_weights': {'consistency': 9}}))
     assert jobs.snapshot(run_id).settings.quality_score_weights.consistency == .8
     for sample in jobs.samples(run_id):
@@ -25,6 +25,19 @@ def test_new_jobs_freeze_scoring_and_preview_tracks_effective_versions(native_au
     changed = preview.assessment.model_copy(update={'redundancy_reviewed': True})
     with pytest.raises(ValueError, match='预览'):
         service.finalize(run_id, changed)
+
+
+def test_consistency_score_uses_frozen_upstream_not_independent_audit_suspicions(native_audit):
+    from iad_core.audit.quality_reports import AuditQualityReports
+    jobs, dataset_id, upstream, role = native_audit
+    run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
+    for sample in jobs.samples(run_id):
+        assert sample.consistency.categories == []
+        save_image(jobs, run_id, sample, findings=('independent',))
+    preview = AuditQualityReports(jobs.db).preview(run_id, {'redundancy_reviewed': False})
+    assert preview.score.dimensions['consistency'].score == 100
+    assert all(item.count == 0 for item in preview.score.items if item.dimension == 'consistency')
+    assert all(sample.result.state == 'suspect' and sample.result.findings for sample in jobs.samples(run_id))
 
 
 def test_quality_observations_must_cover_real_original_annotations(dataset):
@@ -69,6 +82,39 @@ def test_final_report_stores_program_score_and_legacy_preview_is_rejected(native
         AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True))
 
 
+def test_score_galleries_use_frozen_observations_without_master_image_reloads(native_audit):
+    from iad_core.audit.evidence import AuditEvidence
+    from iad_core.audit.quality_reports import AuditQualityReports
+    from iad_core.audit.queries import AuditQueries
+    from iad_core.audit.reports import AuditReports
+    from tests.audit_support import publish_batch, master_observed, report_submission
+    jobs, dataset_id, upstream, role = native_audit
+    run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
+    samples = jobs.samples(run_id)
+    for sample in samples:
+        save_image(jobs, run_id, sample, quality_observation=dict(complete=True,
+            defects=[], normal=dict(hard=True, hard_type='结构边缘', confusable=True, texture='正常纵纹')))
+    publish_batch(jobs, run_id)
+    reports = AuditReports(jobs.db)
+    reports.begin(run_id)
+    master_observed(jobs, run_id, reports.records(run_id, {}))
+    assert reports.observed(run_id) == set()
+    assert all(AuditEvidence(jobs).observed(run_id, sample.sample_id) for sample in samples)
+    preview = AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True))
+    assert next(item for item in preview.score.items if item.code == 'D2').deduction == 0
+    reports.commit(run_id, report_submission(quality_assessment=preview.assessment.model_dump()))
+    view = AuditQueries(jobs.db).report(run_id)
+    for code in ('D1', 'D2', 'D3', 'D4'):
+        item = next(item for item in preview.score.items if item.code == code)
+        gallery = view.evidence_groups['score:' + code]
+        assert [image.sample_id for image in gallery] == item.sample_ids[:4]
+        assert gallery == view.evidence_groups['score:' + dataset_id + ':' + code]
+        assert all(image.image.is_whole_image and image.image.representation == 'raw' for image in gallery)
+    assert all(not view.evidence_groups.get('score:' + item.code)
+        for item in preview.score.items if not item.sample_ids)
+    assert reports.observed(run_id) == set()
+
+
 def test_recalculate_updates_completed_report_and_export_from_frozen_observations(native_audit):
     import json
     from iad_core.audit.quality_reports import AuditQualityReports
@@ -101,12 +147,13 @@ def test_recalculate_updates_completed_report_and_export_from_frozen_observation
     with pytest.raises(ValueError, match='评分规则'):
         service.finalize(run_id, preview.assessment)
     score = service.recalculate(run_id)
-    assert score.version == '1.2'
+    assert score.version == '1.3'
     assert score.weights == pytest.approx({'consistency': .8, 'diversity': .15, 'redundancy': .05})
-    assert jobs.snapshot(run_id).quality_score_version == '1.2'
+    assert jobs.snapshot(run_id).quality_score_version == '1.3'
     assert reports.session(run_id).result.quality_score == score
     view = AuditQueries(jobs.db).report(run_id)
     assert view.quality_score == score
+    assert view.export_ready
     assert view.conclusion == original_report.conclusion
     assert view.report_cases == original_report.report_cases
     assert view.evidence_groups.keys() == original_report.evidence_groups.keys()

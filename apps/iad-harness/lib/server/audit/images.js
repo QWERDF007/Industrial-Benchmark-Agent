@@ -8,7 +8,7 @@ import { analysisEvidenceReferenceParameters } from '../../shared/analysis-conte
 import { nativeMediaOutput } from '../sessions/media.js';
 import { workbenchJsonOutput } from '../tool-output.js';
 import { runConcurrent } from '../jobs/concurrency.js';
-export const auditImageTools = ['audit_context', 'audit_images', 'audit_crop', 'audit_reference', 'audit_commit'];
+export const auditImageTools = ['audit_context', 'audit_images', 'audit_crop', 'audit_reference', 'audit_observation', 'audit_commit'];
 export class AuditImageAgents {
     bridge;
     runId;
@@ -50,11 +50,11 @@ export class AuditImageAgents {
                 return onDemand ? { execution_status: result.execution_status } : result;
             } }));
     }
-    async wave(parent, batch, signal) {
+    async run(parent, signal) {
         const { samples } = await this.bridge.execute('audit_agent_samples', { run_id: this.runId });
         const { reviews } = await this.bridge.execute('audit_agent_rechecks', { run_id: this.runId });
         const requested = new Set(reviews.map(review => review.sample_id));
-        const pending = samples.filter(sample => requested.has(sample.sample_id) || (batch.sample_ids.includes(sample.sample_id) && sample.state !== 'COMPLETED'));
+        const pending = samples.filter(sample => requested.has(sample.sample_id) || sample.state === 'PENDING' || sample.state === 'RUNNING');
         await runConcurrent(pending, this.snapshot.settings.concurrency, signal, async (sample) => {
             const identity = { run_id: this.runId, sample_id: sample.sample_id };
             const childId = SessionId(sample.session_id);

@@ -31,6 +31,13 @@ def initialize_audit_schema(connection: Connection):
         job_id TEXT NOT NULL REFERENCES audit_report_runs(job_id) ON DELETE CASCADE,
         commit_key TEXT NOT NULL, submission_json TEXT NOT NULL,
         PRIMARY KEY(job_id,commit_key))""")
+    connection.execute('''CREATE TABLE IF NOT EXISTS audit_report_drafts (
+        job_id TEXT PRIMARY KEY REFERENCES audit_report_runs(job_id) ON DELETE CASCADE,
+        revision INTEGER NOT NULL, fields_json TEXT NOT NULL)''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS audit_observation_notes (
+        job_id TEXT NOT NULL REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL, ordinal INTEGER NOT NULL, note_json TEXT NOT NULL,
+        PRIMARY KEY(job_id,session_id,ordinal))''')
 
     connection.execute('DROP TABLE IF EXISTS audit_report_reads')
     for column in ('generation','groups_json'):

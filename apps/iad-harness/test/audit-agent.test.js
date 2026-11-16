@@ -50,10 +50,11 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
       assert.equal(context.target.annotations.length,2);
       if(!body.messages.some(message=>message.role==='assistant'))
         assert.equal(actual.length,3,'首次请求必须联合发送主图、全部标注10%局部与一致性分析');
-      else if(actual.length)assert.equal(actual.length,pages.at(-1).images.length,'后续请求只发送本次新返回的图片');
+      else if(actual.length)assert.equal(actual.length,outputs.some(output=>output?.saved)?pages.at(-1).images.length:pages.flatMap(page=>page.images).length,'比较图片保留至观察保存，保存后不再发送历史图片');
       assert.ok(pages.every(page=>!page.error));
       let call;
       if(withKnowledge&&pages.length===1)call={name:'audit_reference',arguments:{evidence_id:context.knowledge.entries[0].check[context.sample_id.endsWith(':1.png')?'support_evidence_ids':'counter_evidence_ids'][0]}};
+      else if(withKnowledge&&pages.length===2&&!outputs.some(output=>output?.saved))call={name:'audit_observation',arguments:{evidence_ids:pages.map(page=>page.evidence_id),facts:['已观察完整主图和知识对照，主体边缘可辨；下一步只需核对局部。']}};
       else if(withKnowledge&&pages.length===2)call={name:'audit_crop',arguments:{sample_id:context.sample_id,bbox:[1,2,11,12]}};
       else {
         const images=actual.length?pages.at(-1).images:[];

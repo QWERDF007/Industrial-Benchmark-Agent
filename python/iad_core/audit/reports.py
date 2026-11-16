@@ -192,7 +192,7 @@ class AuditReports:
                 'representative':{ref.sample_id for ref in discovery.support_refs},
                 'counter':{ref.sample_id for ref in discovery.counter_refs}},required=final and discovery.status!='withdrawn')
 
-    def commit(self, run_id: str, request: dict) -> AuditReportSession:
+    def commit(self, run_id: str, request: dict, *, draft_revision: int | None = None) -> AuditReportSession:
         from iad_core.audit.batches import AuditBatches
         submission = AuditReportCommit.model_validate(request)
         canonical = submission.model_dump_json(exclude_computed_fields=True)
@@ -205,7 +205,7 @@ class AuditReports:
                 raise ValueError('同一报告提交键不能用于不同内容')
             return current
         if current.state!='RUNNING' or AuditBatches(self.state).begin(run_id) is not None or AuditBatches(self.state).rechecks(run_id):
-            raise ValueError('须完成全部批次联合分析和定向复审后提交报告')
+            raise ValueError('须完成全部图级审计和定向复审后提交报告')
         catalog = {item.group_id:item for item in current.discoveries}
         if len(set(submission.discovery_ids))!=len(submission.discovery_ids) or set(submission.discovery_ids)-catalog.keys():
             raise ValueError('报告须选择真实全局发现')
@@ -276,6 +276,10 @@ class AuditReports:
             connection.execute('BEGIN IMMEDIATE')
             if connection.execute('SELECT status FROM job_runs WHERE job_id=?',(run_id,)).fetchone()[0]!='RUNNING':
                 raise ValueError('作业已停止，不能提交报告')
+            if draft_revision is not None:
+                saved_draft = connection.execute('SELECT revision FROM audit_report_drafts WHERE job_id=?', (run_id,)).fetchone()
+                if saved_draft is None or saved_draft[0] != draft_revision:
+                    raise ValueError('报告草稿版本已变化，请重读后定稿')
             connection.execute('INSERT INTO audit_report_commits VALUES(?,?,?)',(run_id,submission.commit_key,canonical))
             connection.execute("UPDATE audit_report_runs SET result_json=?,state='COMPLETED',error=NULL WHERE job_id=?",(stored,run_id))
         return self.session(run_id)

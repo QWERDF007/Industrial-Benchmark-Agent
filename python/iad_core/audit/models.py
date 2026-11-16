@@ -19,7 +19,7 @@ from iad_core.audit.prompt_text import (DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDI
     MASTER_AUDIT_SYSTEM_PROMPT, DEFAULT_AUDIT_BATCH_PROMPT, DEFAULT_AUDIT_REPORT_PROMPT)
 from iad_core.analysis.prompt_models import AnalysisRolePrompts
 from iad_core.analysis.evidence_models import ContextPolicy, AnalysisEvidenceCandidate
-from iad_core.audit.delegation_models import AuditBatch, AuditRecheck, AuditHypothesisAssessment, AuditVisualFeature
+from iad_core.audit.delegation_models import AuditBatch, AuditRecheck, AuditHypothesisAssessment, AuditVisualFeature, AuditObservationNote
 from iad_core.audit.profile_models import AuditDatasetProfile
 from iad_core.consistency.annotation_issues import IssueType
 from iad_core.workbench.audit_result_models import AuditSampleItem
@@ -185,6 +185,7 @@ class AuditAgentContext(AnalysisModel):
     batch: AuditBatch | None = None
     review: AuditRecheck | None = None
     prior_result: AuditFinal | None = None
+    observation_notes: list[AuditObservationNote] = Field(default_factory=list)
 
 
 class AuditCommit(AnalysisModel):

@@ -3,6 +3,7 @@ from pydantic import ValidationError
 
 from iad_core.audit.quality_models import AuditScoreWeights, QualityImage
 from iad_core.audit.quality_scoring import AuditQualityScorer
+from iad_core.consistency.conflict_categories import ConflictCategory
 
 
 def image(index, **values):
@@ -24,12 +25,12 @@ def test_score_weights_default_normalize_and_reject_invalid_values():
 def test_consistency_counts_each_completed_image_once_at_highest_severity():
     images = [image(i) for i in range(500)]
     for item in images[:10]:
-        item.findings = ['category_mismatch', 'missing_annotation', 'extra_annotation']
+        item.consistency_categories = [ConflictCategory.CATEGORY, ConflictCategory.MISSING, ConflictCategory.EXTRA]
     for item in images[10:30]:
-        item.findings = ['missing_annotation', 'extra_annotation']
+        item.consistency_categories = [ConflictCategory.MISSING, ConflictCategory.EXTRA]
     for item in images[30:35]:
-        item.findings = ['extra_annotation']
-    images[35].findings = ['position_difference', 'split', 'merge']
+        item.consistency_categories = [ConflictCategory.EXTRA]
+    images[35].consistency_categories = [ConflictCategory.POSITION, ConflictCategory.SPLIT, ConflictCategory.MERGE]
     score = AuditQualityScorer().score(images)
     assert score.dimensions['consistency'].score == pytest.approx(93.3)
     counts = {item.code: item.count for item in score.items}

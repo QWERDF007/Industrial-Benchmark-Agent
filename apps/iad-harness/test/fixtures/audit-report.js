@@ -16,7 +16,7 @@ export function auditMessages(body) {
 }
 
 export function auditReportTool(context,outputs,{includeCounter=false,includeDistribution=false}={}) {
-  if(context.phase==='review'){
+  if(context.revision===0){
     const refs=context.items.flatMap(item=>item.final?.execution_status==='completed'?item.final.findings.map((_,index)=>({
       sample_id:item.sample_id,result_revision:item.result_revision,kind:'finding',index})):[]);
     const prior=context.discoveries.find(item=>item.group_id==='G1');
@@ -35,8 +35,7 @@ export function auditReportTool(context,outputs,{includeCounter=false,includeDis
       description:'已保存的图级覆盖疑点需人工复核。',visual_signature:'主体边缘的可见现象',annotation_relation:'可见现象与原始覆盖存在待复核差别。',
       scope:'本次已完成的冻结观察范围',support_refs:refs,counter_refs:normal?[{sample_id:normal.sample_id,result_revision:normal.result_revision,kind:'image'}]:[],
       representatives,next_batch_focus:'',key_difference:normal?'相似形态下的实际覆盖关系不同。':'',unresolved_question:'需排除成像变化。'}]:prior?[prior]:[];
-    const submission={commit_key:'batch-'+context.batch.number+'-'+context.revision,
-      batch_number:context.batch.number,base_revision:context.revision,discoveries,review_requests:[]};
+    const submission={commit_key:'review-'+context.revision,base_revision:context.revision,discoveries,review_requests:[]};
     if(context.context_policy==='evidence-on-demand-v1'){
       const fresh=refs.length?discoveries[0]:null;
       const old=detail?.discovery;
@@ -48,10 +47,10 @@ export function auditReportTool(context,outputs,{includeCounter=false,includeDis
       const body=fresh?Object.fromEntries(Object.entries(fresh).filter(([name])=>!['support_refs','counter_refs','representatives'].includes(name))):null;
       if(old&&body&&['description','visual_signature','annotation_relation','scope','key_difference'].some(name=>old[name]!==body[name]))
         for(const item of detail.items)evidence_changes.push({group_id:'G1',action:'keep',role:item.role,reference:item.reference,reason:'重新核对旧引用，仍支持当前限定主张。'});
-      return {name:'audit_batch_commit',arguments:{...submission,discoveries:body?[body]:[],evidence_changes,
+      return {name:'audit_review_commit',arguments:{...submission,discoveries:body?[body]:[],evidence_changes,
         representative_changes:fresh?[{group_id:'G1',representatives:fresh.representatives}]:[]}};
     }
-    return {name:'audit_batch_commit',arguments:submission};
+    return {name:'audit_review_commit',arguments:submission};
   }
   if(includeDistribution&&!outputs.some(output=>Array.isArray(output?.classes)&&output?.image_count!==undefined))
     return {name:'audit_distribution',arguments:{}};
@@ -66,7 +65,9 @@ export function auditReportTool(context,outputs,{includeCounter=false,includeDis
     return {name:'audit_report_evidence',arguments:{sample_id:item.sample_id,evidence_id:item.final.evidence_ids[0]}};
   const references=items=>items.map(item=>({sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'}));
   const representatives=items=>items.map(item=>({sample_id:item.sample_id,reason:'外缘与邻近区域可共同核对。'}));
-  return {name:'audit_report_commit',arguments:{commit_key:'report-'+randomUUID(),discovery_ids:context.discoveries.filter(item=>item.status!=='withdrawn').map(item=>item.group_id),
+  const saved=outputs.filter(output=>output?.saved_fields).at(-1);
+  if(saved)return {name:'audit_report_commit',arguments:{commit_key:'report-'+randomUUID(),draft_revision:saved.revision}};
+  return {name:'audit_report_section',arguments:{base_revision:context.report_draft?.revision??0,fields:{discovery_ids:context.discoveries.filter(item=>item.status!=='withdrawn').map(item=>item.group_id),
     consistency_analyses:hasIssues?context.applicable_issue_types.map(issue_type=>({issue_type,
       analysis:'结合双方原图和逐图结果，说明这类标注差异是否成立。',
       evidence_refs:references(completed.slice(0,3)),representatives:representatives(completed.slice(0,3))})):[],
@@ -80,5 +81,5 @@ export function auditReportTool(context,outputs,{includeCounter=false,includeDis
     independence_analysis:'独立物理件、批次与序列仅依据真实元数据评价。',capabilities:[],usability:
       ['exploration','training_experiment','debug','image_evaluation','bbox_evaluation','pixel_evaluation','formal_benchmark'].map(purpose=>({
         purpose,status:['exploration','training_experiment','debug'].includes(purpose)?'candidate':'not_evaluated',reason:'评价依据为冻结原图及实际已有结果。'})),
-    review_priorities:[],limitations:['未完成范围不能视为正常。']}};
+    review_priorities:[],limitations:['未完成范围不能视为正常。']}}};
 }

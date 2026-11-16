@@ -12,7 +12,7 @@ import {chatRequest} from './fixtures/responses.js';
 import {respondFixtureTools} from './fixtures/analysis-finalization.js';
 import {auditIssueTypesByFormat} from '../lib/shared/audit.generated.js';
 
-test('native audit publishes fixed batch clues through one master and independent image children',{timeout:120000},async t=>{
+test('native audit continuously observes all groups before one global analysis',{timeout:120000},async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-delegation-'));
   const count=Number(process.env.IAD_AUDIT_IMAGE_COUNT||17),wire=[];
   t.after(()=>fs.writeFile(path.join(root,'wire.json'),JSON.stringify(wire)));
@@ -42,7 +42,7 @@ test('native audit publishes fixed batch clues through one master and independen
         await new Promise(resolve=>setTimeout(resolve,30));
         const images=body.messages.flatMap(message=>Array.isArray(message.content)?message.content.filter(part=>part.type==='image_url'):[]);
         assert.equal(images.length,3,'一张完整原图和全部两个标注局部首次一起发送');
-        assert.ok(!body.tools.some(tool=>tool.function?.name==='audit_batch_commit'));
+        assert.ok(!body.tools.some(tool=>tool.function?.name==='audit_review_commit'));
         const evidence=values.find(item=>item.value.images?.length)?.value.evidence_id;
         assert.ok(evidence);
         tool={name:'audit_commit',arguments:{commit_key:'image-final',final:{execution_status:'completed',state:'normal',
@@ -53,7 +53,7 @@ test('native audit publishes fixed batch clues through one master and independen
             reason:'相近可见现象没有独立标注矛盾，不能由线索判为少标。',evidence_ids:[evidence]})),
           consistency_review:[],check_assessments:[],limitations:[]}}};
         active--;
-      }else if(context.phase==='review'){
+      }else if(context.revision===0){
         assert.ok(!body.tools.some(tool=>tool.function?.name==='audit_commit'));
         const first=context.items.find(item=>item.final);
         if(!outputs.some(output=>output?.images?.length))tool={name:'audit_report_evidence',arguments:{sample_id:first.sample_id,evidence_id:first.final.evidence_ids[0]}};
@@ -69,16 +69,16 @@ test('native audit publishes fixed batch clues through one master and independen
               [{sample_id:first.sample_id,role:'representative',reason:'完整原图保留了主体与背景的关系。'}]};
           const {support_refs,counter_refs,representatives,...body}=discovery;
           const role=prior?'counter':'support',key=JSON.stringify(ref);
-          tool={name:'audit_batch_commit',arguments:{commit_key:'batch-'+context.batch.number+'-'+context.revision,batch_number:context.batch.number,
+          tool={name:'audit_review_commit',arguments:{commit_key:'global-'+context.revision,
             base_revision:context.revision,discoveries:[body],
             evidence_changes:references.has(key)?[]:[{group_id:'pattern',action:'add',role,reference:ref,reason:'依据本批保存的原图观察核对当前现象。'}],
             representative_changes:[{group_id:'pattern',representatives}],review_requests:[]}};
           references.add(key);
         }
       }else{
-        assert.equal(values.filter(item=>item.role==='user'&&item.value.phase==='report').length,1,
+        assert.equal(values.filter(item=>item.role==='user'&&item.value.phase==='report').length,2,
           '报告请求只包含当前报告任务，不重放旧稿');
-        assert.ok(values.some(item=>item.role==='user'&&item.value.phase==='review'),'报告沿用正常主Agent联合分析上下文');
+        assert.ok(values.some(item=>item.role==='user'&&item.value.phase==='report'),'报告沿用正常主Agent联合分析上下文');
         if(!context.revision){res.writeHead(503);res.end('没有执行跨批联合分析');return;}
         const records=outputs.find(output=>output?.kind==='audit_records')?.items;
         if(!records)tool={name:'audit_records',arguments:{page:1,page_size:100}};
@@ -90,7 +90,9 @@ test('native audit publishes fixed batch clues through one master and independen
             evidence_id:records.find(item=>item.sample_id===unread.sample_id).final.evidence_ids[0]}}],{protocol:'openai-completions',model:'native-audit'});return;}
           const evidence_refs=records.filter(item=>representatives.some(image=>image.sample_id===item.sample_id))
             .map(item=>({sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'}));
-          tool={name:'audit_report_commit',arguments:{commit_key:'report-'+randomUUID(),discovery_ids:['pattern'],conclusion:'可用于视觉探索和内部调试。',
+          const saved=outputs.filter(output=>output?.saved_fields).at(-1);
+          if(saved){respondFixtureTools(res,[{name:'audit_report_commit',arguments:{commit_key:'report-'+randomUUID(),draft_revision:saved.revision}}]);return;}
+          tool={name:'audit_report_section',arguments:{base_revision:context.report_draft?.revision??0,fields:{discovery_ids:['pattern'],conclusion:'可用于视觉探索和内部调试。',
           consistency_scopes:[{source_status:'NO_CANDIDATES',analysis:'没有找到可比较标注的另一张图。',evidence_refs,representatives}],
           consistency_analysis:'上游无候选的图像也已独立审计。',knowledge_analysis:'',coverage_analysis:'覆盖规则轮廓及多框标注。',
           coverage_topics:[{title:'规则轮廓与多框覆盖',analysis:'实际轮廓保持规则，框数变化不自动证明实例组织错误。',
@@ -107,7 +109,7 @@ test('native audit publishes fixed batch clues through one master and independen
               comparison:'两张图中的背景较均匀。',significance:'可研究模型是否在背景处误报。',evidence_refs,representatives}],
           capability_topics:[{title:'主体边缘与背景区分',summary:'规则轮廓与邻近背景同时可见。',capability_tags:['structural_relation'],
             points:[{title:'轮廓的连续定位',observation_and_comparison:'相似轮廓保留了主体与背景关系。',
-              evaluation_value:'可检验模型能否连续定位主体边缘。',case_ids:['outline','background']}],missing_conditions:['需要经确认的参考标注。']}]}};
+              evaluation_value:'可检验模型能否连续定位主体边缘。',case_ids:['outline','background']}],missing_conditions:['需要经确认的参考标注。']}]}}};
         }
       }
       respondFixtureTools(res,[tool],{protocol:'openai-completions',model:'native-audit'});
@@ -136,8 +138,8 @@ test('native audit publishes fixed batch clues through one master and independen
   }
   const parent=await runtime.bridge.execute('audit_agent_report_state',{run_id:job.run_id});
   const masterSession=await runtime.host.read(parent.session_id);
-  assert.equal(masterSession.events.filter(event=>event.type==='image/offload').length,Math.ceil(count/8)+3);
-  assert.equal(parent.revision,Math.ceil(count/8));assert.equal(parent.discoveries[0].status,'disputed');
+  assert.equal(masterSession.events.filter(event=>event.type==='image/offload').length,2);
+  assert.equal(parent.revision,1);assert.equal(parent.discoveries[0].status,'pending');
   const report=await runtime.bridge.execute('audit_job_report',{run_id:job.run_id});
   assert.equal(report.statistics.issue_occurrences,0);assert.equal(report.usability.length,7);
   assert.equal(report.coverage_topics[0]?.title,'规则轮廓与多框覆盖');
@@ -173,7 +175,7 @@ test('native audit publishes fixed batch clues through one master and independen
   assert.equal(await runtime.host.exportJsonl(parent.session_id),masterBefore,'已完成图级审计和报告保留原记录');
 });
 
-test('a later batch rechecks an earlier child and a retry only observes the failed image',{timeout:60000},async t=>{
+test('global analysis rechecks an earlier child and retry only observes the failed image',{timeout:60000},async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-recheck-')),wire=[],errors=[];
   let failed=false,earlier;
   const {auditMessages,auditReportTool}=await import('./fixtures/audit-report.js');
@@ -199,13 +201,15 @@ test('a later batch rechecks an earlier child and a retry only observes the fail
           execution_status:'completed',state:'normal',analysis:context.review?'复核后仍未形成覆盖矛盾。':'本图未形成独立标注矛盾。',
           conclusion:'当前可见范围未发现疑点。',basis:[],evidence_ids:context.review?[...new Set(pages.map(page=>page.evidence_id))]:[evidence],findings:[],observations:[],
           visual_features:[],hypothesis_assessments:[],consistency_review:[],check_assessments:[],limitations:[]}}};
-      }else if(context.phase==='review'&&context.batch.number===2&&context.revision===1){
-        tool={name:'audit_batch_commit',arguments:{commit_key:'request-earlier',batch_number:2,base_revision:1,discoveries:[],review_requests:[{
+      }else if(context.revision===0){
+        tool={name:'audit_review_commit',arguments:{commit_key:'request-earlier',base_revision:0,discoveries:[],review_requests:[{
           sample_id:earlier,result_revision:1,reason:'后批观察与前图的覆盖解释冲突，定向复核。',conflict_refs:[{
-            sample_id:context.items[0].sample_id,result_revision:1,kind:'image'}]}]}};
+            sample_id:context.items.find(item=>item.sample_id!==earlier&&item.state==='COMPLETED').sample_id,result_revision:1,kind:'image'}]}]}};
       }else{
-        if(context.phase==='review'&&context.batch.number===2&&context.revision===2){
-          assert.equal(context.items.find(item=>item.sample_id===earlier).result_revision,2);
+        if(context.revision===1){
+          const revised=context.items.find(item=>item.sample_id===earlier);
+          if(revised)assert.equal(revised.result_revision,2);
+          else{assert.equal(context.items.length,1);assert.ok(context.items[0].sample_id.endsWith('001.png'));}
         }
         tool=auditReportTool(context,outputs);
       }
