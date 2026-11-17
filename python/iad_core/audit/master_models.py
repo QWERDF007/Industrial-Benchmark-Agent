@@ -35,7 +35,7 @@ class AuditMasterRecord(AnalysisModel):
         upstream = sample.consistency
         return cls(sample_id=sample.sample_id,result_revision=sample.result_revision,state=sample.state,final=sample.result,
             consistency=AuditMasterConsistency(source_status=sample.source_status,reason=upstream.reason,program_conclusion=upstream.program_conclusion,
-                model_conclusion=upstream.model_conclusion,result=AuditUpstreamResult.capture(upstream.result),gates=[AuditCandidateContext.capture(gate) for gate in upstream.gates]))
+                model_conclusion=upstream.model_conclusion,result=AuditUpstreamResult.capture(upstream),gates=[AuditCandidateContext.capture(gate) for gate in upstream.gates]))
 
 
 class AuditMasterContext(AnalysisModel):

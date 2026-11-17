@@ -20,8 +20,10 @@ def test_new_audits_freeze_on_demand_and_missing_historical_policy_is_not_rewrit
         original.pop('context_policy')
         frozen = json.dumps(original, ensure_ascii=False)
         connection.execute('UPDATE audit_workflow_runs SET snapshot_json=? WHERE job_id=?', (frozen, run_id))
-    assert jobs.snapshot(run_id).context_policy == 'legacy'
-    assert AuditBatches(jobs).context(run_id)['items']
+    from iad_core.audit.state import AuditState
+    historical = AuditState(jobs.db)
+    assert historical.snapshot(run_id).context_policy == 'legacy'
+    assert AuditBatches(historical).context(run_id)['items']
     with jobs.db.connection() as connection:
         assert connection.execute('SELECT snapshot_json FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()[0] == frozen
 

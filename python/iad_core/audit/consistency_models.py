@@ -1,5 +1,6 @@
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.annotation_issues import MainAnnotationIssue
+from iad_core.consistency.agent_result_models import AnchorResultDetail
 from iad_core.consistency.identity_models import ContentRelation
 from iad_core.consistency.models import ModelAssessmentVerdict
 
@@ -10,8 +11,8 @@ class AuditUpstreamResult(AnalysisModel):
     issues: list[MainAnnotationIssue]
 
     @classmethod
-    def capture(cls, result):
-        return cls(reason=result.reason, verdict=result.verdict, issues=result.issues) if result else None
+    def capture(cls, source: AnchorResultDetail) -> 'AuditUpstreamResult | None':
+        return cls(reason=source.reason, verdict=source.verdict, issues=source.result.issues) if source.result else None
 
 
 class AuditCandidateContext(AnalysisModel):

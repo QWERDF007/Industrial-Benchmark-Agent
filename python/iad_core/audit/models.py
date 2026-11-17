@@ -132,10 +132,10 @@ class AuditFinal(AnalysisModel):
                 raise ValueError('完整审计必须有两类结论之一、真实图证和结论正文')
             if (self.state == 'suspect') != bool(self.findings):
                 raise ValueError('图级疑点结论与疑点记录不一致')
-        positions = [(finding.type, tuple(sorted(finding.annotation_ids))) for finding in self.findings
-            if finding.type in ('missing_content', 'extra_content')]
-        if len(positions) != len(set(positions)):
-            raise ValueError('同一标注对象的同方向内容问题只能记录一次')
+        object_issues = [(finding.type, tuple(sorted(finding.annotation_ids))) for finding in self.findings
+            if finding.type in ('missing_content', 'extra_content', 'position_difference')]
+        if len(object_issues) != len(set(object_issues)):
+            raise ValueError('同一标注对象的同类型内容或位置差异只能记录一次')
         if self.execution_status != 'completed' and self.state is not None:
             raise ValueError('未完成审计不能生成完整业务结论')
         return self
@@ -177,7 +177,7 @@ class AuditConsistencyContext(AnchorResultSummary):
     @classmethod
     def capture(cls, source: AnchorResultDetail):
         return cls(**source.model_dump(include=set(AnchorResultSummary.model_fields)),
-            result=AuditUpstreamResult.capture(source.result), evidence=source.evidence,
+            result=AuditUpstreamResult.capture(source), evidence=source.evidence,
             gates=[AuditCandidateContext.capture(gate) for gate in source.gates], captured_evidence=source.captured_evidence)
 
 

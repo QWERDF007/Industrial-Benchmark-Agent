@@ -30,7 +30,11 @@ def test_consistency_statistics_keep_program_matches_separate_from_visual_review
         Path(sample.image_path).write_bytes(original)
         Path(tmp_path/'labels'/('part-'+str(index)+'.json')).write_text(json.dumps({
             'imageWidth':320, 'imageHeight':240, 'shapes':[{'shape_type':'rectangle', 'label':'edge',
-                'points':[[40+index*15,60],[280-index*15,180]]}]}))
+                'points':[[40+index*5,60],[280-index*5,180]]}]}))
+    for index in range(3, 6):
+        Path(tmp_path/'labels'/('part-'+str(index)+'.json')).write_text(json.dumps({
+            'imageWidth':320, 'imageHeight':240, 'shapes':[{'shape_type':'rectangle', 'label':'edge',
+                'points':[[40,60],[280,180]]}]}))
     DatasetRegistry(jobs.db).rescan(dataset_id)
     checks = ConsistencyAgentJobs(jobs.runtime)
     source = checks.start(dict(submission_id=str(uuid4()), dataset_ids=[dataset_id], mode='exact'))['run_id']
@@ -116,7 +120,7 @@ def test_report_saves_job_specific_coverage_and_separate_consistency_analyses_wi
     from iad_core.audit.batches import AuditBatches
     context = AuditBatches(jobs).context(run_id)
     assert set(context['applicable_issue_types']) == {
-        'category_mismatch', 'position_difference', 'extra_annotation', 'missing_annotation', 'split', 'merge'}
+        'category_mismatch', 'position_difference', 'extra_annotation', 'missing_annotation', 'missing_content', 'extra_content', 'split', 'merge'}
     reports.begin(run_id)
     master_observed(jobs, run_id, reports.records(run_id, {}), originals)
     references = [dict(sample_id=sample.sample_id, result_revision=1, kind='image') for sample in samples[:3]]
@@ -126,7 +130,7 @@ def test_report_saves_job_specific_coverage_and_separate_consistency_analyses_wi
         evidence_refs=references, representatives=representatives)]
     analyses = [dict(issue_type=kind, analysis='本轮未保留该类疑点，不能据此认证全部标注正确。',
         evidence_refs=references, representatives=representatives if kind=='position_difference' else [])
-        for kind in ('category_mismatch', 'position_difference', 'extra_annotation', 'missing_annotation', 'split', 'merge')]
+        for kind in context['applicable_issue_types']]
     before = [jobs.sample(run_id, sample.sample_id).result.model_dump_json() for sample in samples]
     submitted = report_submission(coverage_topics=topics, consistency_analyses=analyses)
     with pytest.raises(ValueError, match='全部适用差异类型'):
@@ -281,7 +285,7 @@ def test_new_completed_final_rejects_insufficient_business_state_and_foreign_ups
     accepted=save_image(jobs,run_id,first)
     assert accepted.execution_status=='completed'
     assert accepted.consistency_review==[]
-    assert jobs.snapshot(run_id).schema_version==4
+    assert jobs.snapshot(run_id).schema_version==5
 
 
 def test_report_requires_real_read_versions_and_discoveries_and_retry_preserves_image_finals(native_audit):
@@ -447,9 +451,10 @@ def test_creation_catalog_excludes_partial_scope_and_rejects_stale_source(native
 
 
 @pytest.mark.parametrize('ids',[[],['real-box']])
-def test_position_findings_require_object_references_and_do_not_duplicate_same_object(ids):
+@pytest.mark.parametrize('issue_type',['position_difference','missing_content','extra_content'])
+def test_coverage_findings_require_object_references_and_do_not_duplicate_same_object(ids, issue_type):
     from iad_core.audit.models import AuditFinal
-    finding=dict(finding_id='F1',type='position_difference',description='有效覆盖需复核。',location='主体',annotation_ids=ids,
+    finding=dict(finding_id='F1',type=issue_type,description='有效覆盖需复核。',location='主体',annotation_ids=ids,
         consistency_issue_refs=[],check_ids=[],evidence_ids=['whole'],normal_explanation='排除成像差异。',limitations=[])
     final=dict(execution_status='completed',state='suspect',analysis='核对实际覆盖。',conclusion='需要复核。',basis=[],evidence_ids=['whole'],
         check_assessments=[],consistency_review=[],findings=[finding,{**finding,'finding_id':'F2'}] if ids else [finding],limitations=[])
