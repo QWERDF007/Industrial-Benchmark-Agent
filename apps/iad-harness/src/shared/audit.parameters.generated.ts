@@ -827,6 +827,35 @@ export const auditCommitParameters = {
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "coverage_effect": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "unchanged",
+                    "material_change",
+                    "unverified"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "内容问题必须确认明显的大范围覆盖增减material_change；覆盖基本相同的边界或轮廓偏移属于位置差异。",
+              "title": "Coverage Effect"
+            },
+            "coverage_reason": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。",
+              "title": "Coverage Reason"
+            },
             "finding_id": {
               "type": "string",
               "title": "Finding Id",
@@ -878,6 +907,7 @@ export const auditCommitParameters = {
                 "category_mismatch",
                 "extra_annotation",
                 "missing_annotation",
+                "position_difference",
                 "missing_content",
                 "extra_content",
                 "split",

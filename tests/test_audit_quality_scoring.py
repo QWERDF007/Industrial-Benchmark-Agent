@@ -42,6 +42,19 @@ def test_consistency_counts_each_completed_image_once_at_highest_severity():
     assert score.dataset_scores[0].dimensions['consistency'].score == pytest.approx(92.94)
 
 
+def test_position_differences_do_not_reduce_score_or_override_content_and_structure():
+    images = [image(0, consistency_categories=[ConflictCategory.POSITION]),
+        image(1, consistency_categories=[ConflictCategory.POSITION, ConflictCategory.MISSING_CONTENT]),
+        image(2, consistency_categories=[ConflictCategory.POSITION, ConflictCategory.SPLIT])]
+    score = AuditQualityScorer().score(images)
+    items = {item.code: item for item in score.items}
+    assert items['position_difference'].count == 1
+    assert items['position_difference'].deduction == 0
+    assert items['missing_content'].count == 1
+    assert items['split'].count == 1
+    assert score.dimensions['consistency'].score == pytest.approx(90)
+
+
 def defect(index, category='划痕', **values):
     from iad_core.audit.quality_models import QualityDefect
     return QualityDefect(annotation_id=str(index), category=category, morphology='直线', appearance='亮线',

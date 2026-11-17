@@ -23,7 +23,7 @@ from iad_core.analysis.prompt_models import AnalysisRolePrompts
 from iad_core.analysis.evidence_models import ContextPolicy, AnalysisEvidenceCandidate
 from iad_core.audit.delegation_models import AuditBatch, AuditRecheck, AuditHypothesisAssessment, AuditVisualFeature, AuditObservationNote
 from iad_core.audit.profile_models import AuditDatasetProfile
-from iad_core.consistency.annotation_issues import IssueType, ACTIVE_ISSUE_TYPES
+from iad_core.consistency.annotation_issues import IssueType, ACTIVE_ISSUE_TYPES, CoverageEvidenceFields
 from iad_core.workbench.audit_result_models import AuditSampleItem
 from iad_core.evidence.registrations import RegistrationMediaQuery
 
@@ -67,7 +67,7 @@ class AuditCheckAssessment(AnalysisModel):
     evidence_ids: list[str] = Field(description='本次实际观察的完整原图身份；局部图仅用于观察，不单独引用。')
 
 
-class AuditFinding(AnalysisModel):
+class AuditFinding(CoverageEvidenceFields):
     finding_id: NonBlankText
     description: NonBlankText
     location: NonBlankText
@@ -81,7 +81,8 @@ class AuditFinding(AnalysisModel):
 
     @model_validator(mode='after')
     def validate_object_reference(self):
-        minimum = {'category_mismatch':1,'extra_annotation':1,'missing_content':1,'extra_content':1,'split':2,'merge':1}.get(self.type,0)
+        minimum = {'category_mismatch':1,'extra_annotation':1,'missing_content':1,'extra_content':1,
+            'position_difference':1,'split':2,'merge':1}.get(self.type,0)
         if len(set(self.annotation_ids)) != len(self.annotation_ids) or len(self.annotation_ids) < minimum:
             raise ValueError('疑点必须引用本图实际标注对象，拆分至少涉及两个原始对象')
         return self

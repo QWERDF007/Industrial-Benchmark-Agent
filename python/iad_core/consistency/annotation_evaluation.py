@@ -5,6 +5,9 @@ from iad_core.consistency.annotation_issues import ImageLabelIssue, BboxAnnotati
 from iad_core.consistency.group_analysis_models import GroupPairAssessment
 from iad_core.consistency.annotation_models import AnnotationMatchingConfig
 from iad_core.consistency.geometry import bbox_iou
+from iad_core.consistency.annotation_coverage import AnnotationCoverage
+from iad_core.consistency.comparison_domain import ComparisonDomain
+from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES
 
 
 class AnnotationEvaluation:
@@ -57,13 +60,18 @@ class AnnotationEvaluation:
         if assessment.verdict != 'MATERIAL' and assessment.issues:
             raise ValueError('一致或证据不足不能包含已确认差异')
         annotations = [{item.annotation_id: item for item in source.annotations.annotations} for source in sources]
+        content_geometry = None
+        if (any(issue.type in ('missing_content', 'extra_content') for issue in assessment.issues)
+                and main.descriptor.pixel_key is not None
+                and main.descriptor.pixel_key == candidate.descriptor.pixel_key):
+            domain = ComparisonDomain.prepare([source.annotations for source in sources], 'EXACT',
+                matching or AnnotationMatchingConfig())
+            content_geometry = [{item.annotation.annotation_id: item for item in side.values()} for side in domain.sides]
         identities = [(issue.type, tuple(sorted(issue.main_annotation_ids)), tuple(sorted(issue.candidate_annotation_ids)))
             for issue in assessment.issues]
         if len(identities) != len(set(identities)):
             raise ValueError('同一对象的同类问题不得重复提交')
         for issue in assessment.issues:
-            if issue.type == 'position_difference':
-                raise ValueError('请按主图方向将覆盖变化定性为少标内容或多标内容')
             if issue.type == 'image_label_mismatch':
                 raise ValueError('区域标注审核不能包含图像级标签问题')
             if issue.type in ('missing_content', 'extra_content') and (issue.coverage_effect != 'material_change' or not issue.coverage_reason):
@@ -127,6 +135,14 @@ class AnnotationEvaluation:
                         and pair[0].annotation_type == pair[1].annotation_type
                         and pair[0].bbox == pair[1].bbox and pair[0].polygon == pair[1].polygon):
                     raise ValueError('像素相同且原始标注几何完全相同，不能报告内容差异')
+            if content_geometry is not None and issue.type in ('missing_content', 'extra_content'):
+                sides = (issue.main_annotation_ids, issue.candidate_annotation_ids)
+                if any(set(ids) - shapes.keys() for ids, shapes in zip(sides, content_geometry)):
+                    raise ValueError('内容差异必须引用可比较的真实轮廓')
+                coverage = AnnotationCoverage.compare(*[[shapes[identity] for identity in ids]
+                    for ids, shapes in zip(sides, content_geometry)])
+                if ISSUE_CATEGORIES[issue.type] not in coverage.categories:
+                    raise ValueError('没有达到明显的覆盖增减门槛；基本覆盖相同的轮廓偏移应归位置差异')
         for structural in (item for item in assessment.issues if item.type in ('split', 'merge')):
             for count in (item for item in assessment.issues if item.type in ('extra_annotation', 'missing_annotation')):
                 if (set(structural.main_annotation_ids) & set(count.main_annotation_ids)

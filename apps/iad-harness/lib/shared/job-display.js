@@ -81,7 +81,7 @@ const workflows = {
         ] },
     audit: { title: '模型审计', stages: [
             { title: '准备输入', phases: ['PREPARING_KNOWLEDGE', 'PREPARING_AUDIT_INPUT'] },
-            { title: '逐图审计', phases: ['COMPARING', 'AUDITING', 'AUDITING_IMAGES', 'GLOBAL', 'REGIONS', 'SYNTHESIS'] },
+            { title: '逐图审计', phases: ['COMPARING', 'AUDITING', 'AUDITING_IMAGES', 'AUDITING_DEFECTS', 'SUMMARIZING_DEFECT_PROFILE', 'AUDITING_NORMALS', 'GLOBAL', 'REGIONS', 'SYNTHESIS'] },
             { title: '汇总报告', phases: ['GENERATING_AUDIT_REPORT', 'SAMPLE_COMPLETED', 'AUDIT_FINISHED'] }
         ] },
 };

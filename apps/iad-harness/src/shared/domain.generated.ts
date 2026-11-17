@@ -1742,7 +1742,7 @@ export type Name10 = string;
 export type SourceImages = number;
 export type CoveredImages = number;
 export type BenchmarkBuilds = AuditBenchmarkChoice[];
-export type QualityScoreVersion = ("1.1" | "1.2" | "1.3" | "1.4") | null;
+export type QualityScoreVersion = ("1.1" | "1.2" | "1.3" | "1.4" | "1.5") | null;
 export type Kind23 = "audit_records";
 export type JobId3 = string;
 export type Phase6 = "review" | "report";
@@ -1845,6 +1845,14 @@ export type EvidenceIds19 = string[];
  * 恰好处理本图上游result.issues中的每个issue_id一次；无上游问题时为空。supported须由findings关联，unsupported不能作为本图疑点来源。
  */
 export type ConsistencyReview = AuditConsistencyAssessment[];
+/**
+ * 内容问题必须确认明显的大范围覆盖增减material_change；覆盖基本相同的边界或轮廓偏移属于位置差异。
+ */
+export type CoverageEffect = ("unchanged" | "material_change" | "unverified") | null;
+/**
+ * 指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。
+ */
+export type CoverageReason = string | null;
 export type FindingId5 = string;
 export type Description19 = string;
 export type Location7 = string;
@@ -1866,6 +1874,7 @@ export type Type2 =
   | "category_mismatch"
   | "extra_annotation"
   | "missing_annotation"
+  | "position_difference"
   | "missing_content"
   | "extra_content"
   | "split"
@@ -2479,7 +2488,7 @@ export type RedundantGroups1 = QualityRedundantGroup1[];
  * audit_quality_score返回的预览标识；正式报告原样提交，不自行生成。
  */
 export type PreviewId1 = string | null;
-export type Version1 = "1.1" | "1.2" | "1.3" | "1.4";
+export type Version1 = "1.1" | "1.2" | "1.3" | "1.4" | "1.5";
 export type DatasetId37 = string | null;
 export type Status26 = "complete" | "insufficient";
 export type Total9 = number | null;
@@ -2860,6 +2869,14 @@ export type CheckAssessments3 = AuditCheckAssessment[];
  * 恰好处理本图上游result.issues中的每个issue_id一次；无上游问题时为空。supported须由findings关联，unsupported不能作为本图疑点来源。
  */
 export type ConsistencyReview1 = AuditConsistencyAssessment[];
+/**
+ * 内容问题必须确认明显的大范围覆盖增减material_change；覆盖基本相同的边界或轮廓偏移属于位置差异。
+ */
+export type CoverageEffect1 = ("unchanged" | "material_change" | "unverified") | null;
+/**
+ * 指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。
+ */
+export type CoverageReason1 = string | null;
 export type FindingId6 = string;
 export type Description28 = string;
 export type Location10 = string;
@@ -2881,6 +2898,7 @@ export type Type4 =
   | "category_mismatch"
   | "extra_annotation"
   | "missing_annotation"
+  | "position_difference"
   | "missing_content"
   | "extra_content"
   | "split"
@@ -5235,7 +5253,8 @@ export type Status44 =
   ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED") | "NOT_ANALYZED";
 export type RunId18 = string | null;
 export type ModelName7 = string | null;
-export type Text6 = ("类别不一致" | "少类别" | "多类别" | "少标内容" | "多标内容" | "拆分" | "合并" | "一致") | null;
+export type Text6 =
+  ("类别不一致" | "少类别" | "多类别" | "少标内容" | "多标内容" | "拆分" | "合并" | "位置差异" | "一致") | null;
 /**
  * 根据逐候选结论汇总的整组结论
  */
@@ -5292,6 +5311,14 @@ export type Findings6 = string[];
  * @maxItems 100
  */
 export type Limitations67 = string[];
+/**
+ * 内容问题必须确认明显的大范围覆盖增减material_change；覆盖基本相同的边界或轮廓偏移属于位置差异。
+ */
+export type CoverageEffect2 = ("unchanged" | "material_change" | "unverified") | null;
+/**
+ * 指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。
+ */
+export type CoverageReason2 = string | null;
 export type Description36 = string;
 /**
  * 实际观察的两侧原图身份各一次。
@@ -5306,6 +5333,7 @@ export type Type5 =
   | "category_mismatch"
   | "extra_annotation"
   | "missing_annotation"
+  | "position_difference"
   | "missing_content"
   | "extra_content"
   | "split"
@@ -5316,14 +5344,6 @@ export type CandidateAnnotationIds1 = string[];
  * 支持本问题的已核实区域对ID；像素一致的程序捷径可为空。
  */
 export type RegionPairIds = string[];
-/**
- * 内容问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。
- */
-export type CoverageEffect = ("unchanged" | "material_change" | "unverified") | null;
-/**
- * 内容问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。
- */
-export type CoverageReason = string | null;
 /**
  * 仅用于主图少标实例：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。
  */
@@ -5346,7 +5366,7 @@ export type CandidateLabel1 = "OK" | "NG";
  */
 export type Issues5 = (BboxAnnotationIssue | ImageLabelIssue)[];
 export type Conclusion9 =
-  ("类别不一致" | "少类别" | "多类别" | "少标内容" | "多标内容" | "拆分" | "合并" | "一致") | null;
+  ("类别不一致" | "少类别" | "多类别" | "少标内容" | "多标内容" | "拆分" | "合并" | "位置差异" | "一致") | null;
 /**
  * 与conclusion相同的唯一主要冲突分类；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个标注而候选一个为拆分，反之为合并。无差异及缺失证据时为空，其他实际差异保留在分析中。
  */
@@ -5530,6 +5550,7 @@ export type Mode11 = "combined";
 export type MinSimilarity10 = number;
 export type MaxExactCandidates5 = number;
 export type MaxSimilarCandidates5 = number;
+export type AnnotationClassification = "content-coverage-v1" | null;
 export type Instruction23 = string;
 export type SystemPrompt10 = string | null;
 export type PromptVersion = string;
@@ -5823,6 +5844,14 @@ export type Findings8 = string[];
  * @maxItems 100
  */
 export type Limitations73 = string[];
+/**
+ * 内容问题必须确认明显的大范围覆盖增减material_change；覆盖基本相同的边界或轮廓偏移属于位置差异。
+ */
+export type CoverageEffect3 = ("unchanged" | "material_change" | "unverified") | null;
+/**
+ * 指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。
+ */
+export type CoverageReason3 = string | null;
 export type Description39 = string;
 /**
  * 实际观察的两侧原图身份各一次。
@@ -5837,6 +5866,7 @@ export type Type7 =
   | "category_mismatch"
   | "extra_annotation"
   | "missing_annotation"
+  | "position_difference"
   | "missing_content"
   | "extra_content"
   | "split"
@@ -5847,14 +5877,6 @@ export type CandidateAnnotationIds2 = string[];
  * 支持本问题的已核实区域对ID；像素一致的程序捷径可为空。
  */
 export type RegionPairIds2 = string[];
-/**
- * 内容问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。
- */
-export type CoverageEffect1 = ("unchanged" | "material_change" | "unverified") | null;
-/**
- * 内容问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。
- */
-export type CoverageReason1 = string | null;
 /**
  * 仅用于主图少标实例：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。
  */
@@ -6016,7 +6038,7 @@ export type ImageId = string;
 export type SettingsRevision4 = number;
 export type SettingsRevision5 = number;
 export type SchemaVersion9 = 4 | 5;
-export type QualityScoreVersion1 = ("1.1" | "1.2" | "1.3" | "1.4") | null;
+export type QualityScoreVersion1 = ("1.1" | "1.2" | "1.3" | "1.4" | "1.5") | null;
 export type ContextPolicy2 = "legacy" | "evidence-on-demand-v1";
 export type ReportInstruction1 = string;
 export type ConsistencyJobId2 = string;
@@ -6027,7 +6049,7 @@ export type SessionId18 = string;
 export type SessionCreated5 = boolean;
 export type State20 = "PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type ResultRevision5 = number;
-export type QualityScoreVersion2 = ("1.1" | "1.2" | "1.3" | "1.4") | null;
+export type QualityScoreVersion2 = ("1.1" | "1.2" | "1.3" | "1.4" | "1.5") | null;
 export type JobId31 = string;
 export type SampleId65 = string;
 export type SessionId19 = string;
@@ -8485,6 +8507,8 @@ export interface AuditConsistencyAssessment {
   evidence_ids: EvidenceIds19;
 }
 export interface AuditFinding1 {
+  coverage_effect: CoverageEffect;
+  coverage_reason: CoverageReason;
   finding_id: FindingId5;
   description: Description19;
   location: Location7;
@@ -9224,6 +9248,8 @@ export interface HardNormalQualification1 {
   difficulty_reason: DifficultyReason1;
 }
 export interface AuditFinding2 {
+  coverage_effect?: CoverageEffect1;
+  coverage_reason?: CoverageReason1;
   finding_id: FindingId6;
   description: Description28;
   location: Location10;
@@ -11402,6 +11428,8 @@ export interface GroupPairAssessment {
   categories: Categories4;
 }
 export interface BboxAnnotationIssue {
+  coverage_effect: CoverageEffect2;
+  coverage_reason: CoverageReason2;
   description: Description36;
   media_ids: MediaIds1;
   limitations: Limitations68;
@@ -11410,8 +11438,6 @@ export interface BboxAnnotationIssue {
   main_annotation_ids: MainAnnotationIds1;
   candidate_annotation_ids: CandidateAnnotationIds1;
   region_pair_ids: RegionPairIds;
-  coverage_effect: CoverageEffect;
-  coverage_reason: CoverageReason;
   same_main_object_as: SameMainObjectAs1;
 }
 export interface ImageLabelIssue {
@@ -11680,6 +11706,7 @@ export interface ConsistencyCheckSnapshot {
   image_encoder: ImageEncoderConfig | null;
   policies: Policies;
   position_tolerance: PositionTolerancePolicy;
+  annotation_classification: AnnotationClassification;
   instruction: Instruction23;
   system_prompt: SystemPrompt10;
   prompt_version: PromptVersion;
@@ -11966,6 +11993,8 @@ export interface AnchorAssessmentDecision1 {
   issues?: Issues10;
 }
 export interface BboxAnnotationIssue1 {
+  coverage_effect?: CoverageEffect3;
+  coverage_reason?: CoverageReason3;
   description: Description39;
   media_ids: MediaIds4;
   limitations?: Limitations74;
@@ -11974,8 +12003,6 @@ export interface BboxAnnotationIssue1 {
   main_annotation_ids?: MainAnnotationIds2;
   candidate_annotation_ids?: CandidateAnnotationIds2;
   region_pair_ids?: RegionPairIds2;
-  coverage_effect?: CoverageEffect1;
-  coverage_reason?: CoverageReason1;
   same_main_object_as?: SameMainObjectAs2;
 }
 export interface AnchorReviewSubmission {

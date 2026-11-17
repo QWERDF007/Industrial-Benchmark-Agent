@@ -5,6 +5,7 @@ from iad_core.consistency.annotation_coverage import AnnotationCoverage
 from iad_core.consistency.annotations import AnnotationSet
 from iad_core.consistency.annotation_models import AnnotationMatchingConfig
 from iad_core.consistency.comparison_domain import ComparisonDomain
+from iad_core.consistency.conflict_categories import CONFLICT_RULES
 
 
 class RecordedIssues:
@@ -12,7 +13,9 @@ class RecordedIssues:
 
     @classmethod
     def read(cls, model, raw, connection, run_id, anchor_id):
-        if not raw or 'position_difference' not in raw:
+        from iad_core.consistency.check_snapshots import CheckSnapshots
+        if (not raw or 'position_difference' not in raw
+                or CheckSnapshots.read(connection, run_id).annotation_classification is not None):
             return (getattr(model, 'model_validate_json', None) or model.validate_json)(raw)
         rows = connection.execute('''SELECT r.snapshot_json FROM consistency_anchor_evidence a
             JOIN consistency_results r USING(evidence_id) WHERE a.job_id=? AND a.anchor_id=?''',
@@ -66,13 +69,8 @@ class RecordedIssues:
             for shapes in self.geometries:
                 if main and candidate and set(main+candidate) <= shapes.keys():
                     coverage = AnnotationCoverage.compare([shapes[i] for i in main], [shapes[i] for i in candidate])
-                    if coverage.right_only:
-                        kinds.add('missing_content')
-                    if coverage.left_only:
-                        kinds.add('extra_content')
+                    kinds.update(CONFLICT_RULES[category].issue_type for category in coverage.categories)
         if not kinds:
-            # A historical visual finding can concern object coverage beyond identical source geometry.
-            # Preserve that frozen record; live submission validation rejects this type.
             return [issue]
         restored = []
         for kind in ('missing_content', 'extra_content'):

@@ -12,7 +12,7 @@ def test_new_jobs_freeze_scoring_and_preview_tracks_effective_versions(native_au
     jobs, dataset_id, upstream, role = native_audit
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
     snapshot = jobs.snapshot(run_id)
-    assert snapshot.quality_score_version == '1.4'
+    assert snapshot.quality_score_version == '1.5'
     ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1, settings={'quality_score_weights': {'consistency': 9}}))
     assert jobs.snapshot(run_id).settings.quality_score_weights.consistency == .8
     for sample in jobs.samples(run_id):
@@ -137,9 +137,9 @@ def test_recalculate_updates_completed_report_and_export_from_frozen_observation
     original_report = AuditQueries(jobs.db).report(run_id)
     ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1, settings={'quality_score_weights': {'consistency': 9}}))
     score = service.recalculate(run_id)
-    assert score.version == '1.4'
+    assert score.version == '1.5'
     assert score.weights == pytest.approx({'consistency': .8, 'diversity': .15, 'redundancy': .05})
-    assert jobs.snapshot(run_id).quality_score_version == '1.4'
+    assert jobs.snapshot(run_id).quality_score_version == '1.5'
     assert reports.session(run_id).result.quality_score == score
     view = AuditQueries(jobs.db).report(run_id)
     assert view.quality_score == score

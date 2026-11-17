@@ -1,4 +1,5 @@
 from iad_core.evidence.model_inputs import MODEL_IMAGE_GUIDANCE
+from iad_core.consistency.annotation_coverage import CONTENT_CHANGE_GUIDANCE
 
 DEFECT_PROFILE_PROMPT = """全部有标注缺陷图像已独立审计，当前处于缺陷画像阶段，良品尚未审计。读取本次items的全部图级事实，综合原始类别、形态、外观、结构位置、对比度和现有疑点，形成供良品比较的紧凑缺陷画像。
 每种有实际依据的代表性缺陷用一个feature，category保持原始类别，signature说清可见特征，normal_distinctions说明与正常结构或纹理应如何区分；同一现象不重复命名。每种feature只选择1至2张最能说明问题的真实缺陷图，使用audit_report_evidence实际看图，并引用该图当前版本。其余图级事实直接复用，不重新查看全部图片，不凭类别名称猜测缺陷外观。
@@ -9,7 +10,7 @@ QUALITY_OBSERVATION_GUIDANCE = """评分场景写入quality_observation。按tar
 Labelme逐个原始非忽略标注填写defects，每个annotation_id恰好一次；分类异常图只填写一个annotation_id为null的整图场景。类别由程序读取原始类别，不重新命名类别。场景记录morphology、special_morphology（未出现为null）、appearance、size（tiny/small/medium/large）、location（center/edge/corner）、structural_region（无则null）、contrast（low/medium/high）。尺寸结合本任务主体和原始标注的相对大小，不用统一像素阈值。形态与外观使用简短一致的名称，同一实际变化不拆成多个名字。
 良品在缺陷审计及主Agent缺陷画像之后分析。先观察主图，再对照defect_profile判断是否与实际缺陷难以区分。疑似困难良品时按需用audit_images读取对应feature的一个代表缺陷原图，不逐一查看全部参考；通过对照排除真实缺陷后，hard填true并记录hard_type、profile_revision、qualification（feature_id、reference、similar_features、normal_reason、difficulty_reason）。难点须是可见的缺陷混淆，普通亮度、反光、稀疏纹理本身不足以认定困难。疑似真实缺陷尚未排除时不能计为困难良品，应记录审计疑点和评分证据缺口。
 确认普通良品时hard填false，qualification为null，profile_revision采用当前画像版本。confusable不单独分类，统一填false。texture仅记录实际特殊正常纹理，并在texture_reason说明图像依据；未出现为null。缺少实际缺陷参考时不能默认普通良品，评分complete填false并说明缺口。场景证据充分才complete填true。不要捏造未出现的场景或重复实例；评分场景不自动成为标注疑点。
-标注问题区分完整实例缺失/额外（missing_annotation、extra_annotation）与同一对象覆盖不足/过多（missing_content、extra_content）。同一对象两向覆盖变化分别记录，拆分合并本身不计实例增减；不用position_difference。"""
+标注问题区分完整实例缺失/额外（missing_annotation、extra_annotation）与同一对象明显的大范围覆盖增减（missing_content、extra_content）。内容问题须填coverage_effect=material_change，并在coverage_reason指出明显漏盖或多盖的实际区域。两侧覆盖基本相同、主要是轮廓或位置偏移时用position_difference，不计内容问题。拆分合并本身不计实例增减；主结论按类别不一致、少标实例、多标实例、少标内容、多标内容、拆分、合并、位置差异依次选择。""" + '\n\n' + CONTENT_CHANGE_GUIDANCE
 
 CORE_AUDIT_PROMPT = MODEL_IMAGE_GUIDANCE + "\n\n" + """依据冻结原图、原始标注、一致性结果和所选知识，审核标注与可见现象的对应、覆盖、定位及实例组织，对提供的同内容图像核对标注一致性。
 

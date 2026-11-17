@@ -53,7 +53,7 @@ class AnnotationObservation(AnalysisModel):
     def capture(cls,left:'AnnotationSet',right:'AnnotationSet',comparison:'AnnotationComparison',relation:Relation,*,reverse:bool=False,
                 matching:'AnnotationMatchingConfig | None'=None) -> 'AnnotationObservation':
         if (comparison.coordinate_frame=='UNAVAILABLE' and relation!='EXACT' or any(
-                item.type in ('GEOMETRY', 'SPLIT_MERGE') and 'left_only_pixels' not in item.facts
+                item.type in ('GEOMETRY', 'SPLIT_MERGE') and 'union_pixels' not in item.facts
                 for item in comparison.differences)) and ComparisonDomain.can_compare_layout(left,right,relation):
             from iad_core.consistency.annotations import AnnotationMatcher
             comparison=AnnotationMatcher(matching).compare(left,right,relation=relation)

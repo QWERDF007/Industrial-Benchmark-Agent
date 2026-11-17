@@ -61,6 +61,7 @@ class ConsistencyAgentJobs:
             model=settings.model,
             model_limits=settings.vision_limits,
             position_tolerance=settings.position_tolerance,
+            annotation_classification='content-coverage-v1',
             roles=ConsistencyModelRoles.model_validate(roles or {}),
             image_encoder=ImageEncoders(self.db).read().selection if settings.mode == 'combined' else None,
             dataset_formats=formats,

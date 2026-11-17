@@ -59,22 +59,22 @@ export const auditIssueLabels = {
     "category_mismatch": "类别不一致",
     "extra_annotation": "多标实例",
     "missing_annotation": "少标实例",
+    "position_difference": "位置差异",
     "missing_content": "少标内容",
     "extra_content": "多标内容",
     "split": "拆分",
-    "merge": "合并",
-    "position_difference": "位置差异"
+    "merge": "合并"
 };
 export const auditIssueDescriptions = {
     "image_label_mismatch": "内容相同的两张图，整图标签不同，例如一张记为OK，另一张记为NG。",
     "category_mismatch": "同一目标在两张图中的类别记录不同。",
     "extra_annotation": "主图多出一个完整实例标注，候选图没有对应实例标注。",
     "missing_annotation": "候选图有完整的缺陷实例标注，主图缺少对应实例标注。",
-    "missing_content": "同一对象的主图标注漏盖候选图已覆盖的部分内容。",
-    "extra_content": "同一对象的主图标注额外覆盖候选图未覆盖的部分内容。",
+    "position_difference": "同一对象的实际覆盖基本相同，主要是轮廓、位置或边界偏移。",
+    "missing_content": "同一对象的主图标注明显漏盖候选图已覆盖的一大块内容。",
+    "extra_content": "同一对象的主图标注明显多盖候选图未覆盖的一大块内容。",
     "split": "同一组内容在主图中用多个标注，在候选图中用一个标注。",
-    "merge": "同一组内容在主图中用一个标注，在候选图中用多个标注。",
-    "position_difference": "两侧原始标注覆盖的内容存在差异。"
+    "merge": "同一组内容在主图中用一个标注，在候选图中用多个标注。"
 };
 export const auditIssueTypesByFormat = {
     "labelme": [
@@ -84,7 +84,8 @@ export const auditIssueTypesByFormat = {
         "missing_content",
         "extra_content",
         "split",
-        "merge"
+        "merge",
+        "position_difference"
     ],
     "folder_classification": [
         "image_label_mismatch"

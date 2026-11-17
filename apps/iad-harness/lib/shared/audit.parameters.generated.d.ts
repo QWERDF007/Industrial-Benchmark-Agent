@@ -706,6 +706,25 @@ export declare const auditCommitParameters: {
                     readonly type: "object";
                     readonly additionalProperties: false;
                     readonly properties: {
+                        readonly coverage_effect: {
+                            readonly oneOf: readonly [{
+                                readonly type: "string";
+                                readonly enum: readonly ["unchanged", "material_change", "unverified"];
+                            }, {
+                                readonly type: "null";
+                            }];
+                            readonly description: "内容问题必须确认明显的大范围覆盖增减material_change；覆盖基本相同的边界或轮廓偏移属于位置差异。";
+                            readonly title: "Coverage Effect";
+                        };
+                        readonly coverage_reason: {
+                            readonly oneOf: readonly [{
+                                readonly type: "string";
+                            }, {
+                                readonly type: "null";
+                            }];
+                            readonly description: "指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。";
+                            readonly title: "Coverage Reason";
+                        };
                         readonly finding_id: {
                             readonly type: "string";
                             readonly title: "Finding Id";
@@ -752,7 +771,7 @@ export declare const auditCommitParameters: {
                         };
                         readonly type: {
                             readonly type: "string";
-                            readonly enum: readonly ["image_label_mismatch", "category_mismatch", "extra_annotation", "missing_annotation", "missing_content", "extra_content", "split", "merge"];
+                            readonly enum: readonly ["image_label_mismatch", "category_mismatch", "extra_annotation", "missing_annotation", "position_difference", "missing_content", "extra_content", "split", "merge"];
                             readonly description: "按可见问题分类；类别差异指有效同内容对照中同一对象的原始分组差异。";
                             readonly title: "Type";
                             readonly required: true;

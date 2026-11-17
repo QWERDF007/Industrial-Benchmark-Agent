@@ -84,6 +84,7 @@ class ConsistencyCheckSnapshot(AnalysisModel):
     image_encoder: ImageEncoderConfig | None
     policies: dict[str, AnnotationPolicy]
     position_tolerance: PositionTolerancePolicy = Field(default_factory=PositionTolerancePolicy)
+    annotation_classification: Literal['content-coverage-v1'] | None = None
     instruction: NonBlankText
     system_prompt: NonBlankText | None = None
     prompt_version: Identifier = 'consistency-anchor-v6'

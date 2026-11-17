@@ -90,8 +90,10 @@ class AuditCommits:
                     if (final.state == 'suspect' and final.quality_observation.normal is not None
                             and final.quality_observation.normal.hard):
                         raise ValueError('存在独立质量疑点时不能直接将该图计为困难良品')
-                if any(finding.type == 'position_difference' for finding in final.findings):
-                    raise ValueError('请将覆盖变化定性为少标内容或多标内容')
+                if any(finding.type in ('missing_content', 'extra_content') and (
+                        finding.coverage_effect != 'material_change' or not finding.coverage_reason)
+                        for finding in final.findings):
+                    raise ValueError('内容差异须说明明显漏盖或多盖的一大块实际内容；轻微轮廓偏移归位置差异')
             annotation_ids = {item.annotation_id for item in record.annotations}
             if any(set(observation.annotation_ids) - annotation_ids for observation in final.observations):
                 raise ValueError('观察引用不属于本图冻结标注')

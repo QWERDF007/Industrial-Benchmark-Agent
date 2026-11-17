@@ -34,15 +34,18 @@ class CandidateObjectReference(AnalysisModel):
     annotation_ids: list[NonBlankText] = Field(min_length=1, max_length=1)
 
 
-class BboxAnnotationIssue(IssueEvidenceFields):
+class CoverageEvidenceFields(AnalysisModel):
+    coverage_effect: Literal['unchanged', 'material_change', 'unverified'] | None = Field(default=None,
+        description='内容问题必须确认明显的大范围覆盖增减material_change；覆盖基本相同的边界或轮廓偏移属于位置差异。')
+    coverage_reason: NonBlankText | None = Field(default=None,
+        description='指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。')
+
+
+class BboxAnnotationIssue(IssueEvidenceFields, CoverageEvidenceFields):
     type: Literal['category_mismatch', 'extra_annotation', 'missing_annotation', 'missing_content', 'extra_content', 'split', 'merge', 'position_difference'] = Field(json_schema_extra={'enum': [kind for kind, category in ISSUE_CATEGORIES.items() if category in CONFLICT_RULES and kind != 'image_label_mismatch']})
     main_annotation_ids: list[str] = Field(default_factory=list)
     candidate_annotation_ids: list[str] = Field(default_factory=list)
     region_pair_ids: list[str] = Field(default_factory=list, description='支持本问题的已核实区域对ID；像素一致的程序捷径可为空。')
-    coverage_effect: Literal['unchanged', 'material_change', 'unverified'] | None = Field(default=None,
-        description='内容问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。')
-    coverage_reason: NonBlankText | None = Field(default=None,
-        description='内容问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。')
     same_main_object_as: list[CandidateObjectReference] = Field(default_factory=list,
         description='仅用于主图少标实例：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。')
 

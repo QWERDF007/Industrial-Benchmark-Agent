@@ -301,7 +301,7 @@ def test_identical_instances_match_exactly_before_assigning_other_overlaps():
     result=AnnotationMatcher().compare(left,right,relation='EXACT')
     assert len(result.matches)==2
     assert [d.type for d in result.differences]==['GEOMETRY']
-    assert result.conflict_categories==['少标内容','多标内容']
+    assert result.conflict_categories==['位置差异']
 
 
 def test_crowded_identical_instances_match_one_to_one_and_report_the_extra():
@@ -340,7 +340,7 @@ def test_matching_ties_are_definite_and_stable_when_input_order_changes():
     left.annotations.reverse()
     right.annotations.reverse()
     second = AnnotationMatcher().compare(left, right, relation='EXACT')
-    assert first.conflict_categories == second.conflict_categories == ['少标内容','多标内容']
+    assert first.conflict_categories == second.conflict_categories == ['位置差异']
     assert {(m.left_id, m.right_id) for m in first.matches} == {(m.left_id, m.right_id) for m in second.matches}
     assert len(first.matches) == 2
 
@@ -351,7 +351,7 @@ def test_matching_ties_are_definite_and_stable_when_input_order_changes():
     ([[0, 0, 10, 10], [0, 0, 10, 10]], [[0, 0, 10, 10]], ['多类别'], 1),
     ([[0, 0, 1, 1]], [], ['多类别'], 0),
     ([], [[0, 0, 1, 1]], ['少类别'], 0),
-    ([[0, 0, 10, 10], [2, 0, 12, 10]], [[1, 0, 11, 10], [1, 0, 11, 10]], ['少标内容','多标内容'], 2),
+    ([[0, 0, 10, 10], [2, 0, 12, 10]], [[1, 0, 11, 10], [1, 0, 11, 10]], ['位置差异'], 2),
     ([[0, 0, 10, 10], [0, 0, 10, 10]], [[0, 0, 10, 10], [0, 0, 10, 10]], [], 2),
 ])
 def test_saved_ambiguous_groups_are_restored_as_definite_differences(left_boxes, right_boxes, expected, pair_count):

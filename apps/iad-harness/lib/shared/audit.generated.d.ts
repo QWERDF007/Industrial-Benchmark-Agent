@@ -58,25 +58,25 @@ export declare const auditIssueLabels: {
     readonly category_mismatch: "类别不一致";
     readonly extra_annotation: "多标实例";
     readonly missing_annotation: "少标实例";
+    readonly position_difference: "位置差异";
     readonly missing_content: "少标内容";
     readonly extra_content: "多标内容";
     readonly split: "拆分";
     readonly merge: "合并";
-    readonly position_difference: "位置差异";
 };
 export declare const auditIssueDescriptions: {
     readonly image_label_mismatch: "内容相同的两张图，整图标签不同，例如一张记为OK，另一张记为NG。";
     readonly category_mismatch: "同一目标在两张图中的类别记录不同。";
     readonly extra_annotation: "主图多出一个完整实例标注，候选图没有对应实例标注。";
     readonly missing_annotation: "候选图有完整的缺陷实例标注，主图缺少对应实例标注。";
-    readonly missing_content: "同一对象的主图标注漏盖候选图已覆盖的部分内容。";
-    readonly extra_content: "同一对象的主图标注额外覆盖候选图未覆盖的部分内容。";
+    readonly position_difference: "同一对象的实际覆盖基本相同，主要是轮廓、位置或边界偏移。";
+    readonly missing_content: "同一对象的主图标注明显漏盖候选图已覆盖的一大块内容。";
+    readonly extra_content: "同一对象的主图标注明显多盖候选图未覆盖的一大块内容。";
     readonly split: "同一组内容在主图中用多个标注，在候选图中用一个标注。";
     readonly merge: "同一组内容在主图中用一个标注，在候选图中用多个标注。";
-    readonly position_difference: "两侧原始标注覆盖的内容存在差异。";
 };
 export declare const auditIssueTypesByFormat: {
-    readonly labelme: readonly ["category_mismatch", "missing_annotation", "extra_annotation", "missing_content", "extra_content", "split", "merge"];
+    readonly labelme: readonly ["category_mismatch", "missing_annotation", "extra_annotation", "missing_content", "extra_content", "split", "merge", "position_difference"];
     readonly folder_classification: readonly ["image_label_mismatch"];
 };
 export declare const auditAssessmentLabels: {

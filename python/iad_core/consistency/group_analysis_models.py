@@ -30,7 +30,7 @@ class GroupAnalysisConclusion(AnalysisModel):
 
 ConclusionPhrase = Annotated[str, Field(min_length=1, max_length=40,
     json_schema_extra={'enum': list(CONCLUSION_CHOICES)},
-    description='冲突结论只能从类别不一致、少类别、多类别、少标内容、多标内容、拆分、合并中单选，按主图相对候选图的方向判断；无差异为一致，证据缺失为null。位置、数值及全部具体差异依据只写在分析中')]
+    description='冲突结论只能从类别不一致、少类别、多类别、少标内容、多标内容、拆分、合并、位置差异中单选，按主图相对候选图的方向判断；无差异为一致，证据缺失为null。具体差异依据写在分析中')]
 
 
 class GroupPairDecision(AnalysisModel):

@@ -40,3 +40,22 @@ def test_equal_polygon_bounds_do_not_hide_different_contours():
     sources[1].annotations=source(candidate)
     with pytest.raises(ValueError,match='原始标注几何完全相同'):
         AnnotationEvaluation.validate(assessment,sources,['main_image','candidate_image'])
+
+
+def test_minor_contour_change_cannot_be_submitted_as_missing_content():
+    main = Annotation(annotation_id='main:a', sample_id='main', annotation_type='polygon', raw_label='dent',
+        bbox=[10, 10, 70, 60], polygon=[[10, 10], [70, 10], [70, 60], [10, 60]])
+    candidate = main.model_copy(update={'annotation_id': 'candidate:a', 'sample_id': 'candidate',
+        'bbox': [10, 10, 72, 60], 'polygon': [[10, 10], [72, 10], [72, 60], [10, 60]]})
+    sources = [SimpleNamespace(annotations=source(item), descriptor=SimpleNamespace(pixel_key='same'))
+        for item in (main, candidate)]
+    issue = {'type': 'missing_content', 'main_annotation_ids': ['main:a'],
+        'candidate_annotation_ids': ['candidate:a'], 'media_ids': ['main_image', 'candidate_image'],
+        'description': '右侧边界略有差别。', 'coverage_effect': 'material_change', 'coverage_reason': '边界略宽。'}
+    assessment = GroupPairAssessment(candidate_id='candidate', verdict='MATERIAL', explanation='边界不同。',
+        issues=[issue])
+    with pytest.raises(ValueError, match='位置差异'):
+        AnnotationEvaluation.validate(assessment, sources, ['main_image', 'candidate_image'])
+    assessment = GroupPairAssessment(candidate_id='candidate', verdict='MATERIAL', explanation='覆盖基本相同。',
+        issues=[{**issue, 'type': 'position_difference', 'coverage_effect': 'unchanged'}])
+    AnnotationEvaluation.validate(assessment, sources, ['main_image', 'candidate_image'])

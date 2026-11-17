@@ -9,7 +9,8 @@ export const conflictCategoryDefaults = {
         "少标内容",
         "多标内容",
         "拆分",
-        "合并"
+        "合并",
+        "位置差异"
     ],
     "folder_classification": [
         "类别不一致"
@@ -22,7 +23,8 @@ export const conflictCategoryLabels = {
     "少标内容": "少标内容",
     "多标内容": "多标内容",
     "拆分": "拆分",
-    "合并": "合并"
+    "合并": "合并",
+    "位置差异": "位置差异"
 };
 export const conflictCategoryPriorities = {
     "类别不一致": 0,
@@ -31,7 +33,8 @@ export const conflictCategoryPriorities = {
     "少标内容": 1,
     "多标内容": 1,
     "拆分": 2,
-    "合并": 2
+    "合并": 2,
+    "位置差异": 3
 };
 export const modelConclusionLabels = {
     "类别不一致": "类别不一致",
@@ -51,7 +54,8 @@ export const conflictCategories = [
     "少标内容",
     "多标内容",
     "拆分",
-    "合并"
+    "合并",
+    "位置差异"
 ];
 export const modelAssessmentLabels = {
     "NOT_ANALYZED": "未分析",

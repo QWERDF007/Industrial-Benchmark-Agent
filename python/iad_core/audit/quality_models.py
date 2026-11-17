@@ -8,8 +8,8 @@ from iad_core.audit.stage_models import HardNormalQualification
 from iad_core.consistency.conflict_categories import ConflictCategory
 
 
-QualityScoreVersion = Literal['1.1', '1.2', '1.3', '1.4']
-QUALITY_SCORE_VERSION: QualityScoreVersion = '1.4'
+QualityScoreVersion = Literal['1.1', '1.2', '1.3', '1.4', '1.5']
+QUALITY_SCORE_VERSION: QualityScoreVersion = '1.5'
 
 
 class AuditScoreWeights(AnalysisModel):

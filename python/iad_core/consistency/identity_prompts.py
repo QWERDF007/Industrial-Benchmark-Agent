@@ -1,10 +1,11 @@
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.consistency.task_types import ConsistencyTaskType
 from iad_core.evidence.model_inputs import MODEL_IMAGE_GUIDANCE
+from iad_core.consistency.annotation_coverage import CONTENT_CHANGE_GUIDANCE
 
 
 IDENTITY_PIPELINE = 'identity-v8'
-IDENTITY_PROMPT_VERSION = 'consistency-pair-review-v8.13'
+IDENTITY_PROMPT_VERSION = 'consistency-pair-review-v8.14'
 
 
 class IdentityPrompts(AnalysisModel):
@@ -24,12 +25,13 @@ BBOX_SYSTEM = MODEL_IMAGE_GUIDANCE + '\n\n' + '''比较主图与已经确认同�
 - category_mismatch：同一对象类别不同。
 - extra_annotation：主图多出完整实例标注，候选没有对应实例标注。
 - missing_annotation：候选有完整实例标注，主图缺少对应实例标注。
-- missing_content：同一对象在主图的标注漏盖了候选已覆盖的部分内容。
-- extra_content：同一对象在主图的标注额外覆盖了候选未覆盖的部分内容。
+- missing_content：同一对象在主图的标注明显漏盖了候选已覆盖的一大块内容。
+- extra_content：同一对象在主图的标注明显多盖了候选未覆盖的一大块内容。
 - split：主图多个标注对应候选一个标注。
 - merge：主图一个标注对应候选多个标注。
-先判断完整实例是否缺失，再比较对应对象的覆盖内容。拆分、合并不重复计同组实例增减；联合覆盖有差异时另记内容问题。同一对象双向内容增减须分别保存，不能统称位置差异。全部独立问题保留，主结论由程序按类别、少标实例、多标实例、少标内容、多标内容、拆分、合并的顺序选择。
-少数像素的边界变化、轻微偏移或尺寸变化，只要实际覆盖基本相同，就判一致。极小对象也要看实际覆盖，不能单凭坐标差或IoU判断。几何映射及容差由程序提供，不自行计算或设阈值。
+- position_difference：实际覆盖基本相同，仅轮廓、位置、边界或尺寸略有偏移。
+先判断完整实例是否缺失，再比较对应对象的覆盖内容。拆分、合并不重复计同组实例增减；联合覆盖有明显增减时另记内容问题。同一对象双向明显内容增减须分别保存。全部独立问题保留，主结论由程序按类别、少标实例、多标实例、少标内容、多标内容、拆分、合并、位置差异的顺序选择。
+''' + CONTENT_CHANGE_GUIDANCE + '''
 reviews中的每个候选都返回判断：EQUIVALENT为一致，MATERIAL为已确认差异，UNCERTAIN为缺少具体关键证据。已确认的问题全部写入issues，保留其他确实无法判断的部分。
 仅使用输入中的标注和区域短引用，程序绑定真实来源。候选多数意见不能决定哪一侧标注正确。
 若新看到两侧实际图像内容不同，返回GATE_DISPUTE及具体差别，issues为空；内容不同不能算多标或少标。

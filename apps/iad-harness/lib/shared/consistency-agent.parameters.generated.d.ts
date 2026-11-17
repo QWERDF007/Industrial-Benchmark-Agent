@@ -533,6 +533,25 @@ export declare const anchorToolParameters: {
                             readonly type: "object";
                             readonly additionalProperties: false;
                             readonly properties: {
+                                readonly coverage_effect: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                        readonly enum: readonly ["unchanged", "material_change", "unverified"];
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly description: "内容问题必须确认明显的大范围覆盖增减material_change；覆盖基本相同的边界或轮廓偏移属于位置差异。";
+                                    readonly title: "Coverage Effect";
+                                };
+                                readonly coverage_reason: {
+                                    readonly oneOf: readonly [{
+                                        readonly type: "string";
+                                    }, {
+                                        readonly type: "null";
+                                    }];
+                                    readonly description: "指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。";
+                                    readonly title: "Coverage Reason";
+                                };
                                 readonly description: {
                                     readonly type: "string";
                                     readonly title: "Description";
@@ -561,7 +580,7 @@ export declare const anchorToolParameters: {
                                 };
                                 readonly type: {
                                     readonly type: "string";
-                                    readonly enum: readonly ["category_mismatch", "extra_annotation", "missing_annotation", "missing_content", "extra_content", "split", "merge"];
+                                    readonly enum: readonly ["category_mismatch", "extra_annotation", "missing_annotation", "position_difference", "missing_content", "extra_content", "split", "merge"];
                                     readonly title: "Type";
                                     readonly required: true;
                                 };
@@ -586,25 +605,6 @@ export declare const anchorToolParameters: {
                                     };
                                     readonly description: "支持本问题的已核实区域对ID；像素一致的程序捷径可为空。";
                                     readonly title: "Region Pair Ids";
-                                };
-                                readonly coverage_effect: {
-                                    readonly oneOf: readonly [{
-                                        readonly type: "string";
-                                        readonly enum: readonly ["unchanged", "material_change", "unverified"];
-                                    }, {
-                                        readonly type: "null";
-                                    }];
-                                    readonly description: "内容问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。";
-                                    readonly title: "Coverage Effect";
-                                };
-                                readonly coverage_reason: {
-                                    readonly oneOf: readonly [{
-                                        readonly type: "string";
-                                    }, {
-                                        readonly type: "null";
-                                    }];
-                                    readonly description: "内容问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。";
-                                    readonly title: "Coverage Reason";
                                 };
                                 readonly same_main_object_as: {
                                     readonly type: "array";
