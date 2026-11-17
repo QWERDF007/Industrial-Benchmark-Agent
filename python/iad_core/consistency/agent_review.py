@@ -223,7 +223,6 @@ class ConsistencyAgentReview:
                 return self.checks.complete(run_id, anchor_id, result, attempt=attempt,
                     request_id=submission.request_id, request_payload=submission.model_dump(mode='json'))
             verdict = GroupAnalysisValidation.verdict(item.assessment.verdict for item in selected)
-            primary = next(item.assessment for item in selected if item.assessment.verdict == verdict)
             references = [item.reference for item in selected]
             observed = {item.observation_id: item for item in self.observations(run_id, anchor_id)}
             limitations = list(dict.fromkeys([limitation for item in selected for limitation in item.assessment.limitations] + [limitation for item in selected for reference in item.observation_ids
@@ -233,7 +232,8 @@ class ConsistencyAgentReview:
                 'request_id': submission.request_id,
                 'observation_ids': {item.assessment.candidate_id: item.observation_ids for item in selected},
                 'draft': {'assessments': [item.assessment for item in selected],
-                    'overall': {'verdict': primary.verdict, 'text': primary.conclusion, 'references': references},
+                    'overall': {'verdict': verdict, 'text': '一致' if verdict == 'EQUIVALENT' else None,
+                        'references': references},
                     'conclusions': [{'text': item.assessment.explanation, 'references': [item.reference]} for item in selected],
                     'limitations': limitations}}, attempt=attempt)
 

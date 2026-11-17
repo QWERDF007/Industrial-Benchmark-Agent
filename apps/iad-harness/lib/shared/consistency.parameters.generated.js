@@ -22,6 +22,14 @@ export const conflictCategoryLabels = {
     "拆分": "拆分",
     "合并": "合并"
 };
+export const conflictCategoryPriorities = {
+    "类别不一致": 0,
+    "多类别": 0,
+    "少类别": 0,
+    "位置差异": 1,
+    "拆分": 1,
+    "合并": 1
+};
 export const modelConclusionLabels = {
     "类别不一致": "类别不一致",
     "多类别": "多标",
@@ -37,8 +45,7 @@ export const conflictCategories = [
     "多类别",
     "少类别",
     "拆分",
-    "合并",
-    "对应关系差异"
+    "合并"
 ];
 export const modelAssessmentLabels = {
     "NOT_ANALYZED": "未分析",
@@ -632,21 +639,6 @@ export const consistencyCompareParameters = {
                 "title": "Minimum Iou",
                 "default": 0.5
             },
-            "ambiguity_tolerance": {
-                "type": "number",
-                "title": "Ambiguity Tolerance",
-                "default": 1e-9
-            },
-            "tiny_area": {
-                "type": "number",
-                "title": "Tiny Area",
-                "default": 4
-            },
-            "split_coverage": {
-                "type": "number",
-                "title": "Split Coverage",
-                "default": 0.9
-            },
             "max_instances": {
                 "type": "integer",
                 "title": "Max Instances",
@@ -1059,7 +1051,6 @@ export const consistencyQueryParameters = {
                     "ONE_SIDED_REGION",
                     "GEOMETRY",
                     "SPLIT_MERGE",
-                    "AMBIGUOUS_MATCH",
                     "POLICY_UNCONFIRMED",
                     "ANNOTATION_UNREADABLE"
                 ]

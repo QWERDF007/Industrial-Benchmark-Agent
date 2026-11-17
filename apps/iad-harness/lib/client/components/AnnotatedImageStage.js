@@ -2,18 +2,21 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useState } from "react";
 import { AnnotationLayer } from "./AnnotationLayer.js";
 import { ImageQualityBadge } from './ImageQualityBadge.js';
+import { useImageAnnotations } from '../useImageAnnotations.js';
 /**
  * Unified Annotated Image Stage.
  * Single Source of Truth for rendering an image with bounding box annotations and category badges.
  * Automatically respects the natural aspect ratio of the image, preventing distortion and coordinate shift.
  */
-export function AnnotatedImageStage({ src, alt = "", width, height, bboxes = [], annotationLayer, qualityLabel, showAnnotations = true, className = "", style, children, onLoadDimensions, }) {
+export function AnnotatedImageStage({ sampleId, src, alt = "", width, height, bboxes = [], annotationLayer, qualityLabel, showAnnotations = true, className = "", style, children, onLoadDimensions, }) {
     const [naturalSize, setNaturalSize] = useState({
         width: width || 0,
         height: height || 0,
     });
     const imgW = naturalSize.width || width || 800;
     const imgH = naturalSize.height || height || 600;
+    const layer = useImageAnnotations(sampleId, annotationLayer === null ? null : annotationLayer || (bboxes.length
+        ? { kind: 'boxes', annotations: bboxes, width: imgW, height: imgH } : undefined), qualityLabel);
     return (_jsxs("div", { className: `annotated-image-stage ${className}`, style: {
             width: "100%",
             height: "100%",
@@ -38,5 +41,5 @@ export function AnnotatedImageStage({ src, alt = "", width, height, bboxes = [],
                         setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
                         onLoadDimensions?.({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
                     }
-                } }), showAnnotations && (annotationLayer || bboxes.length > 0) && _jsx(AnnotationLayer, { fit: "contain", source: annotationLayer || { kind: 'boxes', annotations: bboxes, width: imgW, height: imgH } }), children, _jsx(ImageQualityBadge, { label: qualityLabel })] }));
+                } }), showAnnotations && layer && _jsx(AnnotationLayer, { fit: "contain", source: layer }), children, _jsx(ImageQualityBadge, { label: qualityLabel })] }));
 }

@@ -1,14 +1,14 @@
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel
 
 from iad_core.consistency.models import Identifier, ModelAssessmentVerdict
 from iad_core.workbench.job_models import JobStatus
-from iad_core.consistency.conflict_categories import ConflictCategory
+from iad_core.consistency.conflict_categories import ConflictCategory, primary_conflict_category
 from iad_core.consistency.group_analysis_conclusions import CONCLUSION_CHOICES
-from iad_core.consistency.annotation_issues import AnnotationIssue
+from iad_core.consistency.annotation_issues import AnnotationIssue, ISSUE_CATEGORIES
 
 
 
@@ -41,13 +41,21 @@ class GroupPairDecision(AnalysisModel):
         description='当前候选的具体发现')
     limitations: list[str] = Field(default_factory=list, max_length=100,
         description='独立保存未能确认的部分；已确认差异仍保留在issues，不因局部不确定而丢失。')
-    issues: list[AnnotationIssue] = Field(default_factory=list, description='全部独立问题；框ID来自冻结事实，引用实际送达的两侧原图。拆分合并不重复计同组数量差异。')
+    issues: list[AnnotationIssue] = Field(default_factory=list, description='全部独立问题；标注ID来自冻结事实，引用实际送达的两侧原图。拆分合并不重复计同组数量差异。')
 
 
 class GroupPairAssessment(GroupPairDecision):
     conclusion: ConclusionPhrase | None = None
     categories: list[ConflictCategory] | None = Field(default=None,
-        description='与conclusion相同的唯一主要冲突分类；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并。无差异及缺失证据时为空，其他实际差异保留在分析中。')
+        description='与conclusion相同的唯一主要冲突分类；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个标注而候选一个为拆分，反之为合并。无差异及缺失证据时为空，其他实际差异保留在分析中。')
+
+    @model_validator(mode='after')
+    def derive_primary_conclusion(self) -> Self:
+        category = primary_conflict_category(ISSUE_CATEGORIES[issue.type] for issue in self.issues)
+        if self.verdict == 'MATERIAL' and category is not None:
+            self.categories = [category]
+            self.conclusion = category.value
+        return self
 
 
 class GroupVerdict(AnalysisModel):
@@ -68,6 +76,15 @@ class GroupAnalysisSummary(AnalysisModel):
 class GroupAnalysisDraft(GroupAnalysisSummary):
     assessments: list[GroupPairAssessment] = Field(min_length=1,max_length=10000,
         description='覆盖全部候选且每个候选恰好一次；未获得固定主图直接证据时只能UNCERTAIN')
+
+    @model_validator(mode='after')
+    def derive_primary_conclusion(self) -> Self:
+        if self.overall.verdict == 'MATERIAL':
+            category = primary_conflict_category(category for assessment in self.assessments
+                if assessment.verdict == 'MATERIAL' for category in (assessment.categories or []))
+            if category is not None:
+                self.overall = self.overall.model_copy(update={'text': category.value})
+        return self
 
 
 class GroupAnalysisView(AnalysisModel):

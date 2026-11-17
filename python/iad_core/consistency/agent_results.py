@@ -14,7 +14,7 @@ from iad_core.consistency.agent_result_models import (AnchorCandidatePage, Ancho
     AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport, AnchorDiagnostics, AnchorPhaseTiming, ModelRoleDiagnostics, ModelRolesDiagnostics)
 from iad_core.consistency.agent_review_models import AnchorObservation, AnchorVisualRequest
 from iad_core.consistency.annotation_inventory import AnnotationObservation
-from iad_core.consistency.conflict_categories import ConflictCategory
+from iad_core.consistency.conflict_categories import ConflictCategory, primary_conflict_category
 from iad_core.consistency.evidence_models import FrozenEvidence
 from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.group_review import ConsistencyGroupReview
@@ -153,7 +153,7 @@ class ConsistencyAgentResults:
         elif result is not None and result.reason == 'PROGRAM_REVIEWED':
             program_conclusion = '一致'
         else:
-            program_conclusion = str(original_categories[0]) if original_categories else AnnotationObservation.conclusion_for([],
+            program_conclusion = str(primary_conflict_category(original_categories)) if original_categories else AnnotationObservation.conclusion_for([],
                 dataset_format == 'folder_classification' or bool(geometry_checks) and all(geometry_checks))
         return AnchorResultSummary(job_id=anchor.job_id, anchor_id=anchor.anchor_id, session_id=anchor.session_id,
             outcome=IdentityResultFields.model_validate(outcome) if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8') else None,
@@ -163,7 +163,9 @@ class ConsistencyAgentResults:
             selected_similar=anchor.candidates.similar.selected if anchor.candidates else None, verdict=verdict,
             reason=reason or ((errors[0].get('code') or anchor.phase) if errors else anchor.phase),
             categories=categories, conclusion=result.overall.text if reviewed else result.conclusion if result else None,
-            original_categories=original_categories, original_conclusion=next(iter(original_categories), None),
+            original_categories=original_categories, original_conclusion=primary_conflict_category(original_categories),
+            identity_model_reviewed=identity is not None and any(gate.source == 'vision' and
+                gate.execution_status == 'completed' for gate in identity.gates),
             model_conclusion=categories[0] if categories else '无冲突' if model_reviewed and verdict == 'EQUIVALENT' else None,
             result_ref=self.references(anchor.job_id, anchor.anchor_id)).with_progress(anchor.state, anchor.phase,
                 anchor.attempt, errors[0].get('code') if errors else None)

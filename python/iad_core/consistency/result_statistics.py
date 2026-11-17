@@ -27,7 +27,7 @@ class ResultStatistics:
             self.connection.execute('INSERT OR IGNORE INTO stats_differences VALUES(?,?)',(state,difference.difference_id))
             if difference.type=='QUALITY_LABEL' and difference.confirmed_conflict:
                 self.connection.execute('INSERT OR IGNORE INTO stats_quality VALUES(?,?)',(state,difference.difference_id))
-            if difference.type in ('CATEGORY','ONE_SIDED_REGION','GEOMETRY','SPLIT_MERGE','AMBIGUOUS_MATCH'):
+            if difference.type in ('CATEGORY','ONE_SIDED_REGION','GEOMETRY','SPLIT_MERGE'):
                 self.connection.execute('INSERT OR IGNORE INTO stats_regions VALUES(?,?)',(state,difference.difference_id))
         for difference in saved.result.annotation.differences:
             if difference.type == 'POLICY_UNCONFIRMED':

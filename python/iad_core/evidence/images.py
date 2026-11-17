@@ -3,6 +3,7 @@ import io
 import json
 import math
 from dataclasses import dataclass, replace
+from contextlib import nullcontext
 from pathlib import Path
 from typing import List, Literal, Optional
 
@@ -14,6 +15,7 @@ from iad_core.evidence.views import padded_bbox
 from iad_core.evidence.masks import annotation_mask, annotation_overlay
 from iad_core.storage.models import Sample, Annotation
 from iad_core.evidence.files import ImageFiles
+from iad_core.evidence.model_inputs import ModelImageInput, ModelImageInputs
 
 OVERVIEW_MAX_SIDE = 1280
 ROI_MAX_SIDE = 1024
@@ -42,6 +44,8 @@ class PreparedImage:
     annotations: tuple[Annotation, ...] = ()
     image_label: Optional[Literal['OK', 'NG', 'UNKNOWN']] = None
 
+    model_input: ModelImageInput | None = None
+
     def with_source(self, sample: Sample, dataset_format: Literal['labelme', 'folder_classification'],
                     annotations: List[Annotation]) -> 'PreparedImage':
         return replace(self, dataset_format=dataset_format,
@@ -49,9 +53,14 @@ class PreparedImage:
             image_label={'PASS': 'OK', 'FAIL': 'NG'}.get(sample.quality_status, 'UNKNOWN')
                         if dataset_format == 'folder_classification' else None)
 
-    def model_context(self) -> dict:
+    def for_model(self, inputs: ModelImageInputs, max_side: int | None) -> 'PreparedImage':
+        return self if max_side is None else replace(self,model_input=inputs.prepare(self.evidence,self.path,max_side))
+
+    def model_context(self, *, include_source: bool = True) -> dict:
         context = self.evidence.model_context()
-        if self.dataset_format:
+        if self.model_input is not None:
+            context.update(self.model_input.context(self.evidence,self.annotations))
+        if include_source and self.dataset_format:
             context['dataset_format'] = self.dataset_format
             if self.dataset_format == 'labelme':
                 context['annotations'] = [item.model_dump(mode='json', exclude={'mask_path'}) for item in self.annotations]
@@ -94,17 +103,22 @@ class EvidenceImages:
                 source_sha256: Optional[str] = None, annotations: Optional[List[Annotation]] = None,
                 annotation_mode: Literal["annotation_mask", "annotation_overlay"] = "annotation_overlay",
                 max_side: Optional[int] = None, *, full_resolution: bool = False,
-                annotation_origins: Optional[List[Annotation]] = None) -> PreparedImage:
+                annotation_origins: Optional[List[Annotation]] = None, source_pixels: Image.Image | None = None) -> PreparedImage:
         box = bbox or [0, 0, sample.width, sample.height]
-        original_bytes = Path(sample.image_path).read_bytes()
+        if source_pixels is not None and source_sha256 is None:
+            raise ValueError('共享原图像素需要冻结来源摘要')
+        original_bytes = None if source_pixels is not None else Path(sample.image_path).read_bytes()
         source_sha = source_sha256 or hashlib.sha256(original_bytes).hexdigest()
-        if full_resolution and bbox is None and annotations is None and max_side is None and original_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
+        if full_resolution and bbox is None and annotations is None and max_side is None and original_bytes is not None and original_bytes.startswith(b'\x89PNG\r\n\x1a\n'):
             payload, sent_size = original_bytes, [sample.width, sample.height]
         else:
-            with Image.open(io.BytesIO(original_bytes)) as original:
-                image = original.copy() if full_resolution else normalized_preview(original)
+            with nullcontext(source_pixels) if source_pixels is not None else Image.open(io.BytesIO(original_bytes)) as original:
                 if bbox is not None:
-                    image = image.crop(tuple(box))
+                    image = original.crop(tuple(box))
+                    if not full_resolution:
+                        image = normalized_preview(image)
+                else:
+                    image = original.copy() if full_resolution else normalized_preview(original)
                 if annotations is not None:
                     image = (annotation_mask(sample, annotations, box).convert("RGB") if annotation_mode == "annotation_mask"
                              else annotation_overlay(sample, image, annotations, box))

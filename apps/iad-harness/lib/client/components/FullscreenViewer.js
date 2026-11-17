@@ -6,18 +6,16 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import { Modal } from './Modal.js';
 import { AnnotationLayer } from './AnnotationLayer.js';
-import { useResource } from '../useResource.js';
+import { useImageAnnotations } from '../useImageAnnotations.js';
 /**
  * Reusable full-dialog image viewer.
  * Provides pan, zoom, fit to window, annotation overlay toggle, and keyboard navigation.
  * Standardized across Image Browsing and Direction Exploration pages.
  */
 export function FullscreenViewer({ open, item, items = [], currentIndex = -1, onClose, onNavigate, navigation, context, overlay, initialTransform, onTransform, onImageClick, }) {
-    const source = useResource(open && item?.sampleId && item.annotationLayer === undefined && !item.qualityLabel
-        ? `/sample/${encodeURIComponent(item.sampleId)}` : null);
-    const annotationLayer = item?.annotationLayer === null ? undefined : item?.annotationLayer || (source.data ? { kind: 'sample',
-        sample: source.data.sample, annotations: source.data.annotations } : item?.bboxes?.length
-        ? { kind: 'boxes', annotations: item.bboxes, width: item.width || 1, height: item.height || 1 } : undefined);
+    const annotationLayer = useImageAnnotations(open ? item?.sampleId : undefined, item?.annotationLayer === null ? null :
+        item?.annotationLayer || (item?.bboxes?.length
+            ? { kind: 'boxes', annotations: item.bboxes, width: item.width || 1, height: item.height || 1 } : undefined), item?.qualityLabel);
     const [zoomMode, setZoomMode] = useState("fit");
     const [zoomLevel, setZoomLevel] = useState(1);
     const [panX, setPanX] = useState(0);

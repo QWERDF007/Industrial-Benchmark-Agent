@@ -63,7 +63,7 @@ class AnnotationEvaluation:
             raise ValueError('同一对象的同类问题不得重复提交')
         for issue in assessment.issues:
             if issue.type == 'image_label_mismatch':
-                raise ValueError('矩形标注审核不能包含图像级标签问题')
+                raise ValueError('区域标注审核不能包含图像级标签问题')
             if issue.type == 'position_difference' and (issue.coverage_effect != 'material_change' or not issue.coverage_reason):
                 raise ValueError('位置差异必须说明实际缺陷覆盖的实质变化；无害边界抖动视为一致')
             if len(set(issue.media_ids)) != 2 or set(issue.media_ids) != set(media_ids):
@@ -121,8 +121,10 @@ class AnnotationEvaluation:
                     if categories[0] == categories[1]:
                         raise ValueError('按已登记类别映射相同的类别不能报告类别不一致')
                 if (issue.type == 'position_difference' and main.descriptor.pixel_key is not None
-                        and main.descriptor.pixel_key == candidate.descriptor.pixel_key and pair[0].bbox == pair[1].bbox):
-                    raise ValueError('像素相同且原始框完全相同，不能报告位置差异')
+                        and main.descriptor.pixel_key == candidate.descriptor.pixel_key
+                        and pair[0].annotation_type == pair[1].annotation_type
+                        and pair[0].bbox == pair[1].bbox and pair[0].polygon == pair[1].polygon):
+                    raise ValueError('像素相同且原始标注几何完全相同，不能报告位置差异')
         for structural in (item for item in assessment.issues if item.type in ('split', 'merge')):
             for count in (item for item in assessment.issues if item.type in ('extra_annotation', 'missing_annotation')):
                 if (set(structural.main_annotation_ids) & set(count.main_annotation_ids)

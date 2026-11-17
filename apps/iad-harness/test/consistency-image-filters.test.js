@@ -8,7 +8,7 @@ import {ConsistencyView} from '../lib/client/consistency-view.js';
 
 const image=(filename,summary={},review_state='pending')=>({
   sample:{sample_id:`dataset:${filename}`,task_id:'dataset'},image:null,review_state,
-  summary:{program_conclusion:'未完成',model_conclusion:null,verdict:null,reason:'PENDING',...summary},
+  summary:{program_conclusion:'未完成',original_categories:[],model_conclusion:null,verdict:null,reason:'PENDING',...summary},
   model_filter:summary.reason==='MODEL_REVIEWED'?(summary.verdict==='EQUIVALENT'?'EQUIVALENT':summary.model_conclusion):null,
   agreement:summary.reason==='MODEL_REVIEWED'&&(summary.model_conclusion||summary.verdict==='EQUIVALENT')?
     summary.program_conclusion===(summary.verdict==='EQUIVALENT'?'一致':summary.model_conclusion)?'same':'different':null,
@@ -18,14 +18,23 @@ const reviewed=(program,model,verdict='MATERIAL')=>({
 });
 const filters={search:'',model:'all',agreement:'all',review:'all'};
 
-test('cards explain why no annotation model verdict is needed instead of leaving an empty conclusion',()=>{
-  const [card]=ConsistencyView.imageCards('job',[image('no-eligible.png',{
-    reason:'NO_ELIGIBLE_CANDIDATES',program_conclusion:'无有效候选',annotation_review_label:'无需标注审核',
-  })]);
+test('cards keep workflow status out of model conclusions',()=>{
+  for(const [reason,label] of [
+    ['NO_CANDIDATES','无需标注审核'],['NO_ELIGIBLE_CANDIDATES','无需标注审核'],
+    ['PROGRAM_REVIEWED','无需标注审核'],['PENDING','等待标注审核'],
+    ['OBSERVING_ANCHOR','标注审核中'],['FAILED','审核失败'],['CANCELLED','已取消审核'],
+  ]) {
+    const [card]=ConsistencyView.imageCards('job',[image('sample.png',{
+      reason,program_conclusion:'无有效候选',annotation_review_label:label,
+    })]);
+    const html=renderToStaticMarkup(React.createElement(ConsistencyResultCard,{item:card,action:'job-image',onOpen(){}}));
+    assert.match(html,/无有效候选/);
+    assert.ok(!html.includes(label));
+    assert.equal(card.model.modelType,'');
+  }
+  const [card]=ConsistencyView.imageCards('job',[image('conflict.png',reviewed('位置差异','位置差异'))]);
   const html=renderToStaticMarkup(React.createElement(ConsistencyResultCard,{item:card,action:'job-image',onOpen(){}}));
-  assert.match(html,/无有效候选/);
-  assert.match(html,/无需标注审核/);
-  assert.equal(card.model.modelType,'');
+  assert.match(html,/模型结论：位置差异/);
 });
 
 test('all-image filters combine filename, model, agreement and review without treating unreviewed images as consistent',()=>{
@@ -102,4 +111,48 @@ test('the consistent tab uses the program conclusion while preserving independen
   assert.deepEqual(filenames({agreement:'different'}),['disagreed.png']);
   assert.deepEqual(filenames({search:'uncertain',review:'pending'}),['uncertain.png']);
   assert.deepEqual(filenames({review:'confirmed'}),['confirmed.png']);
+});
+
+
+test('program cards prioritize count and category differences over geometry while showing one conclusion',()=>{
+  const cards=ConsistencyView.imageCards('job',[
+    image('picture_1072.png',{...reviewed('位置差异','多类别'),original_categories:['位置差异','多类别']}),
+    image('picture_1074.png',{...reviewed('位置差异','少类别'),original_categories:['位置差异','少类别']}),
+  ]);
+  for(const [index,label] of ['多标','少标'].entries()) {
+    const html=renderToStaticMarkup(React.createElement(ConsistencyResultCard,{item:cards[index],action:'open-conflict',onOpen(){}}));
+    assert.match(html,new RegExp('程序结论：'+label));
+    assert.doesNotMatch(html,/程序结论：位置差异|位置差异、多标|位置差异、少标/);
+    assert.match(html,new RegExp('模型结论：'+label));
+    assert.equal(cards[index].type,label);
+  }
+  assert.equal(ConsistencyView.programConclusion(['位置差异','多类别'],'位置差异'),'多标');
+  assert.equal(ConsistencyView.programConclusion(['位置差异','类别不一致'],'位置差异'),'类别不一致');
+  assert.equal(ConsistencyView.programConclusion(['位置差异'],'位置差异'),'位置差异');
+  assert.equal(ConsistencyView.programConclusion([],'无候选'),'无候选');
+});
+
+
+test('program conclusion uses category and count first and location split merge second',()=>{
+  for(const [categories,expected] of [
+    [['位置差异','多类别'],'多标'],
+    [['合并','少类别'],'少标'],
+    [['拆分','类别不一致'],'类别不一致'],
+    [['对应关系差异','位置差异'],'位置差异'],
+    [['对应关系差异','拆分'],'拆分'],
+    [['对应关系差异','合并'],'合并'],
+    [['拆分','合并'],'拆分'],
+  ])assert.equal(ConsistencyView.programConclusion(categories,''),expected);
+});
+
+
+test('model identity rejection is attributed to the model without creating an annotation verdict',()=>{
+  const [card]=ConsistencyView.imageCards('job',[image('picture_1289.png',{
+    reason:'NO_ELIGIBLE_CANDIDATES',program_conclusion:'无有效候选',identity_model_reviewed:true,
+  })]);
+  const html=renderToStaticMarkup(React.createElement(ConsistencyResultCard,{item:card,action:'job-image',onOpen(){}}));
+  assert.equal(card.model.modelType,'');
+  assert.equal(card.model.identityConclusion,'无有效候选');
+  assert.match(html,/模型结论：无有效候选/);
+  assert.doesNotMatch(html,/程序结论：无有效候选/);
 });

@@ -71,7 +71,7 @@ def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
     initial = module_settings_get({'module': 'consistency'}, database)
     assert initial['revision'] == 0
     assert initial['settings'] == {'model': None, 'mode': 'combined', 'min_similarity': .98,
-        'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1, 'reasoning_effort': None,
+        'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1, 'reasoning_effort': None, 'whole_image_max_side': None,
         'vision_limits': VISION_DEFAULTS,
         'position_tolerance': {'policy_version':'coverage-v1','absolute_boundary_px':None,'relative_boundary_fraction':None,
             'min_coverage_consistency':None,'consider_registration_uncertainty':True,'tiny_defect_coverage_override':True},
@@ -119,7 +119,7 @@ def test_saving_one_field_preserves_other_module_settings(tmp_path):
     assert patch['settings'] == {'min_similarity': .98}
     changed = module_settings_save(patch, database)
     assert changed['settings'] == {'model': {'provider_id': 'vision', 'model_id': 'v2'},
-        'mode': 'exact', 'min_similarity': .98, 'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1, 'reasoning_effort': 'high',
+        'mode': 'exact', 'min_similarity': .98, 'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1, 'reasoning_effort': 'high', 'whole_image_max_side': None,
         'vision_limits': VISION_DEFAULTS,
         'position_tolerance': {'policy_version':'coverage-v1','absolute_boundary_px':None,'relative_boundary_fraction':None,
             'min_coverage_consistency':None,'consider_registration_uncertainty':True,'tiny_defect_coverage_override':True},

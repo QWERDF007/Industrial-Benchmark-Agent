@@ -1,6 +1,8 @@
 import hashlib
 import json
 from dataclasses import dataclass
+from contextlib import ExitStack
+from PIL import Image
 from pathlib import Path
 from typing import Callable
 
@@ -9,6 +11,7 @@ from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.annotation_views import annotation_views
 from iad_core.evidence.images import EvidenceImages, RegionView
 from iad_core.evidence.images import PreparedImage
+from iad_core.evidence.model_inputs import ModelImageInputs
 from iad_core.evidence.retained import RetainedImages
 from iad_core.evidence.consistency_sources import EvidenceSourcesCapture
 
@@ -38,7 +41,7 @@ class GroupAnalysisInputs:
         return hashlib.sha256(json.dumps([instruction,[image.model_context() for image in images]],
             sort_keys=True,ensure_ascii=False).encode()).hexdigest()
 
-    def prepare(self, group: FrozenAnalysisGroup, checkpoint: Callable[[], None]):
+    def prepare(self, group: FrozenAnalysisGroup, checkpoint: Callable[[], None], *, max_side: int | None = None):
         service = self.runtime.consistency_service
         images, seen, sources, contexts = [], {}, {}, []
         retained, previews = RetainedImages(self.db), EvidenceImages(self.db.db_path)
@@ -47,6 +50,7 @@ class GroupAnalysisInputs:
         evidence_ids = list(dict.fromkeys([group.anchor.evidence_id,*[member.image.evidence_id for member in group.members],
             *[member.comparison.evidence_id for member in group.members if member.comparison]]))
         byte_count = 0
+        model_inputs = ModelImageInputs(self.db.db_path)
         for evidence_id in evidence_ids:
             checkpoint()
             saved = service.evidence(evidence_id)
@@ -59,50 +63,56 @@ class GroupAnalysisInputs:
                 sample = source.sample.model_copy(update={'image_path':path})
                 annotations = captured_sources.annotations(source).annotations
                 dataset_format = source.annotations.dataset_format
-                prepared = []
-                if source_key not in sources:
-                    original = previews.capture(sample, 'overview', 'coverage', source_sha256=source.image.sha256,
-                        full_resolution=True).with_source(sample, dataset_format, annotations)
-                    regions = (annotation_views(sample,annotations) if dataset_format == 'labelme'
-                        and source.annotations.annotation_coordinates=='RAW' else [])
-                    prepared = [PreparedSourceView(original),*[PreparedSourceView(previews.capture(sample,'roi',region.source,region.crop_bbox,source.image.sha256,
-                        full_resolution=True),annotation=region)
-                        for region in regions]]
-                    sources[source_key] = {'sample_id':sample.sample_id,'name':sample.relative_path,
-                        'dataset_format':dataset_format,
-                        'scan_ref':source.scan_ref,
-                        **({'image_label':original.image_label} if dataset_format == 'folder_classification' else {}),
-                        'original_size':[sample.width,sample.height],
-                        'annotation_coordinates':source.annotations.annotation_coordinates,
-                        'annotation_availability':source.annotations.availability.model_dump(mode='json'),
-                        'annotations':[annotation.model_dump(mode='json',exclude={'mask_path'}) for annotation in annotations],
-                        'category_mapping': source.annotations.policy.category_mapping,
-                        'issues':source.issues,'visual_inputs':[]}
-                visual_inputs = sources[source_key]['visual_inputs']
-                other = getattr(saved.sources, 'right' if side == 'left' else 'left')
-                if (saved.result.verification.relation == 'EXACT' and dataset_format == 'labelme'
-                        and source.annotations.annotation_coordinates == other.annotations.annotation_coordinates == 'RAW'):
-                    available = {(tuple(item['crop_bbox']), item.get('window_from')) for item in visual_inputs}
-                    for region in annotation_views(sample, captured_sources.annotations(other).annotations):
-                        if region.source == 'annotation' and (tuple(region.crop_bbox), other.sample.sample_id) not in available:
-                            prepared.append(PreparedSourceView(previews.capture(sample,'roi','annotation',region.crop_bbox,source.image.sha256,
-                                full_resolution=True),
-                                mapped_from=other.sample.sample_id))
-                for view in prepared:
-                    checkpoint()
-                    image = view.image.with_source(sample, dataset_format, annotations)
-                    identity = (sample.sample_id,image.evidence.representation,image.evidence.sha256,tuple(image.evidence.crop_bbox))
-                    if identity not in seen:
-                        byte_count += Path(image.path).stat().st_size
-                        if byte_count>self.MAX_PREPARED_BYTES:
-                            raise ConsistencyError('RESOURCE_LIMIT','单批原图与标注裁剪超过准备资源预算，未发送不完整图组')
-                        images.append(image);seen[identity]=image.evidence.evidence_id
-                    visual_inputs.append({'evidence_id':seen[identity],'crop_bbox':image.evidence.crop_bbox,
-                        'representation':image.evidence.representation,
-                        'window_source':'mapped_window' if view.mapped_from is not None else
-                            'annotation' if view.annotation and view.annotation.source=='annotation' else None,
-                        'window_from':view.mapped_from,
-                        'annotation_origins':[origin.model_dump(mode='json') for origin in view.annotation.origins] if view.annotation else []})
+                with ExitStack() as decoded:
+                    pixels = None
+                    prepared = []
+                    if source_key not in sources:
+                        original = previews.capture(sample, 'overview', 'coverage', source_sha256=source.image.sha256,
+                            full_resolution=True).with_source(sample, dataset_format, annotations)
+                        regions = (annotation_views(sample,annotations) if dataset_format == 'labelme'
+                            and source.annotations.annotation_coordinates=='RAW' else [])
+                        pixels = decoded.enter_context(Image.open(path)) if regions else None
+                        prepared = [PreparedSourceView(original),*[PreparedSourceView(previews.capture(sample,'roi',region.source,region.crop_bbox,source.image.sha256,
+                            full_resolution=True,source_pixels=pixels),annotation=region)
+                            for region in regions]]
+                        sources[source_key] = {'sample_id':sample.sample_id,'name':sample.relative_path,
+                            'dataset_format':dataset_format,
+                            'scan_ref':source.scan_ref,
+                            **({'image_label':original.image_label} if dataset_format == 'folder_classification' else {}),
+                            'original_size':[sample.width,sample.height],
+                            'annotation_coordinates':source.annotations.annotation_coordinates,
+                            'annotation_availability':source.annotations.availability.model_dump(mode='json'),
+                            'annotations':[annotation.model_dump(mode='json',exclude={'mask_path'}) for annotation in annotations],
+                            'category_mapping': source.annotations.policy.category_mapping,
+                            'issues':source.issues,'visual_inputs':[]}
+                    visual_inputs = sources[source_key]['visual_inputs']
+                    other = getattr(saved.sources, 'right' if side == 'left' else 'left')
+                    if (saved.result.verification.relation == 'EXACT' and dataset_format == 'labelme'
+                            and source.annotations.annotation_coordinates == other.annotations.annotation_coordinates == 'RAW'):
+                        available = {(tuple(item['crop_bbox']), item.get('window_from')) for item in visual_inputs}
+                        for region in annotation_views(sample, captured_sources.annotations(other).annotations):
+                            if region.source == 'annotation' and (tuple(region.crop_bbox), other.sample.sample_id) not in available:
+                                if pixels is None:
+                                    pixels = decoded.enter_context(Image.open(path))
+                                prepared.append(PreparedSourceView(previews.capture(sample,'roi','annotation',region.crop_bbox,source.image.sha256,
+                                    full_resolution=True,source_pixels=pixels),
+                                    mapped_from=other.sample.sample_id))
+                    for view in prepared:
+                        checkpoint()
+                        image = view.image.with_source(sample, dataset_format, annotations)
+                        identity = (sample.sample_id,image.evidence.representation,image.evidence.sha256,tuple(image.evidence.crop_bbox))
+                        if identity not in seen:
+                            image = image.for_model(model_inputs,max_side)
+                            byte_count += Path(image.model_input.path if image.model_input else image.path).stat().st_size
+                            if byte_count>self.MAX_PREPARED_BYTES:
+                                raise ConsistencyError('RESOURCE_LIMIT','单批原图与标注裁剪超过准备资源预算，未发送不完整图组')
+                            images.append(image);seen[identity]=image.evidence.evidence_id
+                        visual_inputs.append({'evidence_id':seen[identity],'crop_bbox':image.evidence.crop_bbox,
+                            'representation':image.evidence.representation,
+                            'window_source':'mapped_window' if view.mapped_from is not None else
+                                'annotation' if view.annotation and view.annotation.source=='annotation' else None,
+                            'window_from':view.mapped_from,
+                            'annotation_origins':[origin.model_dump(mode='json') for origin in view.annotation.origins] if view.annotation else []})
             contexts.append({'evidence_id':evidence_id,'result_id':saved.result.result_id,
                 'source_states':saved.source_states.model_dump(mode='json'),'sources':source_refs,
                 'verification': {'relation': saved.result.verification.relation}})

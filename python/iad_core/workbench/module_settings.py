@@ -12,6 +12,7 @@ from iad_core.workbench.analysis_sampling import DEFAULT_SAMPLING_RATIO, Samplin
 
 BusinessModule = Literal['exploration', 'knowledge', 'consistency', 'audit']
 JobConcurrency = Annotated[int, Field(ge=1, strict=True)]
+ModelImageMaxSide = Annotated[int, Field(ge=1, strict=True)] | None
 
 
 class ModuleModelReference(AnalysisModel):
@@ -27,7 +28,7 @@ class ModuleSettingsValues(AnalysisModel):
 class AnalysisSamplingSettingsValues(ModuleSettingsValues):
     batch_size: int = Field(default=4, ge=1, strict=True)
     sampling_ratio: SamplingRatio = DEFAULT_SAMPLING_RATIO
-    whole_image_max_side: int | None = Field(default=None, ge=1, strict=True)
+    whole_image_max_side: ModelImageMaxSide = None
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 
@@ -42,13 +43,14 @@ class KnowledgeSettingsValues(AnalysisSamplingSettingsValues):
 
 class AuditSettingsValues(ModuleSettingsValues):
     quality_score_weights: AuditScoreWeights = Field(default_factory=AuditScoreWeights)
-    whole_image_max_side: int | None = Field(default=None, ge=1, strict=True)
+    whole_image_max_side: ModelImageMaxSide = None
     batch_size: int = Field(default=8, ge=1, strict=True)
     concurrency: JobConcurrency = 2
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 
 class ConsistencySettingsValues(ModuleSettingsValues, ConsistencyRetrievalSettings):
+    whole_image_max_side: ModelImageMaxSide = None
     concurrency: JobConcurrency = 1
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
     vision_limits: ModelLimits = Field(default_factory=lambda: ModelLimits(capacity_mode='vllm_tokenize'))

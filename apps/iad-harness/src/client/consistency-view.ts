@@ -1,5 +1,5 @@
 import type {AnchorImageItem, AnchorImagePage, AnchorImageQuery, ConsistencyAnchorRun, ConsistencyReport, GalleryItem, GalleryPage, GalleryMember, GalleryMemberPage, GalleryReference,GalleryStatistics} from '../shared/domain.generated.js';
-import {conflictCategories,modelConclusionLabels} from '../shared/consistency.parameters.generated.js';
+import {conflictCategories,conflictCategoryLabels,conflictCategoryPriorities,modelConclusionLabels} from '../shared/consistency.parameters.generated.js';
 import {mediaUrl,request} from './api.js';
 
 export const consistencyImageGroups={NO_CANDIDATES:'无候选',NO_ELIGIBLE_CANDIDATES:'无有效候选',PROGRAM_CONSISTENT:'一致'} as const;
@@ -7,6 +7,7 @@ export type ConsistencyImageGroup='images'|keyof typeof consistencyImageGroups;
 
 export interface ConsistencyComparisonItem {
   id:string;
+  sampleId:string;
   type:string;
   filename:string;
   url:string;
@@ -17,7 +18,7 @@ export interface ConsistencyComparisonItem {
   reason?:AnchorImageItem['summary']['reason'];
   reference:ConsistencyAnalysisReference;
   image?:GalleryItem['anchor'];
-  model:{status:'conflict'|'no_conflict'|'unknown';modelType:keyof typeof modelConclusionLabels|'';label?:string};
+  model:{status:'conflict'|'no_conflict'|'unknown';modelType:keyof typeof modelConclusionLabels|'';identityConclusion:string|null};
   review:GalleryItem['review_state'];
   agreement:'same'|'different'|null;
 }
@@ -42,6 +43,12 @@ export type AnchorReviewReference=Pick<ConsistencyAnchorRun,'job_id'|'anchor_id'
 export type ConsistencyAnalysisReference=GalleryReference|AnchorReviewReference;
 
 export class ConsistencyView {
+  static programConclusion(categories:GalleryItem['conflict_categories'],fallback:string):string {
+    const labels:Readonly<Partial<Record<string,string>>>=conflictCategoryLabels;
+    const primary=[...categories].sort((left,right)=>conflictCategoryPriorities[left]-conflictCategoryPriorities[right])[0]??fallback;
+    return labels[primary]??primary;
+  }
+
   static modelConclusion(value:string|null|undefined,verdict?:GalleryItem['model_state']|null):keyof typeof modelConclusionLabels|'' {
     if(verdict==='EQUIVALENT')return 'EQUIVALENT';
     return value && Object.hasOwn(modelConclusionLabels,value) ? value as keyof typeof modelConclusionLabels : '';
@@ -89,20 +96,21 @@ export class ConsistencyView {
 
   private static cards(items:GalleryItem[],source:{job_id:string}|{query_id:string}):ConflictCardItem[] {
     const checkId='job_id' in source?source.job_id:undefined;
-    return items.map(item=>({id:item.group_id,checkId,
+    return items.map(item=>({id:item.group_id,sampleId:item.anchor.sample.sample_id,checkId,
       reference:'job_id' in source?{job_id:source.job_id,anchor_id:item.group_id}:{query_id:source.query_id,kind:'conflicts',group_id:item.group_id,facts_state:item.facts_state},
       image:item.anchor,candidateCount:item.candidate_count,
       types:checkId?item.conflict_categories:conflictCategories.filter(category=>item.conflict_categories.includes(category)||item.model_categories.includes(category)),
-      type:item.annotation_conclusion,
+      type:this.programConclusion(item.conflict_categories,item.annotation_conclusion),
       filename:item.anchor.sample.relative_path.split('/').pop()!,url:this.media(item.anchor,true),fullUrl:this.media(item.anchor),
       sourceWidth:item.anchor.sample.width,sourceHeight:item.anchor.sample.height,memberCount:item.member_count,review:item.review_state,
       model:{status:item.model_state==='MATERIAL'?'conflict':item.model_state==='EQUIVALENT'?'no_conflict':'unknown',
-        modelType:this.modelConclusion(item.model_conclusion,item.model_state)},rawItem:item,
+        modelType:this.modelConclusion(item.model_conclusion,item.model_state),identityConclusion:null},rawItem:item,
       agreement:this.agreement(item.annotation_conclusion,this.modelConclusion(item.model_conclusion,item.model_state))}));
   }
 
   static imageCards(runId:string,items:AnchorImageItem[]):ConsistencyComparisonItem[] {
-    return items.map(({sample,summary,image,review_state,model_filter,agreement})=>({id:sample.sample_id,type:summary.program_conclusion,reason:summary.reason,
+    return items.map(({sample,summary,image,review_state,model_filter,agreement})=>({id:sample.sample_id,sampleId:sample.sample_id,
+      type:this.programConclusion(['MODEL_REVIEWED','PROGRAM_REVIEWED'].includes(summary.reason)?summary.original_categories:[],summary.program_conclusion),reason:summary.reason,
       filename:(image?.sample.relative_path || sample.sample_id.slice(sample.sample_id.indexOf(':')+1)).split('/').pop()!,
       url:image?this.media(image,true):mediaUrl(sample,'thumbnail'),fullUrl:image?this.media(image):mediaUrl(sample),
       sourceWidth:image?.sample.width,sourceHeight:image?.sample.height,image:image??undefined,
@@ -111,7 +119,7 @@ export class ConsistencyView {
       review:review_state,
       agreement,
       model:{status:summary.reason==='MODEL_REVIEWED'&&summary.verdict==='MATERIAL'?'conflict':summary.reason==='MODEL_REVIEWED'&&summary.verdict==='EQUIVALENT'?'no_conflict':'unknown',
-        modelType:model_filter||'',label:summary.annotation_review_label},
+        modelType:model_filter||'',identityConclusion:summary.reason==='NO_ELIGIBLE_CANDIDATES'&&summary.identity_model_reviewed?'无有效候选':null},
     }));
   }
 

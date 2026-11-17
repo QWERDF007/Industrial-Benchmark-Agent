@@ -355,3 +355,31 @@ test('score analysis respects image units normal evidence and translated scene n
   assert.match(details,/本项只记录观察到的现象，不参与扣分/);
   assert.doesNotMatch(details,/>[^<]*(?:tiny|15：low)[^<]*</);
 });
+
+
+test('adequate diversity coverage stays in score charts without scarcity details or image evidence',()=>{
+  const score={total:99.25,weights:{consistency:.8,diversity:.15,redundancy:.05},completed_images:100,
+    total_images:100,observed_images:100,limitations:[],dataset_scores:[],dimensions:{
+      diversity:{label:'数据多样性',score:95,deduction:5},consistency:{label:'数据一致性',score:100,deduction:0},
+      redundancy:{label:'数据冗余度',score:100,deduction:0}},items:[
+      {code:'D1',dimension:'diversity',direction:'困难良品',label:'困难良品稀缺',maximum:10,
+        count:33,denominator:50,ratio:.66,deduction:0,scenario:'困难良品',sample_ids:[]},
+      {code:'D2',dimension:'diversity',direction:'困难良品',label:'困难良品内部类型稀缺',maximum:5,
+        count:1,denominator:33,ratio:1/33,deduction:5,scenario:'正常边带',sample_ids:[]},
+      {code:'D3',dimension:'diversity',direction:'困难良品',label:'易混淆良品稀缺',maximum:6,
+        count:1,denominator:50,ratio:.02,deduction:0,scenario:'正常边带',suppressed_by:'D2',sample_ids:[]},
+      {code:'D4',dimension:'diversity',direction:'困难良品',label:'特殊正常纹理稀缺',maximum:4,
+        count:0,denominator:50,ratio:0,deduction:null,scenario:'',sample_ids:[]},
+    ]};
+  const html=render({...report,quality_score:score});
+  assert.doesNotMatch(html,/data-score-rule="D1"|良品图像共 50 张，该场景有 33 张/);
+  assert.match(html,/困难良品稀缺，扣分（分）：0/);
+  assert.match(html,/<h4>2\.1\.1 困难良品内部类型稀缺<\/h4>/);
+  assert.match(html,/data-score-rule="D3"/);
+  assert.match(html,/本项不重复扣分/);
+  assert.match(html,/data-score-rule="D4"/);
+  assert.match(html,/扣分证据不足/);
+  const adequate=render({...report,quality_score:{...score,items:[score.items[0]]}});
+  assert.doesNotMatch(adequate,/data-score-rule=/);
+  assert.match(adequate,/本组未发现需要扣分的覆盖问题/);
+});

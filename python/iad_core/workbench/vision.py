@@ -133,9 +133,9 @@ class VlmClient:
                 content.append({'type': 'text', 'text': '原图资料：' + json.dumps(
                     {**image.context, 'evidence_id': image.evidence_id}, ensure_ascii=False)})
             for view in image.images if bundle else (image,):
-                with open(view.path, "rb") as source:
+                with open(view.model_input.path if view.model_input else view.path, "rb") as source:
                     encoded = base64.b64encode(source.read()).decode("ascii")
-                metadata = view.evidence.model_context() if bundle else view.model_context()
+                metadata = view.model_context(include_source=not bundle)
                 if bundle:
                     metadata.pop('evidence_id')
                 content.append({"type": "text", "text": ('图像视图：' if bundle else '视觉证据：') + json.dumps(metadata, ensure_ascii=False)})

@@ -11,6 +11,8 @@ from iad_core.consistency.gallery_statistics import GalleryStatisticFact, Galler
 class ConsistencyResultIndex:
     """Rebuildable projections; source-table triggers invalidate changed anchors atomically."""
 
+    VERSION = 3
+
     def __init__(self, connection: Connection, run_id: str, *, errors: list[dict] = ()):
         self.connection, self.run_id = connection, run_id
         self.errors = {error['sample_id']: error.get('code') for error in errors}
@@ -18,22 +20,22 @@ class ConsistencyResultIndex:
     def current(self) -> bool:
         return self.connection.execute('''SELECT 1 FROM consistency_anchor_runs a
             LEFT JOIN consistency_result_index i ON i.job_id=a.job_id AND i.anchor_id=a.anchor_id
-            WHERE a.job_id=? AND i.anchor_id IS NULL LIMIT 1''', (self.run_id,)).fetchone() is None
+            WHERE a.job_id=? AND (i.anchor_id IS NULL OR i.projection_version<>?) LIMIT 1''', (self.run_id, self.VERSION)).fetchone() is None
 
     def refresh(self, project: Callable[[Row], tuple[AnchorImageItem, GalleryItem | None]]) -> int:
         rows = self.connection.execute('''SELECT a.* FROM consistency_anchor_runs a
             LEFT JOIN consistency_result_index i ON i.job_id=a.job_id AND i.anchor_id=a.anchor_id
-            WHERE a.job_id=? AND i.anchor_id IS NULL ORDER BY a.ordinal''', (self.run_id,)).fetchall()
+            WHERE a.job_id=? AND (i.anchor_id IS NULL OR i.projection_version<>?) ORDER BY a.ordinal''', (self.run_id, self.VERSION)).fetchall()
         for row in rows:
             image, gallery = project(row)
             summary = image.summary
-            self.connection.execute('''INSERT INTO consistency_result_index(job_id,anchor_id,ordinal,filename,
-                reason,program_conclusion,model_conclusion,agreement,review_state,categories_json,image_json,gallery_json)
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)''', (self.run_id, row['anchor_id'], row['ordinal'],
+            self.connection.execute('''INSERT OR REPLACE INTO consistency_result_index(job_id,anchor_id,ordinal,filename,
+                reason,program_conclusion,model_conclusion,agreement,review_state,categories_json,image_json,gallery_json,projection_version)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)''', (self.run_id, row['anchor_id'], row['ordinal'],
                 PurePosixPath(image.image.sample.relative_path if image.image else image.sample.sample_id.split(':', 1)[1]).name,
                 summary.reason, summary.program_conclusion, image.model_filter, image.agreement, image.review_state,
                 json.dumps(gallery.conflict_categories if gallery else [], ensure_ascii=False),
-                image.model_dump_json(), gallery.model_dump_json() if gallery else None))
+                image.model_dump_json(), gallery.model_dump_json() if gallery else None, self.VERSION))
 
         return len(rows)
 

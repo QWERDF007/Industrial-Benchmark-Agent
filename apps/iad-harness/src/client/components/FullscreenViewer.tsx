@@ -6,8 +6,8 @@ import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSta
 import {createPortal} from 'react-dom';
 import {Modal} from './Modal.js';
 import {AnnotationLayer, type AnnotationLayerSource, type ImageBoxAnnotation} from './AnnotationLayer.js';
-import {useResource} from '../useResource.js';
-import type {SampleDetail, VisualEvidence} from '../../shared/contracts.js';
+import {useImageAnnotations} from '../useImageAnnotations.js';
+import type {VisualEvidence} from '../../shared/contracts.js';
 import type {ImageNavigation} from './ImageCanvas.js';
 import type {InspectionTransform} from '../inspection.js';
 
@@ -60,11 +60,9 @@ export function FullscreenViewer({
   onTransform,
   onImageClick,
 }: FullscreenViewerProps) {
-  const source=useResource<SampleDetail>(open && item?.sampleId && item.annotationLayer===undefined && !item.qualityLabel
-    ? `/sample/${encodeURIComponent(item.sampleId)}` : null);
-  const annotationLayer=item?.annotationLayer===null?undefined:item?.annotationLayer || (source.data ? {kind:'sample' as const,
-    sample:source.data.sample,annotations:source.data.annotations} : item?.bboxes?.length
-      ? {kind:'boxes' as const,annotations:item.bboxes,width:item.width || 1,height:item.height || 1} : undefined);
+  const annotationLayer=useImageAnnotations(open?item?.sampleId:undefined,item?.annotationLayer===null?null:
+    item?.annotationLayer || (item?.bboxes?.length
+      ? {kind:'boxes',annotations:item.bboxes,width:item.width || 1,height:item.height || 1}:undefined),item?.qualityLabel);
   const [zoomMode, setZoomMode] = useState<"fit" | "custom">("fit");
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [panX, setPanX] = useState<number>(0);

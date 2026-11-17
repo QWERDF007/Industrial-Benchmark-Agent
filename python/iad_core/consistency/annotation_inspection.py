@@ -17,7 +17,7 @@ ReviewIssue = create_model('ReviewIssue', __base__=AnalysisModel, **{
 
 class AnnotationDecision(AnalysisModel):
     verdict: Literal['EQUIVALENT', 'MATERIAL', 'UNCERTAIN', 'GATE_DISPUTE']
-    explanation: NonBlankText = Field(description='直接说明两侧框、类别和实际覆盖的比较结果，不复述流程。')
+    explanation: NonBlankText = Field(description='直接说明两侧标注区域、类别和实际覆盖的比较结果，不复述流程。')
     issues: list[ReviewIssue] = Field(default_factory=list)
     limitations: list[NonBlankText] = Field(default_factory=list, description='只记录本次实际看不清或无法比较的具体部分。')
     disputed_regions: list[str] = Field(default_factory=list,

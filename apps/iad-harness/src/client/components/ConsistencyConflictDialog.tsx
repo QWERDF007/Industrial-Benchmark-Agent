@@ -1,8 +1,7 @@
 import React,{useCallback,useEffect,useMemo,useState} from 'react';
 import type {AnchorCandidatePage,EvidenceBundle,GalleryMember} from '../../shared/domain.generated.js';
-import {conflictCategoryLabels,modelConclusionLabels} from '../../shared/consistency.parameters.generated.js';
+import {modelConclusionLabels} from '../../shared/consistency.parameters.generated.js';
 import {datasetImageAnnotations} from '../dataset-image-annotations.js';
-import {useDatasetCatalog} from '../useDatasetCatalog.js';
 import {ConsistencyView,type ConsistencyComparisonItem} from '../consistency-view.js';
 import {useGroupAnalysis} from '../useGroupAnalysis.js';
 import {useResource} from '../useResource.js';
@@ -28,7 +27,6 @@ interface ConsistencyConflictDialogProps {
 export function ConsistencyConflictDialog({conflict:currentConflict,items:visibleConflicts,
   onSelect,onMove,onClose,onReviewed}:ConsistencyConflictDialogProps) {
   const currentConflictId=currentConflict.id;
-  const catalog=useDatasetCatalog();
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
   const [conflictMembers, setConflictMembers] = useState<GalleryMember[]>([]);
   const [membersError,setMembersError]=useState('');
@@ -49,10 +47,10 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   const candidates=useResource<AnchorCandidatePage>(jobId ?
     `/consistency/checks/${encodeURIComponent(jobId)}/anchors/${encodeURIComponent(currentConflictId)}/candidates`:null);
   const modelConclusion=ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType,modelResult?.overall.verdict);
-  const displayModelConclusion=modelConclusion ? modelConclusionLabels[modelConclusion] : currentConflict.model.label||'';
-  const groupConclusion=currentConflict.type;
-  const displayGroupConclusion=groupConclusion in conflictCategoryLabels
-    ? conflictCategoryLabels[groupConclusion as keyof typeof conflictCategoryLabels] : groupConclusion;
+  const displayModelConclusion=modelConclusion ? modelConclusionLabels[modelConclusion] : currentConflict.model.identityConclusion||'';
+  const displayGroupConclusion=currentConflict.type;
+  const dialogTitle=currentConflict.model.identityConclusion&&!modelConclusion?`模型：${displayModelConclusion}`:
+    displayModelConclusion?`模型：${displayModelConclusion} - 程序：${displayGroupConclusion}`:`程序：${displayGroupConclusion}`;
 
   const currentCandidate=useMemo(()=>{
     const image=selectedMember?.image;
@@ -65,8 +63,8 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   const anchorSide=selectedMember?.comparison?.anchor_side || currentConflict.image?.side;
   const anchorSource=anchorSide?compared.data?.sources[anchorSide]:null;
   const candidateSource=selectedMember&&anchorSide?compared.data?.sources[anchorSide==='left'?'right':'left']:null;
-  const anchorAnnotations=anchorSource?datasetImageAnnotations(catalog.data?.datasets.find(dataset=>dataset.dataset_id===anchorSource.sample.dataset_id)?.format,anchorSource.sample,anchorSource.annotations.annotations):{};
-  const candidateAnnotations=candidateSource?datasetImageAnnotations(catalog.data?.datasets.find(dataset=>dataset.dataset_id===candidateSource.sample.dataset_id)?.format,candidateSource.sample,candidateSource.annotations.annotations):{};
+  const anchorAnnotations=anchorSource?datasetImageAnnotations(anchorSource.annotations.dataset_format??undefined,anchorSource.sample,anchorSource.annotations.annotations):{};
+  const candidateAnnotations=candidateSource?datasetImageAnnotations(candidateSource.annotations.dataset_format??undefined,candidateSource.sample,candidateSource.annotations.annotations):{};
   const handlePrevConflict = useCallback(() => {
     if(onMove){onMove(-1);return;}
     const list = visibleConflicts;
@@ -90,9 +88,9 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   }, [visibleConflicts, currentConflictId,onSelect,onMove]);
 
   return <>
-        <Modal title="标注冲突对比" id="dc-compare-mask" className="dc-dialog dc-conflict-dialog" header={false} onClose={onClose}>
+        <Modal title={dialogTitle} id="dc-compare-mask" className="dc-dialog dc-conflict-dialog" header={false} onClose={onClose}>
             <header className="dc-dialog-head">
-              <h2 id="dc-dialog-title">标注冲突对比</h2>
+              <h2 id="dc-dialog-title">{dialogTitle}</h2>
               <div className="dc-dialog-head-actions">
                 <Button type="button" onClick={handlePrevConflict}>
                   上一组
@@ -117,6 +115,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                     onClick={() =>
                       setZoomItem({
                         id: currentConflict.id + '_anchor',
+                        sampleId: currentConflict.sampleId,
                         title: currentConflict.filename,
                         imageUrl: currentConflict.fullUrl || currentConflict.url,
                         width: currentConflict.sourceWidth,
@@ -128,6 +127,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       if (e.key === 'Enter' || e.key === ' ') {
                         setZoomItem({
                           id: currentConflict.id + '_anchor',
+                          sampleId: currentConflict.sampleId,
                           title: currentConflict.filename,
                           imageUrl: currentConflict.fullUrl || currentConflict.url,
                           width: currentConflict.sourceWidth,
@@ -138,6 +138,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                     }}
                   >
                     <AnnotatedImageStage
+                      sampleId={currentConflict.sampleId}
                       src={currentConflict.fullUrl || currentConflict.url}
                       alt="主图"
                       width={currentConflict.sourceWidth}
@@ -162,6 +163,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                     onClick={() => selectedMember &&
                       setZoomItem({
                         id: currentConflict.id + '_candidate_' + candidateIndex,
+                        sampleId: currentCandidate.sampleId,
                         title: currentCandidate.filename,
                         imageUrl: currentCandidate.fullUrl,
                         width: currentCandidate.width,
@@ -173,6 +175,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       if (selectedMember && (e.key === 'Enter' || e.key === ' ')) {
                         setZoomItem({
                           id: currentConflict.id + '_candidate_' + candidateIndex,
+                          sampleId: currentCandidate.sampleId,
                           title: currentCandidate.filename,
                           imageUrl: currentCandidate.fullUrl,
                           width: currentCandidate.width,
@@ -183,6 +186,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                     }}
                   >
                     {selectedMember && <AnnotatedImageStage
+                      sampleId={currentCandidate.sampleId}
                       src={currentCandidate.fullUrl || currentCandidate.thumbUrl}
                       alt="候选图"
                       width={currentCandidate.width}
@@ -222,7 +226,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                           const image=candidate.image,filename=image.sample.relative_path.split('/').pop()!;
                           return <ThumbnailCard key={candidate.sample_id} variant="comparison" label={filename}
                             src={ConsistencyView.media(image,true)} data-dc="retrieved-candidate" onClick={()=>setZoomItem({
-                              id:candidate.sample_id,title:filename,imageUrl:ConsistencyView.media(image),
+                              id:candidate.sample_id,sampleId:candidate.sample_id,title:filename,imageUrl:ConsistencyView.media(image),
                               width:image.sample.width,height:image.sample.height,
                               ...datasetImageAnnotations(candidate.annotations.dataset_format??undefined,image.sample,candidate.annotations.annotations),
                             })}/>;

@@ -2,6 +2,7 @@ import React from "react";
 import { type ImageBoxAnnotation, type AnnotationLayerSource } from "./AnnotationLayer.js";
 import type { ImageQualityLabel } from '../dataset-image-annotations.js';
 export interface AnnotatedImageStageProps {
+    sampleId?: string;
     src: string;
     alt?: string;
     width?: number;
@@ -23,5 +24,5 @@ export interface AnnotatedImageStageProps {
  * Single Source of Truth for rendering an image with bounding box annotations and category badges.
  * Automatically respects the natural aspect ratio of the image, preventing distortion and coordinate shift.
  */
-export declare function AnnotatedImageStage({ src, alt, width, height, bboxes, annotationLayer, qualityLabel, showAnnotations, className, style, children, onLoadDimensions, }: AnnotatedImageStageProps): React.JSX.Element;
+export declare function AnnotatedImageStage({ sampleId, src, alt, width, height, bboxes, annotationLayer, qualityLabel, showAnnotations, className, style, children, onLoadDimensions, }: AnnotatedImageStageProps): React.JSX.Element;
 //# sourceMappingURL=AnnotatedImageStage.d.ts.map

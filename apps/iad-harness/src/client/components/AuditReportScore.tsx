@@ -43,9 +43,10 @@ export function AuditReportScore({report,imageUrl}:{report:AuditRunReport;imageU
     {directions.map((direction,index)=>{
       const items=score.items.filter(item=>item.direction===direction);
       const dimension=score.dimensions[items[0].dimension];
+      const detailItems=items.filter(item=>item.dimension!=='diversity'||item.deduction!==0||item.suppressed_by);
       return <section key={direction}>
         <AuditReportHeading level={3} number={heading.prefix+(index+1)}>{direction}</AuditReportHeading>
-        <p>下图展示各评分项的扣分；具体场景、分析与图像证据见下方分项。</p>
+        <p>{detailItems.length?'下图展示各评分项的扣分；具体场景、分析与图像证据见下方分项。':'本组未发现需要扣分的覆盖问题。'}</p>
         <Chart id={`score-${index}`} title={`${direction}扣分`} spec={{type:'bar',format:'score',
           series:[{label:'扣分',unit:'分',tone:'warning'}],rows:items.map(item=>{
             const details=auditScoreItemDetails(item,score.items);
@@ -54,7 +55,7 @@ export function AuditReportScore({report,imageUrl}:{report:AuditRunReport;imageU
           })}}/>
         {score.items.findIndex(item=>item.dimension===items[0].dimension)===score.items.indexOf(items[0])
           ?<p>{dimension.label}得分 {dimension.score===null?'证据不足':chartNumber(dimension.score,'score')+' 分'}。</p>:null}
-        {items.map((item,itemIndex)=>{
+        {detailItems.map((item,itemIndex)=>{
           const details=auditScoreItemDetails(item,score.items),number=heading.prefix+(index+1)+'.'+(itemIndex+1);
           const images=report.evidence_groups['score:'+(score.dataset_id?score.dataset_id+':':'')+item.code]??[];
           return <article className="iad-audit-discovery" data-score-rule={item.code} key={item.code}>

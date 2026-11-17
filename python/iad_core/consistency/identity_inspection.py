@@ -16,6 +16,7 @@ from iad_core.consistency.identity_models import PAIR_REVIEW_BATCH_SIZE, PAIR_RE
 from iad_core.consistency.references import ReferenceAliases
 from iad_core.evidence.images import EvidenceImages, PreparedImage, PreparedImageBundle
 from iad_core.evidence.retained import RetainedImages
+from iad_core.evidence.model_inputs import ModelImageInputs
 from iad_core.storage.models import sample_uuid
 from iad_core.workbench.calls import ModelCalls
 
@@ -161,7 +162,7 @@ class IdentityInspection:
         context = {'scope': 'joint', 'required_image_ids': required,
             'geometry': frozen.geometry.model_dump(mode='json', exclude_none=True),
             'annotations': {side: [{**annotation.model_dump(mode='json', include={
-                'annotation_type', 'raw_label', 'bbox', 'is_ignored'}), 'annotation_id': annotation_ids[annotation.annotation_id]}
+                'annotation_type', 'raw_label', 'bbox', 'polygon', 'is_ignored'}), 'annotation_id': annotation_ids[annotation.annotation_id]}
                 for annotation in source.annotations.annotations] for side, source in zip(('main', 'candidate'), sources)},
             'required_region_pair_ids': [pair.region_pair_id for pair in frozen.region_pairs],
             'windows': [region for region in regions if region['mapping'] == 'registered'],
@@ -185,8 +186,21 @@ class IdentityInspection:
             **{pair.region_pair_id: 'r' + str(index) for index, pair in enumerate(frozen.region_pairs)},
             **{media.evidence_id: 'r' + str(index) + '_' + side for index, pair in enumerate(frozen.region_pairs)
                 for side, media in (('main', pair.main_media), ('candidate', pair.candidate_media)) if media is not None}})
-        wire_bundles = [PreparedImageBundle(references.public[bundle.evidence_id],
-            references.translate(bundle.context), bundle.images) for bundle in bundles]
+        from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+        max_side = ConsistencyAgentJobs(self.runtime).snapshot(run_id).whole_image_max_side
+        model_inputs = ModelImageInputs(self.runtime.db.db_path)
+        wire_bundles = []
+        for bundle in bundles:
+            views = bundle.images
+            if max_side is not None:
+                side = 0 if bundle.context['side']=='main' else 1
+                annotations = [annotation.model_copy(update={
+                    'annotation_id':references.public[annotation_ids[annotation.annotation_id]]})
+                    for annotation in sources[side].annotations.annotations]
+                views = tuple(view.with_source(samples[side],sources[side].annotations.dataset_format,annotations
+                    ).for_model(model_inputs,max_side) for view in views)
+            wire_bundles.append(PreparedImageBundle(references.public[bundle.evidence_id],
+                references.translate(bundle.context),views))
         layout = tuple(pair.mapping == 'registered' for pair in frozen.region_pairs)
         if layout not in self._response_types:
             unmapped_type = create_model('UnmappedRegions', __base__=AnalysisModel, **{
@@ -207,6 +221,10 @@ class IdentityInspection:
         response_type = self._response_types[layout]
         fingerprint = hashlib.sha256(json.dumps([prompts, context,
             [view.evidence.model_dump(mode='json') for bundle in bundles for view in bundle.images]], sort_keys=True).encode()).hexdigest()
+        if max_side is not None:
+            fingerprint = hashlib.sha256(json.dumps([fingerprint,max_side,
+                [(view.model_context(),view.model_input.model_dump(exclude={'path'}))
+                    for bundle in wire_bundles for view in bundle.images]],sort_keys=True).encode()).hexdigest()
         return PreparedIdentityObservation(anchor_id, candidate_id, revision, request_id, prompts, frozen,
             references.translate(context), tuple(wire_bundles), response_type, fingerprint, references)
 
@@ -269,7 +287,7 @@ class IdentityInspection:
             try:
                 if len(prepared) > 1 and (
                         sum(len(item.frozen.region_pairs) for item in prepared) > PAIR_REVIEW_REGION_BUDGET
-                        or sum(Path(view.path).stat().st_size for bundle in bundles
+                        or sum(Path(view.model_input.path if view.model_input else view.path).stat().st_size for bundle in bundles
                             for view in bundle.images) > PAIR_REVIEW_MEDIA_BYTES):
                     raise ModelCapacityError('批次超过媒体或局部数量预算，需要拆分完整图像对')
                 plan = self.client.plan(response_type, prompts['gate_user'], bundles, self.client.resolve_model(),

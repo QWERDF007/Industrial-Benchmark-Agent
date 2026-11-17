@@ -2,6 +2,7 @@ import json
 
 from iad_core.analysis.queries import AnalysisQueries
 from iad_core.evidence.images import EvidenceImages, PreparedImage
+from iad_core.evidence.model_inputs import ModelImageInputs
 from iad_core.workbench.calls import ModelCalls
 from iad_core.audit.models import AuditMediaQuery
 from iad_core.analysis.evidence_models import AnalysisEvidenceReferenceQuery
@@ -33,9 +34,9 @@ class AuditEvidence:
         query = (AuditMediaQuery if on_demand else RegistrationMediaQuery).model_validate(query)
         media = self.prepare(run_id, target_id, query.sample_id)
         if not on_demand or query.view == 'all':
-            return media.page(query.offset, query.limit)
+            return media.page(query.offset, query.limit).for_model(ModelImageInputs(self.db.db_path),self.jobs.snapshot(run_id).settings.whole_image_max_side)
         images = [item for item in media.images if item.image.is_whole_image == (query.view == 'whole')]
-        return media.page(query.offset, query.limit, images=images)
+        return media.page(query.offset, query.limit, images=images).for_model(ModelImageInputs(self.db.db_path),self.jobs.snapshot(run_id).settings.whole_image_max_side)
 
     def reference(self, run_id: str, target_id: str, evidence_id: str, view: str = 'whole') -> RegistrationMediaPage:
         query = AnalysisEvidenceReferenceQuery(evidence_id=evidence_id, view=view)
@@ -60,7 +61,7 @@ class AuditEvidence:
             connection.execute('''INSERT INTO audit_sample_media(job_id,target_id,media_key,sample_id,media_json)
                 VALUES(?,?,?,?,?) ON CONFLICT(job_id,target_id,media_key) DO NOTHING''',
                 (run_id,target_id,'reference:'+evidence_id+(':'+query.view if snapshot.context_policy == 'evidence-on-demand-v1' else ''),media.sample_id,media.model_dump_json()))
-        return media.page().model_copy(update={'evidence_id':evidence_id})
+        return media.page().model_copy(update={'evidence_id':evidence_id}).for_model(ModelImageInputs(self.db.db_path),snapshot.settings.whole_image_max_side)
 
     def crop(self, run_id: str, target_id: str, query: dict) -> RegistrationMediaPage:
         query = RegistrationCropQuery.model_validate(query)
@@ -79,7 +80,7 @@ class AuditEvidence:
                 VALUES(?,?,?,?,?) ON CONFLICT(job_id,target_id,media_key) DO NOTHING''',
                 [(run_id,target_id,'crop:'+item.image.evidence_id,query.sample_id,
                     PreparedRegistration(sample_id=query.sample_id,images=[item]).model_dump_json()) for item in media.images])
-        return prepared.page(query.offset, query.limit, images=media.images)
+        return prepared.page(query.offset, query.limit, images=media.images).for_model(ModelImageInputs(self.db.db_path),self.jobs.snapshot(run_id).settings.whole_image_max_side)
 
     def observed(self, run_id: str, target_id: str) -> set[str]:
         successful = ModelCalls(self.db).successful_native_ids(run_id,

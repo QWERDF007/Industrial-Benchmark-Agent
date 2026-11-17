@@ -186,7 +186,7 @@ class GalleryQueries:
             if observed.intersection({ConflictCategory.MISSING,ConflictCategory.EXTRA}):categories.add('presence')
             if ConflictCategory.CATEGORY in observed:categories.add('category')
             if ConflictCategory.POSITION in observed:categories.add('geometry')
-            if observed.intersection({ConflictCategory.SPLIT,ConflictCategory.MERGE,ConflictCategory.CORRESPONDENCE}):categories.add('instances')
+            if observed.intersection({ConflictCategory.SPLIT,ConflictCategory.MERGE}):categories.add('instances')
             category = next(iter(categories)) if len(categories) == 1 else 'multiple' if categories else None
             state=group_states.get(identities[row['group_id'],row['facts_state']].key)
             model_state=state.model_state if state else 'NOT_ANALYZED'

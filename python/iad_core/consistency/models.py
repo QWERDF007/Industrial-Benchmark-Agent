@@ -20,7 +20,7 @@ Mode = Literal['exact', 'visual', 'combined']
 ReviewMode = Literal['exact', 'combined']
 Relation = Literal['EXACT', 'NEAR_CANDIDATE', 'VISUAL_REFERENCE', 'DIFFERENT', 'UNCHECKED']
 DifferenceType = Literal['QUALITY_LABEL', 'CATEGORY', 'ANNOTATION_COUNT', 'ONE_SIDED_REGION', 'GEOMETRY',
-    'SPLIT_MERGE', 'AMBIGUOUS_MATCH', 'POLICY_UNCONFIRMED', 'ANNOTATION_UNREADABLE']
+    'SPLIT_MERGE', 'POLICY_UNCONFIRMED', 'ANNOTATION_UNREADABLE']
 
 
 class ConsistencyRetrievalSettings(AnalysisModel):

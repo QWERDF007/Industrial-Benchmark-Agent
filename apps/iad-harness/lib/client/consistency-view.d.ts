@@ -8,6 +8,7 @@ export declare const consistencyImageGroups: {
 export type ConsistencyImageGroup = 'images' | keyof typeof consistencyImageGroups;
 export interface ConsistencyComparisonItem {
     id: string;
+    sampleId: string;
     type: string;
     filename: string;
     url: string;
@@ -21,7 +22,7 @@ export interface ConsistencyComparisonItem {
     model: {
         status: 'conflict' | 'no_conflict' | 'unknown';
         modelType: keyof typeof modelConclusionLabels | '';
-        label?: string;
+        identityConclusion: string | null;
     };
     review: GalleryItem['review_state'];
     agreement: 'same' | 'different' | null;
@@ -42,6 +43,7 @@ export declare const initialConsistencyFilters: ConsistencyFilterValues;
 export type AnchorReviewReference = Pick<ConsistencyAnchorRun, 'job_id' | 'anchor_id'>;
 export type ConsistencyAnalysisReference = GalleryReference | AnchorReviewReference;
 export declare class ConsistencyView {
+    static programConclusion(categories: GalleryItem['conflict_categories'], fallback: string): string;
     static modelConclusion(value: string | null | undefined, verdict?: GalleryItem['model_state'] | null): keyof typeof modelConclusionLabels | '';
     static agreement(program: string, model: ConsistencyComparisonItem['model']['modelType']): ConsistencyComparisonItem['agreement'];
     static filter<T extends ConsistencyComparisonItem>(items: T[], filters: ConsistencyFilterValues, group?: keyof typeof consistencyImageGroups): T[];

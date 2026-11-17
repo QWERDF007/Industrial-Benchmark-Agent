@@ -19,7 +19,7 @@ from iad_core.feature.profiles import ImageEncoderConfig
 from iad_core.workbench.analysis_requests import SelectedDatasets
 from iad_core.workbench.job_models import JobFailure
 from iad_core.workbench.model_profile import FrozenModelRole, ModelLimits
-from iad_core.workbench.module_settings import ConsistencySettingsValues, JobConcurrency, ModuleModelReference
+from iad_core.workbench.module_settings import ConsistencySettingsValues, JobConcurrency, ModuleModelReference, ModelImageMaxSide
 
 
 class ConsistencyAgentStart(SelectedDatasets, ConsistencyRetrievalSettings):
@@ -75,6 +75,7 @@ class ConsistencyCheckSnapshot(AnalysisModel):
     schema_version: Literal[1] = 1
     settings_revision: Count
     concurrency: JobConcurrency = 1
+    whole_image_max_side: ModelImageMaxSide = None
     retrieval: FrozenCandidatePolicy
     scopes: ConsistencyScopesSnapshot
     model: ModuleModelReference | None

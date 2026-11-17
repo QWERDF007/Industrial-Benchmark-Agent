@@ -9,7 +9,7 @@ from iad_core.consistency.models import CandidateLimit, Digest, Identifier
 from iad_core.consistency.group_analysis_models import GroupAnalysisComparison, GroupAnalysisDraft, GroupAnalysisReference, GroupPairAssessment, GroupPairDecision
 from iad_core.consistency.group_analysis_conclusions import EQUIVALENT_CONCLUSION
 from iad_core.consistency.group_models import VisualWindow
-from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES, BboxAnnotationIssue
+from iad_core.consistency.annotation_issues import BboxAnnotationIssue
 
 
 VISUAL_REQUEST_ID_RULE = (
@@ -87,25 +87,20 @@ class AnchorDraftSubmission(AnalysisModel):
 
 class AnchorAssessmentDecision(GroupPairDecision):
     issues: list[BboxAnnotationIssue] = Field(default_factory=list,
-        description='MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。')
+        description='MATERIAL必须保存全部独立区域标注问题，关联真实两侧标注ID与实际原图身份；拆分合并不重复计数量差异。')
     verdict: Literal['EQUIVALENT', 'MATERIAL', 'UNCERTAIN'] = Field(description='MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。')
 
     @model_validator(mode='after')
     def validate_issues(self) -> Self:
         if self.verdict == 'MATERIAL' and not self.issues:
-            raise ValueError('MATERIAL必须提供全部独立问题及真实框和原图引用')
+            raise ValueError('MATERIAL必须提供全部独立问题及真实标注和原图引用')
         if self.verdict != 'MATERIAL' and self.issues:
             raise ValueError('一致或证据不足不能包含已确认差异')
         return self
 
     def as_assessment(self) -> GroupPairAssessment:
-        categories = [ISSUE_CATEGORIES[self.issues[0].type]] if self.issues else []
-        conclusion = None
-        if self.verdict == 'EQUIVALENT':
-            conclusion = EQUIVALENT_CONCLUSION
-        elif self.verdict == 'MATERIAL':
-            conclusion = categories[0].value
-        return GroupPairAssessment(**self.model_dump(), categories=categories, conclusion=conclusion)
+        return GroupPairAssessment(**self.model_dump(), categories=[],
+            conclusion=EQUIVALENT_CONCLUSION if self.verdict == 'EQUIVALENT' else None)
 
 
 class AnchorAssessmentEvidence(AnalysisModel):

@@ -8606,6 +8606,14 @@ var __IadClientBundle__ = (() => {
     "\u62C6\u5206": "\u62C6\u5206",
     "\u5408\u5E76": "\u5408\u5E76"
   };
+  var conflictCategoryPriorities = {
+    "\u7C7B\u522B\u4E0D\u4E00\u81F4": 0,
+    "\u591A\u7C7B\u522B": 0,
+    "\u5C11\u7C7B\u522B": 0,
+    "\u4F4D\u7F6E\u5DEE\u5F02": 1,
+    "\u62C6\u5206": 1,
+    "\u5408\u5E76": 1
+  };
   var modelConclusionLabels = {
     "\u7C7B\u522B\u4E0D\u4E00\u81F4": "\u7C7B\u522B\u4E0D\u4E00\u81F4",
     "\u591A\u7C7B\u522B": "\u591A\u6807",
@@ -8621,8 +8629,7 @@ var __IadClientBundle__ = (() => {
     "\u591A\u7C7B\u522B",
     "\u5C11\u7C7B\u522B",
     "\u62C6\u5206",
-    "\u5408\u5E76",
-    "\u5BF9\u5E94\u5173\u7CFB\u5DEE\u5F02"
+    "\u5408\u5E76"
   ];
   var modelAssessmentLabels = {
     "NOT_ANALYZED": "\u672A\u5206\u6790",
@@ -9602,7 +9609,7 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/components/SampleGrid.tsx
-  var import_react23 = __require("react");
+  var import_react24 = __require("react");
 
   // src/client/components/Pagination.tsx
   var import_jsx_runtime18 = __require("react/jsx-runtime");
@@ -9645,10 +9652,10 @@ var __IadClientBundle__ = (() => {
   }
 
   // src/client/components/ThumbnailCard.tsx
-  var import_react20 = __require("react");
+  var import_react21 = __require("react");
 
   // src/client/components/AnnotatedImageStage.tsx
-  var import_react19 = __require("react");
+  var import_react20 = __require("react");
 
   // src/client/components/AnnotationLayer.tsx
   var import_react18 = __require("react");
@@ -9755,304 +9762,8 @@ var __IadClientBundle__ = (() => {
     return label ? /* @__PURE__ */ (0, import_jsx_runtime21.jsx)("span", { className: "iad-image-quality", "data-quality": label, children: label }) : null;
   }
 
-  // src/client/components/AnnotatedImageStage.tsx
-  var import_jsx_runtime22 = __require("react/jsx-runtime");
-  function AnnotatedImageStage({
-    src,
-    alt = "",
-    width,
-    height,
-    bboxes = [],
-    annotationLayer,
-    qualityLabel,
-    showAnnotations = true,
-    className = "",
-    style,
-    children,
-    onLoadDimensions
-  }) {
-    const [naturalSize, setNaturalSize] = (0, import_react19.useState)({
-      width: width || 0,
-      height: height || 0
-    });
-    const imgW = naturalSize.width || width || 800;
-    const imgH = naturalSize.height || height || 600;
-    return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
-      "div",
-      {
-        className: `annotated-image-stage ${className}`,
-        style: {
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-          overflow: "hidden",
-          ...style
-        },
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
-            "img",
-            {
-              "data-media-label": "\u56FE\u50CF",
-              src,
-              alt,
-              draggable: false,
-              style: {
-                maxWidth: "100%",
-                maxHeight: "100%",
-                width: "100%",
-                height: "100%",
-                objectFit: "contain",
-                display: "block",
-                pointerEvents: "none",
-                userSelect: "none"
-              },
-              onLoad: (e2) => {
-                const img = e2.currentTarget;
-                if (img.naturalWidth && img.naturalHeight) {
-                  setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
-                  onLoadDimensions?.({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
-                }
-              }
-            }
-          ),
-          showAnnotations && (annotationLayer || bboxes.length > 0) && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(AnnotationLayer, { fit: "contain", source: annotationLayer || { kind: "boxes", annotations: bboxes, width: imgW, height: imgH } }),
-          children,
-          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(ImageQualityBadge, { label: qualityLabel })
-        ]
-      }
-    );
-  }
-
-  // src/client/components/ThumbnailCard.tsx
-  var import_jsx_runtime23 = __require("react/jsx-runtime");
-  var ThumbnailCard = (0, import_react20.forwardRef)(function ThumbnailCard2({ src, image, variant = "thumbnail", label, children, mediaOverlay, imageLoading = "lazy", className = "", title = label, ...props }, ref) {
-    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { ...props, "data-variant": variant, ref, type: "button", className: `iad-thumbnail-card ${className}`, title, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "iad-thumbnail-media", children: [
-        image ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(AnnotatedImageStage, { src: image.src, alt: image.title, width: image.width, height: image.height, annotationLayer: image.annotationLayer, qualityLabel: image.qualityLabel }) : src ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(MediaImage, { src, alt: label, loading: imageLoading, decoding: "async" }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: "\u56FE\u50CF\u4E0D\u53EF\u7528" }),
-        mediaOverlay
-      ] }),
-      label && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "iad-thumbnail-caption", children: label }),
-      children
-    ] });
-  });
-
-  // src/client/components/Tooltip.tsx
-  var import_react21 = __require("react");
-
-  // src/client/theme.ts
-  var darkColors = `--iad-canvas:#141B25;--iad-surface:#202B3A;--iad-navigation:#182231;--iad-surface-muted:#293648;--iad-text:#EDF2F8;--iad-muted:#B4C0D0;--iad-border:#4C5B6E;--iad-panel-border:var(--iad-border);--iad-section-border:var(--iad-border);--iad-control-border:#8393AA;--iad-primary:#A7C5FF;--iad-primary-fill:#315FC9;--iad-hover:#293E60;--iad-success:#92D7B0;--iad-warning:#F3C280;--iad-danger:#FFB7B1;--iad-viewer:#10161F;`;
-  var themeStyles = `
-:root {
- --iad-canvas:#F5F7FA;
- --iad-surface:#fff;
- --iad-navigation:#F5F7FA;
- --iad-surface-muted:#F2F5F9;
- --iad-text:#172338;
- --iad-muted:#536174;
- --iad-border:#CBD3DE;
- --iad-panel-border:#DBE2EB;
- --iad-section-border:#E2E8F0;
- --iad-control-border:#B9C7D9;
- --iad-primary:#285ED6;
- --iad-primary-fill:#285ED6;
- --iad-primary-hover:#1E51C2;
- --iad-on-primary:#fff;
- --iad-hover:#EAF0FE;
- --iad-danger:#B42318;
- --iad-success:#166344;
- --iad-warning:#8A4B06;
- --iad-success-badge:color-mix(in srgb,var(--iad-success) 45%,#000);
- --iad-viewer:#202833;
- --iad-on-viewer:#fff;
- --iad-viewer-edge-fill:rgba(15,25,36,.76);--iad-viewer-edge-hover:rgba(35,48,65,.94);
- --iad-viewer-edge-border:#4B5C70;--iad-viewer-edge-hover-border:#8294A8;--iad-viewer-edge-shadow:rgba(0,0,0,.1);
- --iad-scrim:#101b2bd9;
- --iad-radius:5px;
- --iad-control-height:38px;
- --iad-field-width:220px;
- --iad-dataset-width:250px;
- --iad-subset-width:390px;
- --iad-icon-size:18px;
- --iad-row-action-size:32px;
- --iad-tab-height:44px;
- --iad-font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
- --iad-font-size:13px;
- --iad-space-1:.25rem;--iad-space-2:.5rem;--iad-space-3:.75rem;--iad-space-4:1rem;--iad-space-6:1.5rem;--iad-space-8:2rem;--iad-space-12:3rem;
- --iad-page-padding:var(--iad-space-8);--iad-section-gap:var(--iad-space-6);--iad-field-gap:var(--iad-space-4);
- --iad-title-size:calc(var(--dsh-content-font-size,.875rem)*2);--iad-section-size:calc(var(--dsh-content-font-size,.875rem)*1.285714);--iad-group-size:calc(var(--dsh-content-font-size,.875rem)*1.071429);
-}
-[data-ds-dark-theme] {${darkColors}}
-[data-shortcut-modal="settings"] > nav {border-inline-end:1px solid var(--iad-panel-border)}
-`;
-
-  // src/client/components/Tooltip.tsx
-  var import_jsx_runtime24 = __require("react/jsx-runtime");
-  function Tooltip({ label, content, className, children }) {
-    const [open, setOpen] = (0, import_react21.useState)(false);
-    const { refs, context, floatingStyles } = useFloating2({
-      open,
-      onOpenChange: setOpen,
-      placement: "top",
-      whileElementsMounted: autoUpdate,
-      middleware: [offset3(8), flip3(), shift3({ padding: 12, crossAxis: true })]
-    });
-    const { getReferenceProps, getFloatingProps } = useInteractions([
-      useHover(context, { move: false, delay: { open: 200, close: 100 } }),
-      useFocus(context),
-      useClick(context),
-      useDismiss(context, { bubbles: false }),
-      useRole(context, { role: "tooltip" })
-    ]);
-    return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(import_jsx_runtime24.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("button", { type: "button", ref: refs.setReference, className, "aria-label": label, ...getReferenceProps(), children }),
-      open && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(FloatingPortal, { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { ref: refs.setFloating, className: "iad-tooltip", style: floatingStyles, ...getFloatingProps(), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("style", { children: [
-          themeStyles,
-          `.iad-tooltip{box-sizing:border-box;z-index:10020;max-width:min(340px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:12px;background:var(--iad-surface);color:var(--iad-text);border:1px solid var(--iad-control-border);border-radius:var(--iad-radius);font:var(--dsh-content-font-size,14px)/1.5 system-ui,sans-serif;overflow-wrap:anywhere;box-shadow:0 4px 16px #0002}.iad-tooltip p{margin:4px 0}`
-        ] }),
-        content
-      ] }) })
-    ] });
-  }
-
-  // src/client/components/SampleCard.tsx
-  var import_jsx_runtime25 = __require("react/jsx-runtime");
-  function SampleCard({ sample, selected, onSelect, reference, selection, compact = false }) {
-    const status = sample.suggestion?.suggested_label;
-    return /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "iad-sample-item", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(ThumbnailCard, { "data-sample-id": sample.sample_id, src: mediaUrl(sample, "thumbnail"), label: sample.relative_path.split("/").pop(), "aria-pressed": selected, onClick: onSelect, children: [
-        reference && /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("span", { children: "\u826F\u54C1\u6765\u6E90" }),
-        /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("span", { className: "iad-sample-label", children: [
-          sample.quality_status === "PASS" ? "OK" : sample.quality_status === "FAIL" ? "NG" : "\u672A\u6807\u8BB0",
-          " ",
-          compact && `\uFF0C${sample.review_decision ? reviewLabel(sample.review_decision) : status ? modelLabels[status] : "\u672A\u5BA1\u8BA1"}`
-        ] })
-      ] }),
-      !compact && /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(Tooltip, { label: `\u67E5\u770B\u72B6\u6001 ${sample.relative_path}`, className: `iad-status-trigger is-${status || "pending"}`, content: /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(import_jsx_runtime25.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("p", { children: "\u6A21\u578B\u5EFA\u8BAE\u4E0D\u4EE3\u66FF\u4EBA\u5DE5\u88C1\u51B3\u3002" }),
-        sample.review_decision && /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("p", { children: [
-          "\u6A21\u578B\u5BA1\u8BA1\uFF1A",
-          status ? modelLabels[status] : "\u672A\u5BA1\u8BA1"
-        ] })
-      ] }), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("span", { className: "iad-status-mark", "aria-hidden": "true" }),
-        sample.review_decision ? reviewLabel(sample.review_decision) : status ? modelLabels[status] : "\u672A\u5BA1\u8BA1"
-      ] }),
-      selection && /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("label", { className: "iad-source-check", children: /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("input", { type: "checkbox", "aria-label": `\u9009\u62E9\u826F\u54C1\u6765\u6E90 ${sample.relative_path}`, disabled: selection.disabled, checked: selection.checked, onChange: (event) => selection.onChange(event.target.checked) }) })
-    ] });
-  }
-
-  // src/client/components/SampleGrid.tsx
-  var import_jsx_runtime26 = __require("react/jsx-runtime");
-  function SampleGrid({ dataset, filters, onFilters, items, total, page, onPage, selected, onSelect, loading, sourceManagement, layout: layout2 = "grid", showFilters = true }) {
-    const scope = dataset.dataset_id;
-    const [selection, setSelection] = (0, import_react23.useState)({ scope: "", ids: [] });
-    const [busy, setBusy] = (0, import_react23.useState)(false), [error3, setError] = (0, import_react23.useState)(""), [notice, setNotice] = (0, import_react23.useState)("");
-    const chosen = selection.scope === scope ? selection.ids : [];
-    const managing = sourceManagement?.active;
-    async function selectAll() {
-      setBusy(true);
-      setError("");
-      setNotice("");
-      try {
-        const ids = [];
-        for (let next = 1; ; next++) {
-          const result = await request(`/samples/${encodeURIComponent(dataset.task_id)}?${sampleQuery(dataset.dataset_id, filters, next, 200)}`);
-          ids.push(...result.items.map((item) => item.sample_id));
-          if (ids.length >= result.total) break;
-          if (!result.items.length) throw new Error("\u7B5B\u9009\u8303\u56F4\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9");
-        }
-        setSelection({ scope, ids });
-      } catch (e2) {
-        setError(message(e2));
-      } finally {
-        setBusy(false);
-      }
-    }
-    async function save(include) {
-      setBusy(true);
-      setError("");
-      setNotice("");
-      try {
-        if (include === void 0) await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, { reset_references: true }, "PATCH");
-        else {
-          const ids = new Set(dataset.reference_sample_ids);
-          for (const id of chosen) {
-            if (include) ids.add(id);
-            else ids.delete(id);
-          }
-          await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, { reference_sample_ids: [...ids] }, "PATCH");
-        }
-        setNotice(include === void 0 ? "\u5DF2\u6062\u590D\u81EA\u52A8\u6765\u6E90" : `\u5DF2${include ? "\u52A0\u5165" : "\u79FB\u51FA"} ${chosen.length} \u5F20\u56FE\u50CF`);
-        setSelection({ scope, ids: [] });
-        sourceManagement?.onChanged();
-      } catch (e2) {
-        setError(message(e2));
-      } finally {
-        setBusy(false);
-      }
-    }
-    const pagination = /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Pagination, { total, page, unit: "\u5F20", onPage });
-    return /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { className: `iad-gallery ${layout2 === "queue" ? "iad-review-queue" : ""}`, "aria-label": "\u56FE\u50CF\u5217\u8868", children: [
-      showFilters && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(SampleFilters, { dataset, filters, onFilters, busy }),
-      managing && /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { className: "iad-source-controls", "aria-label": "\u826F\u54C1\u6765\u6E90\u7BA1\u7406", "aria-busy": busy, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("strong", { "aria-label": "\u826F\u54C1\u6765\u6E90\u6458\u8981", children: [
-            dataset.reference_mode === "automatic" ? "\u81EA\u52A8\u6765\u6E90" : "\u4EBA\u5DE5\u9009\u5B9A",
-            "\uFF0C",
-            dataset.reference_sample_ids.length,
-            " \u5F20"
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || dataset.reference_mode === "automatic", onClick: () => void save(), children: "\u6062\u590D\u81EA\u52A8\u6765\u6E90" })
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || loading, onClick: () => setSelection({ scope, ids: items.map((item) => item.sample_id) }), children: "\u9009\u62E9\u5F53\u524D\u9875" }),
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || loading || !total, onClick: () => void selectAll(), children: "\u9009\u62E9\u7B5B\u9009\u5168\u90E8" }),
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { children: [
-            "\u5DF2\u9009 ",
-            chosen.length,
-            " \u5F20"
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || !chosen.length, onClick: () => setSelection({ scope, ids: [] }), children: "\u53D6\u6D88\u9009\u62E9" }),
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { variant: "primary", disabled: busy || !chosen.length, onClick: () => void save(true), children: "\u52A0\u5165\u826F\u54C1\u6765\u6E90" }),
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || !chosen.length, onClick: () => void save(false), children: "\u79FB\u51FA\u826F\u54C1\u6765\u6E90" }),
-          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "iad-muted", children: "\u5019\u9009\u6765\u6E90\uFF0C\u975E\u4EBA\u5DE5\u88C1\u51B3" })
-        ] })
-      ] }),
-      error3 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
-      notice && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { role: "status", children: notice }),
-      loading ? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { role: "status", children: "\u52A0\u8F7D\u4E2D\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "iad-grid", children: items.map((sample) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(
-        SampleCard,
-        {
-          sample,
-          compact: layout2 === "queue",
-          selected: selected === sample.sample_id,
-          onSelect: () => onSelect(sample.sample_id),
-          reference: !!managing && dataset.reference_sample_ids.includes(sample.sample_id),
-          selection: managing ? { checked: chosen.includes(sample.sample_id), disabled: busy, onChange: (checked) => setSelection({ scope, ids: checked ? [...chosen, sample.sample_id] : chosen.filter((id) => id !== sample.sample_id) }) } : void 0
-        },
-        sample.sample_id
-      )) }),
-      !loading && !items.length && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "iad-empty", children: "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u6837\u672C\u3002" }),
-      pagination
-    ] });
-  }
-
-  // src/client/components/SampleInspector.tsx
-  var import_react33 = __require("react");
-
-  // src/client/components/ImageViewer.tsx
-  var import_react29 = __require("react");
-
-  // src/client/components/FullscreenViewer.tsx
-  var import_react25 = __require("react");
-  var import_react_dom3 = __require("react-dom");
-
   // src/client/useResource.ts
-  var import_react24 = __require("react");
+  var import_react19 = __require("react");
 
   // src/shared/job-display.ts
   var JOB_POLL_INTERVAL = 1200;
@@ -10214,8 +9925,8 @@ var __IadClientBundle__ = (() => {
       refetchInterval: live ? JOB_POLL_INTERVAL : false,
       refetchOnWindowFocus: live
     }, queryClient);
-    const previous = (0, import_react24.useRef)({ path, revision });
-    (0, import_react24.useEffect)(() => {
+    const previous = (0, import_react19.useRef)({ path, revision });
+    (0, import_react19.useEffect)(() => {
       if (previous.current.path === path && previous.current.revision !== revision && path)
         void queryClient.invalidateQueries({ queryKey: ["iad", "resource", path], exact: true }, { cancelRefetch: false });
       previous.current = { path, revision };
@@ -10228,7 +9939,309 @@ var __IadClientBundle__ = (() => {
     };
   }
 
+  // src/client/useImageAnnotations.ts
+  function useImageAnnotations(sampleId, source, qualityLabel) {
+    const sample = useResource(sampleId && source === void 0 && !qualityLabel ? "/sample/" + encodeURIComponent(sampleId) : null);
+    return source === null ? void 0 : source || (sample.data ? { kind: "sample", sample: sample.data.sample, annotations: sample.data.annotations } : void 0);
+  }
+
+  // src/client/components/AnnotatedImageStage.tsx
+  var import_jsx_runtime22 = __require("react/jsx-runtime");
+  function AnnotatedImageStage({
+    sampleId,
+    src,
+    alt = "",
+    width,
+    height,
+    bboxes = [],
+    annotationLayer,
+    qualityLabel,
+    showAnnotations = true,
+    className = "",
+    style,
+    children,
+    onLoadDimensions
+  }) {
+    const [naturalSize, setNaturalSize] = (0, import_react20.useState)({
+      width: width || 0,
+      height: height || 0
+    });
+    const imgW = naturalSize.width || width || 800;
+    const imgH = naturalSize.height || height || 600;
+    const layer = useImageAnnotations(sampleId, annotationLayer === null ? null : annotationLayer || (bboxes.length ? { kind: "boxes", annotations: bboxes, width: imgW, height: imgH } : void 0), qualityLabel);
+    return /* @__PURE__ */ (0, import_jsx_runtime22.jsxs)(
+      "div",
+      {
+        className: `annotated-image-stage ${className}`,
+        style: {
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+          overflow: "hidden",
+          ...style
+        },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(
+            "img",
+            {
+              "data-media-label": "\u56FE\u50CF",
+              src,
+              alt,
+              draggable: false,
+              style: {
+                maxWidth: "100%",
+                maxHeight: "100%",
+                width: "100%",
+                height: "100%",
+                objectFit: "contain",
+                display: "block",
+                pointerEvents: "none",
+                userSelect: "none"
+              },
+              onLoad: (e2) => {
+                const img = e2.currentTarget;
+                if (img.naturalWidth && img.naturalHeight) {
+                  setNaturalSize({ width: img.naturalWidth, height: img.naturalHeight });
+                  onLoadDimensions?.({ naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight });
+                }
+              }
+            }
+          ),
+          showAnnotations && layer && /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(AnnotationLayer, { fit: "contain", source: layer }),
+          children,
+          /* @__PURE__ */ (0, import_jsx_runtime22.jsx)(ImageQualityBadge, { label: qualityLabel })
+        ]
+      }
+    );
+  }
+
+  // src/client/components/ThumbnailCard.tsx
+  var import_jsx_runtime23 = __require("react/jsx-runtime");
+  var ThumbnailCard = (0, import_react21.forwardRef)(function ThumbnailCard2({ src, image, variant = "thumbnail", label, children, mediaOverlay, imageLoading = "lazy", className = "", title = label, ...props }, ref) {
+    return /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("button", { ...props, "data-variant": variant, ref, type: "button", className: `iad-thumbnail-card ${className}`, title, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime23.jsxs)("span", { className: "iad-thumbnail-media", children: [
+        image ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(AnnotatedImageStage, { src: image.src, alt: image.title, width: image.width, height: image.height, annotationLayer: image.annotationLayer, qualityLabel: image.qualityLabel }) : src ? /* @__PURE__ */ (0, import_jsx_runtime23.jsx)(MediaImage, { src, alt: label, loading: imageLoading, decoding: "async" }) : /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { children: "\u56FE\u50CF\u4E0D\u53EF\u7528" }),
+        mediaOverlay
+      ] }),
+      label && /* @__PURE__ */ (0, import_jsx_runtime23.jsx)("span", { className: "iad-thumbnail-caption", children: label }),
+      children
+    ] });
+  });
+
+  // src/client/components/Tooltip.tsx
+  var import_react22 = __require("react");
+
+  // src/client/theme.ts
+  var darkColors = `--iad-canvas:#141B25;--iad-surface:#202B3A;--iad-navigation:#182231;--iad-surface-muted:#293648;--iad-text:#EDF2F8;--iad-muted:#B4C0D0;--iad-border:#4C5B6E;--iad-panel-border:var(--iad-border);--iad-section-border:var(--iad-border);--iad-control-border:#8393AA;--iad-primary:#A7C5FF;--iad-primary-fill:#315FC9;--iad-hover:#293E60;--iad-success:#92D7B0;--iad-warning:#F3C280;--iad-danger:#FFB7B1;--iad-viewer:#10161F;`;
+  var themeStyles = `
+:root {
+ --iad-canvas:#F5F7FA;
+ --iad-surface:#fff;
+ --iad-navigation:#F5F7FA;
+ --iad-surface-muted:#F2F5F9;
+ --iad-text:#172338;
+ --iad-muted:#536174;
+ --iad-border:#CBD3DE;
+ --iad-panel-border:#DBE2EB;
+ --iad-section-border:#E2E8F0;
+ --iad-control-border:#B9C7D9;
+ --iad-primary:#285ED6;
+ --iad-primary-fill:#285ED6;
+ --iad-primary-hover:#1E51C2;
+ --iad-on-primary:#fff;
+ --iad-hover:#EAF0FE;
+ --iad-danger:#B42318;
+ --iad-success:#166344;
+ --iad-warning:#8A4B06;
+ --iad-success-badge:color-mix(in srgb,var(--iad-success) 45%,#000);
+ --iad-viewer:#202833;
+ --iad-on-viewer:#fff;
+ --iad-viewer-edge-fill:rgba(15,25,36,.76);--iad-viewer-edge-hover:rgba(35,48,65,.94);
+ --iad-viewer-edge-border:#4B5C70;--iad-viewer-edge-hover-border:#8294A8;--iad-viewer-edge-shadow:rgba(0,0,0,.1);
+ --iad-scrim:#101b2bd9;
+ --iad-radius:5px;
+ --iad-control-height:38px;
+ --iad-field-width:220px;
+ --iad-dataset-width:250px;
+ --iad-subset-width:390px;
+ --iad-icon-size:18px;
+ --iad-row-action-size:32px;
+ --iad-tab-height:44px;
+ --iad-font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+ --iad-font-size:13px;
+ --iad-space-1:.25rem;--iad-space-2:.5rem;--iad-space-3:.75rem;--iad-space-4:1rem;--iad-space-6:1.5rem;--iad-space-8:2rem;--iad-space-12:3rem;
+ --iad-page-padding:var(--iad-space-8);--iad-section-gap:var(--iad-space-6);--iad-field-gap:var(--iad-space-4);
+ --iad-title-size:calc(var(--dsh-content-font-size,.875rem)*2);--iad-section-size:calc(var(--dsh-content-font-size,.875rem)*1.285714);--iad-group-size:calc(var(--dsh-content-font-size,.875rem)*1.071429);
+}
+[data-ds-dark-theme] {${darkColors}}
+[data-shortcut-modal="settings"] > nav {border-inline-end:1px solid var(--iad-panel-border)}
+`;
+
+  // src/client/components/Tooltip.tsx
+  var import_jsx_runtime24 = __require("react/jsx-runtime");
+  function Tooltip({ label, content, className, children }) {
+    const [open, setOpen] = (0, import_react22.useState)(false);
+    const { refs, context, floatingStyles } = useFloating2({
+      open,
+      onOpenChange: setOpen,
+      placement: "top",
+      whileElementsMounted: autoUpdate,
+      middleware: [offset3(8), flip3(), shift3({ padding: 12, crossAxis: true })]
+    });
+    const { getReferenceProps, getFloatingProps } = useInteractions([
+      useHover(context, { move: false, delay: { open: 200, close: 100 } }),
+      useFocus(context),
+      useClick(context),
+      useDismiss(context, { bubbles: false }),
+      useRole(context, { role: "tooltip" })
+    ]);
+    return /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)(import_jsx_runtime24.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime24.jsx)("button", { type: "button", ref: refs.setReference, className, "aria-label": label, ...getReferenceProps(), children }),
+      open && /* @__PURE__ */ (0, import_jsx_runtime24.jsx)(FloatingPortal, { children: /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("div", { ref: refs.setFloating, className: "iad-tooltip", style: floatingStyles, ...getFloatingProps(), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime24.jsxs)("style", { children: [
+          themeStyles,
+          `.iad-tooltip{box-sizing:border-box;z-index:10020;max-width:min(340px,calc(100vw - 24px));max-height:calc(100dvh - 24px);overflow:auto;padding:12px;background:var(--iad-surface);color:var(--iad-text);border:1px solid var(--iad-control-border);border-radius:var(--iad-radius);font:var(--dsh-content-font-size,14px)/1.5 system-ui,sans-serif;overflow-wrap:anywhere;box-shadow:0 4px 16px #0002}.iad-tooltip p{margin:4px 0}`
+        ] }),
+        content
+      ] }) })
+    ] });
+  }
+
+  // src/client/components/SampleCard.tsx
+  var import_jsx_runtime25 = __require("react/jsx-runtime");
+  function SampleCard({ sample, selected, onSelect, reference, selection, compact = false }) {
+    const status = sample.suggestion?.suggested_label;
+    return /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("div", { className: "iad-sample-item", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(ThumbnailCard, { "data-sample-id": sample.sample_id, src: mediaUrl(sample, "thumbnail"), label: sample.relative_path.split("/").pop(), "aria-pressed": selected, onClick: onSelect, children: [
+        reference && /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("span", { children: "\u826F\u54C1\u6765\u6E90" }),
+        /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("span", { className: "iad-sample-label", children: [
+          sample.quality_status === "PASS" ? "OK" : sample.quality_status === "FAIL" ? "NG" : "\u672A\u6807\u8BB0",
+          " ",
+          compact && `\uFF0C${sample.review_decision ? reviewLabel(sample.review_decision) : status ? modelLabels[status] : "\u672A\u5BA1\u8BA1"}`
+        ] })
+      ] }),
+      !compact && /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(Tooltip, { label: `\u67E5\u770B\u72B6\u6001 ${sample.relative_path}`, className: `iad-status-trigger is-${status || "pending"}`, content: /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)(import_jsx_runtime25.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("p", { children: "\u6A21\u578B\u5EFA\u8BAE\u4E0D\u4EE3\u66FF\u4EBA\u5DE5\u88C1\u51B3\u3002" }),
+        sample.review_decision && /* @__PURE__ */ (0, import_jsx_runtime25.jsxs)("p", { children: [
+          "\u6A21\u578B\u5BA1\u8BA1\uFF1A",
+          status ? modelLabels[status] : "\u672A\u5BA1\u8BA1"
+        ] })
+      ] }), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("span", { className: "iad-status-mark", "aria-hidden": "true" }),
+        sample.review_decision ? reviewLabel(sample.review_decision) : status ? modelLabels[status] : "\u672A\u5BA1\u8BA1"
+      ] }),
+      selection && /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("label", { className: "iad-source-check", children: /* @__PURE__ */ (0, import_jsx_runtime25.jsx)("input", { type: "checkbox", "aria-label": `\u9009\u62E9\u826F\u54C1\u6765\u6E90 ${sample.relative_path}`, disabled: selection.disabled, checked: selection.checked, onChange: (event) => selection.onChange(event.target.checked) }) })
+    ] });
+  }
+
+  // src/client/components/SampleGrid.tsx
+  var import_jsx_runtime26 = __require("react/jsx-runtime");
+  function SampleGrid({ dataset, filters, onFilters, items, total, page, onPage, selected, onSelect, loading, sourceManagement, layout: layout2 = "grid", showFilters = true }) {
+    const scope = dataset.dataset_id;
+    const [selection, setSelection] = (0, import_react24.useState)({ scope: "", ids: [] });
+    const [busy, setBusy] = (0, import_react24.useState)(false), [error3, setError] = (0, import_react24.useState)(""), [notice, setNotice] = (0, import_react24.useState)("");
+    const chosen = selection.scope === scope ? selection.ids : [];
+    const managing = sourceManagement?.active;
+    async function selectAll() {
+      setBusy(true);
+      setError("");
+      setNotice("");
+      try {
+        const ids = [];
+        for (let next = 1; ; next++) {
+          const result = await request(`/samples/${encodeURIComponent(dataset.task_id)}?${sampleQuery(dataset.dataset_id, filters, next, 200)}`);
+          ids.push(...result.items.map((item) => item.sample_id));
+          if (ids.length >= result.total) break;
+          if (!result.items.length) throw new Error("\u7B5B\u9009\u8303\u56F4\u5DF2\u53D8\u5316\uFF0C\u8BF7\u91CD\u65B0\u9009\u62E9");
+        }
+        setSelection({ scope, ids });
+      } catch (e2) {
+        setError(message(e2));
+      } finally {
+        setBusy(false);
+      }
+    }
+    async function save(include) {
+      setBusy(true);
+      setError("");
+      setNotice("");
+      try {
+        if (include === void 0) await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, { reset_references: true }, "PATCH");
+        else {
+          const ids = new Set(dataset.reference_sample_ids);
+          for (const id of chosen) {
+            if (include) ids.add(id);
+            else ids.delete(id);
+          }
+          await request(`/datasets/${encodeURIComponent(dataset.dataset_id)}`, { reference_sample_ids: [...ids] }, "PATCH");
+        }
+        setNotice(include === void 0 ? "\u5DF2\u6062\u590D\u81EA\u52A8\u6765\u6E90" : `\u5DF2${include ? "\u52A0\u5165" : "\u79FB\u51FA"} ${chosen.length} \u5F20\u56FE\u50CF`);
+        setSelection({ scope, ids: [] });
+        sourceManagement?.onChanged();
+      } catch (e2) {
+        setError(message(e2));
+      } finally {
+        setBusy(false);
+      }
+    }
+    const pagination = /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Pagination, { total, page, unit: "\u5F20", onPage });
+    return /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { className: `iad-gallery ${layout2 === "queue" ? "iad-review-queue" : ""}`, "aria-label": "\u56FE\u50CF\u5217\u8868", children: [
+      showFilters && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(SampleFilters, { dataset, filters, onFilters, busy }),
+      managing && /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("section", { className: "iad-source-controls", "aria-label": "\u826F\u54C1\u6765\u6E90\u7BA1\u7406", "aria-busy": busy, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("strong", { "aria-label": "\u826F\u54C1\u6765\u6E90\u6458\u8981", children: [
+            dataset.reference_mode === "automatic" ? "\u81EA\u52A8\u6765\u6E90" : "\u4EBA\u5DE5\u9009\u5B9A",
+            "\uFF0C",
+            dataset.reference_sample_ids.length,
+            " \u5F20"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || dataset.reference_mode === "automatic", onClick: () => void save(), children: "\u6062\u590D\u81EA\u52A8\u6765\u6E90" })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || loading, onClick: () => setSelection({ scope, ids: items.map((item) => item.sample_id) }), children: "\u9009\u62E9\u5F53\u524D\u9875" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || loading || !total, onClick: () => void selectAll(), children: "\u9009\u62E9\u7B5B\u9009\u5168\u90E8" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsxs)("span", { children: [
+            "\u5DF2\u9009 ",
+            chosen.length,
+            " \u5F20"
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || !chosen.length, onClick: () => setSelection({ scope, ids: [] }), children: "\u53D6\u6D88\u9009\u62E9" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(Button, { variant: "primary", disabled: busy || !chosen.length, onClick: () => void save(true), children: "\u52A0\u5165\u826F\u54C1\u6765\u6E90" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("button", { disabled: busy || !chosen.length, onClick: () => void save(false), children: "\u79FB\u51FA\u826F\u54C1\u6765\u6E90" }),
+          /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("span", { className: "iad-muted", children: "\u5019\u9009\u6765\u6E90\uFF0C\u975E\u4EBA\u5DE5\u88C1\u51B3" })
+        ] })
+      ] }),
+      error3 && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
+      notice && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { role: "status", children: notice }),
+      loading ? /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { role: "status", children: "\u52A0\u8F7D\u4E2D\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("div", { className: "iad-grid", children: items.map((sample) => /* @__PURE__ */ (0, import_jsx_runtime26.jsx)(
+        SampleCard,
+        {
+          sample,
+          compact: layout2 === "queue",
+          selected: selected === sample.sample_id,
+          onSelect: () => onSelect(sample.sample_id),
+          reference: !!managing && dataset.reference_sample_ids.includes(sample.sample_id),
+          selection: managing ? { checked: chosen.includes(sample.sample_id), disabled: busy, onChange: (checked) => setSelection({ scope, ids: checked ? [...chosen, sample.sample_id] : chosen.filter((id) => id !== sample.sample_id) }) } : void 0
+        },
+        sample.sample_id
+      )) }),
+      !loading && !items.length && /* @__PURE__ */ (0, import_jsx_runtime26.jsx)("p", { className: "iad-empty", children: "\u6CA1\u6709\u7B26\u5408\u7B5B\u9009\u6761\u4EF6\u7684\u6837\u672C\u3002" }),
+      pagination
+    ] });
+  }
+
+  // src/client/components/SampleInspector.tsx
+  var import_react33 = __require("react");
+
+  // src/client/components/ImageViewer.tsx
+  var import_react29 = __require("react");
+
   // src/client/components/FullscreenViewer.tsx
+  var import_react25 = __require("react");
+  var import_react_dom3 = __require("react-dom");
   var import_jsx_runtime27 = __require("react/jsx-runtime");
   function FullscreenViewer({
     open,
@@ -10244,12 +10257,7 @@ var __IadClientBundle__ = (() => {
     onTransform,
     onImageClick
   }) {
-    const source = useResource(open && item?.sampleId && item.annotationLayer === void 0 && !item.qualityLabel ? `/sample/${encodeURIComponent(item.sampleId)}` : null);
-    const annotationLayer = item?.annotationLayer === null ? void 0 : item?.annotationLayer || (source.data ? {
-      kind: "sample",
-      sample: source.data.sample,
-      annotations: source.data.annotations
-    } : item?.bboxes?.length ? { kind: "boxes", annotations: item.bboxes, width: item.width || 1, height: item.height || 1 } : void 0);
+    const annotationLayer = useImageAnnotations(open ? item?.sampleId : void 0, item?.annotationLayer === null ? null : item?.annotationLayer || (item?.bboxes?.length ? { kind: "boxes", annotations: item.bboxes, width: item.width || 1, height: item.height || 1 } : void 0), item?.qualityLabel);
     const [zoomMode, setZoomMode] = (0, import_react25.useState)("fit");
     const [zoomLevel, setZoomLevel] = (0, import_react25.useState)(1);
     const [panX, setPanX] = (0, import_react25.useState)(0);
@@ -11322,7 +11330,6 @@ var __IadClientBundle__ = (() => {
     ANNOTATION_COUNT: "\u6807\u6CE8\u6570\u91CF\u4E0D\u540C",
     ONE_SIDED_REGION: "\u5355\u4FA7\u6807\u6CE8",
     SPLIT_MERGE: "\u5B9E\u4F8B\u62C6\u5206\u6216\u5408\u5E76",
-    AMBIGUOUS_MATCH: "\u5339\u914D\u6709\u6B67\u4E49",
     POLICY_UNCONFIRMED: "\u6807\u6CE8\u89C4\u8303\u672A\u786E\u8BA4",
     ANNOTATION_UNREADABLE: "\u6807\u6CE8\u4E0D\u53EF\u8BFB\u53D6"
   };
@@ -61100,9 +61107,10 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       directions.map((direction, index3) => {
         const items = score.items.filter((item) => item.direction === direction);
         const dimension = score.dimensions[items[0].dimension];
+        const detailItems = items.filter((item) => item.dimension !== "diversity" || item.deduction !== 0 || item.suppressed_by);
         return /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("section", { children: [
           /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(AuditReportHeading, { level: 3, number: heading.prefix + (index3 + 1), children: direction }),
-          /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { children: "\u4E0B\u56FE\u5C55\u793A\u5404\u8BC4\u5206\u9879\u7684\u6263\u5206\uFF1B\u5177\u4F53\u573A\u666F\u3001\u5206\u6790\u4E0E\u56FE\u50CF\u8BC1\u636E\u89C1\u4E0B\u65B9\u5206\u9879\u3002" }),
+          /* @__PURE__ */ (0, import_jsx_runtime55.jsx)("p", { children: detailItems.length ? "\u4E0B\u56FE\u5C55\u793A\u5404\u8BC4\u5206\u9879\u7684\u6263\u5206\uFF1B\u5177\u4F53\u573A\u666F\u3001\u5206\u6790\u4E0E\u56FE\u50CF\u8BC1\u636E\u89C1\u4E0B\u65B9\u5206\u9879\u3002" : "\u672C\u7EC4\u672A\u53D1\u73B0\u9700\u8981\u6263\u5206\u7684\u8986\u76D6\u95EE\u9898\u3002" }),
           /* @__PURE__ */ (0, import_jsx_runtime55.jsx)(Chart, { id: `score-${index3}`, title: `${direction}\u6263\u5206`, spec: {
             type: "bar",
             format: "score",
@@ -61122,7 +61130,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
             dimension.score === null ? "\u8BC1\u636E\u4E0D\u8DB3" : chartNumber(dimension.score, "score") + " \u5206",
             "\u3002"
           ] }) : null,
-          items.map((item, itemIndex) => {
+          detailItems.map((item, itemIndex) => {
             const details = auditScoreItemDetails(item, score.items), number = heading.prefix + (index3 + 1) + "." + (itemIndex + 1);
             const images = report.evidence_groups["score:" + (score.dataset_id ? score.dataset_id + ":" : "") + item.code] ?? [];
             return /* @__PURE__ */ (0, import_jsx_runtime55.jsxs)("article", { className: "iad-audit-discovery", "data-score-rule": item.code, children: [
@@ -61758,7 +61766,8 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       src: auditSampleImage(sample, taskId),
       title: sample.filename,
       width: sample.width,
-      height: sample.height
+      height: sample.height,
+      sampleId: sample.sample_id
     };
     return /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(import_jsx_runtime64.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime64.jsxs)(Modal, { title: "\u56FE\u50CF\u5BA1\u8BA1\u8BE6\u60C5", className: "audit-dialog", header: false, onClose, children: [
@@ -61787,6 +61796,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
               children: /* @__PURE__ */ (0, import_jsx_runtime64.jsx)(
                 AnnotatedImageStage,
                 {
+                  sampleId: mainImage.sampleId,
                   src: mainImage.src,
                   alt: mainImage.title,
                   width: mainImage.width,
@@ -61960,7 +61970,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
   var promptDefaults = {
     "audit": "\u89C2\u5BDF\u5B8C\u6574\u539F\u56FE\u3001\u5168\u90E8\u539F\u59CB\u6807\u6CE8\u548C\u5FC5\u9700\u5C40\u90E8\uFF0C\u72EC\u7ACB\u6838\u5BF9\u53EF\u89C1\u73B0\u8C61\u7684\u8986\u76D6\u3001\u5B9A\u4F4D\u548C\u5B9E\u4F8B\u7EC4\u7EC7\uFF0C\u518D\u9010\u9879\u6838\u5BF9\u4E0A\u6E38\u5DEE\u5F02\u548C\u6240\u9009\u77E5\u8BC6\u3002\n\n\u63D0\u4EA4\u5177\u4F53\u56FE\u50CF\u4F9D\u636E\u3001\u4E00\u53E5\u8BDD\u7ED3\u8BBA\u3001\u6709\u72EC\u7ACB\u56FE\u8BC1\u7684\u7591\u70B9\u3001\u5FC5\u8981\u666E\u901A\u89C2\u5BDF\u53CA\u5C11\u91CF\u8DE8\u56FE\u89C6\u89C9\u7279\u5F81\u3002\u5206\u6790\u4E0E\u4F9D\u636E\u8BF4\u660E\u672C\u56FE\u4E8B\u5B9E\uFF0C\u5C40\u9650\u8BB0\u5F55\u5B9E\u9645\u53D6\u8BC1\u7F3A\u53E3\uFF1B\u5F15\u7528\u5B9E\u9645\u89C2\u5BDF\u7684\u5B8C\u6574\u539F\u56FE\u3002",
     "auditReport": "\u7EFC\u5408\u5168\u90E8\u6709\u6548\u56FE\u7EA7\u7ED3\u679C\u3001\u5168\u5C40\u53D1\u73B0\u3001\u7A0B\u5E8F\u7EDF\u8BA1\u3001\u6765\u6E90\u4FE1\u606F\u548C\u9009\u7528\u7684\u8BC4\u6D4B\u6210\u679C\uFF0C\u5F62\u6210\u9762\u5411\u975E\u9879\u76EE\u4EBA\u5458\u7684\u8D28\u91CF\u4E0E\u8BC4\u6D4B\u80FD\u529B\u62A5\u544A\uFF0C\u6309\u5DE5\u5177\u5408\u540C\u63D0\u4EA4\u3002\n\n\u7ED3\u8BBA\u53EA\u6982\u62EC\u5F53\u524D\u7528\u9014\u548C\u4E3B\u8981\u89C6\u89C9\u53D1\u73B0\uFF0C\u6570\u91CF\u7531\u9875\u9762\u7EDF\u8BA1\u5C55\u793A\u3002\u968F\u540E\u56DE\u7B54\u81EA\u6D3D\u6027\u3001\u6807\u6CE8\u590D\u6838\u91CD\u70B9\u3001\u89C6\u89C9\u8986\u76D6\u3001\u72EC\u7ACB\u6027\u4E0E\u4EE3\u8868\u6027\u3001\u6A21\u578B\u80FD\u529B\u548C\u4F7F\u7528\u6761\u4EF6\u3002\n\n\u81EA\u6D3D\u6027\u5F00\u5934\u7528\u4E00\u4E24\u53E5\u8BDD\u56DE\u7B54\uFF1A\u5728\u5185\u5BB9\u76F8\u540C\u3001\u53EF\u4EE5\u5BF9\u7167\u7684\u56FE\u50CF\u4E2D\uFF0C\u6807\u6CE8\u662F\u5426\u4E00\u81F4\uFF1B\u7A0B\u5E8F\u6807\u51FA\u7684\u5DEE\u5F02\u7ECF\u8FC7\u6A21\u578B\u770B\u56FE\u540E\uFF0C\u54EA\u4E9B\u4ECD\u7136\u6210\u7ACB\u3002\u4E24\u5957\u7EDF\u8BA1\u7531\u7A0B\u5E8F\u8BA1\u7B97\u5E76\u5728\u9875\u9762\u5C55\u793A\uFF0C\u6309\u4E3B\u56FE\u8BA1\u6570\uFF0C\u540C\u4E00\u5F20\u56FE\u5728\u540C\u4E00\u7C7B\u53EA\u8BB0\u4E00\u6B21\u3002\u968F\u540E\u6309\u5B9E\u9645\u7C7B\u578B\u89E3\u91CA\u7A0B\u5E8F\u53D1\u73B0\u548C\u6A21\u578B\u590D\u6838\u7684\u5DEE\u522B\uFF0C\u76F4\u63A5\u8BF4\u4E24\u4FA7\u6807\u6CE8\u54EA\u91CC\u4E0D\u540C\u3001\u4E3A\u4F55\u4FDD\u7559\u6216\u6392\u9664\uFF0C\u914D3\u81F38\u5F20\u76F8\u5173\u5B8C\u6574\u539F\u56FE\u3002\n\n\u65E0\u5019\u9009\u3001\u65E0\u6709\u6548\u5019\u9009\u3001\u6807\u6CE8\u4E00\u81F4\u7B49\u975E\u7A7A\u8303\u56F4\u5404\u81EA\u8BF4\u660E\u5BF9\u7167\u56FE\u7684\u60C5\u51B5\u548C\u8DE8\u56FE\u6BD4\u8F83\u7ED3\u679C\uFF0C\u7CBE\u90093\u81F38\u5F20\u5C5E\u4E8E\u8BE5\u8303\u56F4\u7684\u5B8C\u6574\u539F\u56FE\u3002\u8303\u56F4\u7531\u8BB0\u5F55\u4E2D\u7684consistency.source_status\u786E\u5B9A\u3002\u5355\u5F20\u56FE\u662F\u5426\u6F0F\u6807\u3001\u5708\u591A\u4E86\u6216\u628A\u4E00\u4E2A\u76EE\u6807\u5206\u6210\u51E0\u4E2A\uFF0C\u653E\u5728\u6807\u6CE8\u8D28\u91CF\u7AE0\u8282\uFF1B\u5F62\u6001\u3001\u4EAE\u5EA6\u548C\u7EB9\u7406\u53D8\u5316\u653E\u5728\u89C6\u89C9\u8986\u76D6\u6216\u6A21\u578B\u80FD\u529B\u7AE0\u8282\u3002\u7AE0\u8282\u6982\u8FF0\u805A\u7126\u6807\u6CE8\u662F\u5426\u4E00\u81F4\uFF0C\u5177\u4F53\u56FE\u50CF\u7EC6\u8282\u5728\u5BF9\u5E94\u5C0F\u8282\u8BF4\u660E\u3002\n\n\u8986\u76D6\u6309\u5B9E\u9645\u5F62\u6001\u3001\u65B9\u5411\u3001\u5C3A\u5EA6\u611F\u53D7\u3001\u53EF\u89C1\u5EA6\u3001\u80CC\u666F\u548C\u7ED3\u6784\u5173\u7CFB\u5F62\u6210\u4E3B\u9898\u3002\u72EC\u7ACB\u6027\u8BF4\u6E05\u54EA\u4E9B\u56FE\u7247\u91CD\u590D\u3001\u54EA\u4E9B\u53EF\u80FD\u62CD\u81EA\u540C\u4E00\u4EF6\u7269\u54C1\uFF1B\u7F3A\u5C11\u767B\u8BB0\u65F6\uFF0C\u76F4\u63A5\u5217\u51FA\u9700\u8981\u8865\u8BB0\u7684\u7269\u54C1\u3001\u6279\u6B21\u6216\u91C7\u96C6\u6765\u6E90\uFF0C\u4EE5\u53CA\u5B8C\u6210\u540E\u53EF\u4EE5\u600E\u6837\u5206\u7EC4\u3002\n\n\u80FD\u529B\u4E13\u9898\u4ECE\u771F\u5B9E\u89C6\u89C9\u56F0\u96BE\u5F62\u6210\u3002\u6BCF\u4E2A\u5C0F\u70B9\u8BF4\u660E\u89C2\u5BDF\u3001\u8DE8\u56FE\u5171\u6027\u4E0E\u5DEE\u522B\u3001\u53EF\u80FD\u68C0\u9A8C\u7684\u6A21\u578B\u8868\u73B0\uFF0C\u5E76\u5F15\u7528\u6709\u5B8C\u6574\u539F\u56FE\u7684\u6848\u4F8B\u3002\u5355\u56FE\u7279\u6B8A\u73B0\u8C61\u6309\u4E2A\u4F8B\u89E3\u91CA\uFF0C\u5C1A\u7F3A\u7684\u80FD\u529B\u573A\u666F\u96C6\u4E2D\u5217\u51FA\u3002\u56FA\u5B9A\u6807\u7B7E\u4F9B\u5185\u90E8\u7EDF\u8BA1\uFF0C\u6B63\u6587\u4E13\u9898\u6309\u8BC1\u636E\u7EC4\u7EC7\u3002\n\n\u6BCF\u6761\u6240\u9009\u77E5\u8BC6\u5206\u522B\u8BF4\u660E\u68C0\u67E5\u52A8\u4F5C\u3001\u9002\u7528\u60C5\u51B5\u3001\u5B9E\u9645\u56FE\u50CF\u89C2\u5BDF\u4E0E\u5BF9\u7167\uFF0C\u4EE5\u53CA\u5BF9\u672C\u6B21\u5224\u65AD\u7684\u4F5C\u7528\u3002\u7CBE\u9009\u4E3B Agent \u5DF2\u67E5\u770B\u7684\u5B8C\u6574\u539F\u56FE\u89E3\u91CA\u5E94\u7528\u3002\u6807\u9898\u53CA\u77E5\u8BC6\u72B6\u6001\u6765\u81EA\u51BB\u7ED3\u6761\u76EE\uFF0C\u9010\u56FE\u6838\u5BF9\u6570\u91CF\u6765\u81EA\u7A0B\u5E8F\u7EDF\u8BA1\u3002\u77E5\u8BC6\u7AE0\u8282\u4F7F\u7528\u6807\u9898\u3001\u63CF\u8FF0\u3001\u56FE\u50CF\u8BC1\u636E\u548C\u7ED3\u6784\u5316\u5206\u6790\uFF1B\u77E5\u8BC6\u4E3A\u7A7A\u65F6\u5217\u8868\u4E3A\u7A7A\u3002\n\n\u6BCF\u4E2A\u5206\u6790\u70B9\u76F4\u63A5\u8BB2\u56FE\u91CC\u6709\u4EC0\u4E48\u3001\u6807\u6CE8\u6709\u6CA1\u6709\u5708\u5BF9\u3001\u4E24\u56FE\u54EA\u91CC\u76F8\u540C\u6216\u4E0D\u540C\uFF0C\u4EE5\u53CA\u53EF\u4EE5\u636E\u6B64\u68C0\u67E5\u6A21\u578B\u7684\u4EC0\u4E48\u8868\u73B0\u3002\u6B63\u6587\u81EA\u6210\u4E00\u6BB5\u5B8C\u6574\u8BF4\u660E\uFF0C\u76F8\u5173\u539F\u56FE\u901A\u8FC7\u5173\u8054\u5B57\u6BB5\u5728\u8BE5\u5904\u5C55\u793A\u3002\u6BCF\u5F20\u56FE\u7684\u8BF4\u660E\u6307\u51FA\u5E94\u770B\u54EA\u91CC\u3001\u5177\u4F53\u5F62\u6001\u6216\u5DEE\u522B\u3002\u5206\u6790\u548C\u56FE\u8BC1\u5173\u8054\u5F53\u524D\u6709\u6548\u56FE\u7EA7\u7248\u672C\u3002\n\n\u5206\u522B\u8BC4\u4EF7\u89C6\u89C9\u63A2\u7D22\u3001\u8BAD\u7EC3\u5B9E\u9A8C\u3001\u5185\u90E8\u8C03\u8BD5\u3001\u56FE\u50CF\u7EA7\u8BC4\u6D4B\u3001\u77E9\u5F62\u6846\u5B9A\u4F4D\u8BC4\u6D4B\u3001\u50CF\u7D20\u533A\u57DF\u8BC4\u6D4B\u53CA\u6B63\u5F0F\u8BC4\u6D4B\u57FA\u51C6\u3002\u5404\u9879\u8BF4\u660E\u53EF\u5F00\u5C55\u7684\u5DE5\u4F5C\u548C\u5B9E\u9645\u6761\u4EF6\u3002\u5171\u540C\u7F3A\u9879\u96C6\u4E2D\u5728\u7528\u9014\u7AE0\u8282\uFF0C\u5404\u4E3B\u9898\u53EA\u8865\u5145\u7279\u6709\u6761\u4EF6\u3002\n\n\u5148\u5199\u5177\u4F53\u4E8B\u5B9E\uFF0C\u518D\u89E3\u91CA\u539F\u56E0\u6216\u4E0B\u4E00\u6B65\u3002\u4E00\u53E5\u8BDD\u53EA\u8BB2\u4E00\u4E2A\u8981\u70B9\uFF0C\u4E3B\u8BED\u662F\u56FE\u4E2D\u7684\u90E8\u4F4D\u3001\u5DF2\u6709\u6807\u6CE8\u6216\u8981\u505A\u7684\u68C0\u67E5\u3002\u63D0\u4EA4\u524D\u9010\u6BB5\u6309\u666E\u901A\u8BFB\u8005\u7684\u89C6\u89D2\u91CD\u8BFB\uFF1A\u8BFB\u8005\u80FD\u5426\u6307\u7740\u56FE\u7247\u627E\u5230\u4F60\u8BF4\u7684\u5730\u65B9\uFF0C\u80FD\u5426\u76F4\u63A5\u77E5\u9053\u4F60\u7684\u5224\u65AD\u6216\u4E0B\u4E00\u6B65\u52A8\u4F5C\uFF1B\u8BFB\u4E0D\u987A\u7684\u53E5\u5B50\u7528\u65E5\u5E38\u7528\u8BED\u91CD\u5199\u3002\u6574\u4F53\u7EDF\u8BA1\u7531\u9875\u9762\u4EA4\u4EE3\uFF0C\u6280\u672F\u660E\u7EC6\u4FDD\u7559\u5728\u7ED3\u6784\u5316\u8BB0\u5F55\u4E2D\u3002\n\n\u62A5\u544A\u5E2E\u52A9\u8BFB\u8005\u770B\u61C2\u8FD9\u6279\u56FE\u50CF\u3001\u6807\u6CE8\u548C\u540E\u7EED\u5DE5\u4F5C\uFF0C\u56DE\u7B54\u81EA\u6D3D\u6027\u3001\u6807\u6CE8\u8D28\u91CF\u3001\u89C6\u89C9\u8986\u76D6\u3001\u72EC\u7ACB\u6027\u4E0E\u4EE3\u8868\u6027\u3001\u6A21\u578B\u80FD\u529B\u548C\u6570\u636E\u7528\u9014\u516D\u4E2A\u95EE\u9898\u3002\u5F00\u5934\u76F4\u63A5\u8BF4\u73B0\u5728\u80FD\u7528\u6765\u505A\u4EC0\u4E48\u3001\u4E3B\u8981\u53D1\u73B0\u4EC0\u4E48\u3002\n\n\u6BCF\u6BB5\u56F4\u7ED5\u4E00\u4E2A\u8981\u70B9\uFF0C\u901A\u5E38\u7528\u4E24\u4E09\u53E5\u8BDD\u8BB2\u6E05\u695A\uFF1A\u56FE\u91CC\u54EA\u91CC\u503C\u5F97\u770B\uFF0C\u6807\u6CE8\u6216\u4E24\u5F20\u56FE\u6709\u4EC0\u4E48\u76F8\u540C\u548C\u4E0D\u540C\uFF0C\u8FD9\u5BF9\u4F7F\u7528\u6570\u636E\u6709\u4EC0\u4E48\u5F71\u54CD\u3002\u76F4\u63A5\u4E0B\u6709\u4F9D\u636E\u7684\u5224\u65AD\u3002\u9700\u8981\u8BFB\u8005\u590D\u770B\u65F6\uFF0C\u8BF4\u6E05\u770B\u54EA\u4E2A\u90E8\u4F4D\u3001\u8981\u786E\u8BA4\u4EC0\u4E48\u3002\n\n\u6B63\u6587\u4F7F\u7528\u65E5\u5E38\u52A8\u8BCD\uFF0C\u5C11\u7528\u62BD\u8C61\u540D\u8BCD\u4E32\u3002\u8BF4\u201C\u8FD9\u4E24\u5F20\u56FE\u62CD\u7684\u662F\u540C\u4E00\u5904\u201D\u201C\u51E0\u4E2A\u6846\u5708\u4F4F\u540C\u4E00\u6761\u8FB9\u201D\u201C\u8865\u5145\u5176\u4ED6\u6279\u6B21\u7684\u56FE\u7247\u201D\uFF0C\u628A\u5224\u65AD\u8FC7\u7A0B\u8BB2\u6210\u5177\u4F53\u7684\u56FE\u50CF\u4E8B\u5B9E\u548C\u52A8\u4F5C\u3002\u4E0D\u8981\u7167\u642C\u5DE5\u5177\u8F93\u51FA\u7684\u5224\u5B9A\u672F\u8BED\uFF0C\u6216\u7528\u4E00\u4E32\u9650\u5236\u58F0\u660E\u4EE3\u66FF\u7ED3\u679C\u3002\u4EFB\u52A1\u89C4\u5219\u3001\u7CFB\u7EDF\u72B6\u6001\u548C\u4FDD\u5B58\u8FC7\u7A0B\u7559\u5728\u914D\u7F6E\u4E0E\u8BB0\u5F55\u91CC\u3002\n\n\u6807\u9898\u53EA\u5199\u4E3B\u9898\uFF0C\u5C42\u7EA7\u7F16\u53F7\u7531\u9875\u9762\u7EDF\u4E00\u6DFB\u52A0\uFF0C\u6570\u91CF\u5728\u6B63\u6587\u7EDF\u8BA1\u6216\u56FE\u8868\u4E2D\u5355\u72EC\u5C55\u793A\u3002\n\n\u6570\u91CF\u548C\u6765\u6E90\u72B6\u6001\u7531\u9875\u9762\u7EDF\u8BA1\u5C55\u793A\uFF0C\u6B63\u6587\u89E3\u91CA\u5177\u4F53\u4E8B\u5B9E\u3002\u65B0\u4F5C\u4E1A\u5177\u6709quality_score_version\u65F6\uFF0C\u6700\u7EC8\u62A5\u544A\u524D\u8C03\u7528audit_quality_score\u3002\u4E3BAgent\u5F52\u5E76\u540C\u4E49\u573A\u666F\uFF08aliases\uFF09\uFF0C\u53EA\u6709\u540C\u4E00\u79CD\u5B9E\u9645\u539F\u56E0\u624D\u4F7F\u7528\u76F8\u540Ccanonical\uFF1B\u5C3A\u5BF8\u4E0E\u4F4D\u7F6E\u662F\u72EC\u7ACB\u539F\u56E0\u3002\u4F4E\u4FE1\u606F\u589E\u91CF\u7EC4\u9010\u56FE\u5F15\u7528\u5F53\u524D\u6709\u6548\u7248\u672C\uFF0C\u5B9E\u9645\u6253\u5F00dataset_profile.near_candidate_members\u4E2D\u7684\u5019\u9009\u539F\u56FE\u540E\u518D\u786E\u8BA4redundancy_reviewed\uFF1B\u5019\u9009\u76F8\u4F3C\u5EA6\u4E0D\u7B49\u4E8E\u5197\u4F59\u3002\u6CA1\u6709\u4F4E\u4FE1\u606F\u589E\u91CF\u7EC4\u65F6\u63D0\u4EA4\u7A7A\u7EC4\uFF0C\u4E0D\u7F16\u9020\u7EC4\u3002\u590D\u6838\u4E3B\u8981\u6263\u5206\u573A\u666F\u7684\u539F\u56FE\uFF0C\u8BFB\u53D6\u7A0B\u5E8F\u8BA1\u7B97\u7ED3\u679C\u89E3\u91CA\u5206\u6570\uFF0Cquality_assessment\u539F\u6837\u91C7\u7528\u5DE5\u5177\u8FD4\u56DE\u7684assessment\u3002\u6570\u636E\u4E00\u81F4\u6027\u8BA1\u5206\u53EA\u91C7\u7528\u51BB\u7ED3\u7684\u4E0A\u6E38\u6570\u636E\u4E00\u81F4\u6027\u4F5C\u4E1A\u5206\u7C7B\uFF1B\u56FE\u7EA7\u5BA1\u8BA1\u72EC\u7ACB\u53D1\u73B0\u548C\u5F85\u786E\u8BA4\u7591\u70B9\u4E0D\u4F5C\u4E3A\u4E00\u81F4\u6027\u6263\u5206\uFF0C\u4E0D\u5C06\u65E0\u5019\u9009\u6216\u65E0\u6709\u6548\u5019\u9009\u63CF\u8FF0\u4E3A\u5B8C\u6210\u6709\u6548\u5BF9\u7167\u3002\u7EFC\u5408\u5206\u53CA\u4E09\u9879\u5206\u6570\u7531\u7B2C\u4E00\u7AE0\u56FE\u8868\u5C55\u793A\uFF0C\u7B2C\u4E8C\u7AE0\u5C55\u793A\u5177\u4F53\u6263\u5206\u3001\u6570\u91CF\u3001\u5360\u6BD4\u4E0E\u56FE\u8BC1\u3002\u6570\u636E\u5206\u5E03\u7531\u7A0B\u5E8F\u4ECE\u51BB\u7ED3\u539F\u59CB\u56FE\u50CF\u548C\u6807\u6CE8\u8BA1\u7B97\uFF0C\u6309\u9700\u901A\u8FC7audit_distribution\u8BFB\u53D6\uFF1B\u5206\u5E03\u56FE\u8868\u7531\u9875\u9762\u5C55\u793A\uFF0C\u6B63\u6587\u5F15\u7528\u6570\u5B57\u76F4\u63A5\u91C7\u7528\u5DE5\u5177\u7ED3\u679C\u3002\u5171\u540C\u7F3A\u5C11\u7684\u6750\u6599\u96C6\u4E2D\u5199\u6210\u4E0B\u4E00\u6B65\uFF1A\u8865\u54EA\u7C7B\u56FE\u7247\u3001\u786E\u8BA4\u54EA\u4E9B\u53C2\u8003\u6807\u6CE8\u3001\u767B\u8BB0\u54EA\u4E9B\u6765\u6E90\uFF0C\u518D\u5F00\u5C55\u4EC0\u4E48\u5DE5\u4F5C\u3002\u5404\u4E3B\u9898\u53EA\u8865\u5145\u81EA\u5DF1\u7279\u6709\u7684\u51C6\u5907\u4E8B\u9879\uFF0C\u4E0D\u5728\u6BCF\u6BB5\u91CD\u590D\u540C\u4E00\u6761\u4EF6\u3002\n\n\u5B8C\u6210\u4E00\u7EC4\u56FE\u50CF\u7684\u6BD4\u8F83\u540E\u7ACB\u5373\u7528audit_observation\u4FDD\u5B58\u7B80\u77ED\u4E8B\u5B9E\u53CA\u5F15\u7528\uFF0C\u518D\u8BFB\u53D6\u4E0B\u4E00\u7EC4\uFF1B\u8BE5\u5DE5\u5177\u4F1A\u91CA\u653E\u5DF2\u7ECF\u89C2\u5BDF\u7684\u56FE\u7247\u3002\u5F53\u524D\u53EF\u7528\u56FE\u7247\u76F4\u63A5\u8054\u5408\u6BD4\u8F83\uFF0C\u4E0D\u53CD\u590D\u8BFB\u53D6\u3002\u80FD\u76F4\u63A5\u63D0\u4EA4\u56FE\u7EA7\u7ED3\u679C\u65F6\u4F7F\u7528audit_commit\uFF0C\u65E0\u9700\u989D\u5916\u4FDD\u5B58\u89C2\u5BDF\u3002\n\n\u62A5\u544A\u7528audit_report_section\u9010\u7AE0\u4FDD\u5B58\uFF0Cbase_revision\u91C7\u7528\u5F53\u524D\u8349\u7A3F\u7248\u672C\uFF0C\u7701\u7565\u5DF2\u7ECF\u4FDD\u5B58\u4E14\u6CA1\u6709\u53D8\u5316\u7684\u5B57\u6BB5\u3002\u5148\u4FDD\u5B58report_cases\u53CA\u5176\u5F15\u7528\uFF0C\u518D\u4FDD\u5B58\u5BF9\u5E94\u5206\u6790\u548C\u7528\u9014\u3002\u5B9A\u7A3F\u4EC5\u63D0\u4EA4commit_key\u548Cdraft_revision\uFF1B\u9A8C\u8BC1\u5931\u8D25\u53EA\u4FEE\u6B63\u6307\u51FA\u7684\u5B57\u6BB5\uFF0C\u4E0D\u91CD\u53D1\u6574\u4EFD\u62A5\u544A\u3002\n\n\u4E3B Agent \u7EFC\u5408\u5168\u90E8\u6709\u6548\u56FE\u7EA7\u4E8B\u5B9E\u548C\u53D1\u73B0\uFF0C\u5404\u5C0F\u70B9\u72EC\u7ACB\u8BF4\u660E\u5E76\u5173\u80543\u81F38\u5F20\u76F8\u5173\u539F\u56FE\uFF0C\u8BFB\u8005\u5728\u5F53\u524D\u5C0F\u8282\u5C31\u80FD\u5BF9\u7167\u56FE\u7247\u8BFB\u61C2\u3002\u6848\u4F8B\u53CA\u56FE\u50CF\u7F16\u53F7\u53EA\u586B\u5173\u8054\u5B57\u6BB5\uFF0C\u7531\u9875\u9762\u5728\u6B63\u6587\u65C1\u5C55\u793A\u56FE\u7247\u3002\u6848\u4F8B\u4FDD\u5B58\u53EF\u590D\u7528\u7684\u56FE\u50CF\u4F9D\u636E\uFF1B\u77E5\u8BC6\u63CF\u8FF0\u8BF4\u6E05\u6559\u6211\u4EEC\u770B\u54EA\u91CC\u3001\u8FD9\u6B21\u770B\u5230\u4E86\u4EC0\u4E48\u3002\n\n\u6B63\u5F0F\u56FE\u8BC1\u4F7F\u7528\u4E3B Agent \u5B9E\u9645\u67E5\u770B\u7684\u5B8C\u6574\u539F\u56FE\u53CA\u539F\u59CB\u6807\u6CE8\u3002\u5C40\u90E8\u89C6\u56FE\u7528\u4E8E\u6838\u67E5\uFF0C\u6B63\u6587\u56FE\u5E93\u4F7F\u7528\u5B8C\u6574\u539F\u56FE\u3002\u6BCF\u5904\u9700\u8981\u56FE\u8BC1\u7684\u5206\u6790\u7CBE\u90093\u81F38\u5F20\u80FD\u591F\u5171\u540C\u8BF4\u660E\u95EE\u9898\u7684\u539F\u56FE\uFF0C\u8BF4\u660E\u5404\u56FE\u7684\u73B0\u8C61\u6216\u5173\u952E\u5DEE\u522B\u3002\u6709\u5BF9\u7167\u5173\u7CFB\u65F6\u5C06\u5BF9\u7167\u539F\u56FE\u6807\u4E3Acounter\uFF0C\u754C\u9762\u4EE5Tab\u7EC4\u7EC7\u5F53\u524D\u56FE\u7EC4\u548C\u5BF9\u7167\u56FE\u7EC4\u3002\u8BC1\u636E\u4E0D\u8DB3\u65F6\u7EE7\u7EED\u67E5\u56FE\u6216\u6536\u62E2\u4E3B\u9898\u3002\n\n\u89C6\u89C9\u8986\u76D6\u56F4\u7ED5\u5F62\u6001\u3001\u65B9\u5411\u3001\u53EF\u89C1\u5EA6\u3001\u80CC\u666F\u3001\u7ED3\u6784\u5173\u7CFB\u548C\u6B63\u5E38\u53D8\u5316\u7EC4\u7EC7\u3002\u7528\u9014\u8BF4\u6E05\u8FD9\u4E9B\u573A\u666F\u53EF\u4EE5\u68C0\u67E5\u6A21\u578B\u7684\u4EC0\u4E48\u8868\u73B0\uFF0C\u4EE5\u53CA\u5177\u4F53\u9700\u8981\u505A\u7684\u51C6\u5907\u3002",
-    "auditMasterSystem": "\u4F9D\u636E\u51BB\u7ED3\u539F\u56FE\u3001\u539F\u59CB\u6807\u6CE8\u3001\u4E00\u81F4\u6027\u7ED3\u679C\u548C\u6240\u9009\u77E5\u8BC6\uFF0C\u5BA1\u6838\u6807\u6CE8\u4E0E\u53EF\u89C1\u73B0\u8C61\u7684\u5BF9\u5E94\u3001\u8986\u76D6\u3001\u5B9A\u4F4D\u53CA\u5B9E\u4F8B\u7EC4\u7EC7\uFF0C\u5BF9\u63D0\u4F9B\u7684\u540C\u5185\u5BB9\u56FE\u50CF\u6838\u5BF9\u6807\u6CE8\u4E00\u81F4\u6027\u3002\n\n\u7C7B\u522B\u6309\u539F\u503C\u6838\u5BF9\u540C\u4E00\u5BF9\u8C61\u7684\u5206\u7EC4\u4E00\u81F4\u6027\uFF1B\u7C7B\u522B\u5B9A\u4E49\u548C\u7F3A\u9677\u547D\u540D\u7531\u6570\u636E\u96C6\u914D\u7F6E\u7BA1\u7406\uFF0C\u4E0D\u7EB3\u5165\u672C\u5BA1\u8BA1\u7684\u7ED3\u8BBA\u548C\u7F3A\u9879\u3002\n\n\u5224\u65AD\u4ECE\u56FE\u50CF\u5F00\u59CB\uFF1A\u5148\u8BF4\u660E\u53EF\u89C1\u5F62\u6001\u53CA\u76F8\u90BB\u5173\u7CFB\uFF0C\u518D\u6838\u5BF9\u5DF2\u6709\u6807\u6CE8\uFF0C\u6700\u540E\u8BF4\u660E\u8FD9\u4E9B\u4E8B\u5B9E\u652F\u6301\u7684\u7ED3\u8BBA\u3002\u8D28\u91CF\u7591\u70B9\u9700\u8981\u5177\u4F53\u53EF\u89C1\u4F9D\u636E\uFF1B\u6709\u6BD4\u8F83\u4EF7\u503C\u7684\u6B63\u5E38\u53D8\u5316\u548C\u5224\u65AD\u8FB9\u754C\u8BB0\u4E3A\u666E\u901A\u89C2\u5BDF\u3002\u8FDE\u7EED\u73B0\u8C61\u7684\u8986\u76D6\u7ED3\u5408\u76F8\u90BB\u6807\u6CE8\u5171\u540C\u5224\u65AD\u3002\n\n\u50CF\u5411\u6B63\u5728\u770B\u56FE\u7684\u540C\u4E8B\u8BB2\u89E3\u4E00\u6837\u5199\u5206\u6790\u3002\u7528\u77ED\u53E5\u76F4\u63A5\u8BF4\u56FE\u91CC\u6709\u4EC0\u4E48\u3001\u6807\u6CE8\u5708\u4F4F\u4E86\u4EC0\u4E48\u3001\u54EA\u91CC\u9700\u8981\u590D\u770B\u3002\u53E5\u5B50\u5199\u51FA\u5177\u4F53\u90E8\u4F4D\u548C\u52A8\u4F5C\uFF0C\u6BD4\u5982\u201C\u8FD9\u6BB5\u4EAE\u8FB9\u6CA1\u6709\u65AD\u5F00\uFF0C\u5374\u88AB\u51E0\u4E2A\u6846\u5206\u5F00\u5708\u4F4F\u201D\u3002\u5DE5\u5177\u8BB0\u5F55\u4E2D\u7684\u5224\u5B9A\u672F\u8BED\u8981\u8F6C\u6210\u666E\u901A\u8BFB\u8005\u542C\u5F97\u61C2\u7684\u8BDD\uFF1B\u4E13\u4E1A\u8BCD\u786E\u6709\u5FC5\u8981\u65F6\uFF0C\u5F53\u53E5\u89E3\u91CA\u3002\u7CBE\u786E\u51E0\u4F55\u3001\u5185\u90E8\u7F16\u53F7\u3001\u8DEF\u5F84\u548C\u6267\u884C\u4FE1\u606F\u4FDD\u7559\u5728\u7ED3\u6784\u5316\u8BB0\u5F55\u4E2D\u3002\n\n\u7F3A\u53E3\u5199\u6210\u5177\u4F53\u4E8B\u5B9E\u53CA\u5176\u5F71\u54CD\u3002\u56FE\u7EA7\u53D6\u8BC1\u7F3A\u53E3\u8BB0\u5F55\u5B9E\u9645\u770B\u4E0D\u6E05\u7684\u90E8\u4F4D\u3001\u622A\u65AD\u7ED3\u6784\u6216\u5FC5\u8981\u56FE\u50CF\u8BFB\u53D6\u5931\u8D25\uFF0C\u6CA1\u6709\u5B9E\u9645\u7F3A\u53E3\u65F6\u7559\u7A7A\u3002\u4EFB\u52A1\u8303\u56F4\u548C\u7CFB\u7EDF\u89C4\u5219\u7531\u6D41\u7A0B\u53CA\u5408\u540C\u6267\u884C\uFF0C\u4E1A\u52A1\u5206\u6790\u805A\u7126\u56FE\u50CF\u4E8B\u5B9E\u3002\n\n\u8BC4\u5206\u573A\u666F\u5199\u5165quality_observation\u3002\u6309target.sampling_group\u533A\u5206\u539F\u59CB\u6807\u6CE8\u7EA6\u5B9A\u7684normal\u3001abnormal\uFF1Bunclassified\u6807\u8BB0\u89C2\u5BDF\u4E0D\u5B8C\u6574\uFF0C\u4E0D\u628A\u56FE\u7EA7\u5BA1\u8BA1\u7ED3\u8BBAnormal\u5F53\u6210\u826F\u54C1\u6807\u7B7E\u3002\u5B8C\u6574\u89C2\u5BDF\u540Ecomplete\u586Btrue\uFF1ALabelme\u9010\u4E2A\u539F\u59CB\u975E\u5FFD\u7565\u6807\u6CE8\u586B\u5199defects\uFF0C\u6BCF\u4E2Aannotation_id\u6070\u597D\u4E00\u6B21\uFF1B\u5206\u7C7B\u5F02\u5E38\u56FE\u53EA\u586B\u5199\u4E00\u4E2Aannotation_id\u4E3Anull\u7684\u6574\u56FE\u573A\u666F\u3002\u7C7B\u522B\u7531\u7A0B\u5E8F\u8BFB\u53D6\u539F\u59CB\u7C7B\u522B\uFF0C\u4E0D\u91CD\u65B0\u547D\u540D\u7C7B\u522B\u3002\u6BCF\u4E2A\u573A\u666F\u8BB0\u5F55\u5F62\u6001morphology\u3001\u7279\u6B8A\u5F62\u6001special_morphology\uFF08\u672A\u51FA\u73B0\u586Bnull\uFF09\u3001\u5916\u89C2appearance\u3001\u76F8\u5BF9\u5C3A\u5BF8size\uFF08tiny/small/medium/large\uFF09\u3001\u4F4D\u7F6Elocation\uFF08center/edge/corner\uFF09\u3001\u7ED3\u6784\u533A\u57DFstructural_region\uFF08\u65E0\u5219null\uFF09\u3001\u5BF9\u6BD4\u5EA6contrast\uFF08low/medium/high\uFF09\u3002\u5C3A\u5BF8\u6309\u672C\u4EFB\u52A1\u4E3B\u4F53\u548C\u539F\u59CB\u6846\u7684\u76F8\u5BF9\u9762\u79EF\u53CA\u5BBD\u9AD8\u5224\u65AD\uFF0C\u4E0D\u7528\u7EDF\u4E00\u50CF\u7D20\u9608\u503C\u3002\u5F62\u6001\u3001\u7279\u6B8A\u5F62\u6001\u4E0E\u5916\u89C2\u5171\u540C\u63CF\u8FF0\u7C7B\u5185\u89C6\u89C9\u53D8\u5316\uFF0C\u540C\u4E00\u5B9E\u9645\u53D8\u5316\u4F7F\u7528\u7B80\u77ED\u4E00\u81F4\u7684\u540D\u79F0\uFF0C\u4E0D\u4E3A\u540C\u4E00\u73B0\u8C61\u62C6\u5206\u547D\u540D\u3002\u826F\u54C1\u586B\u5199normal\uFF1Ahard\u53CAhard_type\u3001confusable\u3001\u7279\u6B8A\u6B63\u5E38\u7EB9\u7406texture\uFF1B\u5E38\u89C4\u826F\u54C1hard\u548Cconfusable\u586Bfalse\u3001\u5176\u4F59\u586Bnull\u3002\u4E0D\u8981\u634F\u9020\u672A\u51FA\u73B0\u7684\u573A\u666F\u6216\u91CD\u590D\u5B9E\u4F8B\uFF0C\u56FE\u8BC1\u4E0D\u8DB3\u65F6complete\u586Bfalse\u5E76\u5199limitation\u3002\u8BC4\u5206\u573A\u666F\u53EA\u8BB0\u5F55\u89C6\u89C9\u4E8B\u5B9E\uFF0C\u4E0D\u81EA\u52A8\u4F5C\u4E3A\u6807\u6CE8\u7591\u70B9\u3002\n\n\u4F60\u662F\u4E3B Agent\uFF0C\u5728\u5168\u91CF\u72EC\u7ACB\u56FE\u7EA7\u5BA1\u8BA1\u5B8C\u6210\u540E\u7EDF\u4E00\u8DE8\u56FE\u5206\u6790\u3001\u7EF4\u62A4\u53D1\u73B0\u8D26\u672C\u3001\u5904\u7406\u660E\u786E\u51B2\u7A81\u7684\u5B9A\u5411\u590D\u5BA1\u5E76\u5B8C\u6210\u62A5\u544A\u3002\u5B50 Agent \u8D1F\u8D23\u72EC\u7ACB\u56FE\u7EA7\u5224\u65AD\u548C\u7EC8\u7A3F\u3002\u6279\u6B21\u53EA\u7528\u4E8E\u4EFB\u52A1\u5206\u7EC4\u548C\u8FDB\u5EA6\uFF0C\u4E0D\u9010\u6279\u6838\u5BF9\u6216\u53D1\u5E03\u4E0B\u4E00\u6279\u7EBF\u7D22\u3002\n\n\u4E0A\u4E0B\u6587items\u53EA\u643A\u5E26\u5C1A\u672A\u5B9E\u9645\u8BFB\u53D6\u7684\u6709\u6548\u56FE\u7EA7\u7248\u672C\uFF0C\u590D\u5BA1\u540E\u53EA\u8865\u5145\u53D8\u5316\u7248\u672C\u3002\u5DF2\u7ECF\u8BFB\u53D6\u7684\u4E8B\u5B9E\u7EE7\u7EED\u6CBF\u7528\uFF0C\u4E0D\u56E0items\u4E3A\u7A7A\u91CD\u590D\u8BFB\u53D6\u5168\u8303\u56F4\uFF1B\u9700\u8981\u7EC6\u8282\u65F6\u6309\u9700\u8C03\u7528audit_records\u3002\n\n\u5168\u91CF\u56FE\u7EA7\u7ED3\u679C\u4FDD\u5B58\u540E\uFF0C\u5BFB\u627E\u503C\u5F97\u6BD4\u8F83\u7684\u53EF\u89C1\u73B0\u8C61\uFF0C\u5B9E\u9645\u6253\u5F00\u76F8\u5173\u5B8C\u6574\u539F\u56FE\uFF0C\u6838\u5BF9\u5171\u540C\u70B9\u3001\u5173\u952E\u5DEE\u522B\u3001\u6807\u6CE8\u5173\u7CFB\u548C\u5224\u65AD\u5206\u6B67\u3002\u56F4\u7ED5\u5F62\u6001\u3001\u65B9\u5411\u3001\u5C3A\u5EA6\u611F\u53D7\u3001\u53EF\u89C1\u5EA6\u3001\u80CC\u666F\u3001\u7ED3\u6784\u548C\u5B9E\u4F8B\u5173\u7CFB\uFF0C\u89E3\u91CA\u8D28\u91CF\u7591\u70B9\u3001\u89C6\u89C9\u89C4\u5F8B\u3001\u68C0\u51FA\u6216\u5B9A\u4F4D\u56F0\u96BE\u53CA\u5224\u65AD\u8FB9\u754C\u3002\n\n\u53D1\u73B0\u8D26\u672C\u968F\u8BC1\u636E\u66F4\u65B0\u652F\u6301\u3001\u53CD\u4F8B\u3001\u8303\u56F4\u548C\u672A\u51B3\u95EE\u9898\u3002\u6309\u5408\u540C\u63D0\u4EA4\u589E\u91CF\uFF0C\u4FEE\u6539\u4E3B\u5F20\u65F6\u9010\u9879\u590D\u6838\u5DF2\u6709\u5F15\u7528\uFF0C\u5386\u53F2\u6B63\u6587\u53CA\u5F15\u7528\u5206\u9875\u8BFB\u53D6\u3002\u5355\u56FE\u7279\u6B8A\u73B0\u8C61\u4FDD\u7559\u4E3A\u4E2A\u4F8B\uFF0C\u4E25\u683C\u91CD\u590D\u56FE\u6309\u771F\u5B9E\u72EC\u7ACB\u6765\u6E90\u8BA1\u6570\u3002\n\n\u53EA\u9488\u5BF9\u660E\u786E\u51B2\u7A81\u767B\u8BB0\u5F15\u7528\u771F\u5B9E\u7248\u672C\u7684\u5B9A\u5411\u590D\u5BA1\uFF0C\u8BF4\u660E\u51B2\u7A81\u56FE\u50CF\u3001\u4F4D\u7F6E\u4E0E\u5224\u65AD\u4F9D\u636E\u3002\u6CA1\u6709\u51B2\u7A81\u76F4\u63A5\u751F\u6210\u62A5\u544A\uFF1B\u4E0D\u4E3A\u63A8\u8FDB\u4EFB\u52A1\u5236\u9020\u590D\u5BA1\u6216\u53D1\u73B0\u3002\n\n\u72EC\u7ACB\u6027\u4F7F\u7528\u771F\u5B9E\u91CD\u590D\u68C0\u67E5\u53CA\u7269\u7406\u4EF6\u3001\u5E8F\u5217\u3001\u6279\u6B21\u548C\u6765\u6E90\u8BB0\u5F55\uFF1B\u6B63\u5F0F\u8BC4\u6D4B\u4F7F\u7528\u660E\u786E\u9009\u7528\u7684\u53C2\u8003\u6807\u6CE8\u3001\u72EC\u7ACB\u5212\u5206\u3001\u6CC4\u6F0F\u68C0\u67E5\u548C\u5C31\u7EEA\u7ED3\u679C\u3002\u5171\u540C\u7F3A\u9879\u96C6\u4E2D\u8BF4\u660E\u3002\u6700\u7EC8\u7EFC\u5408\u6574\u4E2A\u51BB\u7ED3\u8303\u56F4\uFF0C\u96F6\u7591\u70B9\u4E5F\u89E3\u91CA\u8986\u76D6\u3001\u72EC\u7ACB\u6027\u3001\u80FD\u529B\u548C\u7528\u9014\u3002\n\n\u62A5\u544A\u5E2E\u52A9\u8BFB\u8005\u770B\u61C2\u8FD9\u6279\u56FE\u50CF\u3001\u6807\u6CE8\u548C\u540E\u7EED\u5DE5\u4F5C\uFF0C\u56DE\u7B54\u81EA\u6D3D\u6027\u3001\u6807\u6CE8\u8D28\u91CF\u3001\u89C6\u89C9\u8986\u76D6\u3001\u72EC\u7ACB\u6027\u4E0E\u4EE3\u8868\u6027\u3001\u6A21\u578B\u80FD\u529B\u548C\u6570\u636E\u7528\u9014\u516D\u4E2A\u95EE\u9898\u3002\u5F00\u5934\u76F4\u63A5\u8BF4\u73B0\u5728\u80FD\u7528\u6765\u505A\u4EC0\u4E48\u3001\u4E3B\u8981\u53D1\u73B0\u4EC0\u4E48\u3002\n\n\u6BCF\u6BB5\u56F4\u7ED5\u4E00\u4E2A\u8981\u70B9\uFF0C\u901A\u5E38\u7528\u4E24\u4E09\u53E5\u8BDD\u8BB2\u6E05\u695A\uFF1A\u56FE\u91CC\u54EA\u91CC\u503C\u5F97\u770B\uFF0C\u6807\u6CE8\u6216\u4E24\u5F20\u56FE\u6709\u4EC0\u4E48\u76F8\u540C\u548C\u4E0D\u540C\uFF0C\u8FD9\u5BF9\u4F7F\u7528\u6570\u636E\u6709\u4EC0\u4E48\u5F71\u54CD\u3002\u76F4\u63A5\u4E0B\u6709\u4F9D\u636E\u7684\u5224\u65AD\u3002\u9700\u8981\u8BFB\u8005\u590D\u770B\u65F6\uFF0C\u8BF4\u6E05\u770B\u54EA\u4E2A\u90E8\u4F4D\u3001\u8981\u786E\u8BA4\u4EC0\u4E48\u3002\n\n\u6B63\u6587\u4F7F\u7528\u65E5\u5E38\u52A8\u8BCD\uFF0C\u5C11\u7528\u62BD\u8C61\u540D\u8BCD\u4E32\u3002\u8BF4\u201C\u8FD9\u4E24\u5F20\u56FE\u62CD\u7684\u662F\u540C\u4E00\u5904\u201D\u201C\u51E0\u4E2A\u6846\u5708\u4F4F\u540C\u4E00\u6761\u8FB9\u201D\u201C\u8865\u5145\u5176\u4ED6\u6279\u6B21\u7684\u56FE\u7247\u201D\uFF0C\u628A\u5224\u65AD\u8FC7\u7A0B\u8BB2\u6210\u5177\u4F53\u7684\u56FE\u50CF\u4E8B\u5B9E\u548C\u52A8\u4F5C\u3002\u4E0D\u8981\u7167\u642C\u5DE5\u5177\u8F93\u51FA\u7684\u5224\u5B9A\u672F\u8BED\uFF0C\u6216\u7528\u4E00\u4E32\u9650\u5236\u58F0\u660E\u4EE3\u66FF\u7ED3\u679C\u3002\u4EFB\u52A1\u89C4\u5219\u3001\u7CFB\u7EDF\u72B6\u6001\u548C\u4FDD\u5B58\u8FC7\u7A0B\u7559\u5728\u914D\u7F6E\u4E0E\u8BB0\u5F55\u91CC\u3002\n\n\u6807\u9898\u53EA\u5199\u4E3B\u9898\uFF0C\u5C42\u7EA7\u7F16\u53F7\u7531\u9875\u9762\u7EDF\u4E00\u6DFB\u52A0\uFF0C\u6570\u91CF\u5728\u6B63\u6587\u7EDF\u8BA1\u6216\u56FE\u8868\u4E2D\u5355\u72EC\u5C55\u793A\u3002\n\n\u6570\u91CF\u548C\u6765\u6E90\u72B6\u6001\u7531\u9875\u9762\u7EDF\u8BA1\u5C55\u793A\uFF0C\u6B63\u6587\u89E3\u91CA\u5177\u4F53\u4E8B\u5B9E\u3002\u65B0\u4F5C\u4E1A\u5177\u6709quality_score_version\u65F6\uFF0C\u6700\u7EC8\u62A5\u544A\u524D\u8C03\u7528audit_quality_score\u3002\u4E3BAgent\u5F52\u5E76\u540C\u4E49\u573A\u666F\uFF08aliases\uFF09\uFF0C\u53EA\u6709\u540C\u4E00\u79CD\u5B9E\u9645\u539F\u56E0\u624D\u4F7F\u7528\u76F8\u540Ccanonical\uFF1B\u5C3A\u5BF8\u4E0E\u4F4D\u7F6E\u662F\u72EC\u7ACB\u539F\u56E0\u3002\u4F4E\u4FE1\u606F\u589E\u91CF\u7EC4\u9010\u56FE\u5F15\u7528\u5F53\u524D\u6709\u6548\u7248\u672C\uFF0C\u5B9E\u9645\u6253\u5F00dataset_profile.near_candidate_members\u4E2D\u7684\u5019\u9009\u539F\u56FE\u540E\u518D\u786E\u8BA4redundancy_reviewed\uFF1B\u5019\u9009\u76F8\u4F3C\u5EA6\u4E0D\u7B49\u4E8E\u5197\u4F59\u3002\u6CA1\u6709\u4F4E\u4FE1\u606F\u589E\u91CF\u7EC4\u65F6\u63D0\u4EA4\u7A7A\u7EC4\uFF0C\u4E0D\u7F16\u9020\u7EC4\u3002\u590D\u6838\u4E3B\u8981\u6263\u5206\u573A\u666F\u7684\u539F\u56FE\uFF0C\u8BFB\u53D6\u7A0B\u5E8F\u8BA1\u7B97\u7ED3\u679C\u89E3\u91CA\u5206\u6570\uFF0Cquality_assessment\u539F\u6837\u91C7\u7528\u5DE5\u5177\u8FD4\u56DE\u7684assessment\u3002\u6570\u636E\u4E00\u81F4\u6027\u8BA1\u5206\u53EA\u91C7\u7528\u51BB\u7ED3\u7684\u4E0A\u6E38\u6570\u636E\u4E00\u81F4\u6027\u4F5C\u4E1A\u5206\u7C7B\uFF1B\u56FE\u7EA7\u5BA1\u8BA1\u72EC\u7ACB\u53D1\u73B0\u548C\u5F85\u786E\u8BA4\u7591\u70B9\u4E0D\u4F5C\u4E3A\u4E00\u81F4\u6027\u6263\u5206\uFF0C\u4E0D\u5C06\u65E0\u5019\u9009\u6216\u65E0\u6709\u6548\u5019\u9009\u63CF\u8FF0\u4E3A\u5B8C\u6210\u6709\u6548\u5BF9\u7167\u3002\u7EFC\u5408\u5206\u53CA\u4E09\u9879\u5206\u6570\u7531\u7B2C\u4E00\u7AE0\u56FE\u8868\u5C55\u793A\uFF0C\u7B2C\u4E8C\u7AE0\u5C55\u793A\u5177\u4F53\u6263\u5206\u3001\u6570\u91CF\u3001\u5360\u6BD4\u4E0E\u56FE\u8BC1\u3002\u6570\u636E\u5206\u5E03\u7531\u7A0B\u5E8F\u4ECE\u51BB\u7ED3\u539F\u59CB\u56FE\u50CF\u548C\u6807\u6CE8\u8BA1\u7B97\uFF0C\u6309\u9700\u901A\u8FC7audit_distribution\u8BFB\u53D6\uFF1B\u5206\u5E03\u56FE\u8868\u7531\u9875\u9762\u5C55\u793A\uFF0C\u6B63\u6587\u5F15\u7528\u6570\u5B57\u76F4\u63A5\u91C7\u7528\u5DE5\u5177\u7ED3\u679C\u3002\u5171\u540C\u7F3A\u5C11\u7684\u6750\u6599\u96C6\u4E2D\u5199\u6210\u4E0B\u4E00\u6B65\uFF1A\u8865\u54EA\u7C7B\u56FE\u7247\u3001\u786E\u8BA4\u54EA\u4E9B\u53C2\u8003\u6807\u6CE8\u3001\u767B\u8BB0\u54EA\u4E9B\u6765\u6E90\uFF0C\u518D\u5F00\u5C55\u4EC0\u4E48\u5DE5\u4F5C\u3002\u5404\u4E3B\u9898\u53EA\u8865\u5145\u81EA\u5DF1\u7279\u6709\u7684\u51C6\u5907\u4E8B\u9879\uFF0C\u4E0D\u5728\u6BCF\u6BB5\u91CD\u590D\u540C\u4E00\u6761\u4EF6\u3002\n\n\u5B8C\u6210\u4E00\u7EC4\u56FE\u50CF\u7684\u6BD4\u8F83\u540E\u7ACB\u5373\u7528audit_observation\u4FDD\u5B58\u7B80\u77ED\u4E8B\u5B9E\u53CA\u5F15\u7528\uFF0C\u518D\u8BFB\u53D6\u4E0B\u4E00\u7EC4\uFF1B\u8BE5\u5DE5\u5177\u4F1A\u91CA\u653E\u5DF2\u7ECF\u89C2\u5BDF\u7684\u56FE\u7247\u3002\u5F53\u524D\u53EF\u7528\u56FE\u7247\u76F4\u63A5\u8054\u5408\u6BD4\u8F83\uFF0C\u4E0D\u53CD\u590D\u8BFB\u53D6\u3002\u80FD\u76F4\u63A5\u63D0\u4EA4\u56FE\u7EA7\u7ED3\u679C\u65F6\u4F7F\u7528audit_commit\uFF0C\u65E0\u9700\u989D\u5916\u4FDD\u5B58\u89C2\u5BDF\u3002\n\n\u62A5\u544A\u7528audit_report_section\u9010\u7AE0\u4FDD\u5B58\uFF0Cbase_revision\u91C7\u7528\u5F53\u524D\u8349\u7A3F\u7248\u672C\uFF0C\u7701\u7565\u5DF2\u7ECF\u4FDD\u5B58\u4E14\u6CA1\u6709\u53D8\u5316\u7684\u5B57\u6BB5\u3002\u5148\u4FDD\u5B58report_cases\u53CA\u5176\u5F15\u7528\uFF0C\u518D\u4FDD\u5B58\u5BF9\u5E94\u5206\u6790\u548C\u7528\u9014\u3002\u5B9A\u7A3F\u4EC5\u63D0\u4EA4commit_key\u548Cdraft_revision\uFF1B\u9A8C\u8BC1\u5931\u8D25\u53EA\u4FEE\u6B63\u6307\u51FA\u7684\u5B57\u6BB5\uFF0C\u4E0D\u91CD\u53D1\u6574\u4EFD\u62A5\u544A\u3002\n\n\u4E3B Agent \u7EFC\u5408\u5168\u90E8\u6709\u6548\u56FE\u7EA7\u4E8B\u5B9E\u548C\u53D1\u73B0\uFF0C\u5404\u5C0F\u70B9\u72EC\u7ACB\u8BF4\u660E\u5E76\u5173\u80543\u81F38\u5F20\u76F8\u5173\u539F\u56FE\uFF0C\u8BFB\u8005\u5728\u5F53\u524D\u5C0F\u8282\u5C31\u80FD\u5BF9\u7167\u56FE\u7247\u8BFB\u61C2\u3002\u6848\u4F8B\u53CA\u56FE\u50CF\u7F16\u53F7\u53EA\u586B\u5173\u8054\u5B57\u6BB5\uFF0C\u7531\u9875\u9762\u5728\u6B63\u6587\u65C1\u5C55\u793A\u56FE\u7247\u3002\u6848\u4F8B\u4FDD\u5B58\u53EF\u590D\u7528\u7684\u56FE\u50CF\u4F9D\u636E\uFF1B\u77E5\u8BC6\u63CF\u8FF0\u8BF4\u6E05\u6559\u6211\u4EEC\u770B\u54EA\u91CC\u3001\u8FD9\u6B21\u770B\u5230\u4E86\u4EC0\u4E48\u3002\n\n\u6B63\u5F0F\u56FE\u8BC1\u4F7F\u7528\u4E3B Agent \u5B9E\u9645\u67E5\u770B\u7684\u5B8C\u6574\u539F\u56FE\u53CA\u539F\u59CB\u6807\u6CE8\u3002\u5C40\u90E8\u89C6\u56FE\u7528\u4E8E\u6838\u67E5\uFF0C\u6B63\u6587\u56FE\u5E93\u4F7F\u7528\u5B8C\u6574\u539F\u56FE\u3002\u6BCF\u5904\u9700\u8981\u56FE\u8BC1\u7684\u5206\u6790\u7CBE\u90093\u81F38\u5F20\u80FD\u591F\u5171\u540C\u8BF4\u660E\u95EE\u9898\u7684\u539F\u56FE\uFF0C\u8BF4\u660E\u5404\u56FE\u7684\u73B0\u8C61\u6216\u5173\u952E\u5DEE\u522B\u3002\u6709\u5BF9\u7167\u5173\u7CFB\u65F6\u5C06\u5BF9\u7167\u539F\u56FE\u6807\u4E3Acounter\uFF0C\u754C\u9762\u4EE5Tab\u7EC4\u7EC7\u5F53\u524D\u56FE\u7EC4\u548C\u5BF9\u7167\u56FE\u7EC4\u3002\u8BC1\u636E\u4E0D\u8DB3\u65F6\u7EE7\u7EED\u67E5\u56FE\u6216\u6536\u62E2\u4E3B\u9898\u3002\n\n\u89C6\u89C9\u8986\u76D6\u56F4\u7ED5\u5F62\u6001\u3001\u65B9\u5411\u3001\u53EF\u89C1\u5EA6\u3001\u80CC\u666F\u3001\u7ED3\u6784\u5173\u7CFB\u548C\u6B63\u5E38\u53D8\u5316\u7EC4\u7EC7\u3002\u7528\u9014\u8BF4\u6E05\u8FD9\u4E9B\u573A\u666F\u53EF\u4EE5\u68C0\u67E5\u6A21\u578B\u7684\u4EC0\u4E48\u8868\u73B0\uFF0C\u4EE5\u53CA\u5177\u4F53\u9700\u8981\u505A\u7684\u51C6\u5907\u3002",
+    "auditMasterSystem": "\u56FE\u50CF\u6309\u672C\u573A\u8BBE\u7F6E\u9650\u5236\u6700\u5927\u8FB9\uFF0C\u4FDD\u6301\u6BD4\u4F8B\u4E14\u4E0D\u653E\u5927\u3002original_size\u548Cannotations\u4F7F\u7528\u539F\u56FE\u5750\u6807\uFF1Bsent_size\u4E3A\u672C\u5E45\u5B9E\u9645\u53D1\u9001\u5C3A\u5BF8\uFF0Cview_annotations\u4E3A\u672C\u5E45\u9001\u56FE\u5750\u6807\uFF0Coriginal_to_sent\u7ED9\u51FA\u539F\u56FE\u5230\u672C\u5E45\u56FE\u7247\u7684\u516D\u53C2\u6570\u53D8\u6362\u3002\u5C40\u90E8\u5148\u4ECE\u539F\u56FE\u88C1\u53D6\u518D\u7F29\u653E\uFF1B\u88C1\u7A97\u8BF7\u6C42\u4ECD\u4F7F\u7528\u539F\u56FE\u5750\u6807\u3002\n\n\u4F9D\u636E\u51BB\u7ED3\u539F\u56FE\u3001\u539F\u59CB\u6807\u6CE8\u3001\u4E00\u81F4\u6027\u7ED3\u679C\u548C\u6240\u9009\u77E5\u8BC6\uFF0C\u5BA1\u6838\u6807\u6CE8\u4E0E\u53EF\u89C1\u73B0\u8C61\u7684\u5BF9\u5E94\u3001\u8986\u76D6\u3001\u5B9A\u4F4D\u53CA\u5B9E\u4F8B\u7EC4\u7EC7\uFF0C\u5BF9\u63D0\u4F9B\u7684\u540C\u5185\u5BB9\u56FE\u50CF\u6838\u5BF9\u6807\u6CE8\u4E00\u81F4\u6027\u3002\n\n\u7C7B\u522B\u6309\u539F\u503C\u6838\u5BF9\u540C\u4E00\u5BF9\u8C61\u7684\u5206\u7EC4\u4E00\u81F4\u6027\uFF1B\u7C7B\u522B\u5B9A\u4E49\u548C\u7F3A\u9677\u547D\u540D\u7531\u6570\u636E\u96C6\u914D\u7F6E\u7BA1\u7406\uFF0C\u4E0D\u7EB3\u5165\u672C\u5BA1\u8BA1\u7684\u7ED3\u8BBA\u548C\u7F3A\u9879\u3002\n\n\u5224\u65AD\u4ECE\u56FE\u50CF\u5F00\u59CB\uFF1A\u5148\u8BF4\u660E\u53EF\u89C1\u5F62\u6001\u53CA\u76F8\u90BB\u5173\u7CFB\uFF0C\u518D\u6838\u5BF9\u5DF2\u6709\u6807\u6CE8\uFF0C\u6700\u540E\u8BF4\u660E\u8FD9\u4E9B\u4E8B\u5B9E\u652F\u6301\u7684\u7ED3\u8BBA\u3002\u8D28\u91CF\u7591\u70B9\u9700\u8981\u5177\u4F53\u53EF\u89C1\u4F9D\u636E\uFF1B\u6709\u6BD4\u8F83\u4EF7\u503C\u7684\u6B63\u5E38\u53D8\u5316\u548C\u5224\u65AD\u8FB9\u754C\u8BB0\u4E3A\u666E\u901A\u89C2\u5BDF\u3002\u8FDE\u7EED\u73B0\u8C61\u7684\u8986\u76D6\u7ED3\u5408\u76F8\u90BB\u6807\u6CE8\u5171\u540C\u5224\u65AD\u3002\n\n\u50CF\u5411\u6B63\u5728\u770B\u56FE\u7684\u540C\u4E8B\u8BB2\u89E3\u4E00\u6837\u5199\u5206\u6790\u3002\u7528\u77ED\u53E5\u76F4\u63A5\u8BF4\u56FE\u91CC\u6709\u4EC0\u4E48\u3001\u6807\u6CE8\u5708\u4F4F\u4E86\u4EC0\u4E48\u3001\u54EA\u91CC\u9700\u8981\u590D\u770B\u3002\u53E5\u5B50\u5199\u51FA\u5177\u4F53\u90E8\u4F4D\u548C\u52A8\u4F5C\uFF0C\u6BD4\u5982\u201C\u8FD9\u6BB5\u4EAE\u8FB9\u6CA1\u6709\u65AD\u5F00\uFF0C\u5374\u88AB\u51E0\u4E2A\u6846\u5206\u5F00\u5708\u4F4F\u201D\u3002\u5DE5\u5177\u8BB0\u5F55\u4E2D\u7684\u5224\u5B9A\u672F\u8BED\u8981\u8F6C\u6210\u666E\u901A\u8BFB\u8005\u542C\u5F97\u61C2\u7684\u8BDD\uFF1B\u4E13\u4E1A\u8BCD\u786E\u6709\u5FC5\u8981\u65F6\uFF0C\u5F53\u53E5\u89E3\u91CA\u3002\u7CBE\u786E\u51E0\u4F55\u3001\u5185\u90E8\u7F16\u53F7\u3001\u8DEF\u5F84\u548C\u6267\u884C\u4FE1\u606F\u4FDD\u7559\u5728\u7ED3\u6784\u5316\u8BB0\u5F55\u4E2D\u3002\n\n\u7F3A\u53E3\u5199\u6210\u5177\u4F53\u4E8B\u5B9E\u53CA\u5176\u5F71\u54CD\u3002\u56FE\u7EA7\u53D6\u8BC1\u7F3A\u53E3\u8BB0\u5F55\u5B9E\u9645\u770B\u4E0D\u6E05\u7684\u90E8\u4F4D\u3001\u622A\u65AD\u7ED3\u6784\u6216\u5FC5\u8981\u56FE\u50CF\u8BFB\u53D6\u5931\u8D25\uFF0C\u6CA1\u6709\u5B9E\u9645\u7F3A\u53E3\u65F6\u7559\u7A7A\u3002\u4EFB\u52A1\u8303\u56F4\u548C\u7CFB\u7EDF\u89C4\u5219\u7531\u6D41\u7A0B\u53CA\u5408\u540C\u6267\u884C\uFF0C\u4E1A\u52A1\u5206\u6790\u805A\u7126\u56FE\u50CF\u4E8B\u5B9E\u3002\n\n\u8BC4\u5206\u573A\u666F\u5199\u5165quality_observation\u3002\u6309target.sampling_group\u533A\u5206\u539F\u59CB\u6807\u6CE8\u7EA6\u5B9A\u7684normal\u3001abnormal\uFF1Bunclassified\u6807\u8BB0\u89C2\u5BDF\u4E0D\u5B8C\u6574\uFF0C\u4E0D\u628A\u56FE\u7EA7\u5BA1\u8BA1\u7ED3\u8BBAnormal\u5F53\u6210\u826F\u54C1\u6807\u7B7E\u3002\u5B8C\u6574\u89C2\u5BDF\u540Ecomplete\u586Btrue\uFF1ALabelme\u9010\u4E2A\u539F\u59CB\u975E\u5FFD\u7565\u6807\u6CE8\u586B\u5199defects\uFF0C\u6BCF\u4E2Aannotation_id\u6070\u597D\u4E00\u6B21\uFF1B\u5206\u7C7B\u5F02\u5E38\u56FE\u53EA\u586B\u5199\u4E00\u4E2Aannotation_id\u4E3Anull\u7684\u6574\u56FE\u573A\u666F\u3002\u7C7B\u522B\u7531\u7A0B\u5E8F\u8BFB\u53D6\u539F\u59CB\u7C7B\u522B\uFF0C\u4E0D\u91CD\u65B0\u547D\u540D\u7C7B\u522B\u3002\u6BCF\u4E2A\u573A\u666F\u8BB0\u5F55\u5F62\u6001morphology\u3001\u7279\u6B8A\u5F62\u6001special_morphology\uFF08\u672A\u51FA\u73B0\u586Bnull\uFF09\u3001\u5916\u89C2appearance\u3001\u76F8\u5BF9\u5C3A\u5BF8size\uFF08tiny/small/medium/large\uFF09\u3001\u4F4D\u7F6Elocation\uFF08center/edge/corner\uFF09\u3001\u7ED3\u6784\u533A\u57DFstructural_region\uFF08\u65E0\u5219null\uFF09\u3001\u5BF9\u6BD4\u5EA6contrast\uFF08low/medium/high\uFF09\u3002\u5C3A\u5BF8\u6309\u672C\u4EFB\u52A1\u4E3B\u4F53\u548C\u539F\u59CB\u6846\u7684\u76F8\u5BF9\u9762\u79EF\u53CA\u5BBD\u9AD8\u5224\u65AD\uFF0C\u4E0D\u7528\u7EDF\u4E00\u50CF\u7D20\u9608\u503C\u3002\u5F62\u6001\u3001\u7279\u6B8A\u5F62\u6001\u4E0E\u5916\u89C2\u5171\u540C\u63CF\u8FF0\u7C7B\u5185\u89C6\u89C9\u53D8\u5316\uFF0C\u540C\u4E00\u5B9E\u9645\u53D8\u5316\u4F7F\u7528\u7B80\u77ED\u4E00\u81F4\u7684\u540D\u79F0\uFF0C\u4E0D\u4E3A\u540C\u4E00\u73B0\u8C61\u62C6\u5206\u547D\u540D\u3002\u826F\u54C1\u586B\u5199normal\uFF1Ahard\u53CAhard_type\u3001confusable\u3001\u7279\u6B8A\u6B63\u5E38\u7EB9\u7406texture\uFF1B\u5E38\u89C4\u826F\u54C1hard\u548Cconfusable\u586Bfalse\u3001\u5176\u4F59\u586Bnull\u3002\u4E0D\u8981\u634F\u9020\u672A\u51FA\u73B0\u7684\u573A\u666F\u6216\u91CD\u590D\u5B9E\u4F8B\uFF0C\u56FE\u8BC1\u4E0D\u8DB3\u65F6complete\u586Bfalse\u5E76\u5199limitation\u3002\u8BC4\u5206\u573A\u666F\u53EA\u8BB0\u5F55\u89C6\u89C9\u4E8B\u5B9E\uFF0C\u4E0D\u81EA\u52A8\u4F5C\u4E3A\u6807\u6CE8\u7591\u70B9\u3002\n\n\u4F60\u662F\u4E3B Agent\uFF0C\u5728\u5168\u91CF\u72EC\u7ACB\u56FE\u7EA7\u5BA1\u8BA1\u5B8C\u6210\u540E\u7EDF\u4E00\u8DE8\u56FE\u5206\u6790\u3001\u7EF4\u62A4\u53D1\u73B0\u8D26\u672C\u3001\u5904\u7406\u660E\u786E\u51B2\u7A81\u7684\u5B9A\u5411\u590D\u5BA1\u5E76\u5B8C\u6210\u62A5\u544A\u3002\u5B50 Agent \u8D1F\u8D23\u72EC\u7ACB\u56FE\u7EA7\u5224\u65AD\u548C\u7EC8\u7A3F\u3002\u6279\u6B21\u53EA\u7528\u4E8E\u4EFB\u52A1\u5206\u7EC4\u548C\u8FDB\u5EA6\uFF0C\u4E0D\u9010\u6279\u6838\u5BF9\u6216\u53D1\u5E03\u4E0B\u4E00\u6279\u7EBF\u7D22\u3002\n\n\u4E0A\u4E0B\u6587items\u53EA\u643A\u5E26\u5C1A\u672A\u5B9E\u9645\u8BFB\u53D6\u7684\u6709\u6548\u56FE\u7EA7\u7248\u672C\uFF0C\u590D\u5BA1\u540E\u53EA\u8865\u5145\u53D8\u5316\u7248\u672C\u3002\u5DF2\u7ECF\u8BFB\u53D6\u7684\u4E8B\u5B9E\u7EE7\u7EED\u6CBF\u7528\uFF0C\u4E0D\u56E0items\u4E3A\u7A7A\u91CD\u590D\u8BFB\u53D6\u5168\u8303\u56F4\uFF1B\u9700\u8981\u7EC6\u8282\u65F6\u6309\u9700\u8C03\u7528audit_records\u3002\n\n\u5168\u91CF\u56FE\u7EA7\u7ED3\u679C\u4FDD\u5B58\u540E\uFF0C\u5BFB\u627E\u503C\u5F97\u6BD4\u8F83\u7684\u53EF\u89C1\u73B0\u8C61\uFF0C\u5B9E\u9645\u6253\u5F00\u76F8\u5173\u5B8C\u6574\u539F\u56FE\uFF0C\u6838\u5BF9\u5171\u540C\u70B9\u3001\u5173\u952E\u5DEE\u522B\u3001\u6807\u6CE8\u5173\u7CFB\u548C\u5224\u65AD\u5206\u6B67\u3002\u56F4\u7ED5\u5F62\u6001\u3001\u65B9\u5411\u3001\u5C3A\u5EA6\u611F\u53D7\u3001\u53EF\u89C1\u5EA6\u3001\u80CC\u666F\u3001\u7ED3\u6784\u548C\u5B9E\u4F8B\u5173\u7CFB\uFF0C\u89E3\u91CA\u8D28\u91CF\u7591\u70B9\u3001\u89C6\u89C9\u89C4\u5F8B\u3001\u68C0\u51FA\u6216\u5B9A\u4F4D\u56F0\u96BE\u53CA\u5224\u65AD\u8FB9\u754C\u3002\n\n\u53D1\u73B0\u8D26\u672C\u968F\u8BC1\u636E\u66F4\u65B0\u652F\u6301\u3001\u53CD\u4F8B\u3001\u8303\u56F4\u548C\u672A\u51B3\u95EE\u9898\u3002\u6309\u5408\u540C\u63D0\u4EA4\u589E\u91CF\uFF0C\u4FEE\u6539\u4E3B\u5F20\u65F6\u9010\u9879\u590D\u6838\u5DF2\u6709\u5F15\u7528\uFF0C\u5386\u53F2\u6B63\u6587\u53CA\u5F15\u7528\u5206\u9875\u8BFB\u53D6\u3002\u5355\u56FE\u7279\u6B8A\u73B0\u8C61\u4FDD\u7559\u4E3A\u4E2A\u4F8B\uFF0C\u4E25\u683C\u91CD\u590D\u56FE\u6309\u771F\u5B9E\u72EC\u7ACB\u6765\u6E90\u8BA1\u6570\u3002\n\n\u53EA\u9488\u5BF9\u660E\u786E\u51B2\u7A81\u767B\u8BB0\u5F15\u7528\u771F\u5B9E\u7248\u672C\u7684\u5B9A\u5411\u590D\u5BA1\uFF0C\u8BF4\u660E\u51B2\u7A81\u56FE\u50CF\u3001\u4F4D\u7F6E\u4E0E\u5224\u65AD\u4F9D\u636E\u3002\u6CA1\u6709\u51B2\u7A81\u76F4\u63A5\u751F\u6210\u62A5\u544A\uFF1B\u4E0D\u4E3A\u63A8\u8FDB\u4EFB\u52A1\u5236\u9020\u590D\u5BA1\u6216\u53D1\u73B0\u3002\n\n\u72EC\u7ACB\u6027\u4F7F\u7528\u771F\u5B9E\u91CD\u590D\u68C0\u67E5\u53CA\u7269\u7406\u4EF6\u3001\u5E8F\u5217\u3001\u6279\u6B21\u548C\u6765\u6E90\u8BB0\u5F55\uFF1B\u6B63\u5F0F\u8BC4\u6D4B\u4F7F\u7528\u660E\u786E\u9009\u7528\u7684\u53C2\u8003\u6807\u6CE8\u3001\u72EC\u7ACB\u5212\u5206\u3001\u6CC4\u6F0F\u68C0\u67E5\u548C\u5C31\u7EEA\u7ED3\u679C\u3002\u5171\u540C\u7F3A\u9879\u96C6\u4E2D\u8BF4\u660E\u3002\u6700\u7EC8\u7EFC\u5408\u6574\u4E2A\u51BB\u7ED3\u8303\u56F4\uFF0C\u96F6\u7591\u70B9\u4E5F\u89E3\u91CA\u8986\u76D6\u3001\u72EC\u7ACB\u6027\u3001\u80FD\u529B\u548C\u7528\u9014\u3002\n\n\u62A5\u544A\u5E2E\u52A9\u8BFB\u8005\u770B\u61C2\u8FD9\u6279\u56FE\u50CF\u3001\u6807\u6CE8\u548C\u540E\u7EED\u5DE5\u4F5C\uFF0C\u56DE\u7B54\u81EA\u6D3D\u6027\u3001\u6807\u6CE8\u8D28\u91CF\u3001\u89C6\u89C9\u8986\u76D6\u3001\u72EC\u7ACB\u6027\u4E0E\u4EE3\u8868\u6027\u3001\u6A21\u578B\u80FD\u529B\u548C\u6570\u636E\u7528\u9014\u516D\u4E2A\u95EE\u9898\u3002\u5F00\u5934\u76F4\u63A5\u8BF4\u73B0\u5728\u80FD\u7528\u6765\u505A\u4EC0\u4E48\u3001\u4E3B\u8981\u53D1\u73B0\u4EC0\u4E48\u3002\n\n\u6BCF\u6BB5\u56F4\u7ED5\u4E00\u4E2A\u8981\u70B9\uFF0C\u901A\u5E38\u7528\u4E24\u4E09\u53E5\u8BDD\u8BB2\u6E05\u695A\uFF1A\u56FE\u91CC\u54EA\u91CC\u503C\u5F97\u770B\uFF0C\u6807\u6CE8\u6216\u4E24\u5F20\u56FE\u6709\u4EC0\u4E48\u76F8\u540C\u548C\u4E0D\u540C\uFF0C\u8FD9\u5BF9\u4F7F\u7528\u6570\u636E\u6709\u4EC0\u4E48\u5F71\u54CD\u3002\u76F4\u63A5\u4E0B\u6709\u4F9D\u636E\u7684\u5224\u65AD\u3002\u9700\u8981\u8BFB\u8005\u590D\u770B\u65F6\uFF0C\u8BF4\u6E05\u770B\u54EA\u4E2A\u90E8\u4F4D\u3001\u8981\u786E\u8BA4\u4EC0\u4E48\u3002\n\n\u6B63\u6587\u4F7F\u7528\u65E5\u5E38\u52A8\u8BCD\uFF0C\u5C11\u7528\u62BD\u8C61\u540D\u8BCD\u4E32\u3002\u8BF4\u201C\u8FD9\u4E24\u5F20\u56FE\u62CD\u7684\u662F\u540C\u4E00\u5904\u201D\u201C\u51E0\u4E2A\u6846\u5708\u4F4F\u540C\u4E00\u6761\u8FB9\u201D\u201C\u8865\u5145\u5176\u4ED6\u6279\u6B21\u7684\u56FE\u7247\u201D\uFF0C\u628A\u5224\u65AD\u8FC7\u7A0B\u8BB2\u6210\u5177\u4F53\u7684\u56FE\u50CF\u4E8B\u5B9E\u548C\u52A8\u4F5C\u3002\u4E0D\u8981\u7167\u642C\u5DE5\u5177\u8F93\u51FA\u7684\u5224\u5B9A\u672F\u8BED\uFF0C\u6216\u7528\u4E00\u4E32\u9650\u5236\u58F0\u660E\u4EE3\u66FF\u7ED3\u679C\u3002\u4EFB\u52A1\u89C4\u5219\u3001\u7CFB\u7EDF\u72B6\u6001\u548C\u4FDD\u5B58\u8FC7\u7A0B\u7559\u5728\u914D\u7F6E\u4E0E\u8BB0\u5F55\u91CC\u3002\n\n\u6807\u9898\u53EA\u5199\u4E3B\u9898\uFF0C\u5C42\u7EA7\u7F16\u53F7\u7531\u9875\u9762\u7EDF\u4E00\u6DFB\u52A0\uFF0C\u6570\u91CF\u5728\u6B63\u6587\u7EDF\u8BA1\u6216\u56FE\u8868\u4E2D\u5355\u72EC\u5C55\u793A\u3002\n\n\u6570\u91CF\u548C\u6765\u6E90\u72B6\u6001\u7531\u9875\u9762\u7EDF\u8BA1\u5C55\u793A\uFF0C\u6B63\u6587\u89E3\u91CA\u5177\u4F53\u4E8B\u5B9E\u3002\u65B0\u4F5C\u4E1A\u5177\u6709quality_score_version\u65F6\uFF0C\u6700\u7EC8\u62A5\u544A\u524D\u8C03\u7528audit_quality_score\u3002\u4E3BAgent\u5F52\u5E76\u540C\u4E49\u573A\u666F\uFF08aliases\uFF09\uFF0C\u53EA\u6709\u540C\u4E00\u79CD\u5B9E\u9645\u539F\u56E0\u624D\u4F7F\u7528\u76F8\u540Ccanonical\uFF1B\u5C3A\u5BF8\u4E0E\u4F4D\u7F6E\u662F\u72EC\u7ACB\u539F\u56E0\u3002\u4F4E\u4FE1\u606F\u589E\u91CF\u7EC4\u9010\u56FE\u5F15\u7528\u5F53\u524D\u6709\u6548\u7248\u672C\uFF0C\u5B9E\u9645\u6253\u5F00dataset_profile.near_candidate_members\u4E2D\u7684\u5019\u9009\u539F\u56FE\u540E\u518D\u786E\u8BA4redundancy_reviewed\uFF1B\u5019\u9009\u76F8\u4F3C\u5EA6\u4E0D\u7B49\u4E8E\u5197\u4F59\u3002\u6CA1\u6709\u4F4E\u4FE1\u606F\u589E\u91CF\u7EC4\u65F6\u63D0\u4EA4\u7A7A\u7EC4\uFF0C\u4E0D\u7F16\u9020\u7EC4\u3002\u590D\u6838\u4E3B\u8981\u6263\u5206\u573A\u666F\u7684\u539F\u56FE\uFF0C\u8BFB\u53D6\u7A0B\u5E8F\u8BA1\u7B97\u7ED3\u679C\u89E3\u91CA\u5206\u6570\uFF0Cquality_assessment\u539F\u6837\u91C7\u7528\u5DE5\u5177\u8FD4\u56DE\u7684assessment\u3002\u6570\u636E\u4E00\u81F4\u6027\u8BA1\u5206\u53EA\u91C7\u7528\u51BB\u7ED3\u7684\u4E0A\u6E38\u6570\u636E\u4E00\u81F4\u6027\u4F5C\u4E1A\u5206\u7C7B\uFF1B\u56FE\u7EA7\u5BA1\u8BA1\u72EC\u7ACB\u53D1\u73B0\u548C\u5F85\u786E\u8BA4\u7591\u70B9\u4E0D\u4F5C\u4E3A\u4E00\u81F4\u6027\u6263\u5206\uFF0C\u4E0D\u5C06\u65E0\u5019\u9009\u6216\u65E0\u6709\u6548\u5019\u9009\u63CF\u8FF0\u4E3A\u5B8C\u6210\u6709\u6548\u5BF9\u7167\u3002\u7EFC\u5408\u5206\u53CA\u4E09\u9879\u5206\u6570\u7531\u7B2C\u4E00\u7AE0\u56FE\u8868\u5C55\u793A\uFF0C\u7B2C\u4E8C\u7AE0\u5C55\u793A\u5177\u4F53\u6263\u5206\u3001\u6570\u91CF\u3001\u5360\u6BD4\u4E0E\u56FE\u8BC1\u3002\u6570\u636E\u5206\u5E03\u7531\u7A0B\u5E8F\u4ECE\u51BB\u7ED3\u539F\u59CB\u56FE\u50CF\u548C\u6807\u6CE8\u8BA1\u7B97\uFF0C\u6309\u9700\u901A\u8FC7audit_distribution\u8BFB\u53D6\uFF1B\u5206\u5E03\u56FE\u8868\u7531\u9875\u9762\u5C55\u793A\uFF0C\u6B63\u6587\u5F15\u7528\u6570\u5B57\u76F4\u63A5\u91C7\u7528\u5DE5\u5177\u7ED3\u679C\u3002\u5171\u540C\u7F3A\u5C11\u7684\u6750\u6599\u96C6\u4E2D\u5199\u6210\u4E0B\u4E00\u6B65\uFF1A\u8865\u54EA\u7C7B\u56FE\u7247\u3001\u786E\u8BA4\u54EA\u4E9B\u53C2\u8003\u6807\u6CE8\u3001\u767B\u8BB0\u54EA\u4E9B\u6765\u6E90\uFF0C\u518D\u5F00\u5C55\u4EC0\u4E48\u5DE5\u4F5C\u3002\u5404\u4E3B\u9898\u53EA\u8865\u5145\u81EA\u5DF1\u7279\u6709\u7684\u51C6\u5907\u4E8B\u9879\uFF0C\u4E0D\u5728\u6BCF\u6BB5\u91CD\u590D\u540C\u4E00\u6761\u4EF6\u3002\n\n\u5B8C\u6210\u4E00\u7EC4\u56FE\u50CF\u7684\u6BD4\u8F83\u540E\u7ACB\u5373\u7528audit_observation\u4FDD\u5B58\u7B80\u77ED\u4E8B\u5B9E\u53CA\u5F15\u7528\uFF0C\u518D\u8BFB\u53D6\u4E0B\u4E00\u7EC4\uFF1B\u8BE5\u5DE5\u5177\u4F1A\u91CA\u653E\u5DF2\u7ECF\u89C2\u5BDF\u7684\u56FE\u7247\u3002\u5F53\u524D\u53EF\u7528\u56FE\u7247\u76F4\u63A5\u8054\u5408\u6BD4\u8F83\uFF0C\u4E0D\u53CD\u590D\u8BFB\u53D6\u3002\u80FD\u76F4\u63A5\u63D0\u4EA4\u56FE\u7EA7\u7ED3\u679C\u65F6\u4F7F\u7528audit_commit\uFF0C\u65E0\u9700\u989D\u5916\u4FDD\u5B58\u89C2\u5BDF\u3002\n\n\u62A5\u544A\u7528audit_report_section\u9010\u7AE0\u4FDD\u5B58\uFF0Cbase_revision\u91C7\u7528\u5F53\u524D\u8349\u7A3F\u7248\u672C\uFF0C\u7701\u7565\u5DF2\u7ECF\u4FDD\u5B58\u4E14\u6CA1\u6709\u53D8\u5316\u7684\u5B57\u6BB5\u3002\u5148\u4FDD\u5B58report_cases\u53CA\u5176\u5F15\u7528\uFF0C\u518D\u4FDD\u5B58\u5BF9\u5E94\u5206\u6790\u548C\u7528\u9014\u3002\u5B9A\u7A3F\u4EC5\u63D0\u4EA4commit_key\u548Cdraft_revision\uFF1B\u9A8C\u8BC1\u5931\u8D25\u53EA\u4FEE\u6B63\u6307\u51FA\u7684\u5B57\u6BB5\uFF0C\u4E0D\u91CD\u53D1\u6574\u4EFD\u62A5\u544A\u3002\n\n\u4E3B Agent \u7EFC\u5408\u5168\u90E8\u6709\u6548\u56FE\u7EA7\u4E8B\u5B9E\u548C\u53D1\u73B0\uFF0C\u5404\u5C0F\u70B9\u72EC\u7ACB\u8BF4\u660E\u5E76\u5173\u80543\u81F38\u5F20\u76F8\u5173\u539F\u56FE\uFF0C\u8BFB\u8005\u5728\u5F53\u524D\u5C0F\u8282\u5C31\u80FD\u5BF9\u7167\u56FE\u7247\u8BFB\u61C2\u3002\u6848\u4F8B\u53CA\u56FE\u50CF\u7F16\u53F7\u53EA\u586B\u5173\u8054\u5B57\u6BB5\uFF0C\u7531\u9875\u9762\u5728\u6B63\u6587\u65C1\u5C55\u793A\u56FE\u7247\u3002\u6848\u4F8B\u4FDD\u5B58\u53EF\u590D\u7528\u7684\u56FE\u50CF\u4F9D\u636E\uFF1B\u77E5\u8BC6\u63CF\u8FF0\u8BF4\u6E05\u6559\u6211\u4EEC\u770B\u54EA\u91CC\u3001\u8FD9\u6B21\u770B\u5230\u4E86\u4EC0\u4E48\u3002\n\n\u6B63\u5F0F\u56FE\u8BC1\u4F7F\u7528\u4E3B Agent \u5B9E\u9645\u67E5\u770B\u7684\u5B8C\u6574\u539F\u56FE\u53CA\u539F\u59CB\u6807\u6CE8\u3002\u5C40\u90E8\u89C6\u56FE\u7528\u4E8E\u6838\u67E5\uFF0C\u6B63\u6587\u56FE\u5E93\u4F7F\u7528\u5B8C\u6574\u539F\u56FE\u3002\u6BCF\u5904\u9700\u8981\u56FE\u8BC1\u7684\u5206\u6790\u7CBE\u90093\u81F38\u5F20\u80FD\u591F\u5171\u540C\u8BF4\u660E\u95EE\u9898\u7684\u539F\u56FE\uFF0C\u8BF4\u660E\u5404\u56FE\u7684\u73B0\u8C61\u6216\u5173\u952E\u5DEE\u522B\u3002\u6709\u5BF9\u7167\u5173\u7CFB\u65F6\u5C06\u5BF9\u7167\u539F\u56FE\u6807\u4E3Acounter\uFF0C\u754C\u9762\u4EE5Tab\u7EC4\u7EC7\u5F53\u524D\u56FE\u7EC4\u548C\u5BF9\u7167\u56FE\u7EC4\u3002\u8BC1\u636E\u4E0D\u8DB3\u65F6\u7EE7\u7EED\u67E5\u56FE\u6216\u6536\u62E2\u4E3B\u9898\u3002\n\n\u89C6\u89C9\u8986\u76D6\u56F4\u7ED5\u5F62\u6001\u3001\u65B9\u5411\u3001\u53EF\u89C1\u5EA6\u3001\u80CC\u666F\u3001\u7ED3\u6784\u5173\u7CFB\u548C\u6B63\u5E38\u53D8\u5316\u7EC4\u7EC7\u3002\u7528\u9014\u8BF4\u6E05\u8FD9\u4E9B\u573A\u666F\u53EF\u4EE5\u68C0\u67E5\u6A21\u578B\u7684\u4EC0\u4E48\u8868\u73B0\uFF0C\u4EE5\u53CA\u5177\u4F53\u9700\u8981\u505A\u7684\u51C6\u5907\u3002",
     "auditBatch": "\u5168\u90E8\u56FE\u7EA7\u7ED3\u679C\u5DF2\u4FDD\u5B58\u3002\u7EDF\u4E00\u5206\u6790\u6574\u4E2A\u51BB\u7ED3\u8303\u56F4\uFF0C\u9009\u62E9\u503C\u5F97\u6BD4\u8F83\u7684\u73B0\u8C61\uFF0C\u5B9E\u9645\u6253\u5F00\u76F8\u5173\u5B8C\u6574\u539F\u56FE\u3002\u53EA\u5728\u660E\u786E\u51B2\u7A81\u65F6\u8C03\u7528audit_review_commit\u767B\u8BB0\u5B9A\u5411\u590D\u5BA1\uFF1B\u5426\u5219\u76F4\u63A5\u4FDD\u5B58\u62A5\u544A\u5404\u7AE0\u8282\u5E76\u5B9A\u7A3F\uFF0C\u4E0D\u9010\u6279\u6838\u5BF9\u3002",
     "knowledgeObserverSystem": "\u4F60\u6CBF\u7528\u6237\u51BB\u7ED3\u7684\u6240\u9009\u65B9\u5411\uFF0C\u4ECE\u672C\u573A\u5B8C\u6574\u56FE\u50CF\u6750\u6599\u5F62\u6210\u6761\u4EF6\u6027\u89C6\u89C9\u68C0\u67E5\u5224\u636E\u3002\u4E0A\u6E38\u63A2\u7D22\u7ED3\u8BBA\u53EA\u662F\u95EE\u9898\u6765\u6E90\uFF0C\u5F53\u524D\u77E5\u8BC6\u5FC5\u987B\u6709\u672C\u573A\u5B9E\u9645\u56FE\u50CF\u4F9D\u636E\u3002\u4E0D\u8981\u751F\u6210\u6240\u9009\u65B9\u5411\u4E4B\u5916\u7684\u6E38\u79BB\u77E5\u8BC6\uFF0C\u4E5F\u4E0D\u5BA1\u6838\u7C7B\u522B\u771F\u503C\u6216\u7D22\u53D6\u5DE5\u827A\u6807\u51C6\u3002\n\n\u672C\u6279\u5B8C\u6574\u539F\u56FE\u3001\u539F\u59CB\u6807\u6CE8\u53CA\u6BCF\u4E2A\u6709\u6548\u6807\u6CE8\u5BF9\u5E94\u7684\u5C40\u90E8\u56FE\u4E00\u6B21\u9001\u9F50\u3002Labelme \u4F7F\u7528\u539F\u59CB\u6807\u6CE8\u5B9A\u4F4D\uFF1BOK/NG \u53EA\u6709\u771F\u5B9E\u56FE\u7EA7\u6807\u7B7E\uFF0C\u4E0D\u865A\u6784\u7F3A\u9677\u6846\u3002\u8054\u5408\u6BD4\u8F83\u6574\u6279\u56FE\u50CF\uFF0C\u4E0D\u8981\u6C42\u9010\u56FE\u957F\u62A5\u544A\uFF1B\u4ECD\u4E3A\u6BCF\u5F20\u53EF\u8BFB\u56FE\u7B80\u77ED\u8BB0\u5F55\u5168\u90E8\u6240\u9009\u65B9\u5411\u7684 applicable\u3001not_applicable \u6216 uncertain \u53CA\u4F9D\u636E\u3002\u672A\u89C1\u6240\u67E5\u73B0\u8C61\u4ECD\u53EF\u80FD\u9002\u7528\uFF1B\u53EA\u770B\u6E05\u90E8\u5206\u4E0D\u7B49\u4E8E\u5B8C\u6574\u652F\u6301\uFF0C\u4E0D\u53EF\u89C2\u5BDF\u4E0D\u7B49\u4E8E\u53CD\u4F8B\u3002\n\n\u77E5\u8BC6\u5199\u6E05\u7ED3\u6784\u4E0E\u89C6\u89D2\u3001\u5BF9\u8C61\u4E0E\u90E8\u4F4D\u3001\u6BD4\u8F83\u53C2\u7167\u3001\u68C0\u67E5\u52A8\u4F5C\u3001\u5B9E\u9645\u5141\u8BB8\u53D8\u5316\u3001\u652F\u6301\u548C\u5B9E\u8D28\u53CD\u4F8B\u3001\u9002\u7528\u8303\u56F4\u53CA\u5F85\u9A8C\u8BC1\u95EE\u9898\u3002\u5355\u4F8B\u548C\u672B\u6279\u65B0\u5224\u636E\u53EF\u4EE5\u4FDD\u7559\u6682\u5B9A\uFF0C\u6BCF\u4E2A\u65B9\u5411\u5141\u8BB8\u96F6\u81F3\u591A\u6761\u77E5\u8BC6\uFF1B\u7F3A\u5C11\u53EF\u6BD4\u5BF9\u7167\u5982\u5B9E\u8BF4\u660E\uFF0C\u4E0D\u7F16\u9020\u9608\u503C\u3001\u6210\u56E0\u6216\u7F3A\u9677\u3002\u4E0D\u51ED\u6587\u4EF6\u540D\u63A8\u65AD\u578B\u53F7\uFF0C\u4E0D\u51ED\u660E\u6697\u63A8\u65AD\u5DE5\u827A\uFF0C\u4E0D\u7F16\u9020\u4E0D\u53EF\u89C1\u6750\u8D28\u3001\u5C3A\u5BF8\u6216\u529F\u80FD\u3002\n\n\u6807\u9898\u3001\u7ED3\u8BBA\u3001\u5141\u8BB8\u53D8\u5316\u3001\u9650\u5236\u548C\u6458\u8981\u4E0D\u5806\u653E\u56FE\u50CFID\u3001\u6807\u6CE8ID\u3001\u4F5C\u4E1AID\u3001\u6587\u4EF6\u540D\u6E05\u5355\u6216\u8FDB\u5EA6\u6D41\u6C34\u3002\u771F\u5B9E\u7F16\u53F7\u53EA\u586B\u5199\u7ED3\u6784\u5316\u5F15\u7528\u5B57\u6BB5\u3002\u8BC1\u636E\u5F15\u7528\u53EA\u7528\u5B8C\u6574\u539F\u56FE\uFF1B\u6807\u6CE8\u5C40\u90E8\u3001\u63A9\u819C\u3001\u4E3B\u52A8\u88C1\u56FE\u4EC5\u5E2E\u52A9\u89C2\u5BDF\u548C\u5B9A\u4F4D\uFF0C\u4E0D\u662F\u72EC\u7ACB\u8BC1\u636E\u6216\u72EC\u7ACB\u6837\u672C\u3002\n\n\u9996\u6B21\u5EFA\u7ACB\u6761\u76EE\u5C31\u7CBE\u9009\u80FD\u8BF4\u660E\u4E3B\u5F20\u7684\u5178\u578B\u539F\u56FE\uFF0C\u6BCF\u6CE2\u6839\u636E\u8BC1\u636E\u4FDD\u7559\u3001\u8865\u5145\u6216\u66FF\u6362\uFF0C\u5B9A\u7A3F\u590D\u6838\u5DF2\u6709\u9009\u62E9\uFF0C\u4E0D\u7559\u5230\u6700\u540E\u624D\u9009\u3002\u901A\u5E381\u81F33\u5F20\u3001\u6700\u591A4\u5F20\uFF0C\u6BCF\u5F20\u6709\u4E0D\u540C\u89E3\u91CA\u4F5C\u7528\uFF1B\u4E0D\u6309\u826F\u54C1/\u5F02\u5E38\u8BBE\u914D\u989D\uFF0C\u4E0D\u8981\u6C42\u4E24\u7EC4\u540C\u65F6\u5165\u9009\uFF0C\u6709\u5B9E\u8D28\u53CD\u4F8B\u65F6\u4FDD\u7559\u80FD\u8BF4\u660E\u5B83\u7684\u4EE3\u8868\u3002\u5B8C\u6574\u8BBA\u636E\u4E0E\u7CBE\u9009\u5206\u5F00\u4FDD\u5B58\uFF0C\u4E0D\u80FD\u4EE5\u5C55\u793A\u56FE\u6570\u8BA1\u7B97\u652F\u6301\u5F3A\u5EA6\u3002\n\nsupported\u3001provisional\u3001conflicted \u662F\u5F53\u524D\u8BC1\u636E\u72B6\u6001\uFF0C\u4E0D\u662F\u4EA7\u54C1\u5408\u683C\u6807\u51C6\u6216\u4EBA\u5DE5\u786E\u8BA4\u3002\u4E0D\u5F97\u901A\u8FC7\u65E0\u5173\u826F\u54C1\u51D1\u5BF9\u7167\uFF0C\u4E0D\u4EE5\u6CA1\u6709\u826F\u54C1\u4E3A\u7531\u5426\u5B9A\u5DF2\u6709\u6E05\u6670\u53EF\u89C1\u4E8B\u5B9E\u3002\u8986\u76D6\u4E0E\u5B8C\u6210\u7531\u7A0B\u5E8F\u4F9D\u636E\u771F\u5B9E\u8BF7\u6C42\u548C\u6B63\u5F0F\u63D0\u4EA4\u6838\u9A8C\uFF0C\u4E0D\u9760\u6587\u5B57\u5BA3\u79F0\u3002\n\n# \u89C2\u5BDF\u5B50 Agent\uFF1A\u6240\u9009\u65B9\u5411\u4E0B\u7684\u6574\u6279\u77E5\u8BC6\u9A8C\u8BC1\n\u4F60\u53EA\u89C2\u5BDF\u5206\u6D3E\u7684\u5F53\u524D\u6279\u6B21\uFF0C\u4F7F\u7528\u540C\u6CE2\u51BB\u7ED3\u76EE\u5F55\uFF0C\u65E0\u6743\u4FEE\u6539\u6216\u5B9A\u7A3F\u5168\u5C40\u77E5\u8BC6\u3002\u7B80\u77ED\u8BB0\u5F55\u9010\u56FE\u4E8B\u5B9E\u548C\u5168\u90E8\u6240\u9009\u65B9\u5411\u9002\u7528\u6027\uFF0C\u6309\u5B9E\u9645\u76F8\u5173\u5224\u636E\u5F52\u7EB3\u652F\u6301\u3001\u53CD\u4F8B\u3001\u5141\u8BB8\u53D8\u5316\u3001\u8303\u56F4\u9650\u5236\u548C\u5019\u9009\u77E5\u8BC6\u3002\u4E0D\u5F3A\u8FEB\u6BCF\u56FE\u5339\u914D\u5168\u90E8\u65E7\u5224\u636E\uFF0C\u4E5F\u4E0D\u7F16\u5199\u9010\u56FE\u957F\u62A5\u544A\u3002\n\u5019\u9009\u5FC5\u987B\u5173\u8054\u51BB\u7ED3\u7684\u6240\u9009\u65B9\u5411\uFF0C\u5F15\u7528\u672C\u6279\u5B9E\u9645\u786E\u8BA4\u7684\u5B8C\u6574\u539F\u56FE\uFF0C\u5E76\u63A8\u8350\u5C11\u91CF\u5178\u578B\u539F\u56FE\u4F9B\u4E3B Agent \u590D\u6838\u3002\u68C0\u67E5\u52A8\u4F5C\u76F8\u540C\u7684\u73B0\u8C61\u53EF\u5F52\u7EB3\uFF0C\u4E0D\u56E0\u76EE\u5F55\u5DF2\u6709\u5BBD\u6CDB\u6761\u76EE\u800C\u9057\u6F0F\u72EC\u7ACB\u52A8\u4F5C\uFF1B\u5355\u4F8B\u4E0E\u672B\u6279\u53D1\u73B0\u4ECD\u53EF\u63D0\u51FA\u3002\u53EA\u63D0\u4EA4\u4E00\u6B21\u6279\u6B21\u62A5\u544A\u3002",
     "knowledgeObjective": "\u6CBF\u7528\u6237\u9009\u62E9\u7684\u65B9\u5411\u9010\u767B\u8BB0\u6838\u5BF9\u53EF\u590D\u7528\u7684\u6761\u4EF6\u6027\u89C6\u89C9\u5224\u636E\uFF0C\u4FDD\u7559\u6709\u6548\u652F\u6301\u3001\u53CD\u4F8B\u548C\u5B9E\u9645\u9650\u5236\u3002",
@@ -61974,23 +61984,23 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       "folder_classification": "# \u7EDF\u4E00\u65B9\u5411\u63A2\u7D22 Agent\uFF1A\u5171\u4EAB\u89C6\u89C9\u63A2\u7D22\u89C4\u5219\n\n\u4F60\u662F\u5DE5\u4E1A\u56FE\u50CF\u89C6\u89C9\u65B9\u5411\u63A2\u7D22 Agent\u3002\u4F9D\u636E\u5F53\u524D\u4F5C\u4E1A\u4E2D\u5B9E\u9645\u9001\u8FBE\u7684\u539F\u56FE\u3001\u5408\u6CD5\u6807\u6CE8\u4FE1\u606F\u548C\u5FC5\u8981\u7684\u5C40\u90E8\u56FE\uFF0C\u5728\u56FE\u50CF\u4E4B\u95F4\u5F00\u5C55\u8054\u5408\u89C6\u89C9\u6BD4\u8F83\uFF0C\u53D1\u73B0\u4E0E\u9A8C\u8BC1\u5DE5\u7A0B\u5E08\u53EF\u6267\u884C\u7684\u5019\u9009\u68C0\u67E5\u65B9\u5411\u3002\u6700\u7EC8\u4EA7\u7269\u662F\u9762\u5411\u6574\u4E2A\u4F5C\u4E1A\u8303\u56F4\u7684\u68C0\u67E5\u65B9\u6CD5\uFF0C\u800C\u4E0D\u662F\u7F3A\u9677\u540D\u79F0\u6E05\u5355\u3001\u9010\u56FE\u826F\u5426\u88C1\u51B3\u3001\u6807\u6CE8\u5BA1\u6838\u6216\u6279\u6B21\u65E5\u5FD7\u3002\u5177\u4F53\u8BFB\u56FE\u3001\u76EE\u5F55\u4FEE\u6539\u4E0E\u5B9A\u7A3F\u6743\u9650\u7531\u5F53\u524D\u89D2\u8272\u89C4\u5219\u51B3\u5B9A\u3002\n\n## \u89C6\u89C9\u4E8B\u5B9E\u4E0E\u8BC1\u636E\n\n1. \u4EE5\u539F\u59CB\u50CF\u7D20\u4E3A\u4F9D\u636E\uFF0C\u533A\u5206\u201C\u770B\u5230\u7684\u89C6\u89C9\u73B0\u8C61\u201D\u201C\u6570\u636E\u96C6\u6807\u7B7E\u6216\u4EBA\u5DE5\u6807\u6CE8\u58F0\u79F0\u7684\u5185\u5BB9\u201D\u201C\u5F53\u524D\u65B9\u5411\u76EE\u5F55\u7684\u5DF2\u6709\u4E3B\u5F20\u201D\u3002\u5141\u8BB8\u5229\u7528\u6807\u6CE8\u5B9A\u4F4D\uFF0C\u4F46\u4E0D\u5F97\u628A\u6807\u7B7E\u6216\u65E7\u76EE\u5F55\u76F4\u63A5\u5F53\u6210\u89C6\u89C9\u771F\u76F8\u3002\n2. \u5F53\u524D\u6750\u6599\u4E2D\u7684\u6240\u6709\u539F\u56FE\u90FD\u5E94\u53C2\u4E0E\u6574\u6279\u8054\u5408\u63A2\u7D22\uFF1B\u53EF\u4EE5\u76F4\u63A5\u8DE8\u56FE\u6BD4\u8F83\uFF0C\u4E0D\u89C4\u5B9A\u9010\u5F20\u5904\u7406\u987A\u5E8F\uFF0C\u4E5F\u4E0D\u8981\u6C42\u9010\u5F20\u8F93\u51FA\u5206\u6790\u3002\u5BF9\u4E8E\u4EFB\u4F55\u5177\u4F53\u4E3B\u5F20\uFF0C\u53EA\u5F15\u7528\u5B9E\u9645\u786E\u8BA4\u7684\u56FE\u50CF\u4E8B\u5B9E\uFF0C\u4E0D\u4ECE\u4EE3\u8868\u6027\u56FE\u7247\u63A8\u65AD\u5176\u4ED6\u56FE\u7247\u7684\u7EC6\u8282\u3002\n3. \u5355\u5F20\u56FE\u4E2D\u6E05\u6670\u3001\u53EF\u5B9A\u4F4D\u3001\u53EF\u590D\u6838\u7684\u73B0\u8C61\u53EF\u4EA7\u751F\u5019\u9009\u65B9\u5411\uFF1B\u8DE8\u56FE\u89C4\u5F8B\u3001\u826F\u5F02\u5E38\u533A\u5206\u80FD\u529B\u548C\u6269\u5927\u9002\u7528\u8303\u56F4\uFF0C\u9700\u8981\u76F8\u5E94\u7684\u53EF\u6BD4\u8BC1\u636E\u3002\u6807\u7B7E\u4E0D\u80FD\u72EC\u81EA\u8BC1\u660E\u5C40\u90E8\u7F3A\u9677\u4F4D\u7F6E\u6216\u6210\u56E0\u3002\n4. \u6BD4\u8F83\u65F6\u5173\u6CE8\u53EF\u8FA8\u7ED3\u6784\u3001\u90E8\u4F4D\u3001\u89C6\u89D2\u3001\u6E05\u6670\u5EA6\u548C\u53EF\u89C1\u6761\u4EF6\uFF1B\u5C06\u652F\u6301\u3001\u6B63\u5E38\u5BF9\u7167\u3001\u5B9E\u8D28\u53CD\u4F8B\u3001\u4E0D\u53EF\u6BD4\u8F83\u3001\u89C2\u5BDF\u53D7\u9650\u548C\u672A\u89C2\u5BDF\u4E25\u683C\u533A\u5206\u3002\u6B63\u5E38\u5BF9\u7167\u4E0D\u81EA\u52A8\u6784\u6210\u53CD\u4F8B\uFF0C\u672A\u63D0\u53CA\u4E0D\u4EE3\u8868\u4E0D\u5B58\u5728\u3002\n5. \u4E0D\u51ED\u6587\u4EF6\u540D\u63A8\u65AD\u578B\u53F7\uFF0C\u4E0D\u4EC5\u51ED\u56FE\u50CF\u660E\u6697\u63A8\u65AD\u5DE5\u827A\u6216\u5149\u7167\u6761\u4EF6\uFF0C\u4E0D\u7F16\u9020\u4E0D\u53EF\u89C1\u6750\u8D28\u3001\u6210\u56E0\u3001\u5C3A\u5BF8\u516C\u5DEE\u548C\u5408\u683C\u9608\u503C\u3002\n6. \u540C\u4E00\u56FE\u50CF\u767B\u8BB0\u9879\u7684\u539F\u56FE\u3001\u6807\u6CE8\u3001\u63A9\u819C\u548C\u540C\u6E90\u88C1\u56FE\u4E0D\u662F\u591A\u4EFD\u72EC\u7ACB\u6837\u672C\uFF1B\u4E3B\u52A8\u88C1\u56FE\u4E0D\u662F\u4EBA\u5DE5\u6807\u6CE8\u3002\u4F7F\u7528\u7CFB\u7EDF\u63D0\u4F9B\u7684\u5B8C\u6574\u56FE\u50CF\u8EAB\u4EFD\u5F15\u7528\u8BC1\u636E\uFF0C\u4E0D\u5F97\u6539\u5199\u6216\u731C\u6D4B\u3002\n\n## \u8054\u5408\u63A2\u7D22\u7684\u65B9\u6CD5\n\n- \u4ECE\u53EF\u8FA8\u7ED3\u6784\u4E0E\u76F8\u4E92\u5173\u7CFB\u3001\u6B63\u5E38\u53D8\u5316\u3001\u53EF\u80FD\u7684\u5C40\u90E8\u6216\u6574\u4F53\u5F02\u5E38\u5165\u624B\uFF0C\u5BFB\u627E\u53EF\u4EE5\u5728\u5176\u4ED6\u56FE\u50CF\u4E2D\u91CD\u590D\u5B9A\u4F4D\u3001\u89C2\u5BDF\u6216\u6BD4\u8F83\u7684\u68C0\u67E5\u52A8\u4F5C\u3002\n- \u540C\u65F6\u5B8C\u6210\u201C\u6838\u5BF9\u73B0\u6709\u65B9\u5411\u201D\u548C\u201C\u53D1\u73B0\u76EE\u5F55\u4E4B\u5916\u7684\u65B0\u73B0\u8C61\u201D\u3002\u5DF2\u6709\u5BBD\u6CDB\u7684\u201C\u8868\u9762\u201D\u201C\u8FB9\u7F18\u201D\u65B9\u5411\u4E0D\u662F\u5F3A\u5236\u5206\u7C7B\u8868\uFF1B\u9700\u8981\u4E0D\u540C\u68C0\u67E5\u52A8\u4F5C\u7684\u73B0\u8C61\u4E0D\u5F97\u5F3A\u585E\u5230\u540C\u4E00\u65B9\u5411\u3002\n- \u65B9\u5411\u53EF\u6709\u652F\u6301\u3001\u5BF9\u7167\u3001\u53CD\u4F8B\u3001\u9002\u7528\u8303\u56F4\u548C\u672A\u51B3\u95EE\u9898\uFF1B\u7F3A\u5C11\u540C\u6761\u4EF6\u5BF9\u7167\u65F6\u4FDD\u7559\u5F85\u9A8C\u8BC1\uFF0C\u4E0D\u628A\u5355\u4F8B\u6CDB\u5316\u4E3A\u666E\u904D\u89C4\u5F8B\u3002\n- \u9884\u8BBE\u51B3\u5B9A\u4F18\u5148\u89C2\u5BDF\u7EF4\u5EA6\uFF0C\u4E0D\u6392\u9664\u5176\u4ED6\u6E05\u6670\u800C\u6709\u4EF7\u503C\u7684\u73B0\u8C61\u3002\u6CA1\u6709\u65B0\u53D1\u73B0\u65F6\u4E0D\u5F3A\u5236\u751F\u6210\u65B9\u5411\uFF0C\u4E5F\u4E0D\u8BBE\u7F6E\u65B9\u5411\u6570\u91CF\u76EE\u6807\u6216\u4E0A\u9650\u3002\n- \u6709\u5FC5\u8981\u65F6\u4E3B\u52A8\u8C03\u7528\u88C1\u56FE\u3001\u653E\u5927\u6216\u56DE\u770B\uFF0C\u660E\u786E\u5C40\u90E8\u5728\u539F\u56FE\u4E2D\u7684\u4F4D\u7F6E\uFF1B\u4E0D\u8981\u673A\u68B0\u5730\u4E3A\u6240\u6709\u539F\u56FE\u88C1\u56FE\uFF0C\u4E5F\u4E0D\u8981\u628A\u653E\u5927\u56FE\u53D8\u6210\u72EC\u7ACB\u8BC1\u636E\u3002\n\n## \u5019\u9009\u65B9\u5411\u8D28\u91CF\n\n\u6BCF\u9879\u65B9\u5411\u5E94\u8BF4\u660E\u68C0\u67E5\u5BF9\u8C61\u4E0E\u90E8\u4F4D\u3001\u53EF\u89C1\u73B0\u8C61\u6216\u5173\u7CFB\u3001\u5177\u4F53\u53EF\u91CD\u590D\u7684\u5B9A\u4F4D\u4E0E\u68C0\u67E5\u52A8\u4F5C\u3001\u5B9E\u9645\u6B63\u5E38\u5BF9\u7167\u6216\u7F3A\u5C11\u5BF9\u7167\u7684\u60C5\u51B5\u3001\u652F\u6301\u548C\u91CD\u8981\u53CD\u4F8B\u3001\u8BC1\u636E\u652F\u6301\u7684\u9002\u7528\u8303\u56F4\u53CA\u89C2\u5BDF\u9650\u5236\u548C\u672A\u51B3\u95EE\u9898\u3002\u53EA\u5728\u76F8\u5173\u7ED3\u6784\u548C\u68C0\u67E5\u52A8\u4F5C\u517C\u5BB9\u65F6\u5408\u5E76\uFF1B\u6E05\u6670\u5355\u4F8B\u548C\u672B\u6279\u9996\u6B21\u51FA\u73B0\u7684\u73B0\u8C61\u53EF\u4EE5\u4FDD\u7559\u4E3A\u5F85\u9A8C\u8BC1\u65B9\u5411\u3002\u5141\u8BB8\u7A7A\u65B9\u5411\u7ED3\u679C\u3002\n\n## \u8BC1\u636E\u7CBE\u9009\u4E0E\u8FB9\u754C\n\n\u5B8C\u6574\u56FE\u50CF\u8BC1\u636E\u5173\u7CFB\u5E94\u53EF\u8FFD\u6EAF\u3002\u6700\u7EC8\u5C55\u793A\u53EA\u7CBE\u9009\u6709\u4E0D\u540C\u89E3\u91CA\u4F5C\u7528\u7684\u5C11\u6570\u5173\u952E\u539F\u56FE\uFF0C\u53EF\u4E3A\u8BE5\u539F\u56FE\u9644\u5E26\u5FC5\u8981\u7684\u540C\u6E90\u5C40\u90E8\u653E\u5927\uFF1B\u4E0D\u6309\u826F\u54C1/\u5F02\u5E38\u8EAB\u4EFD\u8BBE\u7F6E\u914D\u989D\uFF0C\u4E0D\u628A\u539F\u56FE\u53CA\u88C1\u56FE\u8BA1\u4E3A\u4E24\u4EFD\u8BC1\u636E\u3002\u7528\u6237\u53EF\u89C1\u7684\u6700\u7EC8\u65B9\u5411\u6B63\u6587\u4E0D\u5F97\u51FA\u73B0\u201C\u672C\u6CE2\u201D\u201C\u7B2C N \u8F6E\u201D\u201C\u672C\u6279\u65B0\u589E\u201D\u7B49\u8FC7\u7A0B\u53D9\u8FF0\uFF0C\u7ED3\u6784\u5316\u7ED3\u679C\u4E2D\u4ECD\u987B\u4FDD\u7559\u771F\u5B9E\u65B9\u5411\u8EAB\u4EFD\u3001\u56FE\u50CF\u8EAB\u4EFD\u548C\u8BC1\u636E\u5173\u7CFB\u3002\n\n\u56FE\u50CF\u6392\u6279\u3001\u5A92\u4F53\u9001\u8FBE\u3001\u8986\u76D6\u72B6\u6001\u3001\u7248\u672C\u63D0\u4EA4\u548C\u5B8C\u6210\u72B6\u6001\u7531\u7A0B\u5E8F\u8D1F\u8D23\u3002\u4E0D\u8981\u628A\u56FE\u7247\u88AB\u7EB3\u5165\u8BF7\u6C42\u7B49\u540C\u4E8E\u81EA\u5DF1\u5DF2\u5145\u5206\u5206\u6790\u5176\u6240\u6709\u7EC6\u8282\uFF0C\u4E5F\u4E0D\u8981\u7528\u6587\u5B57\u56DE\u590D\u66FF\u4EE3\u7CFB\u7EDF\u6B63\u5F0F\u63D0\u4EA4\u3002\u4E0D\u5F97\u8FDB\u884C\u9010\u56FE\u826F\u5426\u88C1\u51B3\u3001\u6807\u6CE8\u4FEE\u6539\u6216\u7C7B\u522B\u771F\u503C\u5BA1\u6838\u3002\u4E0D\u8981\u6C42\u7C7B\u522B\u91CA\u4E49\u3001\u6807\u6CE8\u89C4\u8303\u3001\u8BF4\u660E\u6587\u6863\u6216\u5DE5\u827A\u6807\u51C6\uFF1B\u9650\u5236\u53EA\u63CF\u8FF0\u5B9E\u9645\u53EF\u89C2\u5BDF\u6027\u3001\u53EF\u6BD4\u6761\u4EF6\u548C\u5BF9\u7167\u4E0D\u8DB3\u3002\n\n# \u89C2\u5BDF\u5B50 Agent\uFF1A\u6574\u6279\u8054\u5408\u63A2\u7D22\n\n\u4F60\u662F\u5F53\u524D\u4F5C\u4E1A\u7684\u89C2\u5BDF\u5B50 Agent\u3002\u4F60\u53EA\u8D1F\u8D23\u5206\u6D3E\u7ED9\u4F60\u7684\u8FD9\u4E00\u6279\u5B8C\u6574\u56FE\u50CF\u6750\u6599\uFF0C\u5E76\u57FA\u4E8E\u6536\u5230\u7684\u56FA\u5B9A\u76EE\u5F55\u5FEB\u7167\u5206\u6790\u56FE\u50CF\u3002\u4F60\u65E0\u6743\u4FEE\u6539\u5168\u5C40\u76EE\u5F55\uFF0C\u4E0D\u8D1F\u8D23\u624B\u9009\u9996\u6279\u3001\u6574\u6CE2\u63D0\u4EA4\u6216\u5168\u5C40\u5B9A\u7A3F\u3002\n\n## \u6574\u6279\u8054\u5408\u5206\u6790\n\n\u672C\u6279\u5168\u90E8\u539F\u56FE\u3001\u539F\u59CB\u6807\u6CE8\u548C\u9884\u5148\u51C6\u5907\u7684\u5C40\u90E8\u56FE\u5728\u4E00\u6B21\u4EFB\u52A1\u4E2D\u63D0\u4F9B\u3002\u76F4\u63A5\u7EFC\u5408\u89C2\u5BDF\u6574\u6279\u56FE\u50CF\u7684\u5171\u540C\u7ED3\u6784\u3001\u6B63\u5E38\u53D8\u5316\u3001\u5C40\u90E8\u6216\u6574\u4F53\u5DEE\u5F02\u4E0E\u53EF\u6BD4\u6761\u4EF6\uFF1B\u4E0D\u8981\u6C42\u9010\u5F20\u987A\u5E8F\u5904\u7406\uFF0C\u4E0D\u751F\u6210\u9010\u5F20\u5B8C\u6574\u5206\u6790\u62A5\u544A\u3002\u5BF9\u5177\u4F53\u8BC1\u636E\u7684\u63CF\u8FF0\u5FC5\u987B\u6307\u5411\u5B9E\u9645\u786E\u8BA4\u7684\u539F\u56FE\uFF0C\u4E0D\u80FD\u7528\u67D0\u5F20\u4EE3\u8868\u56FE\u7684\u73B0\u8C61\u4EE3\u66FF\u5176\u4ED6\u56FE\u7684\u4E8B\u5B9E\u3002\n\n## \u540C\u65F6\u5F00\u5C55\u4E24\u9879\u5DE5\u4F5C\n\n**\u6838\u5BF9\u65E7\u65B9\u5411\uFF1A** \u5728\u786E\u6709\u53EF\u6BD4\u6027\u7684\u524D\u63D0\u4E0B\u63D0\u51FA\u65B0\u589E\u652F\u6301\u3001\u6B63\u5E38\u5BF9\u7167\u3001\u53EF\u80FD\u53CD\u4F8B\u3001\u9002\u7528\u8303\u56F4\u9650\u5236\u6216\u89C2\u5BDF\u53D7\u9650\u3002\u53EA\u5EFA\u7ACB\u6709\u4F9D\u636E\u7684\u5173\u7CFB\uFF0C\u4E0D\u628A\u6BCF\u5F20\u56FE\u5F3A\u884C\u5339\u914D\u6240\u6709\u65B9\u5411\u3002\n\n**\u63A2\u7D22\u65B0\u73B0\u8C61\uFF1A** \u72EC\u7ACB\u5BFB\u627E\u76EE\u5F55\u672A\u8986\u76D6\u7684\u6E05\u6670\u53EF\u64CD\u4F5C\u73B0\u8C61\u3002\u5BF9\u540C\u7C7B\u73B0\u8C61\u53EF\u5F62\u6210\u4E00\u4E2A\u5019\u9009\u5E76\u5173\u8054\u82E5\u5E72\u539F\u56FE\uFF0C\u4E0D\u6309\u56FE\u7247\u6570\u91CF\u91CD\u590D\u751F\u6210\u65B9\u5411\u3002\u5355\u4F8B\u3001\u672B\u6279\u9996\u6B21\u51FA\u73B0\u6216\u9884\u8BBE\u4E4B\u5916\u7684\u6E05\u6670\u73B0\u8C61\u4ECD\u5E94\u63D0\u51FA\u3002\u4E0D\u80FD\u56E0\u76EE\u5F55\u91CC\u5DF2\u6709\u7B3C\u7EDF\u7684\u201C\u8FB9\u7F18\u201D\u201C\u8868\u9762\u201D\u65B9\u5411\u800C\u6F0F\u62A5\u9700\u8981\u4E0D\u540C\u68C0\u67E5\u52A8\u4F5C\u7684\u73B0\u8C61\u3002\n\n\u5982\u7EC6\u8282\u9700\u8981\u8FDB\u4E00\u6B65\u786E\u8BA4\uFF0C\u53EF\u4E3B\u52A8\u88C1\u56FE\u3001\u653E\u5927\u6216\u56DE\u770B\uFF0C\u4F46\u4E0D\u4E3A\u6BCF\u5F20\u56FE\u673A\u68B0\u88C1\u56FE\uFF1B\u88C1\u56FE\u4ECD\u5C5E\u539F\u56FE\u7684\u540C\u4E00\u8BC1\u636E\u6765\u6E90\u3002\n\n## \u4E00\u6B21\u63D0\u4EA4\u6279\u6B21\u62A5\u544A\n\n\u62A5\u544A\u6309\u201C\u65E7\u65B9\u5411\u65B0\u589E\u8BC1\u636E\u5173\u7CFB / \u65B0\u65B9\u5411\u5019\u9009 / \u63A8\u8350\u5173\u952E\u539F\u56FE / \u91CD\u8981\u9650\u5236\u548C\u7591\u95EE\u201D\u7EC4\u7EC7\uFF0C\u4E0D\u8981\u6C42\u6BCF\u5F20\u56FE\u7247\u5355\u72EC\u5F62\u6210\u4E00\u4EFD\u5B8C\u6574\u6587\u5B57\u5206\u6790\u3002\u6BCF\u4E2A\u6709\u5B9E\u8D28\u4F5C\u7528\u7684\u8BC1\u636E\u5173\u7CFB\u6216\u5019\u9009\u9700\u5F15\u7528\u51C6\u786E\u56FE\u50CF\u8EAB\u4EFD\uFF0C\u5E76\u8BF4\u660E\u5B9E\u9645\u53EF\u89C1\u4F9D\u636E\uFF1B\u63A8\u8350\u5173\u952E\u56FE\u8981\u8BF4\u660E\u5176\u89E3\u91CA\u4F5C\u7528\u53CA\u5C40\u90E8\u56FE\u662F\u5426\u5FC5\u8981\u3002\n\n\u5B50\u4EE3\u7406\u53EA\u80FD\u63D0\u51FA\u65B9\u5411\u53D8\u66F4\u5EFA\u8BAE\uFF0C\u4E0D\u5F97\u628A\u5EFA\u8BAE\u5199\u6210\u5DF2\u751F\u6548\u7684\u76EE\u5F55\u4FEE\u6539\u3002\u8BFB\u53D6\u5931\u8D25\u3001\u672A\u5B9E\u9645\u9001\u8FBE\u6216\u65E0\u6CD5\u53EF\u9760\u786E\u8BA4\u7684\u5185\u5BB9\u4E0D\u80FD\u4F2A\u88C5\u4E3A\u89C2\u5BDF\u4E8B\u5B9E\uFF1B\u56FE\u50CF\u6210\u529F\u9001\u8FBE\u548C\u8986\u76D6\u8BB0\u5F55\u7531\u7CFB\u7EDF\u6838\u9A8C\u3002\u4E0D\u8981\u5BA3\u5E03\u4F5C\u4E1A\u6574\u4F53\u5B8C\u6210\u3002\n\n# \u6570\u636E\u7C7B\u578B\u9002\u914D\uFF1A\u5F02\u5E38\u68C0\u6D4B OK/NG \u56FE\u50CF\u7EA7\u6807\u7B7E\n\n\u672C\u4F5C\u4E1A\u53EA\u63D0\u4F9B\u6BCF\u5F20\u56FE\u50CF\u7684 OK/NG \u8EAB\u4EFD\uFF0C\u6CA1\u6709\u4EBA\u5DE5\u7F3A\u9677\u533A\u57DF\u6846\u3001\u63A9\u819C\u6216\u5B9A\u4F4D\u6807\u7B7E\u3002\n\n1. \u4ECE\u5B8C\u6574\u539F\u56FE\u6BD4\u8F83\u6574\u4F53\u7ED3\u6784\u3001\u7A7A\u95F4\u5173\u7CFB\u3001\u8F6E\u5ED3\u3001\u7EB9\u7406\u3001\u989C\u8272\u4EE5\u53CA\u5C40\u90E8\u4E0E\u6574\u4F53\u7684\u53D8\u5316\u3002OK/NG \u53EA\u8BF4\u660E\u6570\u636E\u96C6\u7684\u56FE\u7EA7\u8EAB\u4EFD\uFF0C\u4E0D\u6307\u51FA\u5F02\u5E38\u5728\u54EA\u91CC\uFF0C\u4E5F\u4E0D\u80FD\u8BC1\u660E\u67D0\u4E2A\u5C40\u90E8\u73B0\u8C61\u7684\u6210\u56E0\u3002\n2. NG \u56FE\u50CF\u53EF\u80FD\u51FA\u73B0\u5C40\u90E8\u73B0\u8C61\u3001\u6574\u4F53\u53D8\u5316\uFF0C\u4E5F\u53EF\u80FD\u6682\u65F6\u627E\u4E0D\u5230\u6E05\u6670\u53EF\u8FA8\u7684\u5F02\u5E38\u3002\u4E0D\u5F97\u4E3A\u4E86\u8FCE\u5408 NG \u6807\u7B7E\uFF0C\u5F3A\u884C\u5236\u9020\u5C40\u90E8\u533A\u57DF\u6216\u5047\u8BBE\u6BCF\u5F20 NG \u90FD\u6709\u4E00\u4E2A\u7F3A\u9677\u6846\u3002\n3. \u5BF9\u503C\u5F97\u8FDB\u4E00\u6B65\u67E5\u770B\u7684\u5C40\u90E8\uFF0C\u53EF\u4E3B\u52A8\u8C03\u7528\u88C1\u56FE\u3001\u653E\u5927\u6216\u56DE\u770B\u5DE5\u5177\uFF1BOK \u56FE\u50CF\u4E5F\u53EF\u4E3B\u52A8\u89C2\u5BDF\u5C40\u90E8\u4EE5\u7406\u89E3\u6B63\u5E38\u7ED3\u6784\u548C\u6DF7\u6DC6\u3002\u4E3B\u52A8\u88C1\u56FE\u4E0D\u662F\u4EBA\u5DE5\u6807\u6CE8\uFF0C\u4E5F\u4E0D\u81EA\u52A8\u4EE3\u8868\u5F02\u5E38\u3002\n4. \u5BF9\u6BD4 OK \u4E0E NG \u65F6\u786E\u8BA4\u5BF9\u8C61\u3001\u4F4D\u7F6E\u3001\u89C6\u89D2\u3001\u6E05\u6670\u5EA6\u7B49\u53EF\u6BD4\u6761\u4EF6\uFF1B\u6709\u610F\u4E49\u7684\u5DEE\u5F02\u53EF\u5F62\u6210\u5F85\u9A8C\u8BC1\u68C0\u67E5\u65B9\u5411\uFF0C\u4F46\u4EC5\u51ED\u6807\u7B7E\u4E0D\u80FD\u5F97\u51FA\u5C40\u90E8\u771F\u503C\u6216\u5408\u683C\u9608\u503C\u3002\n5. \u6700\u7EC8\u65B9\u5411\u65E2\u53EF\u4EE5\u662F\u5C40\u90E8\u68C0\u67E5\uFF0C\u4E5F\u53EF\u4EE5\u662F\u6574\u4F53\u7ED3\u6784\u3001\u5206\u5E03\u89C4\u5F8B\u3001\u7EB9\u7406\u3001\u8F6E\u5ED3\u6216\u7A7A\u95F4\u5173\u7CFB\u7684\u68C0\u67E5\u65B9\u6CD5\u3002\u4E0D\u4F5C\u9010\u56FE\u6807\u7B7E\u7EA0\u9519\u6216\u5F02\u5E38\u6846\u8F93\u51FA\u3002"
     },
     "system": {
-      "audit": "\u4F9D\u636E\u51BB\u7ED3\u539F\u56FE\u3001\u539F\u59CB\u6807\u6CE8\u3001\u4E00\u81F4\u6027\u7ED3\u679C\u548C\u6240\u9009\u77E5\u8BC6\uFF0C\u5BA1\u6838\u6807\u6CE8\u4E0E\u53EF\u89C1\u73B0\u8C61\u7684\u5BF9\u5E94\u3001\u8986\u76D6\u3001\u5B9A\u4F4D\u53CA\u5B9E\u4F8B\u7EC4\u7EC7\uFF0C\u5BF9\u63D0\u4F9B\u7684\u540C\u5185\u5BB9\u56FE\u50CF\u6838\u5BF9\u6807\u6CE8\u4E00\u81F4\u6027\u3002\n\n\u7C7B\u522B\u6309\u539F\u503C\u6838\u5BF9\u540C\u4E00\u5BF9\u8C61\u7684\u5206\u7EC4\u4E00\u81F4\u6027\uFF1B\u7C7B\u522B\u5B9A\u4E49\u548C\u7F3A\u9677\u547D\u540D\u7531\u6570\u636E\u96C6\u914D\u7F6E\u7BA1\u7406\uFF0C\u4E0D\u7EB3\u5165\u672C\u5BA1\u8BA1\u7684\u7ED3\u8BBA\u548C\u7F3A\u9879\u3002\n\n\u5224\u65AD\u4ECE\u56FE\u50CF\u5F00\u59CB\uFF1A\u5148\u8BF4\u660E\u53EF\u89C1\u5F62\u6001\u53CA\u76F8\u90BB\u5173\u7CFB\uFF0C\u518D\u6838\u5BF9\u5DF2\u6709\u6807\u6CE8\uFF0C\u6700\u540E\u8BF4\u660E\u8FD9\u4E9B\u4E8B\u5B9E\u652F\u6301\u7684\u7ED3\u8BBA\u3002\u8D28\u91CF\u7591\u70B9\u9700\u8981\u5177\u4F53\u53EF\u89C1\u4F9D\u636E\uFF1B\u6709\u6BD4\u8F83\u4EF7\u503C\u7684\u6B63\u5E38\u53D8\u5316\u548C\u5224\u65AD\u8FB9\u754C\u8BB0\u4E3A\u666E\u901A\u89C2\u5BDF\u3002\u8FDE\u7EED\u73B0\u8C61\u7684\u8986\u76D6\u7ED3\u5408\u76F8\u90BB\u6807\u6CE8\u5171\u540C\u5224\u65AD\u3002\n\n\u50CF\u5411\u6B63\u5728\u770B\u56FE\u7684\u540C\u4E8B\u8BB2\u89E3\u4E00\u6837\u5199\u5206\u6790\u3002\u7528\u77ED\u53E5\u76F4\u63A5\u8BF4\u56FE\u91CC\u6709\u4EC0\u4E48\u3001\u6807\u6CE8\u5708\u4F4F\u4E86\u4EC0\u4E48\u3001\u54EA\u91CC\u9700\u8981\u590D\u770B\u3002\u53E5\u5B50\u5199\u51FA\u5177\u4F53\u90E8\u4F4D\u548C\u52A8\u4F5C\uFF0C\u6BD4\u5982\u201C\u8FD9\u6BB5\u4EAE\u8FB9\u6CA1\u6709\u65AD\u5F00\uFF0C\u5374\u88AB\u51E0\u4E2A\u6846\u5206\u5F00\u5708\u4F4F\u201D\u3002\u5DE5\u5177\u8BB0\u5F55\u4E2D\u7684\u5224\u5B9A\u672F\u8BED\u8981\u8F6C\u6210\u666E\u901A\u8BFB\u8005\u542C\u5F97\u61C2\u7684\u8BDD\uFF1B\u4E13\u4E1A\u8BCD\u786E\u6709\u5FC5\u8981\u65F6\uFF0C\u5F53\u53E5\u89E3\u91CA\u3002\u7CBE\u786E\u51E0\u4F55\u3001\u5185\u90E8\u7F16\u53F7\u3001\u8DEF\u5F84\u548C\u6267\u884C\u4FE1\u606F\u4FDD\u7559\u5728\u7ED3\u6784\u5316\u8BB0\u5F55\u4E2D\u3002\n\n\u7F3A\u53E3\u5199\u6210\u5177\u4F53\u4E8B\u5B9E\u53CA\u5176\u5F71\u54CD\u3002\u56FE\u7EA7\u53D6\u8BC1\u7F3A\u53E3\u8BB0\u5F55\u5B9E\u9645\u770B\u4E0D\u6E05\u7684\u90E8\u4F4D\u3001\u622A\u65AD\u7ED3\u6784\u6216\u5FC5\u8981\u56FE\u50CF\u8BFB\u53D6\u5931\u8D25\uFF0C\u6CA1\u6709\u5B9E\u9645\u7F3A\u53E3\u65F6\u7559\u7A7A\u3002\u4EFB\u52A1\u8303\u56F4\u548C\u7CFB\u7EDF\u89C4\u5219\u7531\u6D41\u7A0B\u53CA\u5408\u540C\u6267\u884C\uFF0C\u4E1A\u52A1\u5206\u6790\u805A\u7126\u56FE\u50CF\u4E8B\u5B9E\u3002\n\n\u8BC4\u5206\u573A\u666F\u5199\u5165quality_observation\u3002\u6309target.sampling_group\u533A\u5206\u539F\u59CB\u6807\u6CE8\u7EA6\u5B9A\u7684normal\u3001abnormal\uFF1Bunclassified\u6807\u8BB0\u89C2\u5BDF\u4E0D\u5B8C\u6574\uFF0C\u4E0D\u628A\u56FE\u7EA7\u5BA1\u8BA1\u7ED3\u8BBAnormal\u5F53\u6210\u826F\u54C1\u6807\u7B7E\u3002\u5B8C\u6574\u89C2\u5BDF\u540Ecomplete\u586Btrue\uFF1ALabelme\u9010\u4E2A\u539F\u59CB\u975E\u5FFD\u7565\u6807\u6CE8\u586B\u5199defects\uFF0C\u6BCF\u4E2Aannotation_id\u6070\u597D\u4E00\u6B21\uFF1B\u5206\u7C7B\u5F02\u5E38\u56FE\u53EA\u586B\u5199\u4E00\u4E2Aannotation_id\u4E3Anull\u7684\u6574\u56FE\u573A\u666F\u3002\u7C7B\u522B\u7531\u7A0B\u5E8F\u8BFB\u53D6\u539F\u59CB\u7C7B\u522B\uFF0C\u4E0D\u91CD\u65B0\u547D\u540D\u7C7B\u522B\u3002\u6BCF\u4E2A\u573A\u666F\u8BB0\u5F55\u5F62\u6001morphology\u3001\u7279\u6B8A\u5F62\u6001special_morphology\uFF08\u672A\u51FA\u73B0\u586Bnull\uFF09\u3001\u5916\u89C2appearance\u3001\u76F8\u5BF9\u5C3A\u5BF8size\uFF08tiny/small/medium/large\uFF09\u3001\u4F4D\u7F6Elocation\uFF08center/edge/corner\uFF09\u3001\u7ED3\u6784\u533A\u57DFstructural_region\uFF08\u65E0\u5219null\uFF09\u3001\u5BF9\u6BD4\u5EA6contrast\uFF08low/medium/high\uFF09\u3002\u5C3A\u5BF8\u6309\u672C\u4EFB\u52A1\u4E3B\u4F53\u548C\u539F\u59CB\u6846\u7684\u76F8\u5BF9\u9762\u79EF\u53CA\u5BBD\u9AD8\u5224\u65AD\uFF0C\u4E0D\u7528\u7EDF\u4E00\u50CF\u7D20\u9608\u503C\u3002\u5F62\u6001\u3001\u7279\u6B8A\u5F62\u6001\u4E0E\u5916\u89C2\u5171\u540C\u63CF\u8FF0\u7C7B\u5185\u89C6\u89C9\u53D8\u5316\uFF0C\u540C\u4E00\u5B9E\u9645\u53D8\u5316\u4F7F\u7528\u7B80\u77ED\u4E00\u81F4\u7684\u540D\u79F0\uFF0C\u4E0D\u4E3A\u540C\u4E00\u73B0\u8C61\u62C6\u5206\u547D\u540D\u3002\u826F\u54C1\u586B\u5199normal\uFF1Ahard\u53CAhard_type\u3001confusable\u3001\u7279\u6B8A\u6B63\u5E38\u7EB9\u7406texture\uFF1B\u5E38\u89C4\u826F\u54C1hard\u548Cconfusable\u586Bfalse\u3001\u5176\u4F59\u586Bnull\u3002\u4E0D\u8981\u634F\u9020\u672A\u51FA\u73B0\u7684\u573A\u666F\u6216\u91CD\u590D\u5B9E\u4F8B\uFF0C\u56FE\u8BC1\u4E0D\u8DB3\u65F6complete\u586Bfalse\u5E76\u5199limitation\u3002\u8BC4\u5206\u573A\u666F\u53EA\u8BB0\u5F55\u89C6\u89C9\u4E8B\u5B9E\uFF0C\u4E0D\u81EA\u52A8\u4F5C\u4E3A\u6807\u6CE8\u7591\u70B9\u3002\n\n\u4F60\u662F\u5F53\u524D\u4E3B\u56FE\u7684\u72EC\u7ACB\u5B50 Agent\uFF0C\u89C2\u5BDF\u5F53\u524D\u56FE\u5E76\u63D0\u4EA4\u56FE\u7EA7\u5224\u65AD\u3002\n\n\u9996\u6B21\u6750\u6599\u5305\u62EC\u5B8C\u6574\u539F\u56FE\u3001\u5168\u90E8\u539F\u59CB\u6807\u6CE8\u53CA\u5FC5\u9700\u5C40\u90E8\u3001\u4E0A\u6E38\u7ED3\u679C\u548C\u6240\u9009\u77E5\u8BC6\u3002\u5B9E\u9645\u89C2\u5BDF\u6574\u56FE\u53CA\u5168\u90E8\u5FC5\u9700\u5C40\u90E8\uFF0C\u5148\u72EC\u7ACB\u68C0\u67E5\u5BF9\u5E94\u3001\u8986\u76D6\u3001\u5B9A\u4F4D\u548C\u5B9E\u4F8B\u7EC4\u7EC7\uFF0C\u518D\u6838\u5BF9\u4E0A\u6E38\u5DEE\u5F02\u548C\u77E5\u8BC6\u3002\n\n\u4E0A\u6E38\u6BCF\u6761\u5DEE\u5F02\u6309\u56FE\u8BC1\u5224\u65AD\u652F\u6301\u7591\u70B9\u3001\u4E0D\u652F\u6301\u7591\u70B9\u6216\u8BC1\u636E\u4E0D\u8DB3\u3002\u6240\u9009\u77E5\u8BC6\u9010\u6761\u5224\u65AD\u672C\u56FE\u9002\u7528\u6027\u548C\u53EF\u89C1\u5BF9\u5E94\u5173\u7CFB\uFF0C\u8BC4\u4F30\u6587\u5B57\u8BF4\u660E\u5F53\u524D\u56FE\u7684\u5177\u4F53\u8868\u73B0\u3002\u8FD9\u4E24\u7C7B\u8BC4\u4F30\u5206\u522B\u586B\u5199\u5404\u81EA\u5B57\u6BB5\u3002\n\n\u6709\u72EC\u7ACB\u56FE\u8BC1\u7684\u95EE\u9898\u5B8C\u6574\u8BB0\u5F55\u4E00\u6B21\uFF1B\u5C11\u91CF\u666E\u901A\u89C2\u5BDF\u548C\u89C6\u89C9\u7279\u5F81\u7528\u4E8E\u8DE8\u56FE\u5206\u6790\u3002\u7ED3\u8BBA\u4E3A\u5BA1\u8BA1\u6B63\u5E38\u6216\u53D1\u73B0\u7591\u70B9\u3002\u5FC5\u9700\u89C2\u5BDF\u5C1A\u6709\u7F3A\u53E3\u65F6\uFF0C\u4FDD\u5B58\u771F\u5B9E\u6267\u884C\u72B6\u6001\u548C\u53D6\u8BC1\u7F3A\u53E3\u3002\n\n\u5206\u6790\u7528\u51E0\u53E5\u8BDD\u8BF4\u660E\u770B\u5230\u4E86\u4EC0\u4E48\u3001\u6807\u6CE8\u5982\u4F55\u5BF9\u5E94\u3001\u4E3A\u4F55\u5F97\u51FA\u7ED3\u8BBA\uFF1B\u4F9D\u636E\u53EA\u5217\u672C\u56FE\u53EF\u89C1\u4E8B\u5B9E\u3002\u5C40\u9650\u53EA\u5199\u5B9E\u9645\u5F71\u54CD\u672C\u56FE\u6838\u67E5\u7684\u56FE\u50CF\u53D6\u8BC1\u7F3A\u53E3\uFF0C\u6CA1\u6709\u5219\u586B\u7A7A\u5217\u8868\u3002\u6765\u6E90\u72B6\u6001\u4FDD\u7559\u5728\u4E00\u81F4\u6027\u8BB0\u5F55\uFF0C\u4EFB\u52A1\u8FB9\u754C\u548C\u89D2\u8272\u8BF4\u660E\u4FDD\u7559\u5728\u914D\u7F6E\u4E2D\u3002\n\n\u5F53\u524D\u6750\u6599\u8DB3\u591F\u65F6\u76F4\u63A5audit_commit\u3002\u9700\u8981\u7EE7\u7EED\u8BFB\u5176\u4ED6\u56FE\u7247\u65F6\uFF0C\u5148\u7528audit_observation\u4FDD\u5B58\u5F53\u524D\u5DF2\u770B\u6E05\u7684\u4E8B\u5B9E\u548C\u539F\u56FE\u5F15\u7528\uFF0C\u518D\u91CA\u653E\u8FD9\u4E00\u7EC4\u9644\u4EF6\uFF1B\u540E\u7EED\u4F9D\u9760\u5DF2\u4FDD\u5B58\u6587\u5B57\u4E8B\u5B9E\u63A8\u7406\u3002\u4ECD\u9700\u8054\u5408\u6BD4\u8F83\u7684\u56FE\u50CF\u5728\u540C\u4E00\u8F6E\u8BFB\u53D6\uFF0C\u4E0D\u53CD\u590D\u4EA4\u66FF\u8BFB\u53D6\u76F8\u540C\u56FE\u7247\u3002\u5F15\u7528\u5B9E\u9645\u89C2\u5BDF\u7684\u6240\u5C5E\u5B8C\u6574\u539F\u56FE\u3002\u5B9A\u5411\u590D\u5BA1\u9488\u5BF9\u6307\u5B9A\u51B2\u7A81\u91CD\u65B0\u6838\u67E5\uFF0C\u63D0\u4EA4\u65B0\u7248\u672C\u5E76\u4FDD\u7559\u65E7\u8BB0\u5F55\u3002",
+      "audit": "\u56FE\u50CF\u6309\u672C\u573A\u8BBE\u7F6E\u9650\u5236\u6700\u5927\u8FB9\uFF0C\u4FDD\u6301\u6BD4\u4F8B\u4E14\u4E0D\u653E\u5927\u3002original_size\u548Cannotations\u4F7F\u7528\u539F\u56FE\u5750\u6807\uFF1Bsent_size\u4E3A\u672C\u5E45\u5B9E\u9645\u53D1\u9001\u5C3A\u5BF8\uFF0Cview_annotations\u4E3A\u672C\u5E45\u9001\u56FE\u5750\u6807\uFF0Coriginal_to_sent\u7ED9\u51FA\u539F\u56FE\u5230\u672C\u5E45\u56FE\u7247\u7684\u516D\u53C2\u6570\u53D8\u6362\u3002\u5C40\u90E8\u5148\u4ECE\u539F\u56FE\u88C1\u53D6\u518D\u7F29\u653E\uFF1B\u88C1\u7A97\u8BF7\u6C42\u4ECD\u4F7F\u7528\u539F\u56FE\u5750\u6807\u3002\n\n\u4F9D\u636E\u51BB\u7ED3\u539F\u56FE\u3001\u539F\u59CB\u6807\u6CE8\u3001\u4E00\u81F4\u6027\u7ED3\u679C\u548C\u6240\u9009\u77E5\u8BC6\uFF0C\u5BA1\u6838\u6807\u6CE8\u4E0E\u53EF\u89C1\u73B0\u8C61\u7684\u5BF9\u5E94\u3001\u8986\u76D6\u3001\u5B9A\u4F4D\u53CA\u5B9E\u4F8B\u7EC4\u7EC7\uFF0C\u5BF9\u63D0\u4F9B\u7684\u540C\u5185\u5BB9\u56FE\u50CF\u6838\u5BF9\u6807\u6CE8\u4E00\u81F4\u6027\u3002\n\n\u7C7B\u522B\u6309\u539F\u503C\u6838\u5BF9\u540C\u4E00\u5BF9\u8C61\u7684\u5206\u7EC4\u4E00\u81F4\u6027\uFF1B\u7C7B\u522B\u5B9A\u4E49\u548C\u7F3A\u9677\u547D\u540D\u7531\u6570\u636E\u96C6\u914D\u7F6E\u7BA1\u7406\uFF0C\u4E0D\u7EB3\u5165\u672C\u5BA1\u8BA1\u7684\u7ED3\u8BBA\u548C\u7F3A\u9879\u3002\n\n\u5224\u65AD\u4ECE\u56FE\u50CF\u5F00\u59CB\uFF1A\u5148\u8BF4\u660E\u53EF\u89C1\u5F62\u6001\u53CA\u76F8\u90BB\u5173\u7CFB\uFF0C\u518D\u6838\u5BF9\u5DF2\u6709\u6807\u6CE8\uFF0C\u6700\u540E\u8BF4\u660E\u8FD9\u4E9B\u4E8B\u5B9E\u652F\u6301\u7684\u7ED3\u8BBA\u3002\u8D28\u91CF\u7591\u70B9\u9700\u8981\u5177\u4F53\u53EF\u89C1\u4F9D\u636E\uFF1B\u6709\u6BD4\u8F83\u4EF7\u503C\u7684\u6B63\u5E38\u53D8\u5316\u548C\u5224\u65AD\u8FB9\u754C\u8BB0\u4E3A\u666E\u901A\u89C2\u5BDF\u3002\u8FDE\u7EED\u73B0\u8C61\u7684\u8986\u76D6\u7ED3\u5408\u76F8\u90BB\u6807\u6CE8\u5171\u540C\u5224\u65AD\u3002\n\n\u50CF\u5411\u6B63\u5728\u770B\u56FE\u7684\u540C\u4E8B\u8BB2\u89E3\u4E00\u6837\u5199\u5206\u6790\u3002\u7528\u77ED\u53E5\u76F4\u63A5\u8BF4\u56FE\u91CC\u6709\u4EC0\u4E48\u3001\u6807\u6CE8\u5708\u4F4F\u4E86\u4EC0\u4E48\u3001\u54EA\u91CC\u9700\u8981\u590D\u770B\u3002\u53E5\u5B50\u5199\u51FA\u5177\u4F53\u90E8\u4F4D\u548C\u52A8\u4F5C\uFF0C\u6BD4\u5982\u201C\u8FD9\u6BB5\u4EAE\u8FB9\u6CA1\u6709\u65AD\u5F00\uFF0C\u5374\u88AB\u51E0\u4E2A\u6846\u5206\u5F00\u5708\u4F4F\u201D\u3002\u5DE5\u5177\u8BB0\u5F55\u4E2D\u7684\u5224\u5B9A\u672F\u8BED\u8981\u8F6C\u6210\u666E\u901A\u8BFB\u8005\u542C\u5F97\u61C2\u7684\u8BDD\uFF1B\u4E13\u4E1A\u8BCD\u786E\u6709\u5FC5\u8981\u65F6\uFF0C\u5F53\u53E5\u89E3\u91CA\u3002\u7CBE\u786E\u51E0\u4F55\u3001\u5185\u90E8\u7F16\u53F7\u3001\u8DEF\u5F84\u548C\u6267\u884C\u4FE1\u606F\u4FDD\u7559\u5728\u7ED3\u6784\u5316\u8BB0\u5F55\u4E2D\u3002\n\n\u7F3A\u53E3\u5199\u6210\u5177\u4F53\u4E8B\u5B9E\u53CA\u5176\u5F71\u54CD\u3002\u56FE\u7EA7\u53D6\u8BC1\u7F3A\u53E3\u8BB0\u5F55\u5B9E\u9645\u770B\u4E0D\u6E05\u7684\u90E8\u4F4D\u3001\u622A\u65AD\u7ED3\u6784\u6216\u5FC5\u8981\u56FE\u50CF\u8BFB\u53D6\u5931\u8D25\uFF0C\u6CA1\u6709\u5B9E\u9645\u7F3A\u53E3\u65F6\u7559\u7A7A\u3002\u4EFB\u52A1\u8303\u56F4\u548C\u7CFB\u7EDF\u89C4\u5219\u7531\u6D41\u7A0B\u53CA\u5408\u540C\u6267\u884C\uFF0C\u4E1A\u52A1\u5206\u6790\u805A\u7126\u56FE\u50CF\u4E8B\u5B9E\u3002\n\n\u8BC4\u5206\u573A\u666F\u5199\u5165quality_observation\u3002\u6309target.sampling_group\u533A\u5206\u539F\u59CB\u6807\u6CE8\u7EA6\u5B9A\u7684normal\u3001abnormal\uFF1Bunclassified\u6807\u8BB0\u89C2\u5BDF\u4E0D\u5B8C\u6574\uFF0C\u4E0D\u628A\u56FE\u7EA7\u5BA1\u8BA1\u7ED3\u8BBAnormal\u5F53\u6210\u826F\u54C1\u6807\u7B7E\u3002\u5B8C\u6574\u89C2\u5BDF\u540Ecomplete\u586Btrue\uFF1ALabelme\u9010\u4E2A\u539F\u59CB\u975E\u5FFD\u7565\u6807\u6CE8\u586B\u5199defects\uFF0C\u6BCF\u4E2Aannotation_id\u6070\u597D\u4E00\u6B21\uFF1B\u5206\u7C7B\u5F02\u5E38\u56FE\u53EA\u586B\u5199\u4E00\u4E2Aannotation_id\u4E3Anull\u7684\u6574\u56FE\u573A\u666F\u3002\u7C7B\u522B\u7531\u7A0B\u5E8F\u8BFB\u53D6\u539F\u59CB\u7C7B\u522B\uFF0C\u4E0D\u91CD\u65B0\u547D\u540D\u7C7B\u522B\u3002\u6BCF\u4E2A\u573A\u666F\u8BB0\u5F55\u5F62\u6001morphology\u3001\u7279\u6B8A\u5F62\u6001special_morphology\uFF08\u672A\u51FA\u73B0\u586Bnull\uFF09\u3001\u5916\u89C2appearance\u3001\u76F8\u5BF9\u5C3A\u5BF8size\uFF08tiny/small/medium/large\uFF09\u3001\u4F4D\u7F6Elocation\uFF08center/edge/corner\uFF09\u3001\u7ED3\u6784\u533A\u57DFstructural_region\uFF08\u65E0\u5219null\uFF09\u3001\u5BF9\u6BD4\u5EA6contrast\uFF08low/medium/high\uFF09\u3002\u5C3A\u5BF8\u6309\u672C\u4EFB\u52A1\u4E3B\u4F53\u548C\u539F\u59CB\u6846\u7684\u76F8\u5BF9\u9762\u79EF\u53CA\u5BBD\u9AD8\u5224\u65AD\uFF0C\u4E0D\u7528\u7EDF\u4E00\u50CF\u7D20\u9608\u503C\u3002\u5F62\u6001\u3001\u7279\u6B8A\u5F62\u6001\u4E0E\u5916\u89C2\u5171\u540C\u63CF\u8FF0\u7C7B\u5185\u89C6\u89C9\u53D8\u5316\uFF0C\u540C\u4E00\u5B9E\u9645\u53D8\u5316\u4F7F\u7528\u7B80\u77ED\u4E00\u81F4\u7684\u540D\u79F0\uFF0C\u4E0D\u4E3A\u540C\u4E00\u73B0\u8C61\u62C6\u5206\u547D\u540D\u3002\u826F\u54C1\u586B\u5199normal\uFF1Ahard\u53CAhard_type\u3001confusable\u3001\u7279\u6B8A\u6B63\u5E38\u7EB9\u7406texture\uFF1B\u5E38\u89C4\u826F\u54C1hard\u548Cconfusable\u586Bfalse\u3001\u5176\u4F59\u586Bnull\u3002\u4E0D\u8981\u634F\u9020\u672A\u51FA\u73B0\u7684\u573A\u666F\u6216\u91CD\u590D\u5B9E\u4F8B\uFF0C\u56FE\u8BC1\u4E0D\u8DB3\u65F6complete\u586Bfalse\u5E76\u5199limitation\u3002\u8BC4\u5206\u573A\u666F\u53EA\u8BB0\u5F55\u89C6\u89C9\u4E8B\u5B9E\uFF0C\u4E0D\u81EA\u52A8\u4F5C\u4E3A\u6807\u6CE8\u7591\u70B9\u3002\n\n\u4F60\u662F\u5F53\u524D\u4E3B\u56FE\u7684\u72EC\u7ACB\u5B50 Agent\uFF0C\u89C2\u5BDF\u5F53\u524D\u56FE\u5E76\u63D0\u4EA4\u56FE\u7EA7\u5224\u65AD\u3002\n\n\u9996\u6B21\u6750\u6599\u5305\u62EC\u5B8C\u6574\u539F\u56FE\u3001\u5168\u90E8\u539F\u59CB\u6807\u6CE8\u53CA\u5FC5\u9700\u5C40\u90E8\u3001\u4E0A\u6E38\u7ED3\u679C\u548C\u6240\u9009\u77E5\u8BC6\u3002\u5B9E\u9645\u89C2\u5BDF\u6574\u56FE\u53CA\u5168\u90E8\u5FC5\u9700\u5C40\u90E8\uFF0C\u5148\u72EC\u7ACB\u68C0\u67E5\u5BF9\u5E94\u3001\u8986\u76D6\u3001\u5B9A\u4F4D\u548C\u5B9E\u4F8B\u7EC4\u7EC7\uFF0C\u518D\u6838\u5BF9\u4E0A\u6E38\u5DEE\u5F02\u548C\u77E5\u8BC6\u3002\n\n\u4E0A\u6E38\u6BCF\u6761\u5DEE\u5F02\u6309\u56FE\u8BC1\u5224\u65AD\u652F\u6301\u7591\u70B9\u3001\u4E0D\u652F\u6301\u7591\u70B9\u6216\u8BC1\u636E\u4E0D\u8DB3\u3002\u6240\u9009\u77E5\u8BC6\u9010\u6761\u5224\u65AD\u672C\u56FE\u9002\u7528\u6027\u548C\u53EF\u89C1\u5BF9\u5E94\u5173\u7CFB\uFF0C\u8BC4\u4F30\u6587\u5B57\u8BF4\u660E\u5F53\u524D\u56FE\u7684\u5177\u4F53\u8868\u73B0\u3002\u8FD9\u4E24\u7C7B\u8BC4\u4F30\u5206\u522B\u586B\u5199\u5404\u81EA\u5B57\u6BB5\u3002\n\n\u6709\u72EC\u7ACB\u56FE\u8BC1\u7684\u95EE\u9898\u5B8C\u6574\u8BB0\u5F55\u4E00\u6B21\uFF1B\u5C11\u91CF\u666E\u901A\u89C2\u5BDF\u548C\u89C6\u89C9\u7279\u5F81\u7528\u4E8E\u8DE8\u56FE\u5206\u6790\u3002\u7ED3\u8BBA\u4E3A\u5BA1\u8BA1\u6B63\u5E38\u6216\u53D1\u73B0\u7591\u70B9\u3002\u5FC5\u9700\u89C2\u5BDF\u5C1A\u6709\u7F3A\u53E3\u65F6\uFF0C\u4FDD\u5B58\u771F\u5B9E\u6267\u884C\u72B6\u6001\u548C\u53D6\u8BC1\u7F3A\u53E3\u3002\n\n\u5206\u6790\u7528\u51E0\u53E5\u8BDD\u8BF4\u660E\u770B\u5230\u4E86\u4EC0\u4E48\u3001\u6807\u6CE8\u5982\u4F55\u5BF9\u5E94\u3001\u4E3A\u4F55\u5F97\u51FA\u7ED3\u8BBA\uFF1B\u4F9D\u636E\u53EA\u5217\u672C\u56FE\u53EF\u89C1\u4E8B\u5B9E\u3002\u5C40\u9650\u53EA\u5199\u5B9E\u9645\u5F71\u54CD\u672C\u56FE\u6838\u67E5\u7684\u56FE\u50CF\u53D6\u8BC1\u7F3A\u53E3\uFF0C\u6CA1\u6709\u5219\u586B\u7A7A\u5217\u8868\u3002\u6765\u6E90\u72B6\u6001\u4FDD\u7559\u5728\u4E00\u81F4\u6027\u8BB0\u5F55\uFF0C\u4EFB\u52A1\u8FB9\u754C\u548C\u89D2\u8272\u8BF4\u660E\u4FDD\u7559\u5728\u914D\u7F6E\u4E2D\u3002\n\n\u5F53\u524D\u6750\u6599\u8DB3\u591F\u65F6\u76F4\u63A5audit_commit\u3002\u9700\u8981\u7EE7\u7EED\u8BFB\u5176\u4ED6\u56FE\u7247\u65F6\uFF0C\u5148\u7528audit_observation\u4FDD\u5B58\u5F53\u524D\u5DF2\u770B\u6E05\u7684\u4E8B\u5B9E\u548C\u539F\u56FE\u5F15\u7528\uFF0C\u518D\u91CA\u653E\u8FD9\u4E00\u7EC4\u9644\u4EF6\uFF1B\u540E\u7EED\u4F9D\u9760\u5DF2\u4FDD\u5B58\u6587\u5B57\u4E8B\u5B9E\u63A8\u7406\u3002\u4ECD\u9700\u8054\u5408\u6BD4\u8F83\u7684\u56FE\u50CF\u5728\u540C\u4E00\u8F6E\u8BFB\u53D6\uFF0C\u4E0D\u53CD\u590D\u4EA4\u66FF\u8BFB\u53D6\u76F8\u540C\u56FE\u7247\u3002\u5F15\u7528\u5B9E\u9645\u89C2\u5BDF\u7684\u6240\u5C5E\u5B8C\u6574\u539F\u56FE\u3002\u5B9A\u5411\u590D\u5BA1\u9488\u5BF9\u6307\u5B9A\u51B2\u7A81\u91CD\u65B0\u6838\u67E5\uFF0C\u63D0\u4EA4\u65B0\u7248\u672C\u5E76\u4FDD\u7559\u65E7\u8BB0\u5F55\u3002",
       "exploration": "# \u7EDF\u4E00\u65B9\u5411\u63A2\u7D22 Agent\uFF1A\u5171\u4EAB\u89C6\u89C9\u63A2\u7D22\u89C4\u5219\n\n\u4F60\u662F\u5DE5\u4E1A\u56FE\u50CF\u89C6\u89C9\u65B9\u5411\u63A2\u7D22 Agent\u3002\u4F9D\u636E\u5F53\u524D\u4F5C\u4E1A\u4E2D\u5B9E\u9645\u9001\u8FBE\u7684\u539F\u56FE\u3001\u5408\u6CD5\u6807\u6CE8\u4FE1\u606F\u548C\u5FC5\u8981\u7684\u5C40\u90E8\u56FE\uFF0C\u5728\u56FE\u50CF\u4E4B\u95F4\u5F00\u5C55\u8054\u5408\u89C6\u89C9\u6BD4\u8F83\uFF0C\u53D1\u73B0\u4E0E\u9A8C\u8BC1\u5DE5\u7A0B\u5E08\u53EF\u6267\u884C\u7684\u5019\u9009\u68C0\u67E5\u65B9\u5411\u3002\u6700\u7EC8\u4EA7\u7269\u662F\u9762\u5411\u6574\u4E2A\u4F5C\u4E1A\u8303\u56F4\u7684\u68C0\u67E5\u65B9\u6CD5\uFF0C\u800C\u4E0D\u662F\u7F3A\u9677\u540D\u79F0\u6E05\u5355\u3001\u9010\u56FE\u826F\u5426\u88C1\u51B3\u3001\u6807\u6CE8\u5BA1\u6838\u6216\u6279\u6B21\u65E5\u5FD7\u3002\u5177\u4F53\u8BFB\u56FE\u3001\u76EE\u5F55\u4FEE\u6539\u4E0E\u5B9A\u7A3F\u6743\u9650\u7531\u5F53\u524D\u89D2\u8272\u89C4\u5219\u51B3\u5B9A\u3002\n\n## \u89C6\u89C9\u4E8B\u5B9E\u4E0E\u8BC1\u636E\n\n1. \u4EE5\u539F\u59CB\u50CF\u7D20\u4E3A\u4F9D\u636E\uFF0C\u533A\u5206\u201C\u770B\u5230\u7684\u89C6\u89C9\u73B0\u8C61\u201D\u201C\u6570\u636E\u96C6\u6807\u7B7E\u6216\u4EBA\u5DE5\u6807\u6CE8\u58F0\u79F0\u7684\u5185\u5BB9\u201D\u201C\u5F53\u524D\u65B9\u5411\u76EE\u5F55\u7684\u5DF2\u6709\u4E3B\u5F20\u201D\u3002\u5141\u8BB8\u5229\u7528\u6807\u6CE8\u5B9A\u4F4D\uFF0C\u4F46\u4E0D\u5F97\u628A\u6807\u7B7E\u6216\u65E7\u76EE\u5F55\u76F4\u63A5\u5F53\u6210\u89C6\u89C9\u771F\u76F8\u3002\n2. \u5F53\u524D\u6750\u6599\u4E2D\u7684\u6240\u6709\u539F\u56FE\u90FD\u5E94\u53C2\u4E0E\u6574\u6279\u8054\u5408\u63A2\u7D22\uFF1B\u53EF\u4EE5\u76F4\u63A5\u8DE8\u56FE\u6BD4\u8F83\uFF0C\u4E0D\u89C4\u5B9A\u9010\u5F20\u5904\u7406\u987A\u5E8F\uFF0C\u4E5F\u4E0D\u8981\u6C42\u9010\u5F20\u8F93\u51FA\u5206\u6790\u3002\u5BF9\u4E8E\u4EFB\u4F55\u5177\u4F53\u4E3B\u5F20\uFF0C\u53EA\u5F15\u7528\u5B9E\u9645\u786E\u8BA4\u7684\u56FE\u50CF\u4E8B\u5B9E\uFF0C\u4E0D\u4ECE\u4EE3\u8868\u6027\u56FE\u7247\u63A8\u65AD\u5176\u4ED6\u56FE\u7247\u7684\u7EC6\u8282\u3002\n3. \u5355\u5F20\u56FE\u4E2D\u6E05\u6670\u3001\u53EF\u5B9A\u4F4D\u3001\u53EF\u590D\u6838\u7684\u73B0\u8C61\u53EF\u4EA7\u751F\u5019\u9009\u65B9\u5411\uFF1B\u8DE8\u56FE\u89C4\u5F8B\u3001\u826F\u5F02\u5E38\u533A\u5206\u80FD\u529B\u548C\u6269\u5927\u9002\u7528\u8303\u56F4\uFF0C\u9700\u8981\u76F8\u5E94\u7684\u53EF\u6BD4\u8BC1\u636E\u3002\u6807\u7B7E\u4E0D\u80FD\u72EC\u81EA\u8BC1\u660E\u5C40\u90E8\u7F3A\u9677\u4F4D\u7F6E\u6216\u6210\u56E0\u3002\n4. \u6BD4\u8F83\u65F6\u5173\u6CE8\u53EF\u8FA8\u7ED3\u6784\u3001\u90E8\u4F4D\u3001\u89C6\u89D2\u3001\u6E05\u6670\u5EA6\u548C\u53EF\u89C1\u6761\u4EF6\uFF1B\u5C06\u652F\u6301\u3001\u6B63\u5E38\u5BF9\u7167\u3001\u5B9E\u8D28\u53CD\u4F8B\u3001\u4E0D\u53EF\u6BD4\u8F83\u3001\u89C2\u5BDF\u53D7\u9650\u548C\u672A\u89C2\u5BDF\u4E25\u683C\u533A\u5206\u3002\u6B63\u5E38\u5BF9\u7167\u4E0D\u81EA\u52A8\u6784\u6210\u53CD\u4F8B\uFF0C\u672A\u63D0\u53CA\u4E0D\u4EE3\u8868\u4E0D\u5B58\u5728\u3002\n5. \u4E0D\u51ED\u6587\u4EF6\u540D\u63A8\u65AD\u578B\u53F7\uFF0C\u4E0D\u4EC5\u51ED\u56FE\u50CF\u660E\u6697\u63A8\u65AD\u5DE5\u827A\u6216\u5149\u7167\u6761\u4EF6\uFF0C\u4E0D\u7F16\u9020\u4E0D\u53EF\u89C1\u6750\u8D28\u3001\u6210\u56E0\u3001\u5C3A\u5BF8\u516C\u5DEE\u548C\u5408\u683C\u9608\u503C\u3002\n6. \u540C\u4E00\u56FE\u50CF\u767B\u8BB0\u9879\u7684\u539F\u56FE\u3001\u6807\u6CE8\u3001\u63A9\u819C\u548C\u540C\u6E90\u88C1\u56FE\u4E0D\u662F\u591A\u4EFD\u72EC\u7ACB\u6837\u672C\uFF1B\u4E3B\u52A8\u88C1\u56FE\u4E0D\u662F\u4EBA\u5DE5\u6807\u6CE8\u3002\u4F7F\u7528\u7CFB\u7EDF\u63D0\u4F9B\u7684\u5B8C\u6574\u56FE\u50CF\u8EAB\u4EFD\u5F15\u7528\u8BC1\u636E\uFF0C\u4E0D\u5F97\u6539\u5199\u6216\u731C\u6D4B\u3002\n\n## \u8054\u5408\u63A2\u7D22\u7684\u65B9\u6CD5\n\n- \u4ECE\u53EF\u8FA8\u7ED3\u6784\u4E0E\u76F8\u4E92\u5173\u7CFB\u3001\u6B63\u5E38\u53D8\u5316\u3001\u53EF\u80FD\u7684\u5C40\u90E8\u6216\u6574\u4F53\u5F02\u5E38\u5165\u624B\uFF0C\u5BFB\u627E\u53EF\u4EE5\u5728\u5176\u4ED6\u56FE\u50CF\u4E2D\u91CD\u590D\u5B9A\u4F4D\u3001\u89C2\u5BDF\u6216\u6BD4\u8F83\u7684\u68C0\u67E5\u52A8\u4F5C\u3002\n- \u540C\u65F6\u5B8C\u6210\u201C\u6838\u5BF9\u73B0\u6709\u65B9\u5411\u201D\u548C\u201C\u53D1\u73B0\u76EE\u5F55\u4E4B\u5916\u7684\u65B0\u73B0\u8C61\u201D\u3002\u5DF2\u6709\u5BBD\u6CDB\u7684\u201C\u8868\u9762\u201D\u201C\u8FB9\u7F18\u201D\u65B9\u5411\u4E0D\u662F\u5F3A\u5236\u5206\u7C7B\u8868\uFF1B\u9700\u8981\u4E0D\u540C\u68C0\u67E5\u52A8\u4F5C\u7684\u73B0\u8C61\u4E0D\u5F97\u5F3A\u585E\u5230\u540C\u4E00\u65B9\u5411\u3002\n- \u65B9\u5411\u53EF\u6709\u652F\u6301\u3001\u5BF9\u7167\u3001\u53CD\u4F8B\u3001\u9002\u7528\u8303\u56F4\u548C\u672A\u51B3\u95EE\u9898\uFF1B\u7F3A\u5C11\u540C\u6761\u4EF6\u5BF9\u7167\u65F6\u4FDD\u7559\u5F85\u9A8C\u8BC1\uFF0C\u4E0D\u628A\u5355\u4F8B\u6CDB\u5316\u4E3A\u666E\u904D\u89C4\u5F8B\u3002\n- \u9884\u8BBE\u51B3\u5B9A\u4F18\u5148\u89C2\u5BDF\u7EF4\u5EA6\uFF0C\u4E0D\u6392\u9664\u5176\u4ED6\u6E05\u6670\u800C\u6709\u4EF7\u503C\u7684\u73B0\u8C61\u3002\u6CA1\u6709\u65B0\u53D1\u73B0\u65F6\u4E0D\u5F3A\u5236\u751F\u6210\u65B9\u5411\uFF0C\u4E5F\u4E0D\u8BBE\u7F6E\u65B9\u5411\u6570\u91CF\u76EE\u6807\u6216\u4E0A\u9650\u3002\n- \u6709\u5FC5\u8981\u65F6\u4E3B\u52A8\u8C03\u7528\u88C1\u56FE\u3001\u653E\u5927\u6216\u56DE\u770B\uFF0C\u660E\u786E\u5C40\u90E8\u5728\u539F\u56FE\u4E2D\u7684\u4F4D\u7F6E\uFF1B\u4E0D\u8981\u673A\u68B0\u5730\u4E3A\u6240\u6709\u539F\u56FE\u88C1\u56FE\uFF0C\u4E5F\u4E0D\u8981\u628A\u653E\u5927\u56FE\u53D8\u6210\u72EC\u7ACB\u8BC1\u636E\u3002\n\n## \u5019\u9009\u65B9\u5411\u8D28\u91CF\n\n\u6BCF\u9879\u65B9\u5411\u5E94\u8BF4\u660E\u68C0\u67E5\u5BF9\u8C61\u4E0E\u90E8\u4F4D\u3001\u53EF\u89C1\u73B0\u8C61\u6216\u5173\u7CFB\u3001\u5177\u4F53\u53EF\u91CD\u590D\u7684\u5B9A\u4F4D\u4E0E\u68C0\u67E5\u52A8\u4F5C\u3001\u5B9E\u9645\u6B63\u5E38\u5BF9\u7167\u6216\u7F3A\u5C11\u5BF9\u7167\u7684\u60C5\u51B5\u3001\u652F\u6301\u548C\u91CD\u8981\u53CD\u4F8B\u3001\u8BC1\u636E\u652F\u6301\u7684\u9002\u7528\u8303\u56F4\u53CA\u89C2\u5BDF\u9650\u5236\u548C\u672A\u51B3\u95EE\u9898\u3002\u53EA\u5728\u76F8\u5173\u7ED3\u6784\u548C\u68C0\u67E5\u52A8\u4F5C\u517C\u5BB9\u65F6\u5408\u5E76\uFF1B\u6E05\u6670\u5355\u4F8B\u548C\u672B\u6279\u9996\u6B21\u51FA\u73B0\u7684\u73B0\u8C61\u53EF\u4EE5\u4FDD\u7559\u4E3A\u5F85\u9A8C\u8BC1\u65B9\u5411\u3002\u5141\u8BB8\u7A7A\u65B9\u5411\u7ED3\u679C\u3002\n\n## \u8BC1\u636E\u7CBE\u9009\u4E0E\u8FB9\u754C\n\n\u5B8C\u6574\u56FE\u50CF\u8BC1\u636E\u5173\u7CFB\u5E94\u53EF\u8FFD\u6EAF\u3002\u6700\u7EC8\u5C55\u793A\u53EA\u7CBE\u9009\u6709\u4E0D\u540C\u89E3\u91CA\u4F5C\u7528\u7684\u5C11\u6570\u5173\u952E\u539F\u56FE\uFF0C\u53EF\u4E3A\u8BE5\u539F\u56FE\u9644\u5E26\u5FC5\u8981\u7684\u540C\u6E90\u5C40\u90E8\u653E\u5927\uFF1B\u4E0D\u6309\u826F\u54C1/\u5F02\u5E38\u8EAB\u4EFD\u8BBE\u7F6E\u914D\u989D\uFF0C\u4E0D\u628A\u539F\u56FE\u53CA\u88C1\u56FE\u8BA1\u4E3A\u4E24\u4EFD\u8BC1\u636E\u3002\u7528\u6237\u53EF\u89C1\u7684\u6700\u7EC8\u65B9\u5411\u6B63\u6587\u4E0D\u5F97\u51FA\u73B0\u201C\u672C\u6CE2\u201D\u201C\u7B2C N \u8F6E\u201D\u201C\u672C\u6279\u65B0\u589E\u201D\u7B49\u8FC7\u7A0B\u53D9\u8FF0\uFF0C\u7ED3\u6784\u5316\u7ED3\u679C\u4E2D\u4ECD\u987B\u4FDD\u7559\u771F\u5B9E\u65B9\u5411\u8EAB\u4EFD\u3001\u56FE\u50CF\u8EAB\u4EFD\u548C\u8BC1\u636E\u5173\u7CFB\u3002\n\n\u56FE\u50CF\u6392\u6279\u3001\u5A92\u4F53\u9001\u8FBE\u3001\u8986\u76D6\u72B6\u6001\u3001\u7248\u672C\u63D0\u4EA4\u548C\u5B8C\u6210\u72B6\u6001\u7531\u7A0B\u5E8F\u8D1F\u8D23\u3002\u4E0D\u8981\u628A\u56FE\u7247\u88AB\u7EB3\u5165\u8BF7\u6C42\u7B49\u540C\u4E8E\u81EA\u5DF1\u5DF2\u5145\u5206\u5206\u6790\u5176\u6240\u6709\u7EC6\u8282\uFF0C\u4E5F\u4E0D\u8981\u7528\u6587\u5B57\u56DE\u590D\u66FF\u4EE3\u7CFB\u7EDF\u6B63\u5F0F\u63D0\u4EA4\u3002\u4E0D\u5F97\u8FDB\u884C\u9010\u56FE\u826F\u5426\u88C1\u51B3\u3001\u6807\u6CE8\u4FEE\u6539\u6216\u7C7B\u522B\u771F\u503C\u5BA1\u6838\u3002\u4E0D\u8981\u6C42\u7C7B\u522B\u91CA\u4E49\u3001\u6807\u6CE8\u89C4\u8303\u3001\u8BF4\u660E\u6587\u6863\u6216\u5DE5\u827A\u6807\u51C6\uFF1B\u9650\u5236\u53EA\u63CF\u8FF0\u5B9E\u9645\u53EF\u89C2\u5BDF\u6027\u3001\u53EF\u6BD4\u6761\u4EF6\u548C\u5BF9\u7167\u4E0D\u8DB3\u3002\n\n# \u4E3B Agent\uFF1A\u521D\u63A2\u3001\u6574\u6CE2\u590D\u6838\u4E0E\u5168\u5C40\u5B9A\u7A3F\n\n\u4F60\u662F\u672C\u4F5C\u4E1A\u552F\u4E00\u53EF\u4EE5\u4FEE\u6539\u548C\u53D1\u5E03\u5168\u5C40\u65B9\u5411\u76EE\u5F55\u7684\u4E3B Agent\u3002\u4FDD\u6301\u8FDE\u7EED Session\uFF0C\u8D1F\u8D23\u9996\u6279\u8054\u5408\u63A2\u7D22\u3001\u6574\u6CE2\u7EDF\u4E00\u590D\u6838\u3001\u65B9\u5411\u76EE\u5F55\u4FEE\u8BA2\u3001\u5173\u952E\u8BC1\u636E\u7CBE\u9009\u53CA\u5168\u5C40\u5B9A\u7A3F\u3002\u5B50 Agent \u53EA\u63D0\u4EA4\u89C2\u5BDF\u4E0E\u5EFA\u8BAE\uFF0C\u5176\u7ED3\u8BBA\u4E0D\u81EA\u52A8\u6210\u4E3A\u5168\u5C40\u76EE\u5F55\u7684\u4E8B\u5B9E\u3002\n\n## \u9996\u6279\u8054\u5408\u63A2\u7D22\n\n\u4E00\u6B21\u6027\u4F7F\u7528\u7528\u6237\u624B\u9009\u9996\u6279\u7684\u5B8C\u6574\u56FE\u50CF\u6750\u6599\uFF08\u539F\u56FE\u3001\u539F\u6807\u6CE8\u548C\u5DF2\u63D0\u4F9B\u7684\u5FC5\u8981\u5C40\u90E8\uFF09\uFF0C\u76F4\u63A5\u8FDB\u884C\u6574\u6279\u6BD4\u8F83\uFF0C\u5EFA\u7ACB\u521D\u59CB\u5019\u9009\u65B9\u5411\u76EE\u5F55\u4E0E\u53EF\u8FFD\u6EAF\u8BC1\u636E\u5173\u8054\u3002\u4ECE\u9996\u6279\u5F00\u59CB\u7CBE\u9009\u6709\u89E3\u91CA\u4F5C\u7528\u7684\u5173\u952E\u539F\u56FE\u3002\u65E0\u9700\u9010\u5F20\u5199\u5206\u6790\u62A5\u544A\uFF0C\u4E5F\u4E0D\u8981\u6C42\u9996\u6279\u65B9\u5411\u5747\u6709\u5145\u5206\u5BF9\u7167\u3002\n\n## \u6574\u6CE2\u7EDF\u4E00\u590D\u6838\n\n\u6574\u6CE2\u5B50\u4EE3\u7406\u4F7F\u7528\u540C\u4E00\u76EE\u5F55\u5FEB\u7167\u3002\u6536\u5230\u8BE5\u6CE2\u5168\u90E8\u6709\u6548\u62A5\u544A\u4EE5\u53CA\u88AB\u63A8\u8350\u7684\u5173\u952E\u539F\u56FE/\u540C\u6E90\u5C40\u90E8\u540E\uFF0C\u7EFC\u5408\u5904\u7406\u8BE5\u6CE2\u7684\u65B9\u5411\u8BC1\u636E\u3001\u76F8\u4E92\u51B2\u7A81\u3001\u91CD\u590D\u5019\u9009\u4E0E\u8303\u56F4\u9650\u5236\uFF0C\u4E0D\u7167\u5355\u5408\u5E76\u5B50\u62A5\u544A\uFF0C\u4E5F\u4E0D\u6309\u5B50\u4EE3\u7406\u987A\u5E8F\u9010\u4E00\u4FEE\u6539\u76EE\u5F55\u3002\n\n\u5BF9\u6BCF\u4E2A\u6E05\u6670\u65B0\u5019\u9009\u660E\u786E\u51B3\u5B9A\uFF1A\u65B0\u589E\u72EC\u7ACB\u65B9\u5411\u3001\u517C\u5BB9\u5F52\u5E76\u5230\u5DF2\u6709\u65B9\u5411\u3001\u6216\u8005\u6682\u4E0D\u4FDD\u7559\uFF1B\u6BCF\u9879\u51B3\u5B9A\u5747\u8BF4\u660E\u5B9E\u9645\u4F9D\u636E\uFF0C\u5E76\u4FDD\u5B58\u5019\u9009\u4E0E\u5904\u7406\u5173\u7CFB\uFF0C\u4E0D\u80FD\u9759\u9ED8\u4E22\u5F03\u3002\u5DF2\u6709\u65B9\u5411\u53EF\u4F9D\u636E\u8BC1\u636E\u8865\u5145\u3001\u6269\u5C55\u3001\u6536\u7F29\u3001\u62C6\u5206\u3001\u5408\u5E76\u6216\u64A4\u56DE\u3002\u4EC5\u6709\u201C\u672C\u6CE2\u672A\u51FA\u73B0\u201D\u4E0D\u80FD\u64A4\u56DE\u65B9\u5411\uFF1B\u6682\u4E0D\u4FDD\u7559\u5019\u9009\u4E5F\u4E0D\u80FD\u5220\u9664\u76F8\u5173\u89C2\u5BDF\u4E8B\u5B9E\u3002\n\n\u4E0D\u4F8B\u884C\u91CD\u65B0\u89C2\u5BDF\u5B50\u4EE3\u7406\u6279\u6B21\u7684\u5168\u90E8\u539F\u56FE\uFF0C\u4F46\u5728\u4E0D\u540C\u62A5\u544A\u76F8\u4E92\u51B2\u7A81\u3001\u5355\u4F8B\u53EF\u80FD\u8BEF\u5224\u3001\u91CD\u5927\u65B9\u5411\u6536\u7F29/\u64A4\u56DE\u3001\u62C6\u5206\u5408\u5E76\u4F9D\u636E\u4E0D\u6E05\u7B49\u60C5\u51B5\u4E0B\uFF0C\u5E94\u6309\u9700\u4E3B\u52A8\u56DE\u770B\u76F8\u5173\u539F\u56FE\u53CA\u5C40\u90E8\u3002\u533A\u5206\u81EA\u5DF1\u76F4\u63A5\u770B\u8FC7\u7684\u539F\u56FE\u4E0E\u5B50\u4EE3\u7406\u89C2\u5BDF\u5E76\u7531\u7CFB\u7EDF\u767B\u8BB0\u7684\u539F\u56FE\uFF0C\u4E0D\u8981\u58F0\u79F0\u5168\u90E8\u7531\u81EA\u5DF1\u76F4\u63A5\u89C2\u5BDF\u3002\n\n\u6574\u6CE2\u5B8C\u6210\u5168\u90E8\u5019\u9009\u5904\u7406\u3001\u8BC1\u636E\u5173\u7CFB\u6838\u5BF9\u548C\u7CBE\u9009\u56FE\u66F4\u65B0\u540E\uFF0C\u7EDF\u4E00\u63D0\u4EA4\u4E00\u6B21\u76EE\u5F55\u66F4\u65B0\uFF0C\u4E0B\u4E00\u6CE2\u624D\u80FD\u4F7F\u7528\u65B0\u76EE\u5F55\u3002\u6CA1\u6709\u4F9D\u636E\u5C31\u4E0D\u4E3A\u8FFD\u6C42\u53D8\u5316\u800C\u91CD\u5199\u76EE\u5F55\u3002\n\n## \u8BC1\u636E\u7CBE\u9009\n\n\u4ECE\u9996\u6279\u5F00\u59CB\u6301\u7EED\u7EF4\u62A4\u5173\u952E\u539F\u56FE\uFF0C\u540E\u7EED\u53EF\u8865\u5145\u3001\u66FF\u6362\u3001\u53BB\u91CD\u3002\u9009\u62E9\u53D6\u51B3\u4E8E\u6B63\u5E38\u7ED3\u6784\u3001\u5178\u578B\u73B0\u8C61\u3001\u91CD\u8981\u53CD\u4F8B\u3001\u6DF7\u6DC6\u53CA\u9650\u5236\u7B49\u72EC\u7ACB\u89E3\u91CA\u4F5C\u7528\uFF0C\u826F\u54C1\u4E0D\u5FC5\u7B49\u5230\u6700\u540E\u624D\u9009\uFF0C\u4E5F\u4E0D\u5F3A\u6C42\u826F\u5F02\u5E38\u90FD\u5165\u9009\u3002\u7CBE\u9009\u5C55\u793A\u4E0D\u7B49\u4E8E\u5220\u9664\u5B8C\u6574\u8BC1\u636E\u5173\u7CFB\u3002\n\n## \u5168\u5C40\u5B9A\u7A3F\n\n\u4EC5\u5728\u7A0B\u5E8F\u6838\u9A8C\u8986\u76D6\u3001\u8FDB\u5165\u5B9A\u7A3F\u9636\u6BB5\u540E\uFF0C\u7EFC\u5408\u5F53\u524D\u76EE\u5F55\u3001\u5168\u90E8\u5DF2\u63D0\u4EA4\u7684\u6709\u6548\u8BC1\u636E\u53CA\u672A\u51B3\u95EE\u9898\uFF0C\u590D\u6838\u5404\u65B9\u5411\u7684\u68C0\u67E5\u65B9\u6CD5\u3001\u9002\u7528\u8303\u56F4\u3001\u53CD\u4F8B\u548C\u5173\u952E\u56FE\uFF0C\u6B63\u5F0F\u63D0\u4EA4\u6574\u4E2A\u4F5C\u4E1A\u7684\u6709\u6548\u65B9\u5411\u7ED3\u679C\u3002\u6700\u7EC8\u6B63\u6587\u4E0D\u5199\u6279\u6B21\u8FDB\u5EA6\uFF0C\u4E0D\u4EE5\u4F5C\u4E1A\u5B8C\u6210\u6697\u793A\u4EBA\u7C7B\u5DF2\u786E\u8BA4\u65B9\u5411\u51C6\u786E\u3002\n\n# \u6570\u636E\u7C7B\u578B\u9002\u914D\uFF1ALabelme \u533A\u57DF\u6807\u6CE8\n\n\u672C\u4F5C\u4E1A\u63D0\u4F9B Labelme \u77E9\u5F62\u6216\u591A\u8FB9\u5F62\u4EBA\u5DE5\u533A\u57DF\u6807\u6CE8\uFF0C\u53EF\u80FD\u5305\u542B\u660E\u786E\u7C7B\u522B\u6587\u672C\u3002\n\n1. \u6807\u6CE8\u8BF4\u660E\u6709\u4EBA\u5728\u8BE5\u4F4D\u7F6E\u6807\u51FA\u533A\u57DF\uFF0C\u53EF\u4F5C\u4E3A\u91CD\u70B9\u89C2\u5BDF\u5165\u53E3\uFF0C\u4F46\u533A\u57DF\u5916\u4ECD\u53EF\u5B58\u5728\u503C\u5F97\u63A2\u7D22\u7684\u73B0\u8C61\uFF1B\u6807\u6CE8\u4E0D\u662F\u89C6\u89C9\u771F\u76F8\uFF0C\u7C7B\u522B\u540D\u4E0D\u66FF\u4EE3\u50CF\u7D20\u89C2\u5BDF\u3002\n2. \u5F53\u524D\u4EFB\u52A1\u7684\u4E00\u6B21\u6027\u6279\u6B21\u6750\u6599\u5305\u542B\u5168\u90E8\u539F\u56FE\u3001\u539F\u59CB\u6807\u6CE8\uFF0C\u4EE5\u53CA\u5BF9\u6709\u6548\u533A\u57DF\u6309\u7167\u51BB\u7ED3\u89C4\u5219\u5916\u6269 10% \u540E\u4ECE\u539F\u56FE\u53D6\u5F97\u7684\u5FC5\u8981\u5C40\u90E8\u56FE\u3002\u5C40\u90E8\u56FE\u7528\u4E8E\u8F85\u52A9\u8FA8\u8BA4\uFF0C\u5176\u8EAB\u4EFD\u4ECD\u5C5E\u4E8E\u540C\u4E00\u539F\u56FE\uFF0C\u4E0D\u80FD\u4F5C\u4E3A\u65B0\u6837\u672C\u3002\n3. \u53EF\u4EE5\u5229\u7528\u5DF2\u63D0\u4F9B\u7684\u5C40\u90E8\u56FE\u8FDB\u884C\u6BD4\u8F83\uFF0C\u5FC5\u8981\u65F6\u4ECD\u53EF\u4E3B\u52A8\u88C1\u53D6\u5176\u4ED6\u5B9E\u9645\u9700\u8981\u89C2\u5BDF\u7684\u533A\u57DF\uFF1B\u4E0D\u4FEE\u6539\u539F\u59CB\u6807\u6CE8\uFF0C\u4E0D\u628A\u4E3B\u52A8\u88C1\u56FE\u8BF4\u6210\u4EBA\u5DE5\u6846\u3002\n4. \u4E0D\u6839\u636E\u7C7B\u522B\u7F16\u53F7\u731C\u6D4B\u542B\u4E49\uFF1B\u660E\u786E\u63D0\u4F9B\u7684\u7C7B\u522B\u6587\u672C\u53EF\u4F5C\u80CC\u666F\uFF0C\u4F46\u6700\u7EC8\u65B9\u5411\u63CF\u8FF0\u5B9E\u9645\u53EF\u8FA8\u7684\u90E8\u4F4D\u3001\u73B0\u8C61\u548C\u68C0\u67E5\u52A8\u4F5C\u3002\u591A\u4E2A\u6807\u6CE8\u533A\u4E0D\u5FC5\u4EA7\u751F\u591A\u4E2A\u65B9\u5411\u3002\n5. \u53EA\u6709\u5728\u7CFB\u7EDF\u660E\u786E\u91C7\u7528\u201C\u5408\u6CD5\u7A7A\u6807\u6CE8\u5BF9\u5E94\u826F\u54C1\u201D\u89C4\u5219\u4E14\u6807\u6CE8\u5DF2\u6210\u529F\u89E3\u6790\u65F6\uFF0C\u624D\u53EF\u4EE5\u4F7F\u7528\u8BE5\u826F\u54C1\u8EAB\u4EFD\u4F5C\u4E3A\u5BF9\u7167\u80CC\u666F\u3002\u6807\u6CE8\u7F3A\u5931\u3001\u65E0\u6CD5\u8BFB\u53D6\u3001\u635F\u574F\u6216\u672A\u77E5\uFF0C\u4E0D\u80FD\u81EA\u52A8\u89C6\u4E3A\u7A7A\u6807\u6CE8\uFF0C\u4E5F\u4E0D\u81EA\u52A8\u8BC1\u660E\u539F\u56FE\u6CA1\u6709\u5F02\u5E38\u3002\n6. \u4E0D\u6267\u884C\u6807\u6CE8\u771F\u503C\u88C1\u51B3\u3001\u8865\u6846\u5220\u6846\u3001\u91CD\u6807\u6216\u7C7B\u522B\u66F4\u6539\u5EFA\u8BAE\u3002\u65B9\u5411\u652F\u6301\u3001\u5BF9\u7167\u4E0E\u53CD\u4F8B\u5FC5\u987B\u4EE5\u53EF\u89C1\u5916\u89C2\u53CA\u53EF\u6BD4\u6027\u4E3A\u4F9D\u636E\u3002",
       "knowledge": "\u4F60\u6CBF\u7528\u6237\u51BB\u7ED3\u7684\u6240\u9009\u65B9\u5411\uFF0C\u4ECE\u672C\u573A\u5B8C\u6574\u56FE\u50CF\u6750\u6599\u5F62\u6210\u6761\u4EF6\u6027\u89C6\u89C9\u68C0\u67E5\u5224\u636E\u3002\u4E0A\u6E38\u63A2\u7D22\u7ED3\u8BBA\u53EA\u662F\u95EE\u9898\u6765\u6E90\uFF0C\u5F53\u524D\u77E5\u8BC6\u5FC5\u987B\u6709\u672C\u573A\u5B9E\u9645\u56FE\u50CF\u4F9D\u636E\u3002\u4E0D\u8981\u751F\u6210\u6240\u9009\u65B9\u5411\u4E4B\u5916\u7684\u6E38\u79BB\u77E5\u8BC6\uFF0C\u4E5F\u4E0D\u5BA1\u6838\u7C7B\u522B\u771F\u503C\u6216\u7D22\u53D6\u5DE5\u827A\u6807\u51C6\u3002\n\n\u672C\u6279\u5B8C\u6574\u539F\u56FE\u3001\u539F\u59CB\u6807\u6CE8\u53CA\u6BCF\u4E2A\u6709\u6548\u6807\u6CE8\u5BF9\u5E94\u7684\u5C40\u90E8\u56FE\u4E00\u6B21\u9001\u9F50\u3002Labelme \u4F7F\u7528\u539F\u59CB\u6807\u6CE8\u5B9A\u4F4D\uFF1BOK/NG \u53EA\u6709\u771F\u5B9E\u56FE\u7EA7\u6807\u7B7E\uFF0C\u4E0D\u865A\u6784\u7F3A\u9677\u6846\u3002\u8054\u5408\u6BD4\u8F83\u6574\u6279\u56FE\u50CF\uFF0C\u4E0D\u8981\u6C42\u9010\u56FE\u957F\u62A5\u544A\uFF1B\u4ECD\u4E3A\u6BCF\u5F20\u53EF\u8BFB\u56FE\u7B80\u77ED\u8BB0\u5F55\u5168\u90E8\u6240\u9009\u65B9\u5411\u7684 applicable\u3001not_applicable \u6216 uncertain \u53CA\u4F9D\u636E\u3002\u672A\u89C1\u6240\u67E5\u73B0\u8C61\u4ECD\u53EF\u80FD\u9002\u7528\uFF1B\u53EA\u770B\u6E05\u90E8\u5206\u4E0D\u7B49\u4E8E\u5B8C\u6574\u652F\u6301\uFF0C\u4E0D\u53EF\u89C2\u5BDF\u4E0D\u7B49\u4E8E\u53CD\u4F8B\u3002\n\n\u77E5\u8BC6\u5199\u6E05\u7ED3\u6784\u4E0E\u89C6\u89D2\u3001\u5BF9\u8C61\u4E0E\u90E8\u4F4D\u3001\u6BD4\u8F83\u53C2\u7167\u3001\u68C0\u67E5\u52A8\u4F5C\u3001\u5B9E\u9645\u5141\u8BB8\u53D8\u5316\u3001\u652F\u6301\u548C\u5B9E\u8D28\u53CD\u4F8B\u3001\u9002\u7528\u8303\u56F4\u53CA\u5F85\u9A8C\u8BC1\u95EE\u9898\u3002\u5355\u4F8B\u548C\u672B\u6279\u65B0\u5224\u636E\u53EF\u4EE5\u4FDD\u7559\u6682\u5B9A\uFF0C\u6BCF\u4E2A\u65B9\u5411\u5141\u8BB8\u96F6\u81F3\u591A\u6761\u77E5\u8BC6\uFF1B\u7F3A\u5C11\u53EF\u6BD4\u5BF9\u7167\u5982\u5B9E\u8BF4\u660E\uFF0C\u4E0D\u7F16\u9020\u9608\u503C\u3001\u6210\u56E0\u6216\u7F3A\u9677\u3002\u4E0D\u51ED\u6587\u4EF6\u540D\u63A8\u65AD\u578B\u53F7\uFF0C\u4E0D\u51ED\u660E\u6697\u63A8\u65AD\u5DE5\u827A\uFF0C\u4E0D\u7F16\u9020\u4E0D\u53EF\u89C1\u6750\u8D28\u3001\u5C3A\u5BF8\u6216\u529F\u80FD\u3002\n\n\u6807\u9898\u3001\u7ED3\u8BBA\u3001\u5141\u8BB8\u53D8\u5316\u3001\u9650\u5236\u548C\u6458\u8981\u4E0D\u5806\u653E\u56FE\u50CFID\u3001\u6807\u6CE8ID\u3001\u4F5C\u4E1AID\u3001\u6587\u4EF6\u540D\u6E05\u5355\u6216\u8FDB\u5EA6\u6D41\u6C34\u3002\u771F\u5B9E\u7F16\u53F7\u53EA\u586B\u5199\u7ED3\u6784\u5316\u5F15\u7528\u5B57\u6BB5\u3002\u8BC1\u636E\u5F15\u7528\u53EA\u7528\u5B8C\u6574\u539F\u56FE\uFF1B\u6807\u6CE8\u5C40\u90E8\u3001\u63A9\u819C\u3001\u4E3B\u52A8\u88C1\u56FE\u4EC5\u5E2E\u52A9\u89C2\u5BDF\u548C\u5B9A\u4F4D\uFF0C\u4E0D\u662F\u72EC\u7ACB\u8BC1\u636E\u6216\u72EC\u7ACB\u6837\u672C\u3002\n\n\u9996\u6B21\u5EFA\u7ACB\u6761\u76EE\u5C31\u7CBE\u9009\u80FD\u8BF4\u660E\u4E3B\u5F20\u7684\u5178\u578B\u539F\u56FE\uFF0C\u6BCF\u6CE2\u6839\u636E\u8BC1\u636E\u4FDD\u7559\u3001\u8865\u5145\u6216\u66FF\u6362\uFF0C\u5B9A\u7A3F\u590D\u6838\u5DF2\u6709\u9009\u62E9\uFF0C\u4E0D\u7559\u5230\u6700\u540E\u624D\u9009\u3002\u901A\u5E381\u81F33\u5F20\u3001\u6700\u591A4\u5F20\uFF0C\u6BCF\u5F20\u6709\u4E0D\u540C\u89E3\u91CA\u4F5C\u7528\uFF1B\u4E0D\u6309\u826F\u54C1/\u5F02\u5E38\u8BBE\u914D\u989D\uFF0C\u4E0D\u8981\u6C42\u4E24\u7EC4\u540C\u65F6\u5165\u9009\uFF0C\u6709\u5B9E\u8D28\u53CD\u4F8B\u65F6\u4FDD\u7559\u80FD\u8BF4\u660E\u5B83\u7684\u4EE3\u8868\u3002\u5B8C\u6574\u8BBA\u636E\u4E0E\u7CBE\u9009\u5206\u5F00\u4FDD\u5B58\uFF0C\u4E0D\u80FD\u4EE5\u5C55\u793A\u56FE\u6570\u8BA1\u7B97\u652F\u6301\u5F3A\u5EA6\u3002\n\nsupported\u3001provisional\u3001conflicted \u662F\u5F53\u524D\u8BC1\u636E\u72B6\u6001\uFF0C\u4E0D\u662F\u4EA7\u54C1\u5408\u683C\u6807\u51C6\u6216\u4EBA\u5DE5\u786E\u8BA4\u3002\u4E0D\u5F97\u901A\u8FC7\u65E0\u5173\u826F\u54C1\u51D1\u5BF9\u7167\uFF0C\u4E0D\u4EE5\u6CA1\u6709\u826F\u54C1\u4E3A\u7531\u5426\u5B9A\u5DF2\u6709\u6E05\u6670\u53EF\u89C1\u4E8B\u5B9E\u3002\u8986\u76D6\u4E0E\u5B8C\u6210\u7531\u7A0B\u5E8F\u4F9D\u636E\u771F\u5B9E\u8BF7\u6C42\u548C\u6B63\u5F0F\u63D0\u4EA4\u6838\u9A8C\uFF0C\u4E0D\u9760\u6587\u5B57\u5BA3\u79F0\u3002\n\n# \u4E3B Agent\uFF1A\u77E5\u8BC6\u521D\u63A2\u3001\u6574\u6CE2\u590D\u6838\u4E0E\u5B9A\u7A3F\n\u4F60\u662F\u5168\u5C40\u77E5\u8BC6\u76EE\u5F55\u552F\u4E00\u5199\u5165\u8005\u3002\u5148\u8054\u5408\u89C2\u5BDF\u7A0B\u5E8F\u81EA\u52A8\u62BD\u53D6\u7684\u9996\u6279\uFF0C\u5EFA\u7ACB\u521D\u59CB\u5224\u636E\u53CA\u5178\u578B\u539F\u56FE\u9009\u62E9\u3002\u4E4B\u540E\u7EDF\u4E00\u590D\u6838\u540C\u6CE2\u5168\u90E8\u5B50\u62A5\u544A\uFF0C\u6BD4\u8F83\u652F\u6301\u3001\u53CD\u4F8B\u3001\u5141\u8BB8\u53D8\u5316\u3001\u9650\u5236\u548C\u5019\u9009\uFF0C\u9010\u4E2A\u51B3\u5B9A\u65B0\u589E\u3001\u517C\u5BB9\u5408\u5E76\u6216\u4E0D\u4FDD\u7559\u5E76\u8BF4\u660E\u4F9D\u636E\u3002\u4E0D\u80FD\u628A\u4E0D\u540C\u68C0\u67E5\u52A8\u4F5C\u5F3A\u884C\u5408\u5E76\u3002\n\u4E3B\u590D\u6838\u4F7F\u7528\u62A5\u544A\u548C\u5173\u952E\u539F\u56FE\uFF0C\u4E89\u8BAE\u6216\u4F9D\u636E\u4E0D\u8DB3\u65F6\u6309\u9700\u56DE\u770B\uFF0C\u4E0D\u4F8B\u884C\u91CD\u770B\u6574\u6CE2\u56FE\u50CF\u3002\u6574\u6CE2\u53EA\u6B63\u5F0F\u63D0\u4EA4\u4E00\u6B21\uFF1B\u540C\u65F6\u7EF4\u62A4\u5B8C\u6574\u8BBA\u636E\u3001\u7CBE\u9009\u56FE\u3001\u4E3B\u5F20\u4FEE\u8BA2\u53CA\u9002\u7528\u8303\u56F4\u3002\u6700\u540E\u56DE\u987E\u6240\u6709\u6761\u76EE\u548C\u6240\u9009\u65B9\u5411\uFF0C\u8BF4\u660E\u771F\u5B9E\u4EA7\u51FA\u6216\u96F6\u4EA7\u51FA\uFF0C\u5141\u8BB8\u7A7A\u76EE\u5F55\u3002"
     }
   };
   var consistencyTaskPrompts = {
     "anomaly_detection": {
-      "system": "\u6838\u5BF9\u5DF2\u7ECF\u786E\u8BA4\u540C\u5185\u5BB9\u7684\u4E24\u5F20\u56FE\u7684\u767B\u8BB0\u56FE\u50CF\u7EA7\u6807\u7B7E\u3002\u6807\u7B7E\u76F8\u7B49\u6027\u7531\u7A0B\u5E8F\u6BD4\u8F83\uFF0C\u5408\u6CD5\u6807\u7B7E\u76F8\u540C\u4E3A\u4E00\u81F4\uFF0C\u4E0D\u540C\u4E3A\u56FE\u50CF\u6807\u7B7E\u4E0D\u4E00\u81F4\u3002\n\u4FDD\u7559\u5B9E\u9645\u6807\u7B7E\u548C\u6765\u6E90\u3002\u7F3A\u5C11\u5408\u6CD5\u6807\u7B7E\u65F6\u8BF4\u660E\u5177\u4F53\u6570\u636E\u95EE\u9898\uFF0C\u4E0D\u6839\u636E\u5916\u89C2\u731C\u6D4B\u6807\u7B7E\u3002\n\u7528\u76F4\u767D\u4E2D\u6587\u5199\u5206\u6790\uFF1A\u5148\u7ED9\u5224\u65AD\uFF0C\u518D\u8BF4\u660E\u56FE\u4E0A\u54EA\u4E2A\u4F4D\u7F6E\u3001\u4E24\u4FA7\u5177\u4F53\u6709\u4EC0\u4E48\u5DEE\u522B\u3002\u6BCF\u9879\u4E8B\u5B9E\u8BF4\u4E00\u6B21\u3002\nsummary\u6216explanation\u901A\u5E38\u7528\u4E00\u5230\u4E09\u53E5\uFF1B\u533A\u57DF\u63CF\u8FF0\u53EA\u4FDD\u7559\u80FD\u5E2E\u52A9\u5224\u65AD\u7684\u5F62\u72B6\u3001\u7EBF\u6761\u6216\u7EB9\u7406\u3002\u76F8\u540C\u7EC6\u8282\u7B80\u77ED\u8BF4\u660E\uFF0C\u4E0D\u9010\u9879\u91CD\u590D\u8BC1\u660E\u3002\nlimitations\u53EA\u5199\u5B9E\u9645\u5F71\u54CD\u672C\u6B21\u5224\u65AD\u7684\u95EE\u9898\uFF0C\u4F8B\u5982\u201C\u53F3\u4E0A\u89D2\u5C40\u90E8\u592A\u5C0F\uFF0C\u770B\u4E0D\u6E05\u8FB9\u7F18\u201D\u3002\u770B\u6E05\u4E86\u5C31\u76F4\u63A5\u5224\u65AD\uFF0C\u4E0D\u6DFB\u52A0\u901A\u7528\u514D\u8D23\u58F0\u660E\u3002\n\u6B63\u6587\u4E0D\u7528\u8D44\u683C\u3001\u51BB\u7ED3\u3001\u4E13\u7528\u5BA1\u6838\u3001\u5B9E\u8D28\u6027\u8BC1\u636E\u94FE\u7B49\u6D41\u7A0B\u672F\u8BED\uFF0C\u4E0D\u6284\u5199\u5185\u90E8ID\uFF0C\u4E0D\u5199\u201C\u57FA\u4E8E\u4E0A\u8FF0\u201D\u201C\u5728\u672C\u6B21\u8303\u56F4\u5185\u201D\u201C\u4E0D\u6784\u6210\u5168\u9762\u68C0\u67E5\u201D\u7B49\u5957\u8BDD\u3002",
+      "system": "\u56FE\u50CF\u6309\u672C\u573A\u8BBE\u7F6E\u9650\u5236\u6700\u5927\u8FB9\uFF0C\u4FDD\u6301\u6BD4\u4F8B\u4E14\u4E0D\u653E\u5927\u3002original_size\u548Cannotations\u4F7F\u7528\u539F\u56FE\u5750\u6807\uFF1Bsent_size\u4E3A\u672C\u5E45\u5B9E\u9645\u53D1\u9001\u5C3A\u5BF8\uFF0Cview_annotations\u4E3A\u672C\u5E45\u9001\u56FE\u5750\u6807\uFF0Coriginal_to_sent\u7ED9\u51FA\u539F\u56FE\u5230\u672C\u5E45\u56FE\u7247\u7684\u516D\u53C2\u6570\u53D8\u6362\u3002\u5C40\u90E8\u5148\u4ECE\u539F\u56FE\u88C1\u53D6\u518D\u7F29\u653E\uFF1B\u88C1\u7A97\u8BF7\u6C42\u4ECD\u4F7F\u7528\u539F\u56FE\u5750\u6807\u3002\n\n\u6838\u5BF9\u5DF2\u7ECF\u786E\u8BA4\u540C\u5185\u5BB9\u7684\u4E24\u5F20\u56FE\u7684\u767B\u8BB0\u56FE\u50CF\u7EA7\u6807\u7B7E\u3002\u6807\u7B7E\u76F8\u7B49\u6027\u7531\u7A0B\u5E8F\u6BD4\u8F83\uFF0C\u5408\u6CD5\u6807\u7B7E\u76F8\u540C\u4E3A\u4E00\u81F4\uFF0C\u4E0D\u540C\u4E3A\u56FE\u50CF\u6807\u7B7E\u4E0D\u4E00\u81F4\u3002\n\u4FDD\u7559\u5B9E\u9645\u6807\u7B7E\u548C\u6765\u6E90\u3002\u7F3A\u5C11\u5408\u6CD5\u6807\u7B7E\u65F6\u8BF4\u660E\u5177\u4F53\u6570\u636E\u95EE\u9898\uFF0C\u4E0D\u6839\u636E\u5916\u89C2\u731C\u6D4B\u6807\u7B7E\u3002\n\u7528\u76F4\u767D\u4E2D\u6587\u5199\u5206\u6790\uFF1A\u5148\u7ED9\u5224\u65AD\uFF0C\u518D\u8BF4\u660E\u56FE\u4E0A\u54EA\u4E2A\u4F4D\u7F6E\u3001\u4E24\u4FA7\u5177\u4F53\u6709\u4EC0\u4E48\u5DEE\u522B\u3002\u6BCF\u9879\u4E8B\u5B9E\u8BF4\u4E00\u6B21\u3002\nsummary\u6216explanation\u901A\u5E38\u7528\u4E00\u5230\u4E09\u53E5\uFF1B\u533A\u57DF\u63CF\u8FF0\u53EA\u4FDD\u7559\u80FD\u5E2E\u52A9\u5224\u65AD\u7684\u5F62\u72B6\u3001\u7EBF\u6761\u6216\u7EB9\u7406\u3002\u76F8\u540C\u7EC6\u8282\u7B80\u77ED\u8BF4\u660E\uFF0C\u4E0D\u9010\u9879\u91CD\u590D\u8BC1\u660E\u3002\nlimitations\u53EA\u5199\u5B9E\u9645\u5F71\u54CD\u672C\u6B21\u5224\u65AD\u7684\u95EE\u9898\uFF0C\u4F8B\u5982\u201C\u53F3\u4E0A\u89D2\u5C40\u90E8\u592A\u5C0F\uFF0C\u770B\u4E0D\u6E05\u8FB9\u7F18\u201D\u3002\u770B\u6E05\u4E86\u5C31\u76F4\u63A5\u5224\u65AD\uFF0C\u4E0D\u6DFB\u52A0\u901A\u7528\u514D\u8D23\u58F0\u660E\u3002\n\u6B63\u6587\u4E0D\u7528\u8D44\u683C\u3001\u51BB\u7ED3\u3001\u4E13\u7528\u5BA1\u6838\u3001\u5B9E\u8D28\u6027\u8BC1\u636E\u94FE\u7B49\u6D41\u7A0B\u672F\u8BED\uFF0C\u4E0D\u6284\u5199\u5185\u90E8ID\uFF0C\u4E0D\u5199\u201C\u57FA\u4E8E\u4E0A\u8FF0\u201D\u201C\u5728\u672C\u6B21\u8303\u56F4\u5185\u201D\u201C\u4E0D\u6784\u6210\u5168\u9762\u68C0\u67E5\u201D\u7B49\u5957\u8BDD\u3002",
       "user": "\u8BFB\u53D6\u7A0B\u5E8F\u7684\u56FE\u50CF\u7EA7\u6807\u7B7E\u6BD4\u8F83\u7ED3\u679C\uFF0C\u7B80\u6D01\u8BF4\u660E\u4E24\u4FA7\u6807\u7B7E\u662F\u5426\u76F8\u540C\u3002"
     },
     "bbox_defect": {
-      "system": "\u6BD4\u8F83\u4E3B\u56FE\u4E0E\u5DF2\u7ECF\u786E\u8BA4\u540C\u5185\u5BB9\u7684\u5019\u9009\u56FE\u7684\u77E9\u5F62\u6807\u6CE8\u3002\u7A0B\u5E8F\u8D1F\u8D23\u68C0\u7D22\u3001\u5185\u5BB9\u6838\u5BF9\u3001\u4FDD\u5B58\u548C\u6C47\u603B\uFF1B\u4F60\u76F4\u63A5\u89C2\u5BDF\u672C\u6B21\u63D0\u4F9B\u7684\u539F\u56FE\u3001\u5C40\u90E8\u53CA\u539F\u59CB\u6846\uFF0C\u7ED9\u51FA\u6BCF\u4E2A\u5019\u9009\u7684\u5224\u65AD\u3002\n\u5148\u786E\u8BA4\u6846\u6307\u5411\u7684\u5B9E\u9645\u5BF9\u8C61\uFF0C\u518D\u6BD4\u8F83\u7C7B\u522B\u3001\u6570\u91CF\u548C\u8986\u76D6\u3002\u6309\u201C\u4E3B\u56FE\u76F8\u5BF9\u4E8E\u5019\u9009\u56FE\u201D\u8BB0\u5F55\u516D\u7C7B\u5DEE\u5F02\uFF1A\n- category_mismatch\uFF1A\u540C\u4E00\u5BF9\u8C61\u7C7B\u522B\u4E0D\u540C\u3002\n- extra_annotation\uFF1A\u540C\u4E00\u5185\u5BB9\u5904\u4E3B\u56FE\u6709\u6846\uFF0C\u5019\u9009\u6CA1\u6709\u3002\n- missing_annotation\uFF1A\u540C\u4E00\u5185\u5BB9\u5904\u5019\u9009\u6709\u6846\uFF0C\u4E3B\u56FE\u6CA1\u6709\u3002\n- position_difference\uFF1A\u6846\u660E\u663E\u504F\u79BB\u5BF9\u8C61\u3001\u6F0F\u76D6\u5173\u952E\u90E8\u5206\u6216\u8986\u76D6\u8303\u56F4\u660E\u663E\u6539\u53D8\u3002\n- split\uFF1A\u4E3B\u56FE\u591A\u4E2A\u6846\u5BF9\u5E94\u5019\u9009\u4E00\u4E2A\u6846\u3002\n- merge\uFF1A\u4E3B\u56FE\u4E00\u4E2A\u6846\u5BF9\u5E94\u5019\u9009\u591A\u4E2A\u6846\u3002\n\u540C\u7EC4\u62C6\u5206\u3001\u5408\u5E76\u4E0D\u518D\u91CD\u590D\u8BA1\u591A\u6807\u3001\u5C11\u6807\u3002\u72EC\u7ACB\u7684\u7C7B\u522B\u548C\u4F4D\u7F6E\u95EE\u9898\u53EF\u4EE5\u5E76\u5B58\uFF0C\u540C\u4E00\u5BF9\u8C61\u7684\u4F4D\u7F6E\u95EE\u9898\u53EA\u8BB0\u4E00\u6B21\u3002\n\u5C11\u6570\u50CF\u7D20\u7684\u8FB9\u754C\u53D8\u5316\u3001\u8F7B\u5FAE\u504F\u79FB\u6216\u5C3A\u5BF8\u53D8\u5316\uFF0C\u53EA\u8981\u5B9E\u9645\u8986\u76D6\u57FA\u672C\u76F8\u540C\uFF0C\u5C31\u5224\u4E00\u81F4\u3002\u6781\u5C0F\u5BF9\u8C61\u4E5F\u8981\u770B\u5B9E\u9645\u8986\u76D6\uFF0C\u4E0D\u80FD\u5355\u51ED\u5750\u6807\u5DEE\u6216IoU\u5224\u65AD\u3002\u51E0\u4F55\u6620\u5C04\u53CA\u5BB9\u5DEE\u7531\u7A0B\u5E8F\u63D0\u4F9B\uFF0C\u4E0D\u81EA\u884C\u8BA1\u7B97\u6216\u8BBE\u9608\u503C\u3002\nreviews\u4E2D\u7684\u6BCF\u4E2A\u5019\u9009\u90FD\u8FD4\u56DE\u5224\u65AD\uFF1AEQUIVALENT\u4E3A\u4E00\u81F4\uFF0CMATERIAL\u4E3A\u5DF2\u786E\u8BA4\u5DEE\u5F02\uFF0CUNCERTAIN\u4E3A\u7F3A\u5C11\u5177\u4F53\u5173\u952E\u8BC1\u636E\u3002\u5DF2\u786E\u8BA4\u7684\u95EE\u9898\u5168\u90E8\u5199\u5165issues\uFF0C\u4FDD\u7559\u5176\u4ED6\u786E\u5B9E\u65E0\u6CD5\u5224\u65AD\u7684\u90E8\u5206\u3002\n\u4EC5\u4F7F\u7528\u8F93\u5165\u4E2D\u7684\u6846\u548C\u533A\u57DF\u77ED\u5F15\u7528\uFF0C\u7A0B\u5E8F\u7ED1\u5B9A\u771F\u5B9E\u6765\u6E90\u3002\u5019\u9009\u591A\u6570\u610F\u89C1\u4E0D\u80FD\u51B3\u5B9A\u54EA\u4E00\u4FA7\u6807\u6CE8\u6B63\u786E\u3002\n\u82E5\u65B0\u770B\u5230\u4E24\u4FA7\u5B9E\u9645\u56FE\u50CF\u5185\u5BB9\u4E0D\u540C\uFF0C\u8FD4\u56DEGATE_DISPUTE\u53CA\u5177\u4F53\u5DEE\u522B\uFF0Cissues\u4E3A\u7A7A\uFF1B\u5185\u5BB9\u4E0D\u540C\u4E0D\u80FD\u7B97\u591A\u6807\u6216\u5C11\u6807\u3002\n\u7528\u76F4\u767D\u4E2D\u6587\u5199\u5206\u6790\uFF1A\u5148\u7ED9\u5224\u65AD\uFF0C\u518D\u8BF4\u660E\u56FE\u4E0A\u54EA\u4E2A\u4F4D\u7F6E\u3001\u4E24\u4FA7\u5177\u4F53\u6709\u4EC0\u4E48\u5DEE\u522B\u3002\u6BCF\u9879\u4E8B\u5B9E\u8BF4\u4E00\u6B21\u3002\nsummary\u6216explanation\u901A\u5E38\u7528\u4E00\u5230\u4E09\u53E5\uFF1B\u533A\u57DF\u63CF\u8FF0\u53EA\u4FDD\u7559\u80FD\u5E2E\u52A9\u5224\u65AD\u7684\u5F62\u72B6\u3001\u7EBF\u6761\u6216\u7EB9\u7406\u3002\u76F8\u540C\u7EC6\u8282\u7B80\u77ED\u8BF4\u660E\uFF0C\u4E0D\u9010\u9879\u91CD\u590D\u8BC1\u660E\u3002\nlimitations\u53EA\u5199\u5B9E\u9645\u5F71\u54CD\u672C\u6B21\u5224\u65AD\u7684\u95EE\u9898\uFF0C\u4F8B\u5982\u201C\u53F3\u4E0A\u89D2\u5C40\u90E8\u592A\u5C0F\uFF0C\u770B\u4E0D\u6E05\u8FB9\u7F18\u201D\u3002\u770B\u6E05\u4E86\u5C31\u76F4\u63A5\u5224\u65AD\uFF0C\u4E0D\u6DFB\u52A0\u901A\u7528\u514D\u8D23\u58F0\u660E\u3002\n\u6B63\u6587\u4E0D\u7528\u8D44\u683C\u3001\u51BB\u7ED3\u3001\u4E13\u7528\u5BA1\u6838\u3001\u5B9E\u8D28\u6027\u8BC1\u636E\u94FE\u7B49\u6D41\u7A0B\u672F\u8BED\uFF0C\u4E0D\u6284\u5199\u5185\u90E8ID\uFF0C\u4E0D\u5199\u201C\u57FA\u4E8E\u4E0A\u8FF0\u201D\u201C\u5728\u672C\u6B21\u8303\u56F4\u5185\u201D\u201C\u4E0D\u6784\u6210\u5168\u9762\u68C0\u67E5\u201D\u7B49\u5957\u8BDD\u3002",
-      "user": "\u9010\u5019\u9009\u6BD4\u8F83\u4E24\u56FE\u7684\u539F\u59CB\u6846\u3001\u7C7B\u522B\u4E0E\u5B9E\u9645\u8986\u76D6\uFF0C\u76F4\u63A5\u63D0\u4EA4\u5224\u65AD\u3001\u5168\u90E8\u72EC\u7ACB\u5DEE\u5F02\u548C\u7B80\u6D01\u5206\u6790\u3002\n\u6709\u5DEE\u5F02\u65F6\u5199\u6E05\u4F4D\u7F6E\u548C\u4E24\u4FA7\u7684\u5177\u4F53\u4E0D\u540C\uFF1B\u4E00\u81F4\u65F6\u8BF4\u660E\u51B3\u5B9A\u6027\u4F9D\u636E\u3002\u53EA\u6709\u5B9E\u9645\u7F3A\u5C11\u5173\u952E\u8BC1\u636E\u65F6\u624D\u5199\u65E0\u6CD5\u5224\u65AD\u3002"
+      "system": "\u56FE\u50CF\u6309\u672C\u573A\u8BBE\u7F6E\u9650\u5236\u6700\u5927\u8FB9\uFF0C\u4FDD\u6301\u6BD4\u4F8B\u4E14\u4E0D\u653E\u5927\u3002original_size\u548Cannotations\u4F7F\u7528\u539F\u56FE\u5750\u6807\uFF1Bsent_size\u4E3A\u672C\u5E45\u5B9E\u9645\u53D1\u9001\u5C3A\u5BF8\uFF0Cview_annotations\u4E3A\u672C\u5E45\u9001\u56FE\u5750\u6807\uFF0Coriginal_to_sent\u7ED9\u51FA\u539F\u56FE\u5230\u672C\u5E45\u56FE\u7247\u7684\u516D\u53C2\u6570\u53D8\u6362\u3002\u5C40\u90E8\u5148\u4ECE\u539F\u56FE\u88C1\u53D6\u518D\u7F29\u653E\uFF1B\u88C1\u7A97\u8BF7\u6C42\u4ECD\u4F7F\u7528\u539F\u56FE\u5750\u6807\u3002\n\n\u6BD4\u8F83\u4E3B\u56FE\u4E0E\u5DF2\u7ECF\u786E\u8BA4\u540C\u5185\u5BB9\u7684\u5019\u9009\u56FE\u7684\u77E9\u5F62\u6216\u591A\u8FB9\u5F62\u6807\u6CE8\u3002\u7A0B\u5E8F\u8D1F\u8D23\u68C0\u7D22\u3001\u5185\u5BB9\u6838\u5BF9\u3001\u4FDD\u5B58\u548C\u6C47\u603B\uFF1B\u4F60\u76F4\u63A5\u89C2\u5BDF\u672C\u6B21\u63D0\u4F9B\u7684\u539F\u56FE\u3001\u5C40\u90E8\u53CA\u539F\u59CB\u6807\u6CE8\uFF0C\u7ED9\u51FA\u6BCF\u4E2A\u5019\u9009\u7684\u5224\u65AD\u3002\n\u591A\u8FB9\u5F62\u4EE5polygon\u9876\u70B9\u63CF\u8FF0\u771F\u5B9E\u8F6E\u5ED3\uFF0Cbbox\u4EC5\u4E3A\u5B9A\u4F4D\u548C\u88C1\u526A\u7528\u7684\u5916\u63A5\u6846\uFF1B\u4E0D\u80FD\u7528\u5916\u63A5\u6846\u4EE3\u66FF\u8F6E\u5ED3\u5224\u65AD\u8986\u76D6\u3002\u77E9\u5F62\u548C\u591A\u8FB9\u5F62\u53EF\u5171\u540C\u53C2\u4E0E\u6BD4\u8F83\uFF0C\u5F62\u72B6\u7C7B\u578B\u4E0D\u540C\u672C\u8EAB\u4E0D\u8868\u793A\u6807\u6CE8\u51B2\u7A81\u3002\n\u5148\u786E\u8BA4\u6807\u6CE8\u6307\u5411\u7684\u5B9E\u9645\u5BF9\u8C61\uFF0C\u518D\u6BD4\u8F83\u7C7B\u522B\u3001\u6570\u91CF\u548C\u5B9E\u9645\u533A\u57DF\u8986\u76D6\u3002\u6309\u201C\u4E3B\u56FE\u76F8\u5BF9\u4E8E\u5019\u9009\u56FE\u201D\u8BB0\u5F55\u516D\u7C7B\u5DEE\u5F02\uFF1A\n- category_mismatch\uFF1A\u540C\u4E00\u5BF9\u8C61\u7C7B\u522B\u4E0D\u540C\u3002\n- extra_annotation\uFF1A\u540C\u4E00\u5185\u5BB9\u5904\u4E3B\u56FE\u6709\u6807\u6CE8\uFF0C\u5019\u9009\u6CA1\u6709\u3002\n- missing_annotation\uFF1A\u540C\u4E00\u5185\u5BB9\u5904\u5019\u9009\u6709\u6807\u6CE8\uFF0C\u4E3B\u56FE\u6CA1\u6709\u3002\n- position_difference\uFF1A\u6807\u6CE8\u533A\u57DF\u660E\u663E\u504F\u79BB\u5BF9\u8C61\u3001\u6F0F\u76D6\u5173\u952E\u90E8\u5206\u6216\u8986\u76D6\u8303\u56F4\u660E\u663E\u6539\u53D8\u3002\n- split\uFF1A\u4E3B\u56FE\u591A\u4E2A\u6807\u6CE8\u5BF9\u5E94\u5019\u9009\u4E00\u4E2A\u6807\u6CE8\u3002\n- merge\uFF1A\u4E3B\u56FE\u4E00\u4E2A\u6807\u6CE8\u5BF9\u5E94\u5019\u9009\u591A\u4E2A\u6807\u6CE8\u3002\n\u540C\u7EC4\u62C6\u5206\u3001\u5408\u5E76\u4E0D\u518D\u91CD\u590D\u8BA1\u591A\u6807\u3001\u5C11\u6807\u3002\u72EC\u7ACB\u7684\u7C7B\u522B\u548C\u4F4D\u7F6E\u95EE\u9898\u53EF\u4EE5\u5E76\u5B58\uFF0C\u540C\u4E00\u5BF9\u8C61\u7684\u4F4D\u7F6E\u95EE\u9898\u53EA\u8BB0\u4E00\u6B21\u3002\n\u5C11\u6570\u50CF\u7D20\u7684\u8FB9\u754C\u53D8\u5316\u3001\u8F7B\u5FAE\u504F\u79FB\u6216\u5C3A\u5BF8\u53D8\u5316\uFF0C\u53EA\u8981\u5B9E\u9645\u8986\u76D6\u57FA\u672C\u76F8\u540C\uFF0C\u5C31\u5224\u4E00\u81F4\u3002\u6781\u5C0F\u5BF9\u8C61\u4E5F\u8981\u770B\u5B9E\u9645\u8986\u76D6\uFF0C\u4E0D\u80FD\u5355\u51ED\u5750\u6807\u5DEE\u6216IoU\u5224\u65AD\u3002\u51E0\u4F55\u6620\u5C04\u53CA\u5BB9\u5DEE\u7531\u7A0B\u5E8F\u63D0\u4F9B\uFF0C\u4E0D\u81EA\u884C\u8BA1\u7B97\u6216\u8BBE\u9608\u503C\u3002\nreviews\u4E2D\u7684\u6BCF\u4E2A\u5019\u9009\u90FD\u8FD4\u56DE\u5224\u65AD\uFF1AEQUIVALENT\u4E3A\u4E00\u81F4\uFF0CMATERIAL\u4E3A\u5DF2\u786E\u8BA4\u5DEE\u5F02\uFF0CUNCERTAIN\u4E3A\u7F3A\u5C11\u5177\u4F53\u5173\u952E\u8BC1\u636E\u3002\u5DF2\u786E\u8BA4\u7684\u95EE\u9898\u5168\u90E8\u5199\u5165issues\uFF0C\u4FDD\u7559\u5176\u4ED6\u786E\u5B9E\u65E0\u6CD5\u5224\u65AD\u7684\u90E8\u5206\u3002\n\u4EC5\u4F7F\u7528\u8F93\u5165\u4E2D\u7684\u6807\u6CE8\u548C\u533A\u57DF\u77ED\u5F15\u7528\uFF0C\u7A0B\u5E8F\u7ED1\u5B9A\u771F\u5B9E\u6765\u6E90\u3002\u5019\u9009\u591A\u6570\u610F\u89C1\u4E0D\u80FD\u51B3\u5B9A\u54EA\u4E00\u4FA7\u6807\u6CE8\u6B63\u786E\u3002\n\u82E5\u65B0\u770B\u5230\u4E24\u4FA7\u5B9E\u9645\u56FE\u50CF\u5185\u5BB9\u4E0D\u540C\uFF0C\u8FD4\u56DEGATE_DISPUTE\u53CA\u5177\u4F53\u5DEE\u522B\uFF0Cissues\u4E3A\u7A7A\uFF1B\u5185\u5BB9\u4E0D\u540C\u4E0D\u80FD\u7B97\u591A\u6807\u6216\u5C11\u6807\u3002\n\u7528\u76F4\u767D\u4E2D\u6587\u5199\u5206\u6790\uFF1A\u5148\u7ED9\u5224\u65AD\uFF0C\u518D\u8BF4\u660E\u56FE\u4E0A\u54EA\u4E2A\u4F4D\u7F6E\u3001\u4E24\u4FA7\u5177\u4F53\u6709\u4EC0\u4E48\u5DEE\u522B\u3002\u6BCF\u9879\u4E8B\u5B9E\u8BF4\u4E00\u6B21\u3002\nsummary\u6216explanation\u901A\u5E38\u7528\u4E00\u5230\u4E09\u53E5\uFF1B\u533A\u57DF\u63CF\u8FF0\u53EA\u4FDD\u7559\u80FD\u5E2E\u52A9\u5224\u65AD\u7684\u5F62\u72B6\u3001\u7EBF\u6761\u6216\u7EB9\u7406\u3002\u76F8\u540C\u7EC6\u8282\u7B80\u77ED\u8BF4\u660E\uFF0C\u4E0D\u9010\u9879\u91CD\u590D\u8BC1\u660E\u3002\nlimitations\u53EA\u5199\u5B9E\u9645\u5F71\u54CD\u672C\u6B21\u5224\u65AD\u7684\u95EE\u9898\uFF0C\u4F8B\u5982\u201C\u53F3\u4E0A\u89D2\u5C40\u90E8\u592A\u5C0F\uFF0C\u770B\u4E0D\u6E05\u8FB9\u7F18\u201D\u3002\u770B\u6E05\u4E86\u5C31\u76F4\u63A5\u5224\u65AD\uFF0C\u4E0D\u6DFB\u52A0\u901A\u7528\u514D\u8D23\u58F0\u660E\u3002\n\u6B63\u6587\u4E0D\u7528\u8D44\u683C\u3001\u51BB\u7ED3\u3001\u4E13\u7528\u5BA1\u6838\u3001\u5B9E\u8D28\u6027\u8BC1\u636E\u94FE\u7B49\u6D41\u7A0B\u672F\u8BED\uFF0C\u4E0D\u6284\u5199\u5185\u90E8ID\uFF0C\u4E0D\u5199\u201C\u57FA\u4E8E\u4E0A\u8FF0\u201D\u201C\u5728\u672C\u6B21\u8303\u56F4\u5185\u201D\u201C\u4E0D\u6784\u6210\u5168\u9762\u68C0\u67E5\u201D\u7B49\u5957\u8BDD\u3002",
+      "user": "\u9010\u5019\u9009\u6BD4\u8F83\u4E24\u56FE\u7684\u539F\u59CB\u6807\u6CE8\u3001\u7C7B\u522B\u4E0E\u5B9E\u9645\u533A\u57DF\u8986\u76D6\uFF0C\u76F4\u63A5\u63D0\u4EA4\u5224\u65AD\u3001\u5168\u90E8\u72EC\u7ACB\u5DEE\u5F02\u548C\u7B80\u6D01\u5206\u6790\u3002\n\u6709\u5DEE\u5F02\u65F6\u5199\u6E05\u4F4D\u7F6E\u548C\u4E24\u4FA7\u7684\u5177\u4F53\u4E0D\u540C\uFF1B\u4E00\u81F4\u65F6\u8BF4\u660E\u51B3\u5B9A\u6027\u4F9D\u636E\u3002\u53EA\u6709\u5B9E\u9645\u7F3A\u5C11\u5173\u952E\u8BC1\u636E\u65F6\u624D\u5199\u65E0\u6CD5\u5224\u65AD\u3002"
     }
   };
   var consistencyIdentityPrompts = {
-    "gate_system": "\u5224\u65AD\u4E24\u5F20\u5DE5\u4E1A\u56FE\u50CF\u662F\u5426\u5177\u6709\u76F8\u540C\u7684\u5B9E\u9645\u89C6\u89C9\u5185\u5BB9\u3002\u672C\u6B21\u63D0\u4F9B\u5B8C\u6574\u539F\u56FE\u548C\u53CC\u65B9\u6807\u6CE8\u5173\u6CE8\u533A\u57DF\u7684\u5C40\u90E8\uFF1B\u6807\u6CE8\u53EA\u7528\u4E8E\u5B9A\u4F4D\uFF0C\u7C7B\u522B\u53CA\u6709\u65E0\u6846\u4E0D\u80FD\u51B3\u5B9A\u56FE\u50CF\u5185\u5BB9\u662F\u5426\u76F8\u540C\u3002\n\u5148\u6BD4\u8F83\u5B8C\u6574\u539F\u56FE\uFF0C\u518D\u89C2\u5BDF\u5168\u90E8\u5C40\u90E8\u3002\u5373\u4F7F\u6574\u56FE\u5DF2\u7ECF\u53D1\u73B0\u4E0D\u540C\uFF0C\u4E5F\u8981\u5B8C\u6210\u672C\u6B21\u5B9E\u9645\u9001\u8FBE\u7684\u5C40\u90E8\u89C2\u5BDF\u3002\u53EA\u6709\u4E00\u4FA7\u6709\u6807\u6CE8\u65F6\uFF0C\u4ECD\u9700\u6BD4\u8F83\u53E6\u4E00\u4FA7\u53EF\u9760\u5BF9\u5E94\u4F4D\u7F6E\u7684\u5185\u5BB9\u3002\n\u5E73\u79FB\u3001\u65CB\u8F6C\u3001\u7F29\u653E\u3001\u66DD\u5149\u6216\u538B\u7F29\u53EF\u80FD\u6539\u53D8\u5916\u89C2\u3002\u5BF9\u5E94\u4F4D\u7F6E\u7684\u771F\u5B9E\u5F62\u72B6\u3001\u7EBF\u6761\u6216\u7EB9\u7406\u51FA\u73B0\u65B0\u589E\u3001\u6D88\u5931\u3001\u6539\u53D8\uFF0C\u4E14\u4E0D\u80FD\u7528\u6210\u50CF\u53D8\u5316\u89E3\u91CA\u65F6\uFF0C\u5224content_different\u3002\u4EA7\u54C1\u8F6E\u5ED3\u3001\u80CC\u666F\u76F8\u4F3C\u6216\u80FD\u591F\u914D\u51C6\uFF0C\u4E0D\u80FD\u66FF\u4EE3\u7EC6\u8282\u6BD4\u8F83\u3002\noverview\u586B\u5199same\u3001different\u6216unverified\uFF0C\u5206\u522B\u8868\u793A\u5B9E\u9645\u5185\u5BB9\u76F8\u540C\u3001\u5B9E\u9645\u5185\u5BB9\u4E0D\u540C\u3001\u65E0\u6CD5\u53EF\u9760\u786E\u8BA4\u3002regions\u6309\u8F93\u5165windows\u987A\u5E8F\u9010\u533A\u586B\u5199\u4E00\u4E2A\u5B57\u7B26\uFF1AS\u4E3A\u76F8\u540C\uFF0CD\u4E3A\u4E0D\u540C\uFF0CU\u4E3A\u65E0\u6CD5\u53EF\u9760\u786E\u8BA4\uFF1B\u62FC\u6210\u65E0\u5206\u9694\u7B26\u7684\u5B57\u7B26\u4E32\uFF0C\u957F\u5EA6\u5FC5\u987B\u7B49\u4E8Ewindows\u6570\u91CF\uFF0C\u4F8B\u5982\u4E09\u4E2A\u533A\u57DF\u4F9D\u6B21\u76F8\u540C\u3001\u4E0D\u540C\u3001\u65E0\u6CD5\u786E\u8BA4\u5219\u586B\u5199\u201CSDU\u201D\uFF1B\u6CA1\u6709\u5DF2\u914D\u5BF9\u533A\u57DF\u65F6\u586B\u5199\u7A7A\u5B57\u7B26\u4E32\u3002\u6BCF\u4E2A\u533A\u57DF\u90FD\u8981\u770B\uFF0C\u4E0D\u80FD\u7701\u7565\u6216\u8C03\u6362\u3002\nD\u548CU\u533A\u57DF\u90FD\u8981\u5728details\u4E2D\u6709\u5177\u4F53\u4E8B\u5B9E\uFF0C\u586B\u5199refs\u53CAobservation\uFF1B\u540C\u4E00\u4E8B\u5B9E\u5199\u4E00\u6B21\uFF0Crefs\u5217\u51FA\u5B9E\u9645\u51FA\u73B0\u8BE5\u4E8B\u5B9E\u7684\u5168\u90E8\u533A\u57DF\u3002\u540C\u4E00\u533A\u57DF\u53EF\u5173\u8054\u591A\u4E2A\u72EC\u7ACB\u4E8B\u5B9E\uFF0C\u6BCF\u9879\u7528\u4E00\u53E5\u76F4\u767D\u4E2D\u6587\u8BF4\u660E\u4F4D\u7F6E\u548C\u5177\u4F53\u53D8\u5316\uFF0C\u76F8\u540C\u533A\u57DF\u65E0\u9700\u91CD\u590D\u63CF\u8FF0\u3002unmapped_regions\u9010\u4E00\u4F7F\u7528\u63D0\u4F9B\u7684\u77ED\u5F15\u7528\u586B\u5199\u5B9E\u9645\u5C40\u90E8\u7684\u7B80\u77ED\u89C2\u5BDF\u53CA\u65E0\u6CD5\u5BF9\u5E94\u7684\u539F\u56E0\uFF0C\u4E0D\u628A\u53E6\u4E00\u4FA7\u539F\u56FE\u5F53\u6210\u7F3A\u5931\u7684\u5BF9\u5E94\u88C1\u56FE\u3002\ndetails.refs\u53EA\u7528\u5B9E\u9645\u5DF2\u914D\u5BF9\u5C40\u90E8\u7684r\u7F16\u53F7\uFF0C\u6574\u56FE\u5DEE\u522B\u5199summary\uFF0C\u4E0D\u80FD\u628Aoverview\u5F53\u4F5C\u533A\u57DF\u5F15\u7528\u3002\u540C\u4E00\u5C40\u90E8\u53EF\u5173\u8054\u591A\u4E2A\u72EC\u7ACB\u5DEE\u522B\uFF0C\u4E0D\u80FD\u6F0F\u6389\u3002\u771F\u5B9E\u56FE\u50CF\u3001\u533A\u57DF\u548C\u5A92\u4F53ID\u7531\u7A0B\u5E8F\u7ED1\u5B9A\u3002\u5C40\u90E8\u5C5E\u4E8E\u5BF9\u5E94\u539F\u56FE\uFF0C\u4E0D\u662F\u72EC\u7ACB\u6837\u672C\u3002\nsummary\u7528\u4E00\u4E24\u53E5\u7ED9\u51FA\u6574\u5BF9\u56FE\u50CF\u7684\u5173\u952E\u5224\u65AD\uFF0C\u4E0D\u6C47\u7F16\u9010\u533A\u57DF\u63CF\u8FF0\u3002\u6709\u5DEE\u5F02\u65F6\u6307\u51FA\u5177\u4F53\u4F4D\u7F6E\u53CA\u6709\u65E0\u6216\u5F62\u72B6\u53D8\u5316\uFF0C\u4E0D\u53EA\u5199\u201C\u6697\u6591\u5206\u5E03\u4E0D\u540C\u201D\uFF0C\u4E0D\u673A\u68B0\u91CD\u590D\u201C\u4E0D\u80FD\u7528\u5E73\u79FB\u6216\u66DD\u5149\u89E3\u91CA\u201D\u3002summary\u548Climitations\u7531\u4E24\u4FA7\u5171\u7528\uFF0C\u5FC5\u987B\u4F7F\u7528\u201C\u4E24\u56FE\u201D\u6216\u201C\u4E00\u4FA7\u3001\u53E6\u4E00\u4FA7\u201D\u7684\u5BF9\u79F0\u8868\u8FF0\uFF0C\u4E0D\u4F7F\u7528\u4E3B\u56FE\u3001\u5019\u9009\u3001\u5DE6\u56FE\u6216\u53F3\u56FE\u79F0\u547C\u3002\u4F8B\u5982\u201C\u4E24\u56FE\u53F3\u4E0A\u89D2\u767D\u70B9\u5F62\u72B6\u4E0D\u540C\u201D\u6216\u201C\u4E00\u4FA7\u591A\u51FA\u77ED\u5212\u75D5\uFF0C\u53E6\u4E00\u4FA7\u6CA1\u6709\u201D\u3002\u5173\u7CFB\u65E0\u6CD5\u53EF\u9760\u786E\u8BA4\u6216\u7EC6\u8282\u770B\u4E0D\u6E05\u65F6\u5982\u5B9E\u8BB0\u5F55unverified\u3002\n\u5C40\u90E8\u592A\u5C0F\u3001\u770B\u4E0D\u6E05\u6216\u65E0\u6CD5\u5BF9\u5E94\uFF0C\u53EA\u8BF4\u660E\u8BE5\u533A\u57DF\u672A\u6838\u5B9E\uFF0C\u4E0D\u80FD\u636E\u6B64\u5224content_different\u3002\u6574\u56FE\u5B58\u5728\u72EC\u7ACB\u4E14\u660E\u786E\u7684\u5185\u5BB9\u5DEE\u522B\u65F6\u53EF\u4EE5\u5224\u4E0D\u540C\uFF0C\u4F46summary\u5E94\u5199\u5B9E\u9645\u5DEE\u522B\uFF0C\u65E0\u6CD5\u6BD4\u8F83\u7684\u5C40\u90E8\u53EA\u5199\u5165\u8BE5\u533A\u57DF\u89C2\u5BDF\u548Climitations\u3002\n\u53EA\u6BD4\u8F83\u5B9E\u9645\u50CF\u7D20\u5185\u5BB9\uFF0C\u4E0D\u6839\u636E\u6587\u4EF6\u540D\u3001\u6807\u7B7E\u3001\u53EF\u89C6\u5316\u6846\u7EBF\u6216\u6570\u5B57\u5224\u65AD\u8EAB\u4EFD\u3002\u8F93\u51FA\u7D27\u51D1JSON\uFF0C\u4E0D\u7F29\u8FDB\u6216\u6DFB\u52A0\u591A\u4F59\u7A7A\u767D\u3002\n\u7528\u76F4\u767D\u4E2D\u6587\u5199\u5206\u6790\uFF1A\u5148\u7ED9\u5224\u65AD\uFF0C\u518D\u8BF4\u660E\u56FE\u4E0A\u54EA\u4E2A\u4F4D\u7F6E\u3001\u4E24\u4FA7\u5177\u4F53\u6709\u4EC0\u4E48\u5DEE\u522B\u3002\u6BCF\u9879\u4E8B\u5B9E\u8BF4\u4E00\u6B21\u3002\nsummary\u6216explanation\u901A\u5E38\u7528\u4E00\u5230\u4E09\u53E5\uFF1B\u533A\u57DF\u63CF\u8FF0\u53EA\u4FDD\u7559\u80FD\u5E2E\u52A9\u5224\u65AD\u7684\u5F62\u72B6\u3001\u7EBF\u6761\u6216\u7EB9\u7406\u3002\u76F8\u540C\u7EC6\u8282\u7B80\u77ED\u8BF4\u660E\uFF0C\u4E0D\u9010\u9879\u91CD\u590D\u8BC1\u660E\u3002\nlimitations\u53EA\u5199\u5B9E\u9645\u5F71\u54CD\u672C\u6B21\u5224\u65AD\u7684\u95EE\u9898\uFF0C\u4F8B\u5982\u201C\u53F3\u4E0A\u89D2\u5C40\u90E8\u592A\u5C0F\uFF0C\u770B\u4E0D\u6E05\u8FB9\u7F18\u201D\u3002\u770B\u6E05\u4E86\u5C31\u76F4\u63A5\u5224\u65AD\uFF0C\u4E0D\u6DFB\u52A0\u901A\u7528\u514D\u8D23\u58F0\u660E\u3002\n\u6B63\u6587\u4E0D\u7528\u8D44\u683C\u3001\u51BB\u7ED3\u3001\u4E13\u7528\u5BA1\u6838\u3001\u5B9E\u8D28\u6027\u8BC1\u636E\u94FE\u7B49\u6D41\u7A0B\u672F\u8BED\uFF0C\u4E0D\u6284\u5199\u5185\u90E8ID\uFF0C\u4E0D\u5199\u201C\u57FA\u4E8E\u4E0A\u8FF0\u201D\u201C\u5728\u672C\u6B21\u8303\u56F4\u5185\u201D\u201C\u4E0D\u6784\u6210\u5168\u9762\u68C0\u67E5\u201D\u7B49\u5957\u8BDD\u3002",
+    "gate_system": "\u56FE\u50CF\u6309\u672C\u573A\u8BBE\u7F6E\u9650\u5236\u6700\u5927\u8FB9\uFF0C\u4FDD\u6301\u6BD4\u4F8B\u4E14\u4E0D\u653E\u5927\u3002original_size\u548Cannotations\u4F7F\u7528\u539F\u56FE\u5750\u6807\uFF1Bsent_size\u4E3A\u672C\u5E45\u5B9E\u9645\u53D1\u9001\u5C3A\u5BF8\uFF0Cview_annotations\u4E3A\u672C\u5E45\u9001\u56FE\u5750\u6807\uFF0Coriginal_to_sent\u7ED9\u51FA\u539F\u56FE\u5230\u672C\u5E45\u56FE\u7247\u7684\u516D\u53C2\u6570\u53D8\u6362\u3002\u5C40\u90E8\u5148\u4ECE\u539F\u56FE\u88C1\u53D6\u518D\u7F29\u653E\uFF1B\u88C1\u7A97\u8BF7\u6C42\u4ECD\u4F7F\u7528\u539F\u56FE\u5750\u6807\u3002\n\n\u5224\u65AD\u4E24\u5F20\u5DE5\u4E1A\u56FE\u50CF\u662F\u5426\u5177\u6709\u76F8\u540C\u7684\u5B9E\u9645\u89C6\u89C9\u5185\u5BB9\u3002\u672C\u6B21\u63D0\u4F9B\u5B8C\u6574\u539F\u56FE\u548C\u53CC\u65B9\u6807\u6CE8\u5173\u6CE8\u533A\u57DF\u7684\u5C40\u90E8\uFF1B\u6807\u6CE8\u53EA\u7528\u4E8E\u5B9A\u4F4D\uFF0C\u7C7B\u522B\u53CA\u6709\u65E0\u6846\u4E0D\u80FD\u51B3\u5B9A\u56FE\u50CF\u5185\u5BB9\u662F\u5426\u76F8\u540C\u3002\n\u5148\u6BD4\u8F83\u5B8C\u6574\u539F\u56FE\uFF0C\u518D\u89C2\u5BDF\u5168\u90E8\u5C40\u90E8\u3002\u5373\u4F7F\u6574\u56FE\u5DF2\u7ECF\u53D1\u73B0\u4E0D\u540C\uFF0C\u4E5F\u8981\u5B8C\u6210\u672C\u6B21\u5B9E\u9645\u9001\u8FBE\u7684\u5C40\u90E8\u89C2\u5BDF\u3002\u53EA\u6709\u4E00\u4FA7\u6709\u6807\u6CE8\u65F6\uFF0C\u4ECD\u9700\u6BD4\u8F83\u53E6\u4E00\u4FA7\u53EF\u9760\u5BF9\u5E94\u4F4D\u7F6E\u7684\u5185\u5BB9\u3002\n\u5E73\u79FB\u3001\u65CB\u8F6C\u3001\u7F29\u653E\u3001\u66DD\u5149\u6216\u538B\u7F29\u53EF\u80FD\u6539\u53D8\u5916\u89C2\u3002\u5BF9\u5E94\u4F4D\u7F6E\u7684\u771F\u5B9E\u5F62\u72B6\u3001\u7EBF\u6761\u6216\u7EB9\u7406\u51FA\u73B0\u65B0\u589E\u3001\u6D88\u5931\u3001\u6539\u53D8\uFF0C\u4E14\u4E0D\u80FD\u7528\u6210\u50CF\u53D8\u5316\u89E3\u91CA\u65F6\uFF0C\u5224content_different\u3002\u4EA7\u54C1\u8F6E\u5ED3\u3001\u80CC\u666F\u76F8\u4F3C\u6216\u80FD\u591F\u914D\u51C6\uFF0C\u4E0D\u80FD\u66FF\u4EE3\u7EC6\u8282\u6BD4\u8F83\u3002\noverview\u586B\u5199same\u3001different\u6216unverified\uFF0C\u5206\u522B\u8868\u793A\u5B9E\u9645\u5185\u5BB9\u76F8\u540C\u3001\u5B9E\u9645\u5185\u5BB9\u4E0D\u540C\u3001\u65E0\u6CD5\u53EF\u9760\u786E\u8BA4\u3002regions\u6309\u8F93\u5165windows\u987A\u5E8F\u9010\u533A\u586B\u5199\u4E00\u4E2A\u5B57\u7B26\uFF1AS\u4E3A\u76F8\u540C\uFF0CD\u4E3A\u4E0D\u540C\uFF0CU\u4E3A\u65E0\u6CD5\u53EF\u9760\u786E\u8BA4\uFF1B\u62FC\u6210\u65E0\u5206\u9694\u7B26\u7684\u5B57\u7B26\u4E32\uFF0C\u957F\u5EA6\u5FC5\u987B\u7B49\u4E8Ewindows\u6570\u91CF\uFF0C\u4F8B\u5982\u4E09\u4E2A\u533A\u57DF\u4F9D\u6B21\u76F8\u540C\u3001\u4E0D\u540C\u3001\u65E0\u6CD5\u786E\u8BA4\u5219\u586B\u5199\u201CSDU\u201D\uFF1B\u6CA1\u6709\u5DF2\u914D\u5BF9\u533A\u57DF\u65F6\u586B\u5199\u7A7A\u5B57\u7B26\u4E32\u3002\u6BCF\u4E2A\u533A\u57DF\u90FD\u8981\u770B\uFF0C\u4E0D\u80FD\u7701\u7565\u6216\u8C03\u6362\u3002\nD\u548CU\u533A\u57DF\u90FD\u8981\u5728details\u4E2D\u6709\u5177\u4F53\u4E8B\u5B9E\uFF0C\u586B\u5199refs\u53CAobservation\uFF1B\u540C\u4E00\u4E8B\u5B9E\u5199\u4E00\u6B21\uFF0Crefs\u5217\u51FA\u5B9E\u9645\u51FA\u73B0\u8BE5\u4E8B\u5B9E\u7684\u5168\u90E8\u533A\u57DF\u3002\u540C\u4E00\u533A\u57DF\u53EF\u5173\u8054\u591A\u4E2A\u72EC\u7ACB\u4E8B\u5B9E\uFF0C\u6BCF\u9879\u7528\u4E00\u53E5\u76F4\u767D\u4E2D\u6587\u8BF4\u660E\u4F4D\u7F6E\u548C\u5177\u4F53\u53D8\u5316\uFF0C\u76F8\u540C\u533A\u57DF\u65E0\u9700\u91CD\u590D\u63CF\u8FF0\u3002unmapped_regions\u9010\u4E00\u4F7F\u7528\u63D0\u4F9B\u7684\u77ED\u5F15\u7528\u586B\u5199\u5B9E\u9645\u5C40\u90E8\u7684\u7B80\u77ED\u89C2\u5BDF\u53CA\u65E0\u6CD5\u5BF9\u5E94\u7684\u539F\u56E0\uFF0C\u4E0D\u628A\u53E6\u4E00\u4FA7\u539F\u56FE\u5F53\u6210\u7F3A\u5931\u7684\u5BF9\u5E94\u88C1\u56FE\u3002\ndetails.refs\u53EA\u7528\u5B9E\u9645\u5DF2\u914D\u5BF9\u5C40\u90E8\u7684r\u7F16\u53F7\uFF0C\u6574\u56FE\u5DEE\u522B\u5199summary\uFF0C\u4E0D\u80FD\u628Aoverview\u5F53\u4F5C\u533A\u57DF\u5F15\u7528\u3002\u540C\u4E00\u5C40\u90E8\u53EF\u5173\u8054\u591A\u4E2A\u72EC\u7ACB\u5DEE\u522B\uFF0C\u4E0D\u80FD\u6F0F\u6389\u3002\u771F\u5B9E\u56FE\u50CF\u3001\u533A\u57DF\u548C\u5A92\u4F53ID\u7531\u7A0B\u5E8F\u7ED1\u5B9A\u3002\u5C40\u90E8\u5C5E\u4E8E\u5BF9\u5E94\u539F\u56FE\uFF0C\u4E0D\u662F\u72EC\u7ACB\u6837\u672C\u3002\nsummary\u7528\u4E00\u4E24\u53E5\u7ED9\u51FA\u6574\u5BF9\u56FE\u50CF\u7684\u5173\u952E\u5224\u65AD\uFF0C\u4E0D\u6C47\u7F16\u9010\u533A\u57DF\u63CF\u8FF0\u3002\u6709\u5DEE\u5F02\u65F6\u6307\u51FA\u5177\u4F53\u4F4D\u7F6E\u53CA\u6709\u65E0\u6216\u5F62\u72B6\u53D8\u5316\uFF0C\u4E0D\u53EA\u5199\u201C\u6697\u6591\u5206\u5E03\u4E0D\u540C\u201D\uFF0C\u4E0D\u673A\u68B0\u91CD\u590D\u201C\u4E0D\u80FD\u7528\u5E73\u79FB\u6216\u66DD\u5149\u89E3\u91CA\u201D\u3002summary\u548Climitations\u7531\u4E24\u4FA7\u5171\u7528\uFF0C\u5FC5\u987B\u4F7F\u7528\u201C\u4E24\u56FE\u201D\u6216\u201C\u4E00\u4FA7\u3001\u53E6\u4E00\u4FA7\u201D\u7684\u5BF9\u79F0\u8868\u8FF0\uFF0C\u4E0D\u4F7F\u7528\u4E3B\u56FE\u3001\u5019\u9009\u3001\u5DE6\u56FE\u6216\u53F3\u56FE\u79F0\u547C\u3002\u4F8B\u5982\u201C\u4E24\u56FE\u53F3\u4E0A\u89D2\u767D\u70B9\u5F62\u72B6\u4E0D\u540C\u201D\u6216\u201C\u4E00\u4FA7\u591A\u51FA\u77ED\u5212\u75D5\uFF0C\u53E6\u4E00\u4FA7\u6CA1\u6709\u201D\u3002\u5173\u7CFB\u65E0\u6CD5\u53EF\u9760\u786E\u8BA4\u6216\u7EC6\u8282\u770B\u4E0D\u6E05\u65F6\u5982\u5B9E\u8BB0\u5F55unverified\u3002\n\u5C40\u90E8\u592A\u5C0F\u3001\u770B\u4E0D\u6E05\u6216\u65E0\u6CD5\u5BF9\u5E94\uFF0C\u53EA\u8BF4\u660E\u8BE5\u533A\u57DF\u672A\u6838\u5B9E\uFF0C\u4E0D\u80FD\u636E\u6B64\u5224content_different\u3002\u6574\u56FE\u5B58\u5728\u72EC\u7ACB\u4E14\u660E\u786E\u7684\u5185\u5BB9\u5DEE\u522B\u65F6\u53EF\u4EE5\u5224\u4E0D\u540C\uFF0C\u4F46summary\u5E94\u5199\u5B9E\u9645\u5DEE\u522B\uFF0C\u65E0\u6CD5\u6BD4\u8F83\u7684\u5C40\u90E8\u53EA\u5199\u5165\u8BE5\u533A\u57DF\u89C2\u5BDF\u548Climitations\u3002\n\u53EA\u6BD4\u8F83\u5B9E\u9645\u50CF\u7D20\u5185\u5BB9\uFF0C\u4E0D\u6839\u636E\u6587\u4EF6\u540D\u3001\u6807\u7B7E\u3001\u53EF\u89C6\u5316\u6846\u7EBF\u6216\u6570\u5B57\u5224\u65AD\u8EAB\u4EFD\u3002\u8F93\u51FA\u7D27\u51D1JSON\uFF0C\u4E0D\u7F29\u8FDB\u6216\u6DFB\u52A0\u591A\u4F59\u7A7A\u767D\u3002\n\u7528\u76F4\u767D\u4E2D\u6587\u5199\u5206\u6790\uFF1A\u5148\u7ED9\u5224\u65AD\uFF0C\u518D\u8BF4\u660E\u56FE\u4E0A\u54EA\u4E2A\u4F4D\u7F6E\u3001\u4E24\u4FA7\u5177\u4F53\u6709\u4EC0\u4E48\u5DEE\u522B\u3002\u6BCF\u9879\u4E8B\u5B9E\u8BF4\u4E00\u6B21\u3002\nsummary\u6216explanation\u901A\u5E38\u7528\u4E00\u5230\u4E09\u53E5\uFF1B\u533A\u57DF\u63CF\u8FF0\u53EA\u4FDD\u7559\u80FD\u5E2E\u52A9\u5224\u65AD\u7684\u5F62\u72B6\u3001\u7EBF\u6761\u6216\u7EB9\u7406\u3002\u76F8\u540C\u7EC6\u8282\u7B80\u77ED\u8BF4\u660E\uFF0C\u4E0D\u9010\u9879\u91CD\u590D\u8BC1\u660E\u3002\nlimitations\u53EA\u5199\u5B9E\u9645\u5F71\u54CD\u672C\u6B21\u5224\u65AD\u7684\u95EE\u9898\uFF0C\u4F8B\u5982\u201C\u53F3\u4E0A\u89D2\u5C40\u90E8\u592A\u5C0F\uFF0C\u770B\u4E0D\u6E05\u8FB9\u7F18\u201D\u3002\u770B\u6E05\u4E86\u5C31\u76F4\u63A5\u5224\u65AD\uFF0C\u4E0D\u6DFB\u52A0\u901A\u7528\u514D\u8D23\u58F0\u660E\u3002\n\u6B63\u6587\u4E0D\u7528\u8D44\u683C\u3001\u51BB\u7ED3\u3001\u4E13\u7528\u5BA1\u6838\u3001\u5B9E\u8D28\u6027\u8BC1\u636E\u94FE\u7B49\u6D41\u7A0B\u672F\u8BED\uFF0C\u4E0D\u6284\u5199\u5185\u90E8ID\uFF0C\u4E0D\u5199\u201C\u57FA\u4E8E\u4E0A\u8FF0\u201D\u201C\u5728\u672C\u6B21\u8303\u56F4\u5185\u201D\u201C\u4E0D\u6784\u6210\u5168\u9762\u68C0\u67E5\u201D\u7B49\u5957\u8BDD\u3002",
     "gate_user": "\u6838\u5BF9\u6BCF\u5BF9\u5B8C\u6574\u539F\u56FE\u548C\u5168\u90E8\u5C40\u90E8\uFF0C\u9010\u533A\u8FD4\u56DE\u5224\u65AD\u3002\u7528\u4E00\u53E5\u76F4\u767D\u4E2D\u6587\u8BF4\u660E\u5173\u952E\u4F9D\u636E\uFF1B\u53EA\u5BF9\u4E0D\u540C\u6216\u65E0\u6CD5\u786E\u8BA4\u7684\u533A\u57DF\u8865\u5145\u5177\u4F53\u4E8B\u5B9E\uFF0C\u76F8\u540C\u7EC6\u8282\u4E0D\u91CD\u590D\u63CF\u8FF0\u3002",
     "gate_examples": "\u4EE5\u4E0B\u53EA\u662F\u5224\u65AD\u793A\u4F8B\uFF0C\u4E0D\u662F\u5F53\u524D\u56FE\u50CF\u4E8B\u5B9E\uFF1A\n1. \u5BF9\u5E94\u4F4D\u7F6E\u4E00\u56FE\u591A\u51FA\u4E00\u6761\u7EBF\uFF0C\u53E6\u4E00\u56FE\u786E\u5B9E\u6CA1\u6709\uFF1Adifferent\uFF0C\u4E0D\u7B97\u6807\u6CE8\u5C11\u6807\u3002\n2. \u4E24\u56FE\u8BE5\u5904\u7EBF\u6761\u3001\u7EB9\u7406\u76F8\u540C\uFF0C\u4F46\u53EA\u6709\u4E00\u4FA7\u6709\u6846\uFF1A\u56FE\u50CF\u540C\u5185\u5BB9\uFF0C\u6807\u6CE8\u4EA4\u540E\u7EED\u6BD4\u8F83\u3002\n3. \u5E73\u79FB\u6216\u66DD\u5149\u53D8\u5316\u540E\uFF0C\u53EF\u9760\u5BF9\u5E94\u4F4D\u7F6E\u7684\u7EC6\u8282\u4ECD\u76F8\u540C\uFF1Asame\u3002\n4. \u67D0\u4FA7\u5BF9\u5E94\u4F4D\u7F6E\u627E\u4E0D\u5230\u6216\u5C40\u90E8\u592A\u6A21\u7CCA\uFF1Aunverified\uFF0C\u8BF4\u660E\u5177\u4F53\u539F\u56E0\u3002\n5. \u6574\u56FE\u8F6E\u5ED3\u76F8\u540C\uFF0C\u4F46\u5C40\u90E8\u5212\u75D5\u7684\u5F62\u72B6\u4E0D\u540C\uFF1Adifferent\u3002"
   };
@@ -62316,6 +62326,11 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
   var consistencyImageGroups = { NO_CANDIDATES: "\u65E0\u5019\u9009", NO_ELIGIBLE_CANDIDATES: "\u65E0\u6709\u6548\u5019\u9009", PROGRAM_CONSISTENT: "\u4E00\u81F4" };
   var initialConsistencyFilters = { search: "", model: "all", agreement: "all", review: "all" };
   var ConsistencyView = class {
+    static programConclusion(categories, fallback) {
+      const labels = conflictCategoryLabels;
+      const primary = [...categories].sort((left, right) => conflictCategoryPriorities[left] - conflictCategoryPriorities[right])[0] ?? fallback;
+      return labels[primary] ?? primary;
+    }
     static modelConclusion(value, verdict) {
       if (verdict === "EQUIVALENT") return "EQUIVALENT";
       return value && Object.hasOwn(modelConclusionLabels, value) ? value : "";
@@ -62355,12 +62370,13 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       const checkId = "job_id" in source ? source.job_id : void 0;
       return items.map((item) => ({
         id: item.group_id,
+        sampleId: item.anchor.sample.sample_id,
         checkId,
         reference: "job_id" in source ? { job_id: source.job_id, anchor_id: item.group_id } : { query_id: source.query_id, kind: "conflicts", group_id: item.group_id, facts_state: item.facts_state },
         image: item.anchor,
         candidateCount: item.candidate_count,
         types: checkId ? item.conflict_categories : conflictCategories.filter((category) => item.conflict_categories.includes(category) || item.model_categories.includes(category)),
-        type: item.annotation_conclusion,
+        type: this.programConclusion(item.conflict_categories, item.annotation_conclusion),
         filename: item.anchor.sample.relative_path.split("/").pop(),
         url: this.media(item.anchor, true),
         fullUrl: this.media(item.anchor),
@@ -62370,7 +62386,8 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
         review: item.review_state,
         model: {
           status: item.model_state === "MATERIAL" ? "conflict" : item.model_state === "EQUIVALENT" ? "no_conflict" : "unknown",
-          modelType: this.modelConclusion(item.model_conclusion, item.model_state)
+          modelType: this.modelConclusion(item.model_conclusion, item.model_state),
+          identityConclusion: null
         },
         rawItem: item,
         agreement: this.agreement(item.annotation_conclusion, this.modelConclusion(item.model_conclusion, item.model_state))
@@ -62379,7 +62396,8 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
     static imageCards(runId, items) {
       return items.map(({ sample, summary, image, review_state, model_filter, agreement }) => ({
         id: sample.sample_id,
-        type: summary.program_conclusion,
+        sampleId: sample.sample_id,
+        type: this.programConclusion(["MODEL_REVIEWED", "PROGRAM_REVIEWED"].includes(summary.reason) ? summary.original_categories : [], summary.program_conclusion),
         reason: summary.reason,
         filename: (image?.sample.relative_path || sample.sample_id.slice(sample.sample_id.indexOf(":") + 1)).split("/").pop(),
         url: image ? this.media(image, true) : mediaUrl(sample, "thumbnail"),
@@ -62394,7 +62412,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
         model: {
           status: summary.reason === "MODEL_REVIEWED" && summary.verdict === "MATERIAL" ? "conflict" : summary.reason === "MODEL_REVIEWED" && summary.verdict === "EQUIVALENT" ? "no_conflict" : "unknown",
           modelType: model_filter || "",
-          label: summary.annotation_review_label
+          identityConclusion: summary.reason === "NO_ELIGIBLE_CANDIDATES" && summary.identity_model_reviewed ? "\u65E0\u6709\u6548\u5019\u9009" : null
         }
       }));
     }
@@ -69208,6 +69226,33 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     ) });
   }
 
+  // src/client/components/ModelImageSizeSetting.tsx
+  var import_jsx_runtime99 = __require("react/jsx-runtime");
+  function ModelImageSizeSetting({ value, onSave }) {
+    return /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)(import_jsx_runtime99.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(
+        ModuleSelectSetting,
+        {
+          label: "\u56FE\u50CF\u5927\u5C0F",
+          value: value === null ? "original" : "limited",
+          options: [{ value: "original", label: "\u539F\u56FE\u5C3A\u5BF8" }, { value: "limited", label: "\u81EA\u5B9A\u4E49\u6700\u5927\u8FB9" }],
+          onChange: (mode) => onSave(mode === "original" ? null : 2048)
+        }
+      ),
+      value !== null && /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(
+        ModuleNumberSetting,
+        {
+          label: "\u6700\u5927\u8FB9\uFF08\u50CF\u7D20\uFF09",
+          value,
+          min: 1,
+          step: 1,
+          validationMessage: "\u6700\u5927\u8FB9\u9700\u8981\u4E3A\u6B63\u6574\u6570",
+          onSave
+        }
+      )
+    ] });
+  }
+
   // src/client/styles/module-settings.ts
   var moduleSettingsStyles = `
 .iad-module-settings{min-width:0;width:100%;color:var(--dsw-alias-label-primary);font-family:inherit;font-size:14px;line-height:22px}
@@ -69240,14 +69285,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 `;
 
   // src/client/components/ModuleSettingsSection.tsx
-  var import_jsx_runtime99 = __require("react/jsx-runtime");
+  var import_jsx_runtime100 = __require("react/jsx-runtime");
   function ModuleSettingsSection({ module }) {
     const { settings, save, retry, loading, saving, saved, error: error3 } = useModuleSettings(module);
-    return /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)("section", { className: "iad-module-settings", "aria-label": `${businessModules[module]}\u8BBE\u7F6E`, "data-module-settings": module, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("style", { children: moduleSettingsStyles }),
-      loading && !settings ? /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u8BBE\u7F6E\u2026" }) : settings && /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(ModuleModelFields, { settings, save }),
-        "batch_size" in settings && /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(import_jsx_runtime99.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("section", { className: "iad-module-settings", "aria-label": `${businessModules[module]}\u8BBE\u7F6E`, "data-module-settings": module, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("style", { children: moduleSettingsStyles }),
+      loading && !settings ? /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u8BBE\u7F6E\u2026" }) : settings && /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(ModuleModelFields, { settings, save }),
+        "batch_size" in settings && /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(import_jsx_runtime100.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
           ModuleNumberSetting,
           {
             label: module === "audit" ? "\u4E3B Agent \u8054\u5408\u5206\u6790\u95F4\u9694" : module === "exploration" ? "\u540E\u7EED\u6BCF\u6279\u56FE\u50CF\u6570" : "\u6BCF\u6279\u56FE\u50CF\u6570",
@@ -69259,8 +69304,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             onSave: (batch_size) => save({ batch_size })
           }
         ) }),
-        "sampling_ratio" in settings && /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)(import_jsx_runtime99.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(
+        "sampling_ratio" in settings && /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)(import_jsx_runtime100.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
             ModuleNumberSetting,
             {
               label: "\u826F\u54C1\u62BD\u53D6\u6743\u91CD",
@@ -69271,7 +69316,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               onSave: (normal) => save({ sampling_ratio: { ...settings.sampling_ratio, normal } })
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
             ModuleNumberSetting,
             {
               label: "\u5F02\u5E38\u54C1\u62BD\u53D6\u6743\u91CD",
@@ -69283,7 +69328,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             }
           )
         ] }),
-        "concurrency" in settings && /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(
+        "concurrency" in settings && /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
           ModuleNumberSetting,
           {
             label: module === "exploration" || module === "knowledge" ? "\u5E76\u884C\u89C2\u5BDF\u6279\u6B21\u6570" : "\u540C\u65F6\u8FD0\u884C\u7684\u5B50 Agent \u6570\u91CF",
@@ -69294,7 +69339,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             onSave: (concurrency) => save({ concurrency })
           }
         ),
-        module !== "audit" && "whole_image_max_side" in settings && /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(import_jsx_runtime99.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(
+        module === "audit" && "whole_image_max_side" in settings && /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+          ModelImageSizeSetting,
+          {
+            value: settings.whole_image_max_side,
+            onSave: (whole_image_max_side) => save({ whole_image_max_side })
+          }
+        ),
+        module !== "audit" && "whole_image_max_side" in settings && /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(import_jsx_runtime100.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
           ModuleSelectSetting,
           {
             label: "\u6574\u56FE\u8F93\u5165\u5206\u8FA8\u7387",
@@ -69305,9 +69357,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             options: [{ value: "original", label: "\u4F7F\u7528\u539F\u56FE" }]
           }
         ) }),
-        "quality_score_weights" in settings && /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)(import_jsx_runtime99.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("h3", { children: "\u7EFC\u5408\u5F97\u5206" }),
-          [["consistency", "\u6570\u636E\u4E00\u81F4\u6027"], ["diversity", "\u6570\u636E\u591A\u6837\u6027"], ["redundancy", "\u6570\u636E\u5197\u4F59\u5EA6"]].map(([key2, label]) => /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(
+        "quality_score_weights" in settings && /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)(import_jsx_runtime100.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("h3", { children: "\u7EFC\u5408\u5F97\u5206" }),
+          [["consistency", "\u6570\u636E\u4E00\u81F4\u6027"], ["diversity", "\u6570\u636E\u591A\u6837\u6027"], ["redundancy", "\u6570\u636E\u5197\u4F59\u5EA6"]].map(([key2, label]) => /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
             ModuleNumberSetting,
             {
               label: `${label}\u7CFB\u6570`,
@@ -69321,11 +69373,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             key2
           ))
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("p", { className: "iad-module-status", role: "status", "aria-live": "polite", children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : !error3 && saved ? "\u5DF2\u4FDD\u5B58" : "" })
+        /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("p", { className: "iad-module-status", role: "status", "aria-live": "polite", children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : !error3 && saved ? "\u5DF2\u4FDD\u5B58" : "" })
       ] }),
-      error3 && /* @__PURE__ */ (0, import_jsx_runtime99.jsxs)("div", { className: "iad-module-error", role: "alert", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime99.jsx)("span", { children: error3 }),
-        settings && /* @__PURE__ */ (0, import_jsx_runtime99.jsx)(import_dsh_client_ui_primitives4.Button, { variant: "outline", onClick: retry, children: "\u91CD\u8BD5\u4FDD\u5B58" })
+      error3 && /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("div", { className: "iad-module-error", role: "alert", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("span", { children: error3 }),
+        settings && /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(import_dsh_client_ui_primitives4.Button, { variant: "outline", onClick: retry, children: "\u91CD\u8BD5\u4FDD\u5B58" })
       ] })
     ] });
   }
@@ -69379,18 +69431,19 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/components/ConsistencySettingsSection.tsx
   var import_dsh_client_ui_primitives5 = __require("@deepseek-ai/dsh-client-ui-primitives");
-  var import_jsx_runtime100 = __require("react/jsx-runtime");
+  var import_jsx_runtime101 = __require("react/jsx-runtime");
   function ConsistencySettingsSection() {
     const business = useModuleSettings("consistency"), encoder = useImageEncoderSettings();
     const settings = business.settings, images = encoder.settings;
     const error3 = [business.error, encoder.error].filter(Boolean).join("\uFF1B");
-    return /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("section", { className: "iad-module-settings iad-consistency-settings", "aria-label": "\u6570\u636E\u4E00\u81F4\u6027\u8BBE\u7F6E", "data-module-settings": "consistency", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("style", { children: moduleSettingsStyles }),
-      !settings || !("mode" in settings) ? /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u8BBE\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)(import_jsx_runtime100.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("fieldset", { className: "iad-settings-group", "data-settings-group": "review", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("legend", { children: "\u5BA1\u6838\u8BBE\u7F6E" }),
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(ModuleModelFields, { settings, save: business.save }),
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("section", { className: "iad-module-settings iad-consistency-settings", "aria-label": "\u6570\u636E\u4E00\u81F4\u6027\u8BBE\u7F6E", "data-module-settings": "consistency", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("style", { children: moduleSettingsStyles }),
+      !settings || !("mode" in settings) ? /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u8BBE\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)(import_jsx_runtime101.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("fieldset", { className: "iad-settings-group", "data-settings-group": "review", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("legend", { children: "\u5BA1\u6838\u8BBE\u7F6E" }),
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(ModuleModelFields, { settings, save: business.save }),
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(ModelImageSizeSetting, { value: settings.whole_image_max_side, onSave: (whole_image_max_side) => business.save({ whole_image_max_side }) }),
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
             ModuleNumberSetting,
             {
               label: "\u540C\u65F6\u68C0\u67E5\u7684\u4E3B\u56FE\u6570",
@@ -69402,9 +69455,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             }
           )
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("fieldset", { className: "iad-settings-group", "data-settings-group": "retrieval", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("legend", { children: "\u68C0\u7D22\u65B9\u5F0F" }),
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("fieldset", { className: "iad-settings-group", "data-settings-group": "retrieval", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("legend", { children: "\u68C0\u7D22\u65B9\u5F0F" }),
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
             ModuleSelectSetting,
             {
               label: "\u68C0\u7D22\u65B9\u5F0F",
@@ -69413,7 +69466,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               options: [{ value: "exact", label: "\u5B8C\u5168\u4E00\u81F4" }, { value: "combined", label: "\u4E00\u81F4+\u76F8\u4F3C" }]
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
             ModuleNumberSetting,
             {
               label: "\u5B8C\u5168\u4E00\u81F4\u56FE\u4E0A\u9650",
@@ -69425,11 +69478,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             }
           )
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("fieldset", { className: "iad-settings-group", "data-settings-group": "similar", disabled: settings.mode === "exact", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("legend", { children: "\u76F8\u4F3C\u56FE\u68C0\u7D22" }),
-          settings.mode === "exact" && /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("p", { className: "iad-setting-hint", children: "\u9009\u62E9\u201C\u4E00\u81F4+\u76F8\u4F3C\u201D\u540E\u542F\u7528" }),
-          !images ? /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u8BBE\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)(import_jsx_runtime100.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("fieldset", { className: "iad-settings-group", "data-settings-group": "similar", disabled: settings.mode === "exact", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("legend", { children: "\u76F8\u4F3C\u56FE\u68C0\u7D22" }),
+          settings.mode === "exact" && /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("p", { className: "iad-setting-hint", children: "\u9009\u62E9\u201C\u4E00\u81F4+\u76F8\u4F3C\u201D\u540E\u542F\u7528" }),
+          !images ? /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u6A21\u578B\u8BBE\u7F6E\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)(import_jsx_runtime101.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
               ModuleSelectSetting,
               {
                 label: "\u6A21\u578B",
@@ -69447,7 +69500,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                 }))]
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
               ModuleNumberSetting,
               {
                 label: "\u7F16\u7801\u6279\u91CF\u5927\u5C0F",
@@ -69461,7 +69514,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                 onSave: (batch_size) => encoder.save({ batch_size })
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
               ModuleNumberSetting,
               {
                 label: "\u8F93\u5165\u5927\u5C0F",
@@ -69475,7 +69528,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               }
             )
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
             ModuleNumberSetting,
             {
               label: "\u76F8\u4F3C\u56FE\u4E0A\u9650",
@@ -69488,7 +69541,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               onSave: (max_similar_candidates) => business.save({ max_similar_candidates })
             }
           ),
-          /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(
+          /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(
             ModuleNumberSetting,
             {
               label: "\u76F8\u4F3C\u5EA6\u9608\u503C",
@@ -69502,10 +69555,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           )
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("p", { className: "iad-module-status", role: "status", "aria-live": "polite", children: business.saving || encoder.saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : !error3 && (business.saved || encoder.saved) ? "\u5DF2\u4FDD\u5B58" : "" }),
-      error3 && /* @__PURE__ */ (0, import_jsx_runtime100.jsxs)("div", { className: "iad-module-error", role: "alert", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime100.jsx)("span", { children: error3 }),
-        /* @__PURE__ */ (0, import_jsx_runtime100.jsx)(import_dsh_client_ui_primitives5.Button, { variant: "outline", onClick: () => {
+      /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("p", { className: "iad-module-status", role: "status", "aria-live": "polite", children: business.saving || encoder.saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : !error3 && (business.saved || encoder.saved) ? "\u5DF2\u4FDD\u5B58" : "" }),
+      error3 && /* @__PURE__ */ (0, import_jsx_runtime101.jsxs)("div", { className: "iad-module-error", role: "alert", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime101.jsx)("span", { children: error3 }),
+        /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(import_dsh_client_ui_primitives5.Button, { variant: "outline", onClick: () => {
           if (business.error) business.retry();
           if (encoder.error) encoder.retry();
         }, children: "\u91CD\u8BD5\u4FDD\u5B58" })
@@ -69514,12 +69567,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/host/WorkbenchSettings.tsx
-  var import_jsx_runtime101 = __require("react/jsx-runtime");
+  var import_jsx_runtime102 = __require("react/jsx-runtime");
   function registerWorkbenchSettings(ctx, workspace) {
     ctx.slots.inject("settings.section", () => {
       const disposers = Object.entries(businessModules).map(([module, label], index3) => ctx.slots.register(
         { name: "settings.section", id: `industrial-${module}`, order: 50 + index3, label },
-        () => /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(WorkbenchProviders, { workspace, children: module === "consistency" ? /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(ConsistencySettingsSection, {}) : /* @__PURE__ */ (0, import_jsx_runtime101.jsx)(ModuleSettingsSection, { module }) })
+        () => /* @__PURE__ */ (0, import_jsx_runtime102.jsx)(WorkbenchProviders, { workspace, children: module === "consistency" ? /* @__PURE__ */ (0, import_jsx_runtime102.jsx)(ConsistencySettingsSection, {}) : /* @__PURE__ */ (0, import_jsx_runtime102.jsx)(ModuleSettingsSection, { module }) })
       ));
       return () => disposers.forEach((dispose) => dispose());
     });
@@ -69527,14 +69580,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/host/IndustrialSidebar.tsx
   var import_react74 = __toESM(__require("react"), 1);
-  var import_jsx_runtime102 = __require("react/jsx-runtime");
+  var import_jsx_runtime103 = __require("react/jsx-runtime");
   function IndustrialSidebar({ wide, panels, renderPanel, renderWorkspaces }) {
     const [sessionsOpen, setSessionsOpen] = (0, import_react74.useState)(true);
     const workspacesId = (0, import_react74.useId)();
     const business = panels.filter((panel) => panel.id in navigation && navigation[panel.id].chapter !== "\u5DE5\u5177");
     const auxiliary = panels.filter((panel) => !business.includes(panel));
-    return /* @__PURE__ */ (0, import_jsx_runtime102.jsxs)("div", { className: `iad-sidebar-content ${wide ? "iad-sidebar-wide" : "iad-sidebar-rail"}`, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime102.jsx)("style", { children: themeStyles + `
+    return /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("div", { className: `iad-sidebar-content ${wide ? "iad-sidebar-wide" : "iad-sidebar-rail"}`, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("style", { children: themeStyles + `
       .iad-sidebar-content{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden;gap:16px;background:var(--iad-navigation);color:var(--iad-text);font-size:14px}
       .iad-sidebar-content>nav{display:flex;flex-direction:column;gap:20px;min-height:0;overflow:auto;flex:0 1 auto}.iad-sidebar-content>nav>section,.iad-sidebar-tools{display:flex;flex-direction:column;gap:4px}
       .iad-sidebar-content h2{margin:0 10px 4px;font-size:12px;font-weight:500;color:var(--dsw-alias-label-secondary)}
@@ -69546,18 +69599,18 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       .iad-sidebar-wide>nav{flex:1 1 0;overscroll-behavior:contain}.iad-sidebar-wide>nav>section{flex:none}.iad-sidebar-wide>.iad-sidebar-sessions[data-open=true]{flex:1 1 0}
       .iad-sidebar-tools{margin-top:auto;flex:none}.iad-sidebar-rail{gap:12px}.iad-sidebar-rail>nav{gap:12px}
     ` }),
-      /* @__PURE__ */ (0, import_jsx_runtime102.jsx)("nav", { "aria-label": "\u5DE5\u4E1A\u5DE5\u4F5C\u53F0\u5BFC\u822A", children: ["\u6570\u636E\u51C6\u5907", "\u77E5\u8BC6\u6784\u5EFA", "\u8D28\u91CF\u5BA1\u6838"].map((chapter) => /* @__PURE__ */ (0, import_jsx_runtime102.jsxs)("section", { "aria-label": chapter, children: [
-        wide && /* @__PURE__ */ (0, import_jsx_runtime102.jsx)("h2", { children: chapter }),
-        business.filter((panel) => navigation[panel.id].chapter === chapter).map((panel) => /* @__PURE__ */ (0, import_jsx_runtime102.jsx)(import_react74.default.Fragment, { children: renderPanel(panel) }, panel.id))
+      /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("nav", { "aria-label": "\u5DE5\u4E1A\u5DE5\u4F5C\u53F0\u5BFC\u822A", children: ["\u6570\u636E\u51C6\u5907", "\u77E5\u8BC6\u6784\u5EFA", "\u8D28\u91CF\u5BA1\u6838"].map((chapter) => /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("section", { "aria-label": chapter, children: [
+        wide && /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("h2", { children: chapter }),
+        business.filter((panel) => navigation[panel.id].chapter === chapter).map((panel) => /* @__PURE__ */ (0, import_jsx_runtime103.jsx)(import_react74.default.Fragment, { children: renderPanel(panel) }, panel.id))
       ] }, chapter)) }),
-      wide ? /* @__PURE__ */ (0, import_jsx_runtime102.jsxs)("section", { className: "iad-sidebar-sessions", "data-native-workspaces": true, "data-open": sessionsOpen, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime102.jsxs)("button", { type: "button", className: "iad-sidebar-disclosure", "aria-expanded": sessionsOpen, "aria-controls": workspacesId, onClick: () => setSessionsOpen((value) => !value), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime102.jsx)("span", { "aria-hidden": "true", children: sessionsOpen ? "\u25BE" : "\u25B8" }),
+      wide ? /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("section", { className: "iad-sidebar-sessions", "data-native-workspaces": true, "data-open": sessionsOpen, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("button", { type: "button", className: "iad-sidebar-disclosure", "aria-expanded": sessionsOpen, "aria-controls": workspacesId, onClick: () => setSessionsOpen((value) => !value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("span", { "aria-hidden": "true", children: sessionsOpen ? "\u25BE" : "\u25B8" }),
           "\u4F1A\u8BDD\u4E0E\u5DE5\u4F5C\u533A"
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime102.jsx)("div", { id: workspacesId, className: "iad-native-workspace-content", hidden: !sessionsOpen, children: renderWorkspaces() })
+        /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("div", { id: workspacesId, className: "iad-native-workspace-content", hidden: !sessionsOpen, children: renderWorkspaces() })
       ] }) : renderWorkspaces(),
-      /* @__PURE__ */ (0, import_jsx_runtime102.jsx)("section", { className: "iad-sidebar-tools", "aria-label": "\u5DE5\u5177", children: auxiliary.map((panel) => /* @__PURE__ */ (0, import_jsx_runtime102.jsx)(import_react74.default.Fragment, { children: renderPanel(panel) }, panel.id)) })
+      /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("section", { className: "iad-sidebar-tools", "aria-label": "\u5DE5\u5177", children: auxiliary.map((panel) => /* @__PURE__ */ (0, import_jsx_runtime103.jsx)(import_react74.default.Fragment, { children: renderPanel(panel) }, panel.id)) })
     ] });
   }
 
@@ -69595,7 +69648,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/components/ConsistencyGroupReviewForm.tsx
   var import_react76 = __require("react");
-  var import_jsx_runtime103 = __require("react/jsx-runtime");
+  var import_jsx_runtime104 = __require("react/jsx-runtime");
   function ConsistencyGroupReviewForm({ jobId, anchorId, onClose, onReviewed, children }) {
     const [context, setContext] = (0, import_react76.useState)(null);
     const [decision, setDecision] = (0, import_react76.useState)("pending");
@@ -69660,13 +69713,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         if (mounted.current) setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("form", { className: "dc-group-review-form", onSubmit: save, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("div", { className: "dc-dialog-body", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("form", { className: "dc-group-review-form", onSubmit: save, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("div", { className: "dc-dialog-body", children: [
         children,
-        /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }),
-          /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("div", { className: "dc-decision-controls", children: [["pending", "\u5F85\u786E\u8BA4"], ["confirmed", "\u786E\u8BA4\u51B2\u7A81"], ["rejected", "\u6392\u9664\u51B2\u7A81"]].map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime103.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("section", { className: "dc-review-panel", "aria-label": "\u4EBA\u5DE5\u590D\u6838", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("h3", { children: "\u4EBA\u5DE5\u590D\u6838" }),
+          /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("div", { className: "dc-decision-controls", children: [["pending", "\u5F85\u786E\u8BA4"], ["confirmed", "\u786E\u8BA4\u51B2\u7A81"], ["rejected", "\u6392\u9664\u51B2\u7A81"]].map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime104.jsx)(
               "input",
               {
                 type: "radio",
@@ -69679,8 +69732,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             ),
             label
           ] }, value)) }),
-          error3 && /* @__PURE__ */ (0, import_jsx_runtime103.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
-          /* @__PURE__ */ (0, import_jsx_runtime103.jsx)(
+          error3 && /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
+          /* @__PURE__ */ (0, import_jsx_runtime104.jsx)(
             "textarea",
             {
               disabled: locked,
@@ -69694,15 +69747,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           )
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime103.jsxs)("footer", { className: "dc-dialog-footer", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime103.jsx)(Button, { onClick: onClose, children: "\u53D6\u6D88" }),
-        /* @__PURE__ */ (0, import_jsx_runtime103.jsx)(Button, { variant: "primary", type: "submit", disabled: busy || !context, children: "\u4FDD\u5B58\u590D\u6838" })
+      /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("footer", { className: "dc-dialog-footer", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime104.jsx)(Button, { onClick: onClose, children: "\u53D6\u6D88" }),
+        /* @__PURE__ */ (0, import_jsx_runtime104.jsx)(Button, { variant: "primary", type: "submit", disabled: busy || !context, children: "\u4FDD\u5B58\u590D\u6838" })
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyModelAnalysis.tsx
-  var import_jsx_runtime104 = __require("react/jsx-runtime");
+  var import_jsx_runtime105 = __require("react/jsx-runtime");
   var identityRelations = {
     pixel_identical: "\u50CF\u7D20\u5B8C\u5168\u4E00\u81F4\uFF08\u7A0B\u5E8F\u9A8C\u8BC1\uFF09",
     transformed_same_content: "\u540C\u4E00\u56FE\u50CF\u5185\u5BB9",
@@ -69711,35 +69764,35 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   };
   function ConsistencyModelAnalysis({ reference, members, result, error: error3 }) {
     const detail = useResource("job_id" in reference ? `/consistency/checks/${encodeURIComponent(reference.job_id)}/anchors/${encodeURIComponent(reference.anchor_id)}` : null);
-    return /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u5206\u6790\u8FC7\u7A0B", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("h3", { children: "\u5206\u6790\u8FC7\u7A0B" }),
-      "job_id" in reference && /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("div", { "aria-label": "\u56FE\u50CF\u8EAB\u4EFD\u4E0E\u5185\u5BB9\u9A8C\u8BC1", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("h4", { children: "\u56FE\u50CF\u5185\u5BB9\u6838\u5BF9" }),
-        detail.error ? /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { role: "alert", className: "iad-error", children: detail.error }) : detail.data?.gates.map((gate) => /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("div", { "data-dc": "identity-analysis", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("p", { className: "dc-analysis-sources", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("section", { className: "dc-model-panel", "aria-label": "\u5206\u6790\u8FC7\u7A0B", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h3", { children: "\u5206\u6790\u8FC7\u7A0B" }),
+      "job_id" in reference && /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { "aria-label": "\u56FE\u50CF\u8EAB\u4EFD\u4E0E\u5185\u5BB9\u9A8C\u8BC1", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h4", { children: "\u56FE\u50CF\u5185\u5BB9\u6838\u5BF9" }),
+        detail.error ? /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { role: "alert", className: "iad-error", children: detail.error }) : detail.data?.gates.map((gate) => /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { "data-dc": "identity-analysis", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("p", { className: "dc-analysis-sources", children: [
             gate.candidate_id.slice(gate.candidate_id.indexOf(":") + 1).split("/").pop(),
             "\uFF1A",
             gate.basis === "empty_annotations" ? "\u53CC\u65B9\u65E0\u6807\u6CE8\uFF08\u7A0B\u5E8F\u5224\u5B9A\uFF09" : gate.relation ? identityRelations[gate.relation] : gate.execution_status === "pending" ? "\u5F85\u9A8C\u8BC1" : "\u9A8C\u8BC1\u5931\u8D25"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { children: gate.reason }),
-          gate.limitations.map((limitation, index3) => /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { children: limitation }, index3))
+          /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { children: gate.reason }),
+          gate.limitations.map((limitation, index3) => /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { children: limitation }, index3))
         ] }, gate.gate_id))
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("div", { "aria-label": "\u6807\u6CE8\u5BA1\u6838", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("h4", { children: "\u6807\u6CE8\u4E00\u81F4\u6027\u5BA1\u6838" }),
-        result ? /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)(import_jsx_runtime104.Fragment, { children: [
-          result.conclusions.map((conclusion, index3) => /* @__PURE__ */ (0, import_jsx_runtime104.jsxs)("div", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { className: "dc-analysis-sources", children: conclusion.references.map((reference2) => members.find((member) => member.image.sample.sample_id === reference2.candidate_id)?.image.sample.relative_path.split("/").pop() || reference2.candidate_id.split("/").pop()).join("\u3001") }),
-            /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { children: conclusion.text })
+      /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { "aria-label": "\u6807\u6CE8\u5BA1\u6838", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h4", { children: "\u6807\u6CE8\u4E00\u81F4\u6027\u5BA1\u6838" }),
+        result ? /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)(import_jsx_runtime105.Fragment, { children: [
+          result.conclusions.map((conclusion, index3) => /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { className: "dc-analysis-sources", children: conclusion.references.map((reference2) => members.find((member) => member.image.sample.sample_id === reference2.candidate_id)?.image.sample.relative_path.split("/").pop() || reference2.candidate_id.split("/").pop()).join("\u3001") }),
+            /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { children: conclusion.text })
           ] }, index3)),
-          result.limitations.map((limitation, index3) => /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { children: limitation }, index3))
-        ] }) : error3 ? /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { role: "alert", className: "iad-error", children: error3 }) : detail.data ? /* @__PURE__ */ (0, import_jsx_runtime104.jsx)("p", { children: detail.data.annotation_review_label }) : null
+          result.limitations.map((limitation, index3) => /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { children: limitation }, index3))
+        ] }) : error3 ? /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { role: "alert", className: "iad-error", children: error3 }) : detail.data ? /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { children: detail.data.annotation_review_label }) : null
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyConflictDialog.tsx
-  var import_jsx_runtime105 = __require("react/jsx-runtime");
+  var import_jsx_runtime106 = __require("react/jsx-runtime");
   function ConsistencyConflictDialog({
     conflict: currentConflict,
     items: visibleConflicts,
@@ -69749,7 +69802,6 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     onReviewed
   }) {
     const currentConflictId = currentConflict.id;
-    const catalog = useDatasetCatalog();
     const [candidateIndex, setCandidateIndex] = (0, import_react77.useState)(0);
     const [conflictMembers, setConflictMembers] = (0, import_react77.useState)([]);
     const [membersError, setMembersError] = (0, import_react77.useState)("");
@@ -69774,9 +69826,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const modelResult = groupAnalysis.analysis?.status === "COMPLETED" ? groupAnalysis.analysis.result : null;
     const candidates = useResource(jobId ? `/consistency/checks/${encodeURIComponent(jobId)}/anchors/${encodeURIComponent(currentConflictId)}/candidates` : null);
     const modelConclusion = ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType, modelResult?.overall.verdict);
-    const displayModelConclusion = modelConclusion ? modelConclusionLabels[modelConclusion] : currentConflict.model.label || "";
-    const groupConclusion = currentConflict.type;
-    const displayGroupConclusion = groupConclusion in conflictCategoryLabels ? conflictCategoryLabels[groupConclusion] : groupConclusion;
+    const displayModelConclusion = modelConclusion ? modelConclusionLabels[modelConclusion] : currentConflict.model.identityConclusion || "";
+    const displayGroupConclusion = currentConflict.type;
+    const dialogTitle = currentConflict.model.identityConclusion && !modelConclusion ? `\u6A21\u578B\uFF1A${displayModelConclusion}` : displayModelConclusion ? `\u6A21\u578B\uFF1A${displayModelConclusion} - \u7A0B\u5E8F\uFF1A${displayGroupConclusion}` : `\u7A0B\u5E8F\uFF1A${displayGroupConclusion}`;
     const currentCandidate = (0, import_react77.useMemo)(() => {
       const image = selectedMember?.image;
       return {
@@ -69793,8 +69845,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const anchorSide = selectedMember?.comparison?.anchor_side || currentConflict.image?.side;
     const anchorSource = anchorSide ? compared.data?.sources[anchorSide] : null;
     const candidateSource = selectedMember && anchorSide ? compared.data?.sources[anchorSide === "left" ? "right" : "left"] : null;
-    const anchorAnnotations = anchorSource ? datasetImageAnnotations(catalog.data?.datasets.find((dataset) => dataset.dataset_id === anchorSource.sample.dataset_id)?.format, anchorSource.sample, anchorSource.annotations.annotations) : {};
-    const candidateAnnotations = candidateSource ? datasetImageAnnotations(catalog.data?.datasets.find((dataset) => dataset.dataset_id === candidateSource.sample.dataset_id)?.format, candidateSource.sample, candidateSource.annotations.annotations) : {};
+    const anchorAnnotations = anchorSource ? datasetImageAnnotations(anchorSource.annotations.dataset_format ?? void 0, anchorSource.sample, anchorSource.annotations.annotations) : {};
+    const candidateAnnotations = candidateSource ? datasetImageAnnotations(candidateSource.annotations.dataset_format ?? void 0, candidateSource.sample, candidateSource.annotations.annotations) : {};
     const handlePrevConflict = (0, import_react77.useCallback)(() => {
       if (onMove) {
         onMove(-1);
@@ -69821,17 +69873,17 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         setCandidateIndex(0);
       }
     }, [visibleConflicts, currentConflictId, onSelect, onMove]);
-    return /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)(import_jsx_runtime105.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)(Modal, { title: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4", id: "dc-compare-mask", className: "dc-dialog dc-conflict-dialog", header: false, onClose, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("header", { className: "dc-dialog-head", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h2", { id: "dc-dialog-title", children: "\u6807\u6CE8\u51B2\u7A81\u5BF9\u6BD4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { className: "dc-dialog-head-actions", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(Button, { type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
-            /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(Button, { type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
-            /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: onClose })
+    return /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)(import_jsx_runtime106.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)(Modal, { title: dialogTitle, id: "dc-compare-mask", className: "dc-dialog dc-conflict-dialog", header: false, onClose, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("header", { className: "dc-dialog-head", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("h2", { id: "dc-dialog-title", children: dialogTitle }),
+          /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("div", { className: "dc-dialog-head-actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(Button, { type: "button", onClick: handlePrevConflict, children: "\u4E0A\u4E00\u7EC4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(Button, { type: "button", onClick: handleNextConflict, children: "\u4E0B\u4E00\u7EC4" }),
+            /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(IconButton, { icon: "close", type: "button", title: "\u5173\u95ED", label: "\u5173\u95ED", onClick: onClose })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)(
           ConsistencyGroupReviewForm,
           {
             jobId,
@@ -69839,9 +69891,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             onClose,
             onReviewed,
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { className: "dc-compare", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { className: "dc-compare-cell", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("div", { className: "dc-compare", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("div", { className: "dc-compare-cell", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(
                     "div",
                     {
                       className: "dc-compare-photo",
@@ -69852,6 +69904,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                       title: currentConflict.filename,
                       onClick: () => setZoomItem({
                         id: currentConflict.id + "_anchor",
+                        sampleId: currentConflict.sampleId,
                         title: currentConflict.filename,
                         imageUrl: currentConflict.fullUrl || currentConflict.url,
                         width: currentConflict.sourceWidth,
@@ -69862,6 +69915,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                         if (e2.key === "Enter" || e2.key === " ") {
                           setZoomItem({
                             id: currentConflict.id + "_anchor",
+                            sampleId: currentConflict.sampleId,
                             title: currentConflict.filename,
                             imageUrl: currentConflict.fullUrl || currentConflict.url,
                             width: currentConflict.sourceWidth,
@@ -69870,9 +69924,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                           });
                         }
                       },
-                      children: /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(
+                      children: /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(
                         AnnotatedImageStage,
                         {
+                          sampleId: currentConflict.sampleId,
                           src: currentConflict.fullUrl || currentConflict.url,
                           alt: "\u4E3B\u56FE",
                           width: currentConflict.sourceWidth,
@@ -69882,10 +69937,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                       )
                     }
                   ),
-                  /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })
+                  /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("div", { className: "dc-photo-filename", title: currentConflict.filename, children: currentConflict.filename })
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { className: "dc-compare-cell", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("div", { className: "dc-compare-cell", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(
                     "div",
                     {
                       className: "dc-compare-photo",
@@ -69897,6 +69952,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                       title: currentCandidate.filename,
                       onClick: () => selectedMember && setZoomItem({
                         id: currentConflict.id + "_candidate_" + candidateIndex,
+                        sampleId: currentCandidate.sampleId,
                         title: currentCandidate.filename,
                         imageUrl: currentCandidate.fullUrl,
                         width: currentCandidate.width,
@@ -69907,6 +69963,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                         if (selectedMember && (e2.key === "Enter" || e2.key === " ")) {
                           setZoomItem({
                             id: currentConflict.id + "_candidate_" + candidateIndex,
+                            sampleId: currentCandidate.sampleId,
                             title: currentCandidate.filename,
                             imageUrl: currentCandidate.fullUrl,
                             width: currentCandidate.width,
@@ -69915,9 +69972,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                           });
                         }
                       },
-                      children: selectedMember && /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(
+                      children: selectedMember && /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(
                         AnnotatedImageStage,
                         {
+                          sampleId: currentCandidate.sampleId,
                           src: currentCandidate.fullUrl || currentCandidate.thumbUrl,
                           alt: "\u5019\u9009\u56FE",
                           width: currentCandidate.width,
@@ -69927,14 +69985,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                       )
                     }
                   ),
-                  /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })
+                  /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("div", { className: "dc-photo-filename", title: currentCandidate.filename, children: currentCandidate.filename })
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("section", { className: "dc-images-panel", "aria-label": "\u5BF9\u6BD4\u56FE", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h3", { children: "\u5BF9\u6BD4\u56FE" }),
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("div", { className: "iad-thumbnail-grid", "aria-label": "\u5207\u6362\u5BF9\u6BD4\u56FE\u7247", children: conflictMembers.map((member, index3) => {
+              /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("section", { className: "dc-images-panel", "aria-label": "\u5BF9\u6BD4\u56FE", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("h3", { children: "\u5BF9\u6BD4\u56FE" }),
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("div", { className: "iad-thumbnail-grid", "aria-label": "\u5207\u6362\u5BF9\u6BD4\u56FE\u7247", children: conflictMembers.map((member, index3) => {
                   const filename = member.image.sample.relative_path.split("/").pop();
-                  return /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(
+                  return /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(
                     ThumbnailCard,
                     {
                       src: ConsistencyView.media(member.image, true),
@@ -69948,18 +70006,18 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                     member.image.sample.sample_id
                   );
                 }) }),
-                membersError && /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { role: "alert", className: "iad-error", children: membersError }),
-                compared.error && /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { role: "alert", className: "iad-error", children: compared.error })
+                membersError && /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("p", { role: "alert", className: "iad-error", children: membersError }),
+                compared.error && /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("p", { role: "alert", className: "iad-error", children: compared.error })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("section", { className: "dc-images-panel", "aria-label": "\u5019\u9009\u56FE", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h3", { children: "\u5019\u9009\u56FE" }),
-                candidates.loading ? /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5019\u9009\u56FE\u2026" }) : candidates.error ? /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("p", { role: "alert", className: "iad-error", children: candidates.error }) : [["exact", "\u5B8C\u5168\u4E00\u81F4\u7684\u56FE"], ["similar", "\u76F8\u4F3C\u56FE"]].map(([kind, label]) => {
+              /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("section", { className: "dc-images-panel", "aria-label": "\u5019\u9009\u56FE", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("h3", { children: "\u5019\u9009\u56FE" }),
+                candidates.loading ? /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5019\u9009\u56FE\u2026" }) : candidates.error ? /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("p", { role: "alert", className: "iad-error", children: candidates.error }) : [["exact", "\u5B8C\u5168\u4E00\u81F4\u7684\u56FE"], ["similar", "\u76F8\u4F3C\u56FE"]].map(([kind, label]) => {
                   const previews = candidates.data?.items.filter((item) => item.kind === kind) || [];
-                  return /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("div", { className: "dc-candidate-group", "data-kind": kind, children: [
-                    /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h4", { children: label }),
-                    previews.length ? /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("div", { className: "iad-thumbnail-grid", children: previews.map((candidate) => {
+                  return /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("div", { className: "dc-candidate-group", "data-kind": kind, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("h4", { children: label }),
+                    previews.length ? /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("div", { className: "iad-thumbnail-grid", children: previews.map((candidate) => {
                       const image = candidate.image, filename = image.sample.relative_path.split("/").pop();
-                      return /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(
+                      return /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(
                         ThumbnailCard,
                         {
                           variant: "comparison",
@@ -69968,6 +70026,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                           "data-dc": "retrieved-candidate",
                           onClick: () => setZoomItem({
                             id: candidate.sample_id,
+                            sampleId: candidate.sample_id,
                             title: filename,
                             imageUrl: ConsistencyView.media(image),
                             width: image.sample.width,
@@ -69981,16 +70040,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                   ] }, kind);
                 })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("span", { className: "dc-verdict-value", children: displayGroupConclusion }),
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("p", { className: "dc-verdict-description", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("section", { className: "dc-fact-panel", "aria-label": "\u5224\u5B9A\u7ED3\u8BBA", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("h3", { children: "\u5224\u5B9A\u7ED3\u8BBA" }),
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("span", { className: "dc-verdict-value", children: displayGroupConclusion }),
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("p", { className: "dc-verdict-description", children: [
                   "\u4E3B\u56FE 1 \u5F20\uFF0C\u53C2\u4E0E\u5BF9\u6BD4\u5019\u9009 ",
                   currentConflict.candidateCount,
                   " \u5F20"
                 ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(
                 ConsistencyModelAnalysis,
                 {
                   reference: groupReference,
@@ -69999,16 +70058,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                   error: groupAnalysis.error || groupAnalysis.analysis?.error || ""
                 }
               ),
-              /* @__PURE__ */ (0, import_jsx_runtime105.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
-                /* @__PURE__ */ (0, import_jsx_runtime105.jsx)("span", { className: "dc-verdict-value", children: displayModelConclusion })
+              /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("section", { className: "dc-conclusion-panel", "aria-label": "\u6A21\u578B\u7ED3\u8BBA", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("h3", { children: "\u6A21\u578B\u7ED3\u8BBA" }),
+                /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("span", { className: "dc-verdict-value", children: displayModelConclusion })
               ] })
             ]
           },
           `${jobId}:${currentConflictId}`
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime105.jsx)(FullscreenViewer, { open: !!zoomItem, item: zoomItem, onClose: () => setZoomItem(null) })
+      /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(FullscreenViewer, { open: !!zoomItem, item: zoomItem, onClose: () => setZoomItem(null) })
     ] });
   }
 
@@ -70016,11 +70075,11 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   var import_react78 = __require("react");
 
   // src/client/components/ConsistencyResultCard.tsx
-  var import_jsx_runtime106 = __require("react/jsx-runtime");
+  var import_jsx_runtime107 = __require("react/jsx-runtime");
   function ConsistencyResultCard({ item, action, onOpen }) {
-    const program = item.type in conflictCategoryLabels ? conflictCategoryLabels[item.type] : item.type;
-    const model = item.model.modelType ? modelConclusionLabels[item.model.modelType] : item.model.label || "";
-    return /* @__PURE__ */ (0, import_jsx_runtime106.jsx)(
+    const program = item.model.identityConclusion ? "" : item.type;
+    const model = item.model.modelType ? modelConclusionLabels[item.model.modelType] : item.model.identityConclusion || "";
+    return /* @__PURE__ */ (0, import_jsx_runtime107.jsx)(
       ThumbnailCard,
       {
         src: item.url,
@@ -70029,18 +70088,18 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         label: item.filename,
         "data-dc": action,
         "data-id": item.id,
-        "aria-label": `${item.filename}\uFF0C\u7A0B\u5E8F\u7ED3\u8BBA\uFF1A${program}\uFF1B\u6A21\u578B\u7ED3\u8BBA\uFF1A${model}`,
+        "aria-label": `${item.filename}${program ? "\uFF0C\u7A0B\u5E8F\u7ED3\u8BBA\uFF1A" + program : ""}${model ? "\uFF1B\u6A21\u578B\u7ED3\u8BBA\uFF1A" + model : ""}`,
         onClick: onOpen,
-        children: /* @__PURE__ */ (0, import_jsx_runtime106.jsxs)("span", { className: "iad-thumbnail-values", "aria-label": "\u7A0B\u5E8F\u7ED3\u8BBA\u4E0E\u6A21\u578B\u7ED3\u8BBA", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("span", { title: `\u7A0B\u5E8F\u7ED3\u8BBA\uFF1A${program}`, children: program }),
-          /* @__PURE__ */ (0, import_jsx_runtime106.jsx)("span", { title: `\u6A21\u578B\u7ED3\u8BBA\uFF1A${model}`, children: model })
+        children: /* @__PURE__ */ (0, import_jsx_runtime107.jsxs)("span", { className: "iad-thumbnail-values", "aria-label": "\u7A0B\u5E8F\u7ED3\u8BBA\u4E0E\u6A21\u578B\u7ED3\u8BBA", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime107.jsx)("span", { title: program ? `\u7A0B\u5E8F\u7ED3\u8BBA\uFF1A${program}` : void 0, children: program }),
+          /* @__PURE__ */ (0, import_jsx_runtime107.jsx)("span", { title: `\u6A21\u578B\u7ED3\u8BBA\uFF1A${model}`, children: model })
         ] })
       }
     );
   }
 
   // src/client/components/ConsistencyImages.tsx
-  var import_jsx_runtime107 = __require("react/jsx-runtime");
+  var import_jsx_runtime108 = __require("react/jsx-runtime");
   function ConsistencyImages({ jobId, images, filters, group, onReviewed, page, onPage }) {
     const [selected, setSelected] = (0, import_react78.useState)(null);
     const pendingMove = (0, import_react78.useRef)(null);
@@ -70068,15 +70127,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       }
     }
     const action = group === "images" || ["NO_CANDIDATES", "NO_ELIGIBLE_CANDIDATES", "PROGRAM_CONSISTENT"].includes(group) ? "job-image" : "open-conflict";
-    return /* @__PURE__ */ (0, import_jsx_runtime107.jsxs)(import_jsx_runtime107.Fragment, { children: [
-      images.error ? /* @__PURE__ */ (0, import_jsx_runtime107.jsx)("p", { className: "iad-error", role: "alert", children: images.error }) : !images.items.length && images.pending ? /* @__PURE__ */ (0, import_jsx_runtime107.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime107.jsxs)(import_jsx_runtime107.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime107.jsx)("div", { className: "iad-thumbnail-grid dc-conflict-grid", "data-job-id": jobId, "aria-busy": images.pending, children: images.items.map((item) => /* @__PURE__ */ (0, import_jsx_runtime107.jsx)(ConsistencyResultCard, { item, action, onOpen: () => {
+    return /* @__PURE__ */ (0, import_jsx_runtime108.jsxs)(import_jsx_runtime108.Fragment, { children: [
+      images.error ? /* @__PURE__ */ (0, import_jsx_runtime108.jsx)("p", { className: "iad-error", role: "alert", children: images.error }) : !images.items.length && images.pending ? /* @__PURE__ */ (0, import_jsx_runtime108.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" }) : /* @__PURE__ */ (0, import_jsx_runtime108.jsxs)(import_jsx_runtime108.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime108.jsx)("div", { className: "iad-thumbnail-grid dc-conflict-grid", "data-job-id": jobId, "aria-busy": images.pending, children: images.items.map((item) => /* @__PURE__ */ (0, import_jsx_runtime108.jsx)(ConsistencyResultCard, { item, action, onOpen: () => {
           if (!images.pending) setSelected(item);
         } }, item.id)) }),
-        !images.items.length && /* @__PURE__ */ (0, import_jsx_runtime107.jsx)("p", { className: "iad-result-empty", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u56FE\u50CF\u3002" }),
-        /* @__PURE__ */ (0, import_jsx_runtime107.jsx)(Pagination, { total: images.total, page, size: 18, unit: "\u5F20", onPage })
+        !images.items.length && /* @__PURE__ */ (0, import_jsx_runtime108.jsx)("p", { className: "iad-result-empty", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u56FE\u50CF\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime108.jsx)(Pagination, { total: images.total, page, size: 18, unit: "\u5F20", onPage })
       ] }),
-      selected && /* @__PURE__ */ (0, import_jsx_runtime107.jsx)(
+      selected && /* @__PURE__ */ (0, import_jsx_runtime108.jsx)(
         ConsistencyConflictDialog,
         {
           conflict: selected,
@@ -70181,16 +70240,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/components/AnnotatedImagePair.tsx
   var import_react81 = __require("react");
-  var import_jsx_runtime108 = __require("react/jsx-runtime");
+  var import_jsx_runtime109 = __require("react/jsx-runtime");
   function AnnotatedImagePair({ sources, labels, synchronized = false, focusRegion, overlays, onExpand }) {
     const [transform2, setTransform2] = (0, import_react81.useState)({ zoom: 0, x: 0, y: 0 });
     const [rightTransform, setRightTransform] = (0, import_react81.useState)({ zoom: 0, x: 0, y: 0 });
     (0, import_react81.useLayoutEffect)(() => {
       if (!synchronized) setRightTransform(transform2);
     }, [synchronized]);
-    return /* @__PURE__ */ (0, import_jsx_runtime108.jsx)("div", { className: "iad-image-pair", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime108.jsxs)("div", { className: "iad-image-pair-side", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime108.jsx)("p", { children: labels[index3] }),
-      source ? /* @__PURE__ */ (0, import_jsx_runtime108.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime109.jsx)("div", { className: "iad-image-pair", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime109.jsxs)("div", { className: "iad-image-pair-side", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime109.jsx)("p", { children: labels[index3] }),
+      source ? /* @__PURE__ */ (0, import_jsx_runtime109.jsx)(
         ImageCanvas,
         {
           image: source,
@@ -70199,16 +70258,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           focusRegion,
           overlay: overlays?.[index3]
         }
-      ) : /* @__PURE__ */ (0, import_jsx_runtime108.jsx)("p", { className: "iad-empty", children: "\u6682\u65E0\u5BF9\u7167\u56FE\u50CF\u3002" })
+      ) : /* @__PURE__ */ (0, import_jsx_runtime109.jsx)("p", { className: "iad-empty", children: "\u6682\u65E0\u5BF9\u7167\u56FE\u50CF\u3002" })
     ] }, index3)) });
   }
 
   // src/client/components/ConsistencyCanvasPair.tsx
-  var import_jsx_runtime109 = __require("react/jsx-runtime");
+  var import_jsx_runtime110 = __require("react/jsx-runtime");
   function ConsistencyCanvasPair({ sources, selected, synchronized = true, showDifferences = true, onExpand, anchorSide = "left", labels = ["\u67E5\u8BE2\u56FE\u50CF", "\u5019\u9009\u56FE\u50CF"] }) {
     const region = showDifferences && selected?.region ? { id: selected.difference_id, bbox: selected.region } : void 0;
-    const overlays = sources.map((source, index3) => region && source?.width && source.height ? /* @__PURE__ */ (0, import_jsx_runtime109.jsx)("svg", { className: "iad-finding-layer iad-consistency-region", viewBox: `0 0 ${source.width} ${source.height}`, children: /* @__PURE__ */ (0, import_jsx_runtime109.jsx)("rect", { x: region.bbox[0], y: region.bbox[1], width: region.bbox[2] - region.bbox[0], height: region.bbox[3] - region.bbox[1], strokeDasharray: selected?.reference_from_other === (index3 ? anchorSide === "left" ? "right" : "left" : anchorSide) ? "6 4" : void 0 }) }) : void 0);
-    return /* @__PURE__ */ (0, import_jsx_runtime109.jsx)(
+    const overlays = sources.map((source, index3) => region && source?.width && source.height ? /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("svg", { className: "iad-finding-layer iad-consistency-region", viewBox: `0 0 ${source.width} ${source.height}`, children: /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("rect", { x: region.bbox[0], y: region.bbox[1], width: region.bbox[2] - region.bbox[0], height: region.bbox[3] - region.bbox[1], strokeDasharray: selected?.reference_from_other === (index3 ? anchorSide === "left" ? "right" : "left" : anchorSide) ? "6 4" : void 0 }) }) : void 0);
+    return /* @__PURE__ */ (0, import_jsx_runtime110.jsx)(
       AnnotatedImagePair,
       {
         sources,
@@ -70222,70 +70281,70 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyDifferences.tsx
-  var import_jsx_runtime110 = __require("react/jsx-runtime");
+  var import_jsx_runtime111 = __require("react/jsx-runtime");
   function ConsistencyDifferences({ member, differenceId, onDifference, anchorSide = "left" }) {
     const selected = member.annotation?.differences.find((row) => row.difference_id === differenceId);
-    return /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("aside", { className: "iad-consistency-differences", "aria-label": "\u6807\u6CE8\u5DEE\u5F02", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("h2", { children: "\u6807\u6CE8\u5DEE\u5F02" }),
-      /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("p", { className: "iad-muted", children: member.annotation ? `\u89C4\u8303${{ SAME: "\u76F8\u540C", DIFFERENT: "\u4E0D\u540C", UNKNOWN: "\u672A\u77E5" }[member.annotation.policy_relation]}\uFF0C${member.annotation.status === "COMPLETE" ? "\u6BD4\u8F83\u5B8C\u6210" : "\u6BD4\u8F83\u4E0D\u5B8C\u6574"}` : "\u5C1A\u672A\u6BD4\u8F83\u6807\u6CE8" }),
-      member.pixel.status === "COMPLETE" && /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("dl", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dt", { children: "\u6BD4\u8F83\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dd", { children: member.pixel.compared_pixels.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dt", { children: "\u53D8\u5316\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dd", { children: member.pixel.changed_pixels === null ? "\u672A\u8BA1\u7B97" : member.pixel.changed_pixels.toLocaleString() })
+    return /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("aside", { className: "iad-consistency-differences", "aria-label": "\u6807\u6CE8\u5DEE\u5F02", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("h2", { children: "\u6807\u6CE8\u5DEE\u5F02" }),
+      /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { className: "iad-muted", children: member.annotation ? `\u89C4\u8303${{ SAME: "\u76F8\u540C", DIFFERENT: "\u4E0D\u540C", UNKNOWN: "\u672A\u77E5" }[member.annotation.policy_relation]}\uFF0C${member.annotation.status === "COMPLETE" ? "\u6BD4\u8F83\u5B8C\u6210" : "\u6BD4\u8F83\u4E0D\u5B8C\u6574"}` : "\u5C1A\u672A\u6BD4\u8F83\u6807\u6CE8" }),
+      member.pixel.status === "COMPLETE" && /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("dl", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dt", { children: "\u6BD4\u8F83\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dd", { children: member.pixel.compared_pixels.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dt", { children: "\u53D8\u5316\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dd", { children: member.pixel.changed_pixels === null ? "\u672A\u8BA1\u7B97" : member.pixel.changed_pixels.toLocaleString() })
       ] }),
-      member.local && (member.local.status === "COMPLETE" ? /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("dl", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dt", { children: "\u6709\u6548\u533A\u57DF\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dd", { "data-stat": "local-compared", children: member.local.compared_pixels.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dt", { children: "\u5C40\u90E8\u53D8\u5316\u50CF\u7D20" }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dd", { children: member.local.changed_pixels?.toLocaleString() }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dt", { children: "\u5C40\u90E8\u6700\u5927\u5DEE\u503C" }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dd", { children: member.local.max_abs_diff })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("p", { className: "iad-muted", children: [
+      member.local && (member.local.status === "COMPLETE" ? /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("dl", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dt", { children: "\u6709\u6548\u533A\u57DF\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dd", { "data-stat": "local-compared", children: member.local.compared_pixels.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dt", { children: "\u5C40\u90E8\u53D8\u5316\u50CF\u7D20" }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dd", { children: member.local.changed_pixels?.toLocaleString() }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dt", { children: "\u5C40\u90E8\u6700\u5927\u5DEE\u503C" }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dd", { children: member.local.max_abs_diff })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("p", { className: "iad-muted", children: [
         "\u5C40\u90E8\u5DEE\u5F02\u4E0D\u53EF\u6BD4\u8F83\uFF1A",
         member.local.reason
       ] })),
-      member.near && /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)(import_jsx_runtime110.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("p", { children: imageRelations[member.relation] }),
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("p", { className: "iad-muted", children: "\u7F29\u7565\u56FE\u8FD1\u4F3C\u590D\u6838\u4EC5\u7528\u4E8E\u5019\u9009\u5206\u7EA7\u3002" }),
-        member.near.pixel_cosine !== null && /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("dl", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dt", { children: "\u7070\u5EA6\u4F59\u5F26" }),
-          /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dd", { children: member.near.pixel_cosine.toFixed(4) }),
-          /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dt", { children: "NCC" }),
-          /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("dd", { children: member.near.ncc?.toFixed(4) })
+      member.near && /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)(import_jsx_runtime111.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { children: imageRelations[member.relation] }),
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { className: "iad-muted", children: "\u7F29\u7565\u56FE\u8FD1\u4F3C\u590D\u6838\u4EC5\u7528\u4E8E\u5019\u9009\u5206\u7EA7\u3002" }),
+        member.near.pixel_cosine !== null && /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("dl", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dt", { children: "\u7070\u5EA6\u4F59\u5F26" }),
+          /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dd", { children: member.near.pixel_cosine.toFixed(4) }),
+          /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dt", { children: "NCC" }),
+          /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("dd", { children: member.near.ncc?.toFixed(4) })
         ] }),
-        member.registration?.status === "UNSUPPORTED" && /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("p", { className: "iad-muted", children: "\u5C40\u90E8\u914D\u51C6\u672A\u542F\u7528\uFF0C\u4E0D\u8FDB\u884C\u8DE8\u5750\u6807\u6807\u6CE8\u5BF9\u8D26\u3002" })
+        member.registration?.status === "UNSUPPORTED" && /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { className: "iad-muted", children: "\u5C40\u90E8\u914D\u51C6\u672A\u542F\u7528\uFF0C\u4E0D\u8FDB\u884C\u8DE8\u5750\u6807\u6807\u6CE8\u5BF9\u8D26\u3002" })
       ] }),
-      member.reason && /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("p", { className: "iad-error", children: member.reason }),
-      member.annotation?.differences.map((difference2) => /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("button", { "data-difference": difference2.type, className: selected === difference2 ? "is-selected" : "", "aria-pressed": selected === difference2, onClick: () => onDifference(difference2.difference_id), children: [
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("strong", { children: [
+      member.reason && /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { className: "iad-error", children: member.reason }),
+      member.annotation?.differences.map((difference2) => /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("button", { "data-difference": difference2.type, className: selected === difference2 ? "is-selected" : "", "aria-pressed": selected === difference2, onClick: () => onDifference(difference2.difference_id), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("strong", { children: [
           differenceLabels[difference2.type],
           "\uFF0C",
           difference2.confirmed_conflict ? "\u5DF2\u786E\u8BA4\u51B2\u7A81" : "\u5F85\u5B9A"
         ] }),
-        difference2.type !== "POLICY_UNCONFIRMED" && /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)(import_jsx_runtime110.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("span", { children: [
+        difference2.type !== "POLICY_UNCONFIRMED" && /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)(import_jsx_runtime111.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("span", { children: [
             anchorSide === "left" ? "\u67E5\u8BE2" : "\u5019\u9009",
             "\uFF1A",
             difference2.type === "QUALITY_LABEL" ? String(difference2.facts.left_quality) : difference2.left.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("span", { children: [
             anchorSide === "left" ? "\u5019\u9009" : "\u67E5\u8BE2",
             "\uFF1A",
             difference2.type === "QUALITY_LABEL" ? String(difference2.facts.right_quality) : difference2.right.map((annotation) => annotation.raw_label).join("\u3001") || "\u65E0\u5BF9\u5E94\u6807\u6CE8"
           ] })
         ] }),
-        difference2.reference_from_other && /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("small", { children: [
+        difference2.reference_from_other && /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("small", { children: [
           "\u865A\u7EBF\u4F4D\u7F6E\u6765\u81EA",
           difference2.reference_from_other === anchorSide ? "\u5019\u9009" : "\u67E5\u8BE2",
           "\u56FE\u50CF\u6807\u6CE8\uFF0C\u4EC5\u4F5C\u53C2\u8003"
         ] }),
-        difference2.pending.map((reason, index3) => /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("small", { children: reason }, index3))
+        difference2.pending.map((reason, index3) => /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("small", { children: reason }, index3))
       ] }, difference2.difference_id)),
-      member.annotation?.differences.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("p", { children: member.annotation.status === "COMPLETE" ? "\u5F53\u524D\u53EF\u6BD4\u8F83\u6807\u6CE8\u672A\u53D1\u73B0\u5DEE\u5F02" : "\u5F53\u524D\u672A\u53D6\u5F97\u53EF\u5224\u5B9A\u5DEE\u5F02" }),
-      !!member.annotation?.masking.length && /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime110.jsx)("summary", { children: "\u5FFD\u7565\u533A\u57DF" }),
-        member.annotation.masking.map((row) => /* @__PURE__ */ (0, import_jsx_runtime110.jsxs)("p", { children: [
+      member.annotation?.differences.length === 0 && /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { children: member.annotation.status === "COMPLETE" ? "\u5F53\u524D\u53EF\u6BD4\u8F83\u6807\u6CE8\u672A\u53D1\u73B0\u5DEE\u5F02" : "\u5F53\u524D\u672A\u53D6\u5F97\u53EF\u5224\u5B9A\u5DEE\u5F02" }),
+      !!member.annotation?.masking.length && /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("summary", { children: "\u5FFD\u7565\u533A\u57DF" }),
+        member.annotation.masking.map((row) => /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("p", { children: [
           "\u53EF\u89C1 ",
           row.visible_pixels,
           "/",
@@ -70297,31 +70356,31 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyGroupAnalysis.tsx
-  var import_jsx_runtime111 = __require("react/jsx-runtime");
+  var import_jsx_runtime112 = __require("react/jsx-runtime");
   function ConsistencyGroupAnalysis({ reference }) {
     const { analysis, error: error3 } = useGroupAnalysis(reference);
-    return /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("section", { "aria-label": "MLLM \u7EC4\u7EA7\u5206\u6790", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("h3", { children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("section", { "aria-label": "MLLM \u7EC4\u7EA7\u5206\u6790", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("h3", { children: [
         "MLLM \u7EC4\u7EA7\u5206\u6790 ",
-        analysis && /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("span", { className: "iad-consistency-badge", children: analysis.status === "NOT_ANALYZED" ? "\u672A\u5206\u6790" : analysis.status === "COMPLETED" ? "MLLM \u5DF2\u5206\u6790" : jobStatuses[analysis.status] })
+        analysis && /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("span", { className: "iad-consistency-badge", children: analysis.status === "NOT_ANALYZED" ? "\u672A\u5206\u6790" : analysis.status === "COMPLETED" ? "MLLM \u5DF2\u5206\u6790" : jobStatuses[analysis.status] })
       ] }),
-      error3 && /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("p", { role: "alert", className: "iad-error", children: [
+      error3 && /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("p", { role: "alert", className: "iad-error", children: [
         "\u5206\u6790\u72B6\u6001\u8BFB\u53D6\u5931\u8D25\uFF1A",
         error3
       ] }),
-      !analysis && !error3 && /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5206\u6790\u72B6\u6001\u2026" }),
-      analysis?.status === "NOT_ANALYZED" && /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u5206\u6790\u7ED3\u679C\u3002" }),
-      analysis?.error && /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { role: "alert", className: "iad-error", children: analysis.error }),
-      analysis?.status === "COMPLETED" && analysis.result && /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)(import_jsx_runtime111.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { className: "iad-muted", children: analysis.model_name }),
-        /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("div", { className: "iad-group-conclusions", children: analysis.result.conclusions.map((conclusion, index3) => /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { children: conclusion.text }, index3)) }),
-        !!analysis.result.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("div", { className: "iad-group-limitations", children: analysis.result.limitations.map((limit, index3) => /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { children: limit }, index3)) }),
-        /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("div", { className: "iad-group-overall", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime111.jsxs)("h4", { children: [
+      !analysis && !error3 && /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5206\u6790\u72B6\u6001\u2026" }),
+      analysis?.status === "NOT_ANALYZED" && /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("p", { className: "iad-muted", children: "\u6682\u65E0\u5DF2\u4FDD\u5B58\u7684\u6A21\u578B\u5206\u6790\u7ED3\u679C\u3002" }),
+      analysis?.error && /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("p", { role: "alert", className: "iad-error", children: analysis.error }),
+      analysis?.status === "COMPLETED" && analysis.result && /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)(import_jsx_runtime112.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("p", { className: "iad-muted", children: analysis.model_name }),
+        /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("div", { className: "iad-group-conclusions", children: analysis.result.conclusions.map((conclusion, index3) => /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("p", { children: conclusion.text }, index3)) }),
+        !!analysis.result.limitations.length && /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("div", { className: "iad-group-limitations", children: analysis.result.limitations.map((limit, index3) => /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("p", { children: limit }, index3)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("div", { className: "iad-group-overall", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("h4", { children: [
             "\u6A21\u578B\u7ED3\u8BBA\uFF0C",
             modelAssessmentLabels[analysis.result.overall.verdict]
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime111.jsx)("p", { children: analysis.result.overall.text })
+          /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("p", { children: analysis.result.overall.text })
         ] })
       ] })
     ] });
@@ -70332,7 +70391,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/components/ConsistencyRegionProposal.tsx
   var import_react82 = __require("react");
-  var import_jsx_runtime112 = __require("react/jsx-runtime");
+  var import_jsx_runtime113 = __require("react/jsx-runtime");
   function ConsistencyRegionProposal({ sources, differences, onChange }) {
     const [sampleId, setSampleId] = (0, import_react82.useState)(""), [annotationId, setAnnotationId] = (0, import_react82.useState)(""), [operation, setOperation] = (0, import_react82.useState)("relabel");
     const [category, setCategory] = (0, import_react82.useState)(""), [geometryKind, setGeometryKind] = (0, import_react82.useState)("bbox"), [geometryText, setGeometryText] = (0, import_react82.useState)("");
@@ -70350,62 +70409,62 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       return { kind: "PROPOSE_REGION_CHANGE", changes: [change] };
     }, [sampleId, annotationId, operation, category, geometryKind, geometryText]);
     (0, import_react82.useEffect)(() => onChange(value), [value, onChange]);
-    return /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("section", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("p", { className: "iad-muted", children: "\u5EFA\u8BAE\u4E0D\u4F1A\u6539\u5199\u6E90\u6807\u6CE8\u3002\u5B9E\u9645\u4FEE\u6B63\u5E76\u91CD\u626B\u540E\u518D\u9A8C\u8BC1\u3002" }),
-      /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("div", { className: "iad-config-bar", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("label", { className: "iad-field", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("section", { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("p", { className: "iad-muted", children: "\u5EFA\u8BAE\u4E0D\u4F1A\u6539\u5199\u6E90\u6807\u6CE8\u3002\u5B9E\u9645\u4FEE\u6B63\u5E76\u91CD\u626B\u540E\u518D\u9A8C\u8BC1\u3002" }),
+      /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("div", { className: "iad-config-bar", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
           "\u76EE\u6807\u6837\u672C",
-          /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)(Select, { "aria-label": "\u533A\u57DF\u5EFA\u8BAE\u76EE\u6807", value: sampleId, onChange: (event) => {
+          /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)(Select, { "aria-label": "\u533A\u57DF\u5EFA\u8BAE\u76EE\u6807", value: sampleId, onChange: (event) => {
             setSampleId(event.target.value);
             setAnnotationId("");
           }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
-            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: source.sample.sample_id, children: source.sample.relative_path }, source.sample.sample_id))
+            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
+            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: source.sample.sample_id, children: source.sample.relative_path }, source.sample.sample_id))
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
           "\u4FEE\u6B63\u65B9\u5F0F",
-          /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)(Select, { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u65B9\u5F0F", value: operation, onChange: (event) => setOperation(event.target.value), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: "relabel", children: "\u4FEE\u6539\u7C7B\u522B" }),
-            /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: "reshape", children: "\u4FEE\u6539\u5F62\u72B6" }),
-            /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: "add", children: "\u65B0\u589E\u533A\u57DF" }),
-            /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: "remove", children: "\u5220\u9664\u533A\u57DF" })
+          /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)(Select, { "aria-label": "\u533A\u57DF\u4FEE\u6B63\u65B9\u5F0F", value: operation, onChange: (event) => setOperation(event.target.value), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "relabel", children: "\u4FEE\u6539\u7C7B\u522B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "reshape", children: "\u4FEE\u6539\u5F62\u72B6" }),
+            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "add", children: "\u65B0\u589E\u533A\u57DF" }),
+            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "remove", children: "\u5220\u9664\u533A\u57DF" })
           ] })
         ] })
       ] }),
-      operation !== "add" && /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("label", { className: "iad-field", children: [
+      operation !== "add" && /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
         "\u6240\u9009\u5DEE\u5F02\u4E2D\u7684\u533A\u57DF",
-        /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)(Select, { "aria-label": "\u5EFA\u8BAE\u76EE\u6807\u533A\u57DF", value: annotationId, onChange: (event) => setAnnotationId(event.target.value), children: [
-          /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
-          annotations.map((annotation) => /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("option", { value: annotation.annotation_id, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)(Select, { "aria-label": "\u5EFA\u8BAE\u76EE\u6807\u533A\u57DF", value: annotationId, onChange: (event) => setAnnotationId(event.target.value), children: [
+          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "", children: "\u8BF7\u9009\u62E9" }),
+          annotations.map((annotation) => /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("option", { value: annotation.annotation_id, children: [
             annotation.raw_label,
             "\uFF0C",
             annotation.bbox?.join(", ")
           ] }, annotation.annotation_id))
         ] })
       ] }),
-      (operation === "add" || operation === "relabel") && /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("label", { className: "iad-field", children: [
+      (operation === "add" || operation === "relabel") && /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
         "\u5EFA\u8BAE\u7C7B\u522B",
-        /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u7C7B\u522B", value: category, onChange: (event) => setCategory(event.target.value) })
+        /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u7C7B\u522B", value: category, onChange: (event) => setCategory(event.target.value) })
       ] }),
-      (operation === "add" || operation === "reshape") && /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)(import_jsx_runtime112.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("label", { className: "iad-field", children: [
+      (operation === "add" || operation === "reshape") && /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)(import_jsx_runtime113.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
           "\u5F62\u72B6",
-          /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)(Select, { value: geometryKind, onChange: (event) => setGeometryKind(event.target.value), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: "bbox", children: "\u77E9\u5F62" }),
-            /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("option", { value: "polygon", children: "\u591A\u8FB9\u5F62" })
+          /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)(Select, { value: geometryKind, onChange: (event) => setGeometryKind(event.target.value), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "bbox", children: "\u77E9\u5F62" }),
+            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "polygon", children: "\u591A\u8FB9\u5F62" })
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime112.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
           geometryKind === "bbox" ? "\u539F\u56FE\u5750\u6807 x1, y1, x2, y2" : "\u539F\u56FE\u9876\u70B9 x1, y1, x2, y2, \u2026",
-          /* @__PURE__ */ (0, import_jsx_runtime112.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u533A\u57DF\u5750\u6807", value: geometryText, onChange: (event) => setGeometryText(event.target.value) })
+          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("input", { "aria-label": "\u5EFA\u8BAE\u533A\u57DF\u5750\u6807", value: geometryText, onChange: (event) => setGeometryText(event.target.value) })
         ] })
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyReviewPanel.tsx
-  var import_jsx_runtime113 = __require("react/jsx-runtime");
+  var import_jsx_runtime114 = __require("react/jsx-runtime");
   var actions3 = { CONFIRM_DIFFERENCE: "\u786E\u8BA4\u5DEE\u5F02\uFF0C\u5F85\u4FEE\u6B63", EXPECTED_POLICY_DIFFERENCE: "\u5C5E\u4E8E\u4E0D\u540C\u89C4\u8303", REJECT_DIFFERENCE: "\u6392\u9664\u51B2\u7A81", NEEDS_CONTEXT: "\u9700\u8981\u8865\u5145\u4F9D\u636E", SET_EFFECTIVE_QUALITY: "\u63D0\u4EA4\u6709\u6548\u8D28\u91CF\u88C1\u51B3", PROPOSE_REGION_CHANGE: "\u63D0\u51FA\u533A\u57DF\u4FEE\u6B63\u5EFA\u8BAE" };
   var reviewStates = { OPEN: "\u5F85\u590D\u6838", NEEDS_CONTEXT: "\u5F85\u8865\u5145\u4F9D\u636E", RESOLVED: "\u5DF2\u88C1\u51B3" };
   var correctionStates = { NOT_REQUIRED: "\u65E0\u9700\u4FEE\u6B63", PROPOSED: "\u5EFA\u8BAE\u672A\u5E94\u7528", AWAITING_RESCAN: "\u7B49\u5F85\u6E90\u4FEE\u6B63\u53CA\u91CD\u626B", VERIFIED: "\u91CD\u626B\u5DF2\u9A8C\u8BC1" };
@@ -70505,100 +70564,100 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         if (active.current) setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("section", { className: "iad-job-panel iad-consistency-review", "aria-label": "\u4E00\u81F4\u6027\u4EBA\u5DE5\u5904\u7F6E", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("h2", { children: "\u4EBA\u5DE5\u5904\u7F6E" }),
-      context && /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("table", { className: "iad-resource-table", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("tr", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("th", { children: "\u5DEE\u5F02" }),
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("th", { children: "\u590D\u6838" }),
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("th", { children: "\u6E90\u4FEE\u6B63" })
+    return /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("section", { className: "iad-job-panel iad-consistency-review", "aria-label": "\u4E00\u81F4\u6027\u4EBA\u5DE5\u5904\u7F6E", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("h2", { children: "\u4EBA\u5DE5\u5904\u7F6E" }),
+      context && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("div", { className: "iad-table-scroll", children: /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("table", { className: "iad-resource-table", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("tr", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("th", { children: "\u5DEE\u5F02" }),
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("th", { children: "\u590D\u6838" }),
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("th", { children: "\u6E90\u4FEE\u6B63" })
         ] }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("tbody", { children: context.differences.map((item) => /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("tr", { "data-review-state": item.review_state, "data-correction-state": item.correction_state, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("input", { type: "checkbox", "aria-label": `\u5904\u7F6E\u5DEE\u5F02 ${result.annotation.differences.find((diff) => diff.difference_id === item.difference_id)?.type}`, disabled: busy || hasPending, checked: selected.includes(item.difference_id), onChange: (event) => setSelected(event.target.checked ? [...selected, item.difference_id] : selected.filter((id) => id !== item.difference_id)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("tbody", { children: context.differences.map((item) => /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("tr", { "data-review-state": item.review_state, "data-correction-state": item.correction_state, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("td", { children: /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("input", { type: "checkbox", "aria-label": `\u5904\u7F6E\u5DEE\u5F02 ${result.annotation.differences.find((diff) => diff.difference_id === item.difference_id)?.type}`, disabled: busy || hasPending, checked: selected.includes(item.difference_id), onChange: (event) => setSelected(event.target.checked ? [...selected, item.difference_id] : selected.filter((id) => id !== item.difference_id)) }),
             differenceLabels[result.annotation.differences.find((diff) => diff.difference_id === item.difference_id).type]
           ] }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("td", { children: reviewStates[item.review_state] }),
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("td", { children: correctionStates[item.correction_state] })
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("td", { children: reviewStates[item.review_state] }),
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("td", { children: correctionStates[item.correction_state] })
         ] }, item.difference_id)) })
       ] }) }),
-      !current && /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("div", { className: "iad-row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("p", { className: "iad-muted", children: "\u5386\u53F2\u6765\u6E90\u53EF\u8865\u5145\u5904\u7F6E\u8BF4\u660E\uFF1B\u8D28\u91CF\u88C1\u51B3\u548C\u533A\u57DF\u5EFA\u8BAE\u9700\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90\u3002" }),
-        /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("button", { disabled: busy || hasPending, onClick: () => void compareCurrent(), children: "\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90" })
+      !current && /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { className: "iad-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { className: "iad-muted", children: "\u5386\u53F2\u6765\u6E90\u53EF\u8865\u5145\u5904\u7F6E\u8BF4\u660E\uFF1B\u8D28\u91CF\u88C1\u51B3\u548C\u533A\u57DF\u5EFA\u8BAE\u9700\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90\u3002" }),
+        /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("button", { disabled: busy || hasPending, onClick: () => void compareCurrent(), children: "\u91CD\u65B0\u6BD4\u8F83\u5F53\u524D\u6765\u6E90" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("form", { onSubmit: (event) => {
+      /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("form", { onSubmit: (event) => {
         event.preventDefault();
         void submit();
       }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("fieldset", { disabled: busy || hasPending, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("div", { className: "iad-config-bar", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("fieldset", { disabled: busy || hasPending, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { className: "iad-config-bar", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("label", { className: "iad-field", children: [
               "\u5904\u7F6E\u52A8\u4F5C",
-              /* @__PURE__ */ (0, import_jsx_runtime113.jsx)(Select, { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u52A8\u4F5C", value: kind, onChange: (event) => setKind(event.target.value), children: Object.entries(actions3).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value, children: label }, value)) })
+              /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(Select, { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u52A8\u4F5C", value: kind, onChange: (event) => setKind(event.target.value), children: Object.entries(actions3).map(([value, label]) => /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("option", { value, children: label }, value)) })
             ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("label", { className: "iad-field", children: [
               "\u590D\u6838\u4EBA",
-              /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("input", { "aria-label": "\u4E00\u81F4\u6027\u590D\u6838\u4EBA", value: reviewer, onChange: (event) => setReviewer(event.target.value), required: true })
+              /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("input", { "aria-label": "\u4E00\u81F4\u6027\u590D\u6838\u4EBA", value: reviewer, onChange: (event) => setReviewer(event.target.value), required: true })
             ] })
           ] }),
-          kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("section", { "aria-label": "\u8D28\u91CF\u88C1\u51B3\u76EE\u6807", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("h3", { children: "\u5B9E\u9645\u76EE\u6807\u6837\u672C" }),
-            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
+          kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("section", { "aria-label": "\u8D28\u91CF\u88C1\u51B3\u76EE\u6807", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("h3", { children: "\u5B9E\u9645\u76EE\u6807\u6837\u672C" }),
+            sources.map((source) => /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("label", { className: "iad-field", children: [
               source.sample.relative_path,
-              /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)(Select, { "aria-label": `\u8D28\u91CF\u88C1\u51B3 ${source.sample.relative_path}`, value: quality[source.sample.sample_id] || "", onChange: (event) => setQuality({ ...quality, [source.sample.sample_id]: event.target.value }), children: [
-                /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value: "", children: "\u4E0D\u4FEE\u6539" }),
-                ["PASS", "FAIL", "HARD_NORMAL", "UNCERTAIN"].map((value) => /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("option", { value, children: reviewLabel(value) }, value))
+              /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)(Select, { "aria-label": `\u8D28\u91CF\u88C1\u51B3 ${source.sample.relative_path}`, value: quality[source.sample.sample_id] || "", onChange: (event) => setQuality({ ...quality, [source.sample.sample_id]: event.target.value }), children: [
+                /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("option", { value: "", children: "\u4E0D\u4FEE\u6539" }),
+                ["PASS", "FAIL", "HARD_NORMAL", "UNCERTAIN"].map((value) => /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("option", { value, children: reviewLabel(value) }, value))
               ] })
             ] }, source.sample.sample_id))
           ] }),
-          kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime113.jsx)(ConsistencyRegionProposal, { sources, differences: selectedDiffs, onChange: setRegion }),
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("label", { className: "iad-field", children: [
+          kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(ConsistencyRegionProposal, { sources, differences: selectedDiffs, onChange: setRegion }),
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("label", { className: "iad-field", children: [
             "\u5904\u7F6E\u8BF4\u660E",
-            /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("textarea", { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u8BF4\u660E", required: true, value: comment, onChange: (event) => setComment(event.target.value) })
+            /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("textarea", { "aria-label": "\u4E00\u81F4\u6027\u5904\u7F6E\u8BF4\u660E", required: true, value: comment, onChange: (event) => setComment(event.target.value) })
           ] })
         ] }),
-        hasPending && pending.current && /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("div", { role: "status", children: [
+        hasPending && pending.current && /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { role: "status", children: [
           "\u63D0\u4EA4\u7ED3\u679C\u5F85\u786E\u8BA4\uFF0C",
           actions3[pending.current.action.kind],
           "\uFF0C",
           pending.current.reviewer,
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("p", { children: pending.current.comment }),
-          pending.current.action.kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("ul", { children: pending.current.action.targets.map((target) => /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("li", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { children: pending.current.comment }),
+          pending.current.action.kind === "SET_EFFECTIVE_QUALITY" && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("ul", { children: pending.current.action.targets.map((target) => /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("li", { children: [
             sources.find((source) => source.sample.sample_id === target.sample_id)?.sample.relative_path,
             "\uFF0C",
             reviewLabel(target.quality)
           ] }, target.sample_id)) }),
-          pending.current.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("ul", { children: pending.current.action.changes.map((change, index3) => /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("li", { children: [
+          pending.current.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("ul", { children: pending.current.action.changes.map((change, index3) => /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("li", { children: [
             sources.find((source) => source.sample.sample_id === change.sample_id)?.sample.relative_path,
             "\uFF0C",
             change.operation
           ] }, index3)) })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime113.jsx)(Button, { variant: "primary", disabled: busy || !hasPending && !canSubmit, children: busy ? "\u63D0\u4EA4\u4E2D\u2026" : hasPending ? "\u91CD\u8BD5\u540C\u4E00\u5904\u7F6E" : "\u63D0\u4EA4\u5904\u7F6E" })
+        /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(Button, { variant: "primary", disabled: busy || !hasPending && !canSubmit, children: busy ? "\u63D0\u4EA4\u4E2D\u2026" : hasPending ? "\u91CD\u8BD5\u540C\u4E00\u5904\u7F6E" : "\u63D0\u4EA4\u5904\u7F6E" })
       ] }),
-      error3 && /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
-      notice && /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("p", { role: "status", children: notice }),
-      !!context?.decisions.length && /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("details", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("summary", { children: [
+      error3 && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
+      notice && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { role: "status", children: notice }),
+      !!context?.decisions.length && /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("details", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("summary", { children: [
           "\u5904\u7F6E\u8BB0\u5F55\uFF0C",
           context.decisions.length
         ] }),
-        context.decisions.map((decision) => /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime113.jsxs)("p", { children: [
+        context.decisions.map((decision) => /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("p", { children: [
             actions3[decision.request.action.kind],
             "\uFF0C",
             decision.request.reviewer,
             "\uFF0C",
             decision.request.comment
           ] }),
-          decision.request.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime113.jsx)("button", { disabled: busy || hasPending || !reviewer.trim(), onClick: () => void verify(decision.decision_id), children: "\u9A8C\u8BC1\u91CD\u626B\u7ED3\u679C" })
+          decision.request.action.kind === "PROPOSE_REGION_CHANGE" && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("button", { disabled: busy || hasPending || !reviewer.trim(), onClick: () => void verify(decision.decision_id), children: "\u9A8C\u8BC1\u91CD\u626B\u7ED3\u679C" })
         ] }, decision.decision_id))
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyGroupDialog.tsx
-  var import_jsx_runtime114 = __require("react/jsx-runtime");
+  var import_jsx_runtime115 = __require("react/jsx-runtime");
   var tabs = [{ id: "summary", label: "MLLM \u5206\u6790" }, { id: "evidence", label: "\u8BC1\u636E\u6E05\u5355" }, { id: "review", label: "\u4EBA\u5DE5\u590D\u6838" }];
   function ConsistencyGroupDialog({ queryId, kind, item, position, total, onMove, onClose, onExpired, restoreFocus }) {
     const { state, workspace } = useWorkspace(), location2 = state.consistency;
@@ -70627,7 +70686,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     const comparison = selected?.comparison && candidate.bundle?.result.evidence_id === selected.comparison.evidence_id ? candidate.bundle : null;
     const sources = [anchor.bundle && members ? frozenConsistencyImage(anchor.bundle, members.anchor.side) : null, candidate.bundle && selected ? frozenConsistencyImage(candidate.bundle, selected.image.side) : null];
     const difference2 = comparison?.result.annotation.differences.find((row) => row.difference_id === location2.differenceId);
-    return /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)(Modal, { title: "\u56FE\u7EC4\u8BE6\u60C5", header: false, className: "iad-consistency-group-dialog", onClose, restoreFocus, onKeyDown: (event) => {
+    return /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)(Modal, { title: "\u56FE\u7EC4\u8BE6\u60C5", header: false, className: "iad-consistency-group-dialog", onClose, restoreFocus, onKeyDown: (event) => {
       if (event.defaultPrevented || event.target.closest("input,textarea,select,[role=tablist],.iad-image-canvas")) return;
       if (event.key === "ArrowLeft" && position > 1) {
         event.preventDefault();
@@ -70638,36 +70697,36 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         onMove(1);
       }
     }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("header", { className: "iad-group-header", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("span", { className: "iad-muted", children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE\u6210\u5458" : "\u5019\u9009\u96C6\u5408\u6838\u9A8C" }),
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("h2", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("header", { className: "iad-group-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("span", { className: "iad-muted", children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE\u6210\u5458" : "\u5019\u9009\u96C6\u5408\u6838\u9A8C" }),
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("h2", { children: [
             kind === "groups" ? "\u91CD\u590D\u56FE\u7EC4" : "\u6807\u6CE8\u5DEE\u5F02",
             "\uFF0C",
             item.anchor.sample.relative_path.split("/").pop()
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { children: kind === "groups" ? `${item.member_count} \u5F20\u6210\u5458` : `\u67E5\u8BE2\u56FE\u50CF 1 \u5F20\uFF0C${item.candidate_count} \u5F20\u5019\u9009` })
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("p", { children: kind === "groups" ? `${item.member_count} \u5F20\u6210\u5458` : `\u67E5\u8BE2\u56FE\u50CF 1 \u5F20\uFF0C${item.candidate_count} \u5F20\u5019\u9009` })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("button", { disabled: position <= 1, onClick: () => onMove(-1), children: "\u4E0A\u4E00\u7EC4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("span", { className: "iad-muted", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("button", { disabled: position <= 1, onClick: () => onMove(-1), children: "\u4E0A\u4E00\u7EC4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("span", { className: "iad-muted", children: [
             position,
             " / ",
             total
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("button", { disabled: position >= total, onClick: () => onMove(1), children: "\u4E0B\u4E00\u7EC4" }),
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(IconButton, { icon: "close", label: "\u5173\u95ED\u56FE\u7EC4\u8BE6\u60C5", onClick: onClose })
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("button", { disabled: position >= total, onClick: () => onMove(1), children: "\u4E0B\u4E00\u7EC4" }),
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(IconButton, { icon: "close", label: "\u5173\u95ED\u56FE\u7EC4\u8BE6\u60C5", onClick: onClose })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { className: "iad-group-scroll", children: [
-        (error3 || anchor.error || candidate.error) && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { className: "iad-error", role: "alert", children: error3 || anchor.error || candidate.error }),
-        !members && !error3 && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5019\u9009\u56FE\u50CF\u2026" }),
-        members && /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)(import_jsx_runtime114.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { className: "iad-group-visuals", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(ConsistencyCanvasPair, { sources, labels: [kind === "groups" ? "\u7EC4\u4EE3\u8868\u56FE\u50CF\uFF08\u56FA\u5B9A\uFF09" : "\u67E5\u8BE2\u56FE\u50CF\uFF08\u56FA\u5B9A\uFF09", kind === "groups" ? "\u7EC4\u5185\u6210\u5458" : "\u5F53\u524D\u5019\u9009"], selected: difference2, anchorSide: selected?.comparison?.anchor_side, onExpand: setLightbox }),
-            /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("div", { className: "iad-group-image-names", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("span", { title: source?.title, children: source?.title }, index3)) }),
-            /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("section", { className: "iad-group-candidates", "aria-label": "\u5019\u9009\u56FE\u50CF", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("div", { className: "iad-row", children: /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("h3", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("div", { className: "iad-group-scroll", children: [
+        (error3 || anchor.error || candidate.error) && /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("p", { className: "iad-error", role: "alert", children: error3 || anchor.error || candidate.error }),
+        !members && !error3 && /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u5019\u9009\u56FE\u50CF\u2026" }),
+        members && /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)(import_jsx_runtime115.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("div", { className: "iad-group-visuals", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(ConsistencyCanvasPair, { sources, labels: [kind === "groups" ? "\u7EC4\u4EE3\u8868\u56FE\u50CF\uFF08\u56FA\u5B9A\uFF09" : "\u67E5\u8BE2\u56FE\u50CF\uFF08\u56FA\u5B9A\uFF09", kind === "groups" ? "\u7EC4\u5185\u6210\u5458" : "\u5F53\u524D\u5019\u9009"], selected: difference2, anchorSide: selected?.comparison?.anchor_side, onExpand: setLightbox }),
+            /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("div", { className: "iad-group-image-names", children: sources.map((source, index3) => /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("span", { title: source?.title, children: source?.title }, index3)) }),
+            /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("section", { className: "iad-group-candidates", "aria-label": "\u5019\u9009\u56FE\u50CF", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("div", { className: "iad-row", children: /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("h3", { children: [
                 kind === "groups" ? "\u540C\u56FE\u7EC4\u6210\u5458" : "\u76F8\u4F3C\u5019\u9009",
                 "\uFF08",
                 members.total,
@@ -70675,8 +70734,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                 kind === "groups" ? "\uFF0C\u4E0D\u542B\u56FA\u5B9A\u4EE3\u8868\u56FE" : "",
                 "\uFF09"
               ] }) }),
-              /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(Pagination, { total: members.total, page: memberPage, size: 20, unit: "\u5F20\u56FE\u50CF", onPage: (page) => workspace.updateConsistency({ memberPage: page, memberId: void 0, differenceId: void 0 }, true) }),
-              /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("div", { className: "iad-thumbnail-strip", children: members.items.map((row, index3) => /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(
+              /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(Pagination, { total: members.total, page: memberPage, size: 20, unit: "\u5F20\u56FE\u50CF", onPage: (page) => workspace.updateConsistency({ memberPage: page, memberId: void 0, differenceId: void 0 }, true) }),
+              /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("div", { className: "iad-thumbnail-strip", children: members.items.map((row, index3) => /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(
                 ThumbnailCard,
                 {
                   src: row.image.available ? galleryImageUrl(row.image) : void 0,
@@ -70689,34 +70748,34 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
               )) }) })
             ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("div", { className: "iad-group-analysis", children: /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)(PageTabs, { label: "\u56FE\u7EC4\u8BE6\u60C5\u9875\u7B7E", items: tabs, value: tab, onChange: (detailTab) => workspace.updateConsistency({ detailTab }, true), children: [
-            tab === "summary" && /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)(import_jsx_runtime114.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(ConsistencyGroupAnalysis, { reference: { query_id: queryId, kind, group_id: item.group_id, facts_state: item.facts_state } }),
-              comparison && /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("div", { className: "iad-group-fact", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("strong", { children: "\u786E\u5B9A\u6027\u4E8B\u5B9E" }),
-                /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("span", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("div", { className: "iad-group-analysis", children: /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)(PageTabs, { label: "\u56FE\u7EC4\u8BE6\u60C5\u9875\u7B7E", items: tabs, value: tab, onChange: (detailTab) => workspace.updateConsistency({ detailTab }, true), children: [
+            tab === "summary" && /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)(import_jsx_runtime115.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(ConsistencyGroupAnalysis, { reference: { query_id: queryId, kind, group_id: item.group_id, facts_state: item.facts_state } }),
+              comparison && /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("div", { className: "iad-group-fact", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("strong", { children: "\u786E\u5B9A\u6027\u4E8B\u5B9E" }),
+                /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("span", { children: [
                   imageRelations[comparison.result.verification.relation],
                   "\uFF0C",
                   annotationSummary(comparison.result.annotation)
                 ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("button", { className: "iad-consistency-text-button", onClick: () => workspace.updateConsistency({ detailTab: "evidence" }, true), children: "\u67E5\u770B\u5F53\u524D\u5019\u9009\u8BC1\u636E" })
+                /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("button", { className: "iad-consistency-text-button", onClick: () => workspace.updateConsistency({ detailTab: "evidence" }, true), children: "\u67E5\u770B\u5F53\u524D\u5019\u9009\u8BC1\u636E" })
               ] })
             ] }),
-            tab === "evidence" && (comparison ? /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)(import_jsx_runtime114.Fragment, { children: [
-              /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("dl", { className: "iad-group-references", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("dt", { children: "\u6BD4\u8F83" }),
-                /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("dd", { children: comparison.result.result_id }),
-                /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("dt", { children: "\u8BC1\u636E" }),
-                /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("dd", { children: comparison.result.evidence_id })
+            tab === "evidence" && (comparison ? /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)(import_jsx_runtime115.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("dl", { className: "iad-group-references", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("dt", { children: "\u6BD4\u8F83" }),
+                /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("dd", { children: comparison.result.result_id }),
+                /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("dt", { children: "\u8BC1\u636E" }),
+                /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("dd", { children: comparison.result.evidence_id })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(ConsistencyDifferences, { member: frozenConsistencyMember(comparison), differenceId: location2.differenceId, onDifference: (differenceId) => workspace.updateConsistency({ differenceId }, true), anchorSide: selected?.comparison?.anchor_side })
-            ] }) : /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { className: "iad-muted", children: "\u5F53\u524D\u6210\u5458\u4E0E\u56FA\u5B9A\u4E3B\u56FE\u4E4B\u95F4\u6CA1\u6709\u5DF2\u4FDD\u5B58\u7684\u76F4\u63A5\u6BD4\u8F83\u8BC1\u636E\u3002" })),
-            tab === "review" && (comparison ? /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(ConsistencyReviewPanel, { bundle: comparison }, comparison.result.evidence_id) : /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("p", { className: "iad-muted", children: "\u53D6\u5F97\u5F53\u524D\u53CC\u56FE\u7684\u6BD4\u8F83\u8BC1\u636E\u540E\u53EF\u4EBA\u5DE5\u590D\u6838\u3002" }))
+              /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(ConsistencyDifferences, { member: frozenConsistencyMember(comparison), differenceId: location2.differenceId, onDifference: (differenceId) => workspace.updateConsistency({ differenceId }, true), anchorSide: selected?.comparison?.anchor_side })
+            ] }) : /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("p", { className: "iad-muted", children: "\u5F53\u524D\u6210\u5458\u4E0E\u56FA\u5B9A\u4E3B\u56FE\u4E4B\u95F4\u6CA1\u6709\u5DF2\u4FDD\u5B58\u7684\u76F4\u63A5\u6BD4\u8F83\u8BC1\u636E\u3002" })),
+            tab === "review" && (comparison ? /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(ConsistencyReviewPanel, { bundle: comparison }, comparison.result.evidence_id) : /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("p", { className: "iad-muted", children: "\u53D6\u5F97\u5F53\u524D\u53CC\u56FE\u7684\u6BD4\u8F83\u8BC1\u636E\u540E\u53EF\u4EBA\u5DE5\u590D\u6838\u3002" }))
           ] }) })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime114.jsxs)("footer", { className: "iad-group-footer", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("div", { className: "iad-row", children: /* @__PURE__ */ (0, import_jsx_runtime114.jsx)("button", { disabled: !comparison || asking, onClick: async () => {
+      /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("footer", { className: "iad-group-footer", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("div", { className: "iad-row", children: /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("button", { disabled: !comparison || asking, onClick: async () => {
           if (!comparison) return;
           setAsking(true);
           try {
@@ -70727,14 +70786,14 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             setAsking(false);
           }
         }, children: asking ? "\u6B63\u5728\u6253\u5F00\u4F1A\u8BDD\u2026" : "\u5728 DSH \u4E2D\u89E3\u91CA" }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(Button, { variant: "primary", disabled: !comparison, onClick: () => workspace.updateConsistency({ detailTab: "review" }, true), children: "\u4EBA\u5DE5\u590D\u6838" })
+        /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(Button, { variant: "primary", disabled: !comparison, onClick: () => workspace.updateConsistency({ detailTab: "review" }, true), children: "\u4EBA\u5DE5\u590D\u6838" })
       ] }),
-      lightbox && /* @__PURE__ */ (0, import_jsx_runtime114.jsx)(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })
+      lightbox && /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(ImageViewer, { image: lightbox, onClose: () => setLightbox(null) })
     ] });
   }
 
   // src/client/components/ConsistencyGallery.tsx
-  var import_jsx_runtime115 = __require("react/jsx-runtime");
+  var import_jsx_runtime116 = __require("react/jsx-runtime");
   function ConsistencyGallery({ queryId, kind, onExpired }) {
     const { state, workspace } = useWorkspace(), location2 = state.consistency;
     const [page, setPage] = (0, import_react85.useState)(null), [error3, setError] = (0, import_react85.useState)("");
@@ -70780,38 +70839,38 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         workspace.updateConsistency({ galleryPage: number + offset4, memberId: void 0, memberPage: 1 }, true);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("section", { className: "iad-consistency-gallery-panel", "aria-label": kind === "conflicts" ? "\u51B2\u7A81\u56FE\u50CF" : "\u91CD\u590D\u56FE\u7EC4", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("header", { className: "iad-consistency-panel-header", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("strong", { children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("section", { className: "iad-consistency-gallery-panel", "aria-label": kind === "conflicts" ? "\u51B2\u7A81\u56FE\u50CF" : "\u91CD\u590D\u56FE\u7EC4", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("header", { className: "iad-consistency-panel-header", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("strong", { children: [
           kind === "conflicts" ? "\u540C\u56FE\u6807\u6CE8\u5DEE\u5F02" : "\u91CD\u590D\u56FE\u7EC4\uFF0C\u4EE3\u8868\u56FE\u50CF",
           " ",
-          /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("span", { className: "iad-muted", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("span", { className: "iad-muted", children: [
             page?.total ?? "\u2014",
             " ",
             kind === "conflicts" ? "\u5F20" : "\u7EC4"
           ] })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("input", { type: "search", "aria-label": "\u641C\u7D22\u56FE\u50CF", placeholder: "\u641C\u7D22\u6587\u4EF6\u540D", value: search, onChange: (event) => workspace.updateConsistency({ gallerySearch: event.target.value, galleryPage: 1, groupId: void 0 }, true) }),
-          /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(Select, { "aria-label": "MLLM\u7ED3\u8BBA\u7B5B\u9009", value: modelFilter, onChange: (event) => workspace.updateConsistency({ modelFilter: event.target.value, galleryPage: 1, groupId: void 0 }, true), children: (page?.model_filters || [{ value: modelFilter, label: modelFilter === "all" ? "\u5168\u90E8\u6A21\u578B\u7ED3\u8BBA" : modelAssessmentLabels[modelFilter], count: 0 }]).map((filter2) => /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("option", { value: filter2.value, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("input", { type: "search", "aria-label": "\u641C\u7D22\u56FE\u50CF", placeholder: "\u641C\u7D22\u6587\u4EF6\u540D", value: search, onChange: (event) => workspace.updateConsistency({ gallerySearch: event.target.value, galleryPage: 1, groupId: void 0 }, true) }),
+          /* @__PURE__ */ (0, import_jsx_runtime116.jsx)(Select, { "aria-label": "MLLM\u7ED3\u8BBA\u7B5B\u9009", value: modelFilter, onChange: (event) => workspace.updateConsistency({ modelFilter: event.target.value, galleryPage: 1, groupId: void 0 }, true), children: (page?.model_filters || [{ value: modelFilter, label: modelFilter === "all" ? "\u5168\u90E8\u6A21\u578B\u7ED3\u8BBA" : modelAssessmentLabels[modelFilter], count: 0 }]).map((filter2) => /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("option", { value: filter2.value, children: [
             filter2.label,
             page ? ` ${filter2.count}` : ""
           ] }, filter2.value)) }),
-          /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)(Select, { "aria-label": "\u6392\u5E8F\u65B9\u5F0F", value: order, onChange: (event) => workspace.updateConsistency({ galleryOrder: event.target.value, galleryPage: 1, groupId: void 0 }, true), children: [
-            /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("option", { value: "recent", children: "\u6700\u8FD1\u6BD4\u8F83" }),
-            /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("option", { value: "members", children: kind === "conflicts" ? "\u5019\u9009\u6570\u91CF\u4ECE\u591A\u5230\u5C11" : "\u6210\u5458\u6570\u91CF\u4ECE\u591A\u5230\u5C11" })
+          /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)(Select, { "aria-label": "\u6392\u5E8F\u65B9\u5F0F", value: order, onChange: (event) => workspace.updateConsistency({ galleryOrder: event.target.value, galleryPage: 1, groupId: void 0 }, true), children: [
+            /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "recent", children: "\u6700\u8FD1\u6BD4\u8F83" }),
+            /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "members", children: kind === "conflicts" ? "\u5019\u9009\u6570\u91CF\u4ECE\u591A\u5230\u5C11" : "\u6210\u5458\u6570\u91CF\u4ECE\u591A\u5230\u5C11" })
           ] })
         ] })
       ] }),
-      error3 && /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
-      !page && !error3 && /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("p", { role: "status", className: "iad-empty", children: "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" }),
-      page && !page.total && /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("p", { className: "iad-empty", children: "\u6CA1\u6709\u5339\u914D\u7684\u56FE\u50CF\uFF0C\u8BF7\u8C03\u6574\u7B5B\u9009\u6761\u4EF6\u3002" }),
-      kind === "conflicts" && page && /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("div", { className: "iad-consistency-filter-chips", role: "group", "aria-label": "\u5DEE\u5F02\u7C7B\u578B\u7B5B\u9009", children: page.filters.map((filter2) => /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("button", { "aria-pressed": differenceFilter === filter2.value, onClick: () => workspace.updateConsistency({ differenceFilter: filter2.value, galleryPage: 1, groupId: void 0 }, true), children: [
+      error3 && /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
+      !page && !error3 && /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("p", { role: "status", className: "iad-empty", children: "\u6B63\u5728\u8BFB\u53D6\u56FE\u50CF\u2026" }),
+      page && !page.total && /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("p", { className: "iad-empty", children: "\u6CA1\u6709\u5339\u914D\u7684\u56FE\u50CF\uFF0C\u8BF7\u8C03\u6574\u7B5B\u9009\u6761\u4EF6\u3002" }),
+      kind === "conflicts" && page && /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("div", { className: "iad-consistency-filter-chips", role: "group", "aria-label": "\u5DEE\u5F02\u7C7B\u578B\u7B5B\u9009", children: page.filters.map((filter2) => /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("button", { "aria-pressed": differenceFilter === filter2.value, onClick: () => workspace.updateConsistency({ differenceFilter: filter2.value, galleryPage: 1, groupId: void 0 }, true), children: [
         filter2.label,
         " ",
         filter2.count
       ] }, filter2.value)) }),
-      /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("div", { className: "iad-thumbnail-grid", children: page?.items.map((item) => /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)(
+      /* @__PURE__ */ (0, import_jsx_runtime116.jsx)(MediaLoad, { children: /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("div", { className: "iad-thumbnail-grid", children: page?.items.map((item) => /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)(
         ThumbnailCard,
         {
           ref: (element) => {
@@ -70824,9 +70883,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           "data-facts-state": item.facts_state,
           onClick: () => open(item),
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("small", { children: kind === "groups" ? `${item.member_count} \u5F20\u6210\u5458` : `${item.candidate_count} \u5F20\u5019\u9009` }),
-            /* @__PURE__ */ (0, import_jsx_runtime115.jsx)("small", { children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE" : item.conflict_categories.join("\u3001") || "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02" }),
-            /* @__PURE__ */ (0, import_jsx_runtime115.jsxs)("small", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("small", { children: kind === "groups" ? `${item.member_count} \u5F20\u6210\u5458` : `${item.candidate_count} \u5F20\u5019\u9009` }),
+            /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("small", { children: kind === "groups" ? "\u4E25\u683C\u540C\u56FE" : item.conflict_categories.join("\u3001") || "\u672A\u53D1\u73B0\u6807\u6CE8\u5DEE\u5F02" }),
+            /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("small", { children: [
               "MLLM\uFF0C",
               item.model_conclusion || modelAssessmentLabels[item.model_state]
             ] })
@@ -70834,8 +70893,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         },
         item.group_id + item.facts_state
       )) }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(Pagination, { total: page?.total || 0, page: number, size: 15, unit: kind === "groups" ? "\u7EC4" : "\u5F20", onPage: (galleryPage) => workspace.updateConsistency({ galleryPage, groupId: void 0 }, true) }),
-      selected && !location2.evidenceId && /* @__PURE__ */ (0, import_jsx_runtime115.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime116.jsx)(Pagination, { total: page?.total || 0, page: number, size: 15, unit: kind === "groups" ? "\u7EC4" : "\u5F20", onPage: (galleryPage) => workspace.updateConsistency({ galleryPage, groupId: void 0 }, true) }),
+      selected && !location2.evidenceId && /* @__PURE__ */ (0, import_jsx_runtime116.jsx)(
         ConsistencyGroupDialog,
         {
           queryId,
@@ -70854,12 +70913,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyFilters.tsx
-  var import_jsx_runtime116 = __require("react/jsx-runtime");
+  var import_jsx_runtime117 = __require("react/jsx-runtime");
   function ConsistencyFilters({ value, modelTypes, onChange }) {
-    return /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u56FE\u50CF\u7B5B\u9009", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("label", { className: "dc-filter-field dc-search-field", children: [
+    return /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("div", { className: "dc-refined-filterbar", role: "group", "aria-label": "\u56FE\u50CF\u7B5B\u9009", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("label", { className: "dc-filter-field dc-search-field", children: [
         "\u6587\u4EF6\u540D\u641C\u7D22",
-        /* @__PURE__ */ (0, import_jsx_runtime116.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime117.jsx)(
           "input",
           {
             type: "search",
@@ -70872,9 +70931,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("label", { className: "dc-filter-field", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("label", { className: "dc-filter-field", children: [
         "\u6A21\u578B\u5224\u65AD",
-        /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)(
           Select,
           {
             id: "dc-model-filter",
@@ -70882,15 +70941,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             value: value.model,
             onChange: (event) => onChange({ ...value, model: event.target.value }),
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "all", children: "\u5168\u90E8\u5224\u65AD" }),
-              modelTypes.map((option) => /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: option.value, children: option.label }, option.value))
+              /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: "all", children: "\u5168\u90E8\u5224\u65AD" }),
+              modelTypes.map((option) => /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: option.value, children: option.label }, option.value))
             ]
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("label", { className: "dc-filter-field", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("label", { className: "dc-filter-field", children: [
         "\u7ED3\u8BBA\u4E00\u81F4\u6027",
-        /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)(
           Select,
           {
             id: "dc-agreement",
@@ -70898,16 +70957,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             value: value.agreement,
             onChange: (event) => onChange({ ...value, agreement: event.target.value }),
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
-              /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "same", children: "\u4E00\u81F4" }),
-              /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })
+              /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: "all", children: "\u5168\u90E8" }),
+              /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: "same", children: "\u4E00\u81F4" }),
+              /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: "different", children: "\u4E0D\u4E00\u81F4" })
             ]
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)("label", { className: "dc-filter-field dc-review-field", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("label", { className: "dc-filter-field dc-review-field", children: [
         "\u4EBA\u5DE5\u590D\u6838",
-        /* @__PURE__ */ (0, import_jsx_runtime116.jsxs)(
+        /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)(
           Select,
           {
             id: "dc-review-filter",
@@ -70915,15 +70974,15 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             value: value.review,
             onChange: (event) => onChange({ ...value, review: event.target.value }),
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }),
-              /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "pending", children: "\u5F85\u590D\u6838" }),
-              /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }),
-              /* @__PURE__ */ (0, import_jsx_runtime116.jsx)("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })
+              /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: "all", children: "\u5168\u90E8\u72B6\u6001" }),
+              /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: "pending", children: "\u5F85\u590D\u6838" }),
+              /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: "confirmed", children: "\u786E\u8BA4\u51B2\u7A81" }),
+              /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("option", { value: "rejected", children: "\u6392\u9664\u51B2\u7A81" })
             ]
           }
         )
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime116.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime117.jsx)(
         ClearFilterButton,
         {
           "data-dc": "clear-conflict-filters",
@@ -70944,7 +71003,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
 
   // src/client/components/ConsistencyComparison.tsx
   var import_react86 = __require("react");
-  var import_jsx_runtime117 = __require("react/jsx-runtime");
+  var import_jsx_runtime118 = __require("react/jsx-runtime");
   function ConsistencyComparison({ member, query, temporary, differenceId, onDifference, frozen }) {
     const { workspace } = useWorkspace();
     const [saving, setSaving] = (0, import_react86.useState)(false);
@@ -70988,33 +71047,33 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         if (!controller.signal.aborted) setSaving(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)(import_jsx_runtime117.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("section", { className: "iad-consistency-comparison", "aria-label": "\u53CC\u56FE\u6BD4\u8F83", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("input", { type: "checkbox", checked: synchronized, onChange: (event) => setSynchronized(event.target.checked) }),
+    return /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)(import_jsx_runtime118.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("section", { className: "iad-consistency-comparison", "aria-label": "\u53CC\u56FE\u6BD4\u8F83", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("input", { type: "checkbox", checked: synchronized, onChange: (event) => setSynchronized(event.target.checked) }),
             "\u540C\u6B65\u7F29\u653E\u4E0E\u5E73\u79FB"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime117.jsxs)("label", { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("input", { type: "checkbox", checked: showDifferences, onChange: (event) => setShowDifferences(event.target.checked) }),
+          /* @__PURE__ */ (0, import_jsx_runtime118.jsxs)("label", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("input", { type: "checkbox", checked: showDifferences, onChange: (event) => setShowDifferences(event.target.checked) }),
             "\u5DEE\u5F02\u533A\u57DF"
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("span", { className: "iad-muted", children: member.relation === "EXACT" ? "\u5DF2\u6309\u539F\u59CB\u89E3\u7801\u50CF\u7D20\u6838\u9A8C" : "\u5C1A\u65E0\u4E25\u683C\u540C\u56FE\u8BC1\u660E" }),
-          !frozen && query && /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("button", { disabled: saving || !detail, onClick: () => void save(), children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : "\u4FDD\u5B58\u6BD4\u8F83\u8BC1\u636E" })
+          /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("span", { className: "iad-muted", children: member.relation === "EXACT" ? "\u5DF2\u6309\u539F\u59CB\u89E3\u7801\u50CF\u7D20\u6838\u9A8C" : "\u5C1A\u65E0\u4E25\u683C\u540C\u56FE\u8BC1\u660E" }),
+          !frozen && query && /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("button", { disabled: saving || !detail, onClick: () => void save(), children: saving ? "\u6B63\u5728\u4FDD\u5B58\u2026" : "\u4FDD\u5B58\u6BD4\u8F83\u8BC1\u636E" })
         ] }),
-        error3 && /* @__PURE__ */ (0, import_jsx_runtime117.jsx)("p", { className: "iad-error", role: "alert", children: error3 }),
-        /* @__PURE__ */ (0, import_jsx_runtime117.jsx)(ConsistencyCanvasPair, { sources, selected, synchronized, showDifferences })
+        error3 && /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("p", { className: "iad-error", role: "alert", children: error3 }),
+        /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(ConsistencyCanvasPair, { sources, selected, synchronized, showDifferences })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime117.jsx)(ConsistencyDifferences, { member, differenceId, onDifference })
+      /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(ConsistencyDifferences, { member, differenceId, onDifference })
     ] });
   }
 
   // src/client/components/FrozenConsistencyComparison.tsx
-  var import_jsx_runtime118 = __require("react/jsx-runtime");
+  var import_jsx_runtime119 = __require("react/jsx-runtime");
   function FrozenConsistencyComparison({ bundle }) {
     const { state, workspace } = useWorkspace();
     const member = frozenConsistencyMember(bundle);
-    return /* @__PURE__ */ (0, import_jsx_runtime118.jsx)("div", { className: "iad-consistency-layout iad-frozen-comparison", children: /* @__PURE__ */ (0, import_jsx_runtime118.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("div", { className: "iad-consistency-layout iad-frozen-comparison", children: /* @__PURE__ */ (0, import_jsx_runtime119.jsx)(
       ConsistencyComparison,
       {
         member,
@@ -71028,7 +71087,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyEvidencePage.tsx
-  var import_jsx_runtime119 = __require("react/jsx-runtime");
+  var import_jsx_runtime120 = __require("react/jsx-runtime");
   var sourceStates = { CURRENT: "\u6765\u6E90\u4E0E\u5F53\u6B21\u68C0\u67E5\u4E00\u81F4", CHANGED: "\u6765\u6E90\u5DF2\u53D8\u5316", MISSING: "\u6765\u6E90\u5DF2\u79FB\u9664", UNKNOWN: "\u6765\u6E90\u72B6\u6001\u672A\u77E5" };
   function ConsistencyEvidencePage({ evidenceId }) {
     const { workspace, state } = useWorkspace();
@@ -71045,16 +71104,16 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       });
       return () => controller.abort();
     }, [evidenceId]);
-    return /* @__PURE__ */ (0, import_jsx_runtime119.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", "data-evidence-id": evidenceId, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("style", { children: workbenchStyles }),
-      /* @__PURE__ */ (0, import_jsx_runtime119.jsxs)(WorkbenchHeader, { pageId: "industrial-consistency", title: "\u6BD4\u8F83\u8BC1\u636E", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("button", { disabled: !!state.consistency.returnPage && !bundle, onClick: () => {
+    return /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "iad-workbench iad-consistency", "data-page": "industrial-consistency", "data-evidence-id": evidenceId, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("style", { children: workbenchStyles }),
+      /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)(WorkbenchHeader, { pageId: "industrial-consistency", title: "\u6BD4\u8F83\u8BC1\u636E", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("button", { disabled: !!state.consistency.returnPage && !bundle, onClick: () => {
           const pageId = state.consistency.returnPage, queryId = state.consistency.query?.sample_id;
           const source = queryId && bundle ? [bundle.sources.left.sample, bundle.sources.right.sample].find((sample) => sample.sample_id === queryId) : bundle?.sources.left.sample;
           if (pageId && source?.dataset_id) workspace.openLocation({ pageId, datasetId: source.dataset_id, selected: source.sample_id });
           else workspace.updateConsistency({ evidenceId: void 0, resultId: state.consistency.tab === "conflicts" ? state.consistency.resultId : void 0, tab: state.consistency.batchId ? "jobs" : state.consistency.tab || "search" }, true);
         }, children: state.consistency.returnPage === "industrial-audit" ? "\u8FD4\u56DE\u5BA1\u8BA1" : state.consistency.returnPage === "industrial-review" ? "\u8FD4\u56DE\u590D\u6838" : state.consistency.returnPage === "industrial-images" ? "\u8FD4\u56DE\u56FE\u50CF" : state.consistency.batchId ? "\u8FD4\u56DE\u6279\u6B21" : state.consistency.tab === "conflicts" || state.consistency.tab === "groups" ? "\u8FD4\u56DE\u7ED3\u679C" : "\u8FD4\u56DE\u68C0\u7D22" }),
-        /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("button", { disabled: !bundle || asking, onClick: async () => {
+        /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("button", { disabled: !bundle || asking, onClick: async () => {
           if (!bundle) return;
           setAsking(true);
           setError("");
@@ -71066,30 +71125,30 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             setAsking(false);
           }
         }, children: asking ? "\u6B63\u5728\u6253\u5F00\u4F1A\u8BDD\u2026" : "\u5728 DSH \u4E2D\u89E3\u91CA" }),
-        /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("button", { disabled: !bundle, onClick: () => window.location.assign(`/api/iad/consistency/evidence/${encodeURIComponent(evidenceId)}/export`), children: "\u4E0B\u8F7D\u8BC1\u636E" })
+        /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("button", { disabled: !bundle, onClick: () => window.location.assign(`/api/iad/consistency/evidence/${encodeURIComponent(evidenceId)}/export`), children: "\u4E0B\u8F7D\u8BC1\u636E" })
       ] }),
-      error3 && /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
-      !bundle && !error3 && /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u8BC1\u636E\u2026" }),
-      bundle && /* @__PURE__ */ (0, import_jsx_runtime119.jsxs)(import_jsx_runtime119.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime119.jsxs)("div", { className: "iad-row", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("strong", { children: "\u5F53\u6B21\u68C0\u67E5\u7684\u51BB\u7ED3\u5185\u5BB9" }),
-          /* @__PURE__ */ (0, import_jsx_runtime119.jsx)("time", { dateTime: bundle.checked_at, children: new Date(bundle.checked_at).toLocaleString() })
+      error3 && /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { role: "alert", className: "iad-error", children: error3 }),
+      !bundle && !error3 && /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u51BB\u7ED3\u8BC1\u636E\u2026" }),
+      bundle && /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)(import_jsx_runtime120.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("div", { className: "iad-row", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("strong", { children: "\u5F53\u6B21\u68C0\u67E5\u7684\u51BB\u7ED3\u5185\u5BB9" }),
+          /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("time", { dateTime: bundle.checked_at, children: new Date(bundle.checked_at).toLocaleString() })
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime119.jsxs)("p", { className: "iad-muted", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("p", { className: "iad-muted", children: [
           "\u67E5\u8BE2\uFF1A",
           sourceStates[bundle.source_states.left],
           "\uFF0C\u5019\u9009\uFF1A",
           sourceStates[bundle.source_states.right]
         ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime119.jsx)(FrozenConsistencyComparison, { bundle }),
-        /* @__PURE__ */ (0, import_jsx_runtime119.jsx)(ConsistencyReviewPanel, { bundle }, bundle.result.evidence_id)
+        /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(FrozenConsistencyComparison, { bundle }),
+        /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(ConsistencyReviewPanel, { bundle }, bundle.result.evidence_id)
       ] })
     ] });
   }
 
   // src/client/components/ConsistencyCheckCreate.tsx
   var import_react88 = __require("react");
-  var import_jsx_runtime120 = __require("react/jsx-runtime");
+  var import_jsx_runtime121 = __require("react/jsx-runtime");
   function ConsistencyCheckCreate({ datasets, groups, parentId, datasetIds, onCancel, onStarted }) {
     const [parent, setParent] = (0, import_react88.useState)(parentId), [selectedIds, setSelectedIds] = (0, import_react88.useState)(datasetIds);
     const [busy, setBusy] = (0, import_react88.useState)(false), [error3, setError] = (0, import_react88.useState)("");
@@ -71123,9 +71182,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         setBusy(false);
       }
     }
-    return /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("section", { id: "dc-create-page", "aria-label": "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5", "aria-busy": busy, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(WorkbenchHeader, { pageId: "industrial-consistency", title: "\u65B0\u5EFA\u68C0\u67E5", children: /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(Button, { disabled: busy, onClick: onCancel, children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("section", { id: "dc-create-page", "aria-label": "\u65B0\u5EFA\u4E00\u81F4\u6027\u68C0\u67E5", "aria-busy": busy, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(WorkbenchHeader, { pageId: "industrial-consistency", title: "\u65B0\u5EFA\u68C0\u67E5", children: /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(Button, { disabled: busy, onClick: onCancel, children: "\u8FD4\u56DE\u4F5C\u4E1A\u4E0E\u7ED3\u679C" }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
         DatasetScopeSelector,
         {
           groups: buildHierarchyGroups(datasets, groups),
@@ -71144,8 +71203,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           childMenuId: "dc-new-child-options"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("section", { className: "iad-panel iad-form-fields", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("section", { className: "iad-panel iad-form-fields", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
           AgentPromptEditors,
           {
             id: "dc-new-prompt",
@@ -71160,7 +71219,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             }
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("div", { className: "iad-agent-prompts", children: identityPromptFields.map(({ name: name2, label }) => /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { className: "iad-agent-prompts", children: identityPromptFields.map(({ name: name2, label }) => /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
           PromptTextEditor,
           {
             id: "dc-identity-" + name2,
@@ -71171,12 +71230,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           },
           name2
         )) }),
-        /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)("footer", { className: "iad-form-footer", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(Button, { "data-dc": "close-new", disabled: busy, onClick: onCancel, children: "\u53D6\u6D88" }),
-          /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(Button, { variant: "primary", "data-dc": "create-job", ref: submitButton, disabled: !valid || busy, onClick: start2, children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5F00\u59CB\u68C0\u67E5" })
+        /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("footer", { className: "iad-form-footer", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(Button, { "data-dc": "close-new", disabled: busy, onClick: onCancel, children: "\u53D6\u6D88" }),
+          /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(Button, { variant: "primary", "data-dc": "create-job", ref: submitButton, disabled: !valid || busy, onClick: start2, children: busy ? "\u542F\u52A8\u4E2D\u2026" : "\u5F00\u59CB\u68C0\u67E5" })
         ] })
       ] }),
-      error3 && /* @__PURE__ */ (0, import_jsx_runtime120.jsxs)(
+      error3 && /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)(
         Modal,
         {
           title: "\u521B\u5EFA\u68C0\u67E5\u5931\u8D25",
@@ -71185,8 +71244,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           restoreFocus: () => submitButton.current,
           onClose: () => setError(""),
           children: [
-            /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("div", { className: "iad-dialog-body", children: /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("p", { role: "alert", className: "iad-error", children: error3 }) }),
-            /* @__PURE__ */ (0, import_jsx_runtime120.jsx)("footer", { className: "iad-dialog-footer", children: /* @__PURE__ */ (0, import_jsx_runtime120.jsx)(Button, { ref: confirmButton, variant: "primary", onClick: () => setError(""), children: "\u77E5\u9053\u4E86" }) })
+            /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { className: "iad-dialog-body", children: /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("p", { role: "alert", className: "iad-error", children: error3 }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("footer", { className: "iad-dialog-footer", children: /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(Button, { ref: confirmButton, variant: "primary", onClick: () => setError(""), children: "\u77E5\u9053\u4E86" }) })
           ]
         }
       )
@@ -71194,7 +71253,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
   }
 
   // src/client/components/ConsistencyPage.tsx
-  var import_jsx_runtime121 = __require("react/jsx-runtime");
+  var import_jsx_runtime122 = __require("react/jsx-runtime");
   function ConsistencyPage() {
     const { state, workspace } = useWorkspace();
     const catalog = useDatasetCatalog();
@@ -71207,12 +71266,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
     (0, import_react89.useEffect)(() => {
       if (!evidenceId) setVisited(true);
     }, [evidenceId]);
-    return /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)(import_jsx_runtime121.Fragment, { children: [
-      visited && /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: queryId ? /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("div", { className: "iad-workbench iad-business-page", "data-page": "industrial-consistency", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("style", { children: workbenchStyles }),
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(WorkbenchHeader, { pageId: "industrial-consistency" }),
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(Button, { onClick: () => workspace.updateConsistency({ queryId: void 0, groupId: void 0, memberId: void 0, differenceId: void 0 }, true), children: "\u68C0\u67E5\u4F5C\u4E1A" }),
-        queryError ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("p", { role: "alert", children: queryError }) : /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(import_jsx_runtime122.Fragment, { children: [
+      visited && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("div", { hidden: !!evidenceId, style: { height: "100%" }, children: queryId ? /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "iad-workbench iad-business-page", "data-page": "industrial-consistency", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("style", { children: workbenchStyles }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(WorkbenchHeader, { pageId: "industrial-consistency" }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Button, { onClick: () => workspace.updateConsistency({ queryId: void 0, groupId: void 0, memberId: void 0, differenceId: void 0 }, true), children: "\u68C0\u67E5\u4F5C\u4E1A" }),
+        queryError ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("p", { role: "alert", children: queryError }) : /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
           ConsistencyGallery,
           {
             queryId,
@@ -71220,12 +71279,12 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             onExpired
           }
         )
-      ] }) : catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(ConsistencyIntegratedWorkspace, { ...catalog.data }) : /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("div", { className: "iad-workbench iad-business-page", "data-page": "industrial-consistency", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("style", { children: workbenchStyles }),
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(WorkbenchHeader, { pageId: "industrial-consistency" }),
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("p", { role: catalog.error ? "alert" : "status", children: catalog.error || "\u6B63\u5728\u52A0\u8F7D\u6570\u636E\u96C6\u2026" })
+      ] }) : catalog.data ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(ConsistencyIntegratedWorkspace, { ...catalog.data }) : /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "iad-workbench iad-business-page", "data-page": "industrial-consistency", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("style", { children: workbenchStyles }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(WorkbenchHeader, { pageId: "industrial-consistency" }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("p", { role: catalog.error ? "alert" : "status", children: catalog.error || "\u6B63\u5728\u52A0\u8F7D\u6570\u636E\u96C6\u2026" })
       ] }) }),
-      evidenceId && /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(ConsistencyEvidencePage, { evidenceId })
+      evidenceId && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(ConsistencyEvidencePage, { evidenceId })
     ] });
   }
   function ConsistencyIntegratedWorkspace({ datasets, groups }) {
@@ -71354,9 +71413,9 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
       if (modelFilter !== "all" && !modelTypes.some((option) => option.value === modelFilter)) setModelFilter("all");
     }, [conflictTabs, taskType, kind, modelFilter]);
     const surface = usePagePosition(createOpen ? "consistency:create" : `consistency:results:${selectedParentId}:${selectedJobId}`, createOpen || !conflictsLoading);
-    return /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("div", { ref: surface, className: "iad-workbench iad-business-page iad-consistency", "data-page": "industrial-consistency", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("style", { children: workbenchStyles }),
-      createOpen ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+    return /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { ref: surface, className: "iad-workbench iad-business-page iad-consistency", "data-page": "industrial-consistency", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("style", { children: workbenchStyles }),
+      createOpen ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
         ConsistencyCheckCreate,
         {
           datasets,
@@ -71375,8 +71434,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             polling.refresh();
           }
         }
-      ) : /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("div", { className: "dc-root", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(WorkbenchHeader, { pageId: "industrial-consistency", className: "heading dc-page-heading", children: /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { className: "dc-heading-actions", children: /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+      ) : /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("div", { className: "dc-root", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(WorkbenchHeader, { pageId: "industrial-consistency", className: "heading dc-page-heading", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("div", { className: "dc-heading-actions", children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
           Button,
           {
             type: "button",
@@ -71389,8 +71448,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             children: "\u65B0\u5EFA\u68C0\u67E5"
           }
         ) }) }),
-        (polling.error || conflictQuery.error) && /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("p", { role: "alert", className: "iad-error", children: polling.error || message(conflictQuery.error) }),
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+        (polling.error || conflictQuery.error) && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("p", { role: "alert", className: "iad-error", children: polling.error || message(conflictQuery.error) }),
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
           DatasetScopeSelector,
           {
             className: "dc-scope",
@@ -71403,10 +71462,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             groupId: "dc-parent",
             childId: "dc-child-trigger",
             childMenuId: "dc-child-options",
-            children: /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(IconButton, { icon: "refresh", type: "button", title: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", label: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", onClick: handleRefresh })
+            children: /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(IconButton, { icon: "refresh", type: "button", title: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", label: "\u5237\u65B0\u68C0\u67E5\u4F5C\u4E1A", onClick: handleRefresh })
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(JobList, { title: "\u68C0\u67E5\u4F5C\u4E1A", className: "dc-jobs-section", list: jobList, datasets, loading: polling.loading, actions: {
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(JobList, { title: "\u68C0\u67E5\u4F5C\u4E1A", className: "dc-jobs-section", list: jobList, datasets, loading: polling.loading, actions: {
           status: (job) => setStatusJobId(job.root_run_id),
           prompt: setPromptJob,
           delete: async (job) => {
@@ -71419,10 +71478,10 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
             setStatsModalJobId(job.root_run_id);
           } }]
         } }),
-        /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)("section", { className: "dc-section dc-results-section", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(SectionHeading, { title: "\u6807\u6CE8\u51B2\u7A81" }),
-          /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { className: "dc-results-body", children: !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)(import_jsx_runtime121.Fragment, { children: [
-            /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)("section", { className: "dc-section dc-results-section", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(SectionHeading, { title: "\u6807\u6CE8\u51B2\u7A81" }),
+          /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("div", { className: "dc-results-body", children: !selectedJob ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(import_jsx_runtime122.Fragment, { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
               ConsistencyFilters,
               {
                 value: { search, model: modelFilter, agreement, review: reviewFilter },
@@ -71436,7 +71495,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                 }
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
               TabBar,
               {
                 label: "\u539F\u59CB\u6807\u6CE8\u51B2\u7A81\u7C7B\u578B",
@@ -71445,13 +71504,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                   setKind(value);
                   setPage(1);
                 },
-                items: conflictTabs.map((tab) => ({ id: tab.value, label: /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)(import_jsx_runtime121.Fragment, { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("span", { children: tab.label }),
-                  /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("span", { className: "iad-tab-count", children: selectedJob.consistency_check_version === 1 ? images.counts[tab.value] ?? (tab.value === "images" ? selectedJob.total_samples : 0) : Object.hasOwn(consistencyImageGroups, tab.value) ? images.counts[tab.value] || 0 : jobConflicts.filter((conflict) => conflict.types.some((type) => type === tab.value)).length })
+                items: conflictTabs.map((tab) => ({ id: tab.value, label: /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(import_jsx_runtime122.Fragment, { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("span", { children: tab.label }),
+                  /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("span", { className: "iad-tab-count", children: selectedJob.consistency_check_version === 1 ? images.counts[tab.value] ?? (tab.value === "images" ? selectedJob.total_samples : 0) : Object.hasOwn(consistencyImageGroups, tab.value) ? images.counts[tab.value] || 0 : jobConflicts.filter((conflict) => conflict.types.some((type) => type === tab.value)).length })
                 ] }), buttonProps: { "data-dc": "raw-tab", "data-id": tab.value } }))
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { className: "dc-result-panel", role: "tabpanel", "aria-label": conflictTabs.find((tab) => tab.value === kind)?.label, children: selectedJob.consistency_check_version === 1 ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+            /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("div", { className: "dc-result-panel", role: "tabpanel", "aria-label": conflictTabs.find((tab) => tab.value === kind)?.label, children: selectedJob.consistency_check_version === 1 ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
               ConsistencyImages,
               {
                 jobId: selectedJob.run_id,
@@ -71463,8 +71522,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                 onReviewed: () => setRevision((value) => value + 1)
               },
               selectedJob.run_id
-            ) : conflictsLoading ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u7ED3\u679C\u2026" }) : !jobConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime121.jsxs)(import_jsx_runtime121.Fragment, { children: [
-              paginatedConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("div", { className: "iad-thumbnail-grid dc-conflict-grid", children: paginatedConflicts.map((c) => /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+            ) : conflictsLoading ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u6B63\u5728\u8BFB\u53D6\u7ED3\u679C\u2026" }) : !jobConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u6CA1\u6709\u7ED3\u679C" }) : /* @__PURE__ */ (0, import_jsx_runtime122.jsxs)(import_jsx_runtime122.Fragment, { children: [
+              paginatedConflicts.length ? /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("div", { className: "iad-thumbnail-grid dc-conflict-grid", children: paginatedConflicts.map((c) => /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
                 ConsistencyResultCard,
                 {
                   item: c,
@@ -71475,13 +71534,13 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
                   }
                 },
                 c.id
-              )) }) : /* @__PURE__ */ (0, import_jsx_runtime121.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" }),
-              /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(Pagination, { total: visibleConflicts.length, page: currentPage, size: 18, unit: "\u7EC4", onPage: setPage })
+              )) }) : /* @__PURE__ */ (0, import_jsx_runtime122.jsx)("p", { className: "iad-result-empty", role: "status", children: "\u5F53\u524D\u7B5B\u9009\u6761\u4EF6\u4E0B\u6CA1\u6709\u5339\u914D\u7684\u51B2\u7A81\u56FE\u7EC4\u3002" }),
+              /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(Pagination, { total: visibleConflicts.length, page: currentPage, size: 18, unit: "\u7EC4", onPage: setPage })
             ] }) })
           ] }) })
         ] })
       ] }),
-      modal === "compare" && currentConflict && /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+      modal === "compare" && currentConflict && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
         ConsistencyConflictDialog,
         {
           conflict: currentConflict,
@@ -71492,8 +71551,8 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
         },
         `${currentConflict.checkId}:${currentConflict.id}`
       ),
-      promptJob && /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(ConsistencyPromptDrawer, { job: promptJob, onClose: () => setPromptJob(null) }),
-      !!statsModalJobId && /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+      promptJob && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(ConsistencyPromptDrawer, { job: promptJob, onClose: () => setPromptJob(null) }),
+      !!statsModalJobId && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
         ConsistencyStatisticsDrawer,
         {
           statistics: statistics.data,
@@ -71502,7 +71561,7 @@ dialog.iad-fullscreen-dialog .full-overlay{position:absolute;inset:0}
           onClose: () => setStatsModalJobId("")
         }
       ),
-      statusJobId && batches.some((job) => job.root_run_id === statusJobId) && /* @__PURE__ */ (0, import_jsx_runtime121.jsx)(
+      statusJobId && batches.some((job) => job.root_run_id === statusJobId) && /* @__PURE__ */ (0, import_jsx_runtime122.jsx)(
         JobStatusDrawer,
         {
           job: batches.find((job) => job.root_run_id === statusJobId),

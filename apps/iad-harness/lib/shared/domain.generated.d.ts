@@ -1503,7 +1503,7 @@ export type GeometryEqual = boolean;
 export type ComparisonKind = "LOCATION_ONLY" | "SEGMENTATION" | "IMAGE_LABEL";
 export type Matches = InstanceMatch[];
 export type DifferenceId = string;
-export type Type1 = "QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE";
+export type Type1 = "QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE";
 export type Left = Annotation[];
 export type Right = Annotation[];
 export type Region = [number, number, number, number] | null;
@@ -1531,9 +1531,6 @@ export type CoordinateFrame = "RAW_EXACT" | "RELATIVE_IMAGE" | "UNAVAILABLE";
  * Minimum overlap for confident instance correspondence; lower positive overlap remains a geometry difference requiring correspondence review
  */
 export type MinimumIou = number;
-export type AmbiguityTolerance = number;
-export type TinyArea = number;
-export type SplitCoverage = number;
 export type MaxInstances = number;
 export type MaxRoiPixels = number;
 export type MaxCachedPixels = number;
@@ -1796,7 +1793,7 @@ export type SourceStatus = string;
 export type Reason16 = string;
 export type ProgramConclusion = string;
 export type ModelConclusion = ConflictCategory | "无冲突" | null;
-export type ConflictCategory = "类别不一致" | "位置差异" | "多类别" | "少类别" | "拆分" | "合并" | "对应关系差异";
+export type ConflictCategory = "类别不一致" | "位置差异" | "多类别" | "少类别" | "拆分" | "合并";
 export type Result = (NoCandidateResult | NoEligibleResult | ReviewedResult) | null;
 export type TaskType = ("anomaly_detection" | "bbox_defect") | null;
 export type CandidateRecordIds = number[];
@@ -1957,7 +1954,7 @@ export type CoverageEffect = ("unchanged" | "material_change" | "unverified") | 
  */
 export type CoverageReason = string | null;
 /**
- * 仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始框引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。
+ * 仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。
  */
 export type SameMainObjectAs1 = CandidateObjectReference[];
 export type Description24 = string;
@@ -1974,12 +1971,12 @@ export type Type5 = "image_label_mismatch";
 export type MainLabel1 = "OK" | "NG";
 export type CandidateLabel1 = "OK" | "NG";
 /**
- * 全部独立问题；框ID来自冻结事实，引用实际送达的两侧原图。拆分合并不重复计同组数量差异。
+ * 全部独立问题；标注ID来自冻结事实，引用实际送达的两侧原图。拆分合并不重复计同组数量差异。
  */
 export type Issues3 = (BboxAnnotationIssue | ImageLabelIssue)[];
 export type Conclusion4 = ("类别不一致" | "位置差异" | "多类别" | "少类别" | "拆分" | "合并" | "一致") | null;
 /**
- * 与conclusion相同的唯一主要冲突分类；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个框而候选一个为拆分，反之为合并。无差异及缺失证据时为空，其他实际差异保留在分析中。
+ * 与conclusion相同的唯一主要冲突分类；主图比候选少标注为少类别，多标注为多类别；主图同一对象多个标注而候选一个为拆分，反之为合并。无差异及缺失证据时为空，其他实际差异保留在分析中。
  */
 export type Categories3 = ConflictCategory[] | null;
 export type SchemaVersion2 = 1 | "4.0" | "5.0" | "7.0" | "8.0";
@@ -3229,6 +3226,13 @@ export type SampleId44 = string;
 export type DatasetId43 = string;
 export type Path3 = string;
 export type Required = boolean;
+export type Path4 = string;
+export type Sha2564 = string;
+/**
+ * @minItems 2
+ * @maxItems 2
+ */
+export type SentSize1 = [number, number];
 export type Images = RegistrationMedia[];
 export type Error3 = string | null;
 export type Registrations = RegistrationMediaPage[];
@@ -3557,8 +3561,8 @@ export type Role15 = "normal" | "overview" | "roi";
 export type Source11 = "reference" | "global" | "annotation" | "model" | "coverage";
 export type OriginalSize1 = number[];
 export type CropBbox3 = number[];
-export type SentSize1 = number[];
-export type Sha2564 = string;
+export type SentSize2 = number[];
+export type Sha2565 = string;
 export type SourceSha2563 = string;
 export type Representation1 = "raw" | "annotation_mask" | "annotation_overlay";
 export type AnnotationIds8 = string[];
@@ -4435,6 +4439,7 @@ export type OriginalCategories = ConflictCategory[];
 export type ProgramConclusion1 = string;
 export type ModelConclusion1 = ConflictCategory | "无冲突" | null;
 export type ResultRef = string;
+export type IdentityModelReviewed = boolean;
 export type AnnotationReviewStatus = "not_required" | "pending" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
 export type AnnotationReviewLabel = string;
 export type ReviewState1 = "pending" | "confirmed" | "rejected";
@@ -4463,7 +4468,7 @@ export type EnableTranslationSearch = boolean;
 export type SourceSha2564 = string;
 export type ScanRef2 = string | null;
 export type ContentGroupId3 = string | null;
-export type Sha2565 = string;
+export type Sha2566 = string;
 export type ByteCount = number;
 export type Issues6 = string[];
 export type SampleA1 = string;
@@ -4473,9 +4478,6 @@ export type Purpose3 = "full" | "annotations";
  * Minimum overlap for confident instance correspondence; lower positive overlap remains a geometry difference requiring correspondence review
  */
 export type MinimumIou1 = number;
-export type AmbiguityTolerance1 = number;
-export type TinyArea1 = number;
-export type SplitCoverage1 = number;
 export type MaxInstances1 = number;
 export type MaxRoiPixels1 = number;
 export type MaxCachedPixels1 = number;
@@ -4527,7 +4529,7 @@ export type Uri = string;
 /**
  * Absolute local filesystem path
  */
-export type Path4 = string;
+export type Path5 = string;
 export type Summary18 = string | null;
 export type EvidenceId27 = string;
 export type ResultId7 = string;
@@ -4577,7 +4579,7 @@ export type RemainingDifferences = number;
 export type NextCursor1 = string | null;
 export type Sides = ("left" | "right")[];
 export type ByteCount1 = number;
-export type Sha2566 = string;
+export type Sha2567 = string;
 export type Media1 = ContextMedia[];
 export type Pageid1 = "industrial-consistency";
 export type Tab1 = ("conflicts" | "search" | "groups" | "jobs") | null;
@@ -4674,7 +4676,7 @@ export type MinSimilarity4 = number;
 export type AnnotationDifferencesOnly = boolean;
 export type Relation4 = ("EXACT" | "NEAR_CANDIDATE" | "VISUAL_REFERENCE" | "DIFFERENT" | "UNCHECKED") | null;
 export type ConfirmedConflict2 = boolean | null;
-export type DifferenceType = ("QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE") | null;
+export type DifferenceType = ("QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE") | null;
 export type ReviewState2 = ("OPEN" | "NEEDS_CONTEXT" | "RESOLVED") | null;
 export type CorrectionState2 = ("NOT_REQUIRED" | "PROPOSED" | "AWAITING_RESCAN" | "VERIFIED") | null;
 export type Cursor2 = string | null;
@@ -4780,7 +4782,7 @@ export type MemberCount4 = number;
 export type CandidateCount = number;
 export type DatasetCount1 = number;
 export type PairCount3 = number;
-export type DifferenceTypes = ("QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "AMBIGUOUS_MATCH" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE")[];
+export type DifferenceTypes = ("QUALITY_LABEL" | "CATEGORY" | "ANNOTATION_COUNT" | "ONE_SIDED_REGION" | "GEOMETRY" | "SPLIT_MERGE" | "POLICY_UNCONFIRMED" | "ANNOTATION_UNREADABLE")[];
 export type ConfirmedConflict3 = boolean;
 export type ReviewState3 = "pending" | "confirmed" | "rejected";
 export type Items23 = GalleryItem[];
@@ -4893,6 +4895,7 @@ export type MinSimilarity6 = number;
 export type MaxExactCandidates1 = number;
 export type MaxSimilarCandidates1 = number;
 export type ReasoningEffort6 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
+export type WholeImageMaxSide2 = number | null;
 export type Concurrency2 = number;
 export type PolicyVersion = string;
 export type AbsoluteBoundaryPx = number | null;
@@ -4904,7 +4907,7 @@ export type ReasoningEffort7 = ("off" | "minimal" | "low" | "medium" | "high" | 
 export type Consistency = number;
 export type Diversity = number;
 export type Redundancy = number;
-export type WholeImageMaxSide2 = number | null;
+export type WholeImageMaxSide3 = number | null;
 export type BatchSize8 = number;
 export type Concurrency3 = number;
 export type Revision28 = number;
@@ -4913,20 +4916,21 @@ export type Settings3 = ModuleSettingsValues1 | ExplorationSettingsValues1 | Kno
 export type ReasoningEffort8 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
 export type ReasoningEffort9 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
 export type BatchSize9 = number;
-export type WholeImageMaxSide3 = number | null;
+export type WholeImageMaxSide4 = number | null;
 export type ContextTokens7 = number | null;
 export type MaxOutputTokens7 = number | null;
 export type GenerationTimeoutSeconds5 = number | null;
 export type Concurrency4 = number;
 export type ReasoningEffort10 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
 export type BatchSize10 = number;
-export type WholeImageMaxSide4 = number | null;
+export type WholeImageMaxSide5 = number | null;
 export type Concurrency5 = number;
 export type Mode8 = "exact" | "combined";
 export type MinSimilarity7 = number;
 export type MaxExactCandidates2 = number;
 export type MaxSimilarCandidates2 = number;
 export type ReasoningEffort11 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
+export type WholeImageMaxSide6 = number | null;
 export type Concurrency6 = number;
 export type ContextTokens8 = number | null;
 export type MaxOutputTokens8 = number | null;
@@ -4947,7 +4951,7 @@ export type ReasoningEffort12 = ("off" | "minimal" | "low" | "medium" | "high" |
 export type Consistency1 = number;
 export type Diversity1 = number;
 export type Redundancy1 = number;
-export type WholeImageMaxSide5 = number | null;
+export type WholeImageMaxSide7 = number | null;
 export type BatchSize11 = number;
 export type Concurrency7 = number;
 export type ExpectedRevision6 = number;
@@ -4971,6 +4975,7 @@ export type CorpusScope4 = (AllRegisteredScope | DatasetScope) | null;
 export type SchemaVersion5 = 1;
 export type SettingsRevision2 = number;
 export type Concurrency8 = number;
+export type WholeImageMaxSide8 = number | null;
 export type Retrieval = ExactCandidatePolicy | CombinedCandidatePolicy;
 export type Mode10 = "exact";
 export type MinSimilarity9 = null;
@@ -5156,7 +5161,7 @@ export type Findings7 = string[];
  */
 export type Limitations69 = string[];
 /**
- * MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。
+ * MATERIAL必须保存全部独立区域标注问题，关联真实两侧标注ID与实际原图身份；拆分合并不重复计数量差异。
  */
 export type Issues8 = BboxAnnotationIssue[];
 export type Reason52 = string;
@@ -5222,11 +5227,11 @@ export type CoverageEffect1 = ("unchanged" | "material_change" | "unverified") |
  */
 export type CoverageReason1 = string | null;
 /**
- * 仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始框引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。
+ * 仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。
  */
 export type SameMainObjectAs2 = CandidateObjectReference[];
 /**
- * MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。
+ * MATERIAL必须保存全部独立区域标注问题，关联真实两侧标注ID与实际原图身份；拆分合并不重复计数量差异。
  */
 export type Issues9 = BboxAnnotationIssue1[];
 export type RequestId8 = string | null;
@@ -5260,6 +5265,7 @@ export type OriginalCategories2 = ConflictCategory[];
 export type ProgramConclusion2 = string;
 export type ModelConclusion3 = ConflictCategory | "无冲突" | null;
 export type ResultRef1 = string;
+export type IdentityModelReviewed1 = boolean;
 export type AnnotationReviewStatus1 = "not_required" | "pending" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
 export type AnnotationReviewLabel1 = string;
 export type RecordId = number;
@@ -5417,6 +5423,7 @@ export type OriginalCategories4 = ConflictCategory[];
 export type ProgramConclusion3 = string;
 export type ModelConclusion4 = ConflictCategory | "无冲突" | null;
 export type ResultRef2 = string;
+export type IdentityModelReviewed2 = boolean;
 export type AnnotationReviewStatus2 = "not_required" | "pending" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
 export type AnnotationReviewLabel2 = string;
 export type Result8 = (NoCandidateResult | NoEligibleResult | ReviewedResult) | null;
@@ -7557,9 +7564,6 @@ export interface AnnotationMasking {
 }
 export interface AnnotationMatchingConfig {
     minimum_iou?: MinimumIou;
-    ambiguity_tolerance?: AmbiguityTolerance;
-    tiny_area?: TinyArea;
-    split_coverage?: SplitCoverage;
     max_instances?: MaxInstances;
     max_roi_pixels?: MaxRoiPixels;
     max_cached_pixels?: MaxCachedPixels;
@@ -9126,9 +9130,15 @@ export interface RegistrationMedia {
     model_context: ModelContext;
     path: Path3;
     required: Required;
+    model_input: ModelImageInput | null;
 }
 export interface ModelContext {
     [k: string]: unknown;
+}
+export interface ModelImageInput {
+    path: Path4;
+    sha256: Sha2564;
+    sent_size: SentSize1;
 }
 export interface ExplorationEvidenceReport1 {
     observations?: Observations9;
@@ -9341,8 +9351,8 @@ export interface VisualView {
     source: Source11;
     original_size: OriginalSize1;
     crop_bbox: CropBbox3;
-    sent_size: SentSize1;
-    sha256: Sha2564;
+    sent_size: SentSize2;
+    sha256: Sha2565;
     source_sha256: SourceSha2563;
     representation: Representation1;
     annotation_ids: AnnotationIds8;
@@ -10222,6 +10232,7 @@ export interface AnchorResultSummary {
     program_conclusion: ProgramConclusion1;
     model_conclusion: ModelConclusion1;
     result_ref: ResultRef;
+    identity_model_reviewed: IdentityModelReviewed;
     annotation_review_status: AnnotationReviewStatus;
     annotation_review_label: AnnotationReviewLabel;
 }
@@ -10288,7 +10299,7 @@ export interface FrozenEvidenceSource {
     issues: Issues6;
 }
 export interface EvidenceBlob {
-    sha256: Sha2565;
+    sha256: Sha2566;
     byte_count: ByteCount;
 }
 export interface Masks {
@@ -10303,9 +10314,6 @@ export interface ConsistencyCompare1 {
 }
 export interface AnnotationMatchingConfig1 {
     minimum_iou: MinimumIou1;
-    ambiguity_tolerance: AmbiguityTolerance1;
-    tiny_area: TinyArea1;
-    split_coverage: SplitCoverage1;
     max_instances: MaxInstances1;
     max_roi_pixels: MaxRoiPixels1;
     max_cached_pixels: MaxCachedPixels1;
@@ -10352,7 +10360,7 @@ export interface ArtifactRef {
     artifact_id: ArtifactId;
     artifact_type: ArtifactType;
     uri: Uri;
-    path: Path4;
+    path: Path5;
     summary?: Summary18;
 }
 export interface ConsistencyContextRequest {
@@ -10425,7 +10433,7 @@ export interface ContextMedia {
     descriptor: EvidenceMedia;
     sides: Sides;
     byte_count: ByteCount1;
-    sha256: Sha2566;
+    sha256: Sha2567;
 }
 export interface ConsistencyReturnLocation1 {
     pageId: Pageid1;
@@ -10887,6 +10895,7 @@ export interface ConsistencySettingsValues {
     max_similar_candidates: MaxSimilarCandidates1;
     model: ModuleModelReference | null;
     reasoning_effort: ReasoningEffort6;
+    whole_image_max_side: WholeImageMaxSide2;
     concurrency: Concurrency2;
     agent_limits: GenerationLimits;
     vision_limits: ModelLimits;
@@ -10904,7 +10913,7 @@ export interface AuditSettingsValues {
     model: ModuleModelReference | null;
     reasoning_effort: ReasoningEffort7;
     quality_score_weights: AuditScoreWeights;
-    whole_image_max_side: WholeImageMaxSide2;
+    whole_image_max_side: WholeImageMaxSide3;
     batch_size: BatchSize8;
     concurrency: Concurrency3;
     agent_limits: GenerationLimits;
@@ -10928,7 +10937,7 @@ export interface ExplorationSettingsValues1 {
     reasoning_effort?: ReasoningEffort9;
     batch_size?: BatchSize9;
     sampling_ratio?: SamplingRatio3;
-    whole_image_max_side?: WholeImageMaxSide3;
+    whole_image_max_side?: WholeImageMaxSide4;
     agent_limits?: GenerationLimits1;
     concurrency?: Concurrency4;
 }
@@ -10950,7 +10959,7 @@ export interface KnowledgeSettingsValues1 {
     reasoning_effort?: ReasoningEffort10;
     batch_size?: BatchSize10;
     sampling_ratio?: SamplingRatio4;
-    whole_image_max_side?: WholeImageMaxSide4;
+    whole_image_max_side?: WholeImageMaxSide5;
     agent_limits?: GenerationLimits1;
     concurrency?: Concurrency5;
 }
@@ -10965,6 +10974,7 @@ export interface ConsistencySettingsValues1 {
     max_similar_candidates?: MaxSimilarCandidates2;
     model?: ModuleModelReference | null;
     reasoning_effort?: ReasoningEffort11;
+    whole_image_max_side?: WholeImageMaxSide6;
     concurrency?: Concurrency6;
     agent_limits?: GenerationLimits1;
     vision_limits?: ModelLimits1;
@@ -10997,7 +11007,7 @@ export interface AuditSettingsValues1 {
     model?: ModuleModelReference | null;
     reasoning_effort?: ReasoningEffort12;
     quality_score_weights?: AuditScoreWeights1;
-    whole_image_max_side?: WholeImageMaxSide5;
+    whole_image_max_side?: WholeImageMaxSide7;
     batch_size?: BatchSize11;
     concurrency?: Concurrency7;
     agent_limits?: GenerationLimits1;
@@ -11025,6 +11035,7 @@ export interface ConsistencyCheckSnapshot {
     schema_version: SchemaVersion5;
     settings_revision: SettingsRevision2;
     concurrency: Concurrency8;
+    whole_image_max_side: WholeImageMaxSide8;
     retrieval: Retrieval;
     scopes: ConsistencyScopesSnapshot;
     model: ModuleModelReference | null;
@@ -11300,6 +11311,7 @@ export interface AnchorResultDetail {
     program_conclusion: ProgramConclusion2;
     model_conclusion: ModelConclusion3;
     result_ref: ResultRef1;
+    identity_model_reviewed: IdentityModelReviewed1;
     annotation_review_status: AnnotationReviewStatus1;
     annotation_review_label: AnnotationReviewLabel1;
     candidate_records: CandidateRecords;
@@ -11534,6 +11546,7 @@ export interface AuditConsistencyContext {
     program_conclusion: ProgramConclusion3;
     model_conclusion: ModelConclusion4;
     result_ref: ResultRef2;
+    identity_model_reviewed: IdentityModelReviewed2;
     annotation_review_status: AnnotationReviewStatus2;
     annotation_review_label: AnnotationReviewLabel2;
     result: Result8;

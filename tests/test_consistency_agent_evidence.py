@@ -1,3 +1,4 @@
+from tests.consistency_support import start_prepared
 import json
 import shutil
 import pytest
@@ -13,10 +14,9 @@ from iad_core.workbench.runtime import WorkbenchRuntime
     ('rectangle', [[-5, 10], [330, 30]]),
     ('polygon', [[-5, 10], [330, 10], [330, 30], [-5, 30]]),
 ])
-def test_rectangle_review_keeps_source_coordinates_and_rejects_other_shapes(dataset, tmp_path, shape_type, points):
+def test_region_review_keeps_rectangle_and_polygon_source_coordinates(dataset, tmp_path, shape_type, points):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.storage.repositories import AnnotationRepository
-    from iad_core.consistency.errors import ConsistencyError
 
     database, registry, config = dataset
     label = tmp_path / 'labels/dent.json'
@@ -33,33 +33,24 @@ def test_rectangle_review_keeps_source_coordinates_and_rejects_other_shapes(data
         checks = ConsistencyAgentJobs(runtime)
         request = {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}}
-        if shape_type == 'polygon':
-            run = checks.start(request)['run_id']
-            checks.session_created(run, anchor)
-            checks.retrieve(run, anchor)
-            from iad_core.consistency.agent_review import ConsistencyAgentReview
-            review = ConsistencyAgentReview(runtime)
-            assert review.verify(run, anchor).completed
-            with pytest.raises(ConsistencyError, match='矩形标注'):
-                review.finish_rules(run, anchor)
-        else:
-            from iad_core.consistency.agent_review import ConsistencyAgentReview
-            run = checks.start(request)['run_id']
-            checks.session_created(run, anchor)
-            candidates = checks.retrieve(run, anchor)
-            ConsistencyAgentReview(runtime).verify(run, anchor)
-            prepared = ConsistencyAgentEvidence(runtime).prepare(run, anchor, [candidates.candidates[0].sample_id])
-            source = next(value for value in prepared.facts['sources'].values() if value['sample_id'] == anchor)
-            assert source['annotations'][0]['bbox'] == [-5, 10, 330, 30]
-            crops = [view for view in source['visual_inputs'] if view['window_source'] == 'annotation']
-            assert crops[0]['crop_bbox'] == [0, 8, 320, 32]
+        from iad_core.consistency.agent_review import ConsistencyAgentReview
+        run = start_prepared(checks, request)['run_id']
+        checks.session_created(run, anchor)
+        candidates = checks.retrieve(run, anchor)
+        ConsistencyAgentReview(runtime).verify(run, anchor)
+        prepared = ConsistencyAgentEvidence(runtime).prepare(run, anchor, [candidates.candidates[0].sample_id])
+        source = next(value for value in prepared.facts['sources'].values() if value['sample_id'] == anchor)
+        assert source['annotations'][0]['bbox'] == [-5, 10, 330, 30]
+        assert source['annotations'][0]['polygon'] == (points if shape_type == 'polygon' else None)
+        crops = [view for view in source['visual_inputs'] if view['window_source'] == 'annotation']
+        assert crops[0]['crop_bbox'] == [0, 8, 320, 32]
         assert AnnotationRepository(database).list_by_sample(anchor) == [annotation]
         assert label.read_text() == original
     finally:
         runtime.close()
 
 
-def test_mask_annotations_cannot_enter_rectangle_review(defect_dataset):
+def test_mask_annotations_cannot_enter_vector_region_review(defect_dataset):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.consistency.errors import ConsistencyError
     from iad_core.dataset.registry import DatasetRegistry
@@ -77,14 +68,14 @@ def test_mask_annotations_cannot_enter_rectangle_review(defect_dataset):
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
-        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [row['dataset_id']], 'mode': 'exact',
+        run = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [row['dataset_id']], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         checks.session_created(run, anchor)
         checks.retrieve(run, anchor)
         from iad_core.consistency.agent_review import ConsistencyAgentReview
         review = ConsistencyAgentReview(runtime)
         assert review.verify(run, anchor).completed
-        with pytest.raises(ConsistencyError, match='矩形标注'):
+        with pytest.raises(ConsistencyError, match='区域标注'):
             review.finish_rules(run, anchor)
     finally:
         runtime.close()
@@ -102,7 +93,7 @@ def test_annotation_matching_capacity_remains_a_resource_error(dataset, tmp_path
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':dent.png'
-        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+        run = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         checks.session_created(run, anchor)
         checks.retrieve(run, anchor)
@@ -130,7 +121,7 @@ def test_resume_reuses_captured_candidate_when_its_original_file_is_unavailable(
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':dent.png'
-        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+        run = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         checks.session_created(run, anchor)
         checks.retrieve(run, anchor)
@@ -175,7 +166,7 @@ def test_existing_frozen_group_keeps_its_evidence_references_after_database_upgr
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':dent.png'
-        run = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+        run = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         checks.session_created(run, anchor)
         checks.retrieve(run, anchor)
@@ -206,7 +197,7 @@ def test_agent_evidence_uses_original_sources_without_historical_review_judgment
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
-        job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+        job = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor_id]}})
         checks.session_created(job['run_id'], anchor_id)
         checks.retrieve(job['run_id'], anchor_id)
@@ -250,7 +241,7 @@ def test_agent_rejects_extra_windows_before_sending_visual_requests(dataset):
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor, candidate = [config.dataset.id + ':' + name + '.png' for name in ('dent','scratch')]
-        job = checks.start({'submission_id':str(uuid4()),'dataset_ids':[config.dataset.id],'mode':'exact',
+        job = start_prepared(checks, {'submission_id':str(uuid4()),'dataset_ids':[config.dataset.id],'mode':'exact',
             'subjects':{'kind':'samples','sample_ids':[anchor]}})['run_id']
         checks.session_created(job, anchor)
         selected = checks.retrieve(job, anchor)

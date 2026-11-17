@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from PIL import Image
 
 from pydantic import Field, StrictInt, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence
 from iad_core.evidence.images import EvidenceImages, PreparedImage, image_pixel_sha256
 from iad_core.evidence.sources import SampleContent
+from iad_core.evidence.model_inputs import ModelImageInput, ModelImageInputs
+from iad_core.storage.models import Annotation
 from iad_core.duplicate.index import PixelIndex
 from iad_core.storage.database import Database
 
@@ -21,6 +24,15 @@ class RegistrationMedia(AnalysisModel):
     model_context: dict
     path: str
     required: bool = True
+    model_input: ModelImageInput | None = None
+
+    def for_model(self, inputs: ModelImageInputs, max_side: int | None) -> 'RegistrationMedia':
+        if max_side is None:
+            return self
+        derived = inputs.prepare(self.image,self.path,max_side)
+        annotations = tuple(Annotation.model_validate(item) for item in self.model_context.get('annotations',[]))
+        return self.model_copy(update={'model_input':derived,
+            'model_context':{**self.model_context,**derived.context(self.image,annotations)}})
 
 
 class PreparedRegistration(AnalysisModel):
@@ -79,6 +91,10 @@ class RegistrationMediaPage(AnalysisModel):
     images: list[RegistrationMedia]
     error: str | None
 
+    def for_model(self, inputs: ModelImageInputs, max_side: int | None) -> 'RegistrationMediaPage':
+        return self if max_side is None else self.model_copy(update={
+            'images':[image.for_model(inputs,max_side) for image in self.images]})
+
 
 class RegistrationImages:
     """Prepare the frozen whole image and every annotation ROI for all native workflows."""
@@ -125,18 +141,20 @@ class RegistrationImages:
                 else:
                     regions = [region for region in self.images.plan(sample, record.annotations, [])
                         if any(origin.annotation_id is not None for origin in region.origins)]
-                for region in regions:
-                    if raw_annotations:
-                        ids = {origin.annotation_id for origin in region.origins}
-                        linked = [annotation for annotation in record.annotations if annotation.annotation_id in ids]
-                        image = self.images.capture(sample, 'roi', 'annotation', region.crop_bbox, digest, full_resolution=True,
-                            annotation_origins=linked if preserve_annotation_instances else None)
-                        prepared.append(image.with_source(sample, record.dataset_format, linked))
-                        continue
-                    for image in self.images.capture_regions(sample, [region], record.annotations, digest):
-                        ids = {origin.annotation_id for origin in image.origins}
-                        prepared.append(PreparedImage(image.image, self.images.path(image.image), record.dataset_format,
-                            tuple(annotation for annotation in record.annotations if annotation.annotation_id in ids)))
+                if regions:
+                    with Image.open(sample.image_path) as pixels:
+                        for region in regions:
+                            if raw_annotations:
+                                ids = {origin.annotation_id for origin in region.origins}
+                                linked = [annotation for annotation in record.annotations if annotation.annotation_id in ids]
+                                image = self.images.capture(sample, 'roi', 'annotation', region.crop_bbox, digest, full_resolution=True,
+                                    annotation_origins=linked if preserve_annotation_instances else None,source_pixels=pixels)
+                                prepared.append(image.with_source(sample, record.dataset_format, linked))
+                                continue
+                            for image in self.images.capture_regions(sample, [region], record.annotations, digest):
+                                ids = {origin.annotation_id for origin in image.origins}
+                                prepared.append(PreparedImage(image.image, self.images.path(image.image), record.dataset_format,
+                                    tuple(annotation for annotation in record.annotations if annotation.annotation_id in ids)))
         except (OSError, ValueError) as error:
             result.error = str(error)
         result.images = [RegistrationMedia(sample_id=sample.sample_id, dataset_id=sample.dataset_id, image=image.evidence,

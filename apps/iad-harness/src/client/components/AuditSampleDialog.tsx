@@ -27,7 +27,7 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
     });
   }, [detail, sample.run_id, sample.sample_id]);
   const mainImage = pictures[0]?.view || {src:auditSampleImage(sample, taskId),
-    title:sample.filename, width:sample.width, height:sample.height};
+    title:sample.filename, width:sample.width, height:sample.height,sampleId:sample.sample_id};
   return <><Modal title="图像审计详情" className="audit-dialog" header={false} onClose={onClose}>
     <header className="audit-dialog-head"><h2>图像审计详情</h2><IconButton icon="close" label="关闭图像审计详情" onClick={onClose} /></header>
     <div className="audit-dialog-body audit-analysis-sections">
@@ -39,7 +39,7 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
             onClick={()=>setLightbox(mainImage)} onKeyDown={event=>{
               if(event.key==='Enter'||event.key===' '){event.preventDefault();setLightbox(mainImage);}
             }}>
-            <AnnotatedImageStage src={mainImage.src} alt={mainImage.title} width={mainImage.width} height={mainImage.height}
+            <AnnotatedImageStage sampleId={mainImage.sampleId} src={mainImage.src} alt={mainImage.title} width={mainImage.width} height={mainImage.height}
               annotationLayer={'annotationLayer' in mainImage?mainImage.annotationLayer:undefined} qualityLabel={'qualityLabel' in mainImage?mainImage.qualityLabel:undefined}/>
           </div>
         </div>

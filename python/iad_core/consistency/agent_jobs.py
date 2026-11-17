@@ -56,7 +56,7 @@ class ConsistencyAgentJobs:
         task_type = TASK_TYPES_BY_FORMAT[next(iter(formats.values()))]
         prompts = task_prompt_defaults(task_type)
         snapshot = ConsistencyCheckSnapshot(settings_revision=configured.settings_revision, retrieval=retrieval, scopes=scopes,
-            concurrency=settings.concurrency,
+            concurrency=settings.concurrency, whole_image_max_side=settings.whole_image_max_side,
             model_call_logging='native-v1', phase_logging='timeline-v1',
             model=settings.model,
             model_limits=settings.vision_limits,

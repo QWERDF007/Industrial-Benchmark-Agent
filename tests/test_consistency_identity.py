@@ -49,7 +49,7 @@ def similar_job(dataset, tmp_path, request):
                     'shapes':[{'label':'scratch','shape_type':'rectangle','points':[[2,50],[5,53]]}]}))
         from iad_core.dataset.registry import DatasetRegistry
         DatasetRegistry(database).rescan(config.dataset.id)
-    if case in ('original_resolution', 'no_annotations', 'mixed_empty'):
+    if case in ('original_resolution', 'limited_resolution', 'no_annotations', 'mixed_empty'):
         from iad_core.storage.repositories import SampleRepository
         from iad_core.dataset.registry import DatasetRegistry
         from PIL import ImageDraw
@@ -59,7 +59,7 @@ def similar_job(dataset, tmp_path, request):
             ImageDraw.Draw(image).rectangle((1200+index*20, 800, 1210+index*20, 810), fill='red')
             image.save(sample.image_path)
             shapes = ([{'shape_type':'rectangle', 'label':'defect', 'points':[[100,100],[200,200]]}]
-                if case == 'original_resolution' and name in ('dent', 'scratch') or case == 'mixed_empty' and name == 'scratch' else [])
+                if case in ('original_resolution','limited_resolution') and name in ('dent', 'scratch') or case == 'mixed_empty' and name == 'scratch' else [])
             (tmp_path/'labels'/f'{name}.json').write_text(json.dumps({'imageWidth':1600,'imageHeight':1200,'shapes':shapes}))
         DatasetRegistry(database).rescan(config.dataset.id)
     PixelIndex(database).prepare([config.dataset.id + ':' + name + '.png' for name in ('normal', 'normal2', 'dent', 'scratch')])
@@ -70,9 +70,12 @@ def similar_job(dataset, tmp_path, request):
         vector[0] = 1
         FeatureRepository(database).upsert(FeatureRecord(content_group_id=group, profile_id=encoder.profile.profile_id,
             dim=encoder.profile.dim, dtype=encoder.profile.storage_dtype, embedding_blob=vector.tobytes()))
+    if case == 'limited_resolution':
+        from iad_core.workbench.module_settings import ModuleSettings
+        ModuleSettings(database).save(dict(module='consistency',expected_revision=0,settings={'whole_image_max_side':64}))
     runtime = WorkbenchRuntime(database)
     checks = ConsistencyAgentJobs(runtime)
-    anchor = config.dataset.id + ':' + ('dent' if case in ('registered','registered_mixed','original_resolution','no_annotations','mixed_empty') else case) + '.png'
+    anchor = config.dataset.id + ':' + ('dent' if case in ('registered','registered_mixed','original_resolution','limited_resolution','no_annotations','mixed_empty') else case) + '.png'
     run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'combined',
         'min_similarity': 0.9, 'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
     checks.session_created(run_id, anchor)
@@ -83,7 +86,7 @@ def similar_job(dataset, tmp_path, request):
         runtime.close()
 
 
-@pytest.mark.parametrize('similar_job', ['original_resolution'], indirect=True)
+@pytest.mark.parametrize('similar_job', ['original_resolution','limited_resolution'], indirect=True)
 def test_identity_sends_originals_and_only_ten_percent_annotation_crops(similar_job):
     import base64
     import io
@@ -111,10 +114,11 @@ def test_identity_sends_originals_and_only_ten_percent_annotation_crops(similar_
     assert len(observed)==3
     for context,sizes in observed:
         assert context['scope']=='joint'
-        assert sizes[:2]==[(1600,1200),(1600,1200)]
+        limit = checks.snapshot(run_id).whole_image_max_side
+        assert sizes[:2]==([(64,48),(64,48)] if limit else [(1600,1200),(1600,1200)])
         assert context['windows']==[]
         expected = sum(region[side+'_media_id'] is not None for region in context['unmapped_regions'] for side in ('main','candidate'))
-        assert sizes[2:]==[(120,120)]*expected
+        assert sizes[2:]==([(64,64)] if limit else [(120,120)])*expected
         assert bool(expected)==any(context['annotations'].values())
 
 

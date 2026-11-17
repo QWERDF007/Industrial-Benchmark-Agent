@@ -33,6 +33,25 @@ class InstanceGeometry:
     def area(self) -> float:
         return float(np.count_nonzero(self.pixels)) if self.pixels is not None else (self.bounds[2]-self.bounds[0])*(self.bounds[3]-self.bounds[1])
 
+    @staticmethod
+    def vector_bounds(annotation: Annotation) -> tuple[float, float, float, float]:
+        if annotation.annotation_type == 'polygon':
+            points = annotation.polygon
+            if points is None or len(points) < 3 or any(len(point) != 2 or
+                    not all(math.isfinite(value) for value in point) for point in points):
+                raise ValueError('Polygon must have at least three finite points')
+            bounds = (min(x for x, _ in points), min(y for _, y in points),
+                max(x for x, _ in points), max(y for _, y in points))
+        elif annotation.annotation_type == 'bbox':
+            bounds = annotation.bbox
+        else:
+            raise ValueError('Region requires a rectangle or polygon')
+        if bounds is None or len(bounds) != 4 or not all(math.isfinite(value) for value in bounds):
+            raise ValueError('Region requires finite xyxy coordinates')
+        if bounds[0] >= bounds[2] or bounds[1] >= bounds[3]:
+            raise ValueError('Region requires positive area')
+        return tuple(bounds)
+
     @classmethod
     def prepare(cls, annotation: Annotation, sample: ImageDimensions, max_roi_pixels: int) -> 'InstanceGeometry':
         if annotation.geometry_status == 'INVALID':
@@ -44,13 +63,10 @@ class InstanceGeometry:
         if annotation.annotation_type == 'mask':
             mask = MaskImages.load(annotation, sample)
             bounds = mask.getbbox()
-        elif polygon is not None:
-            if len(polygon) < 3 or any(len(p) != 2 or not all(math.isfinite(v) for v in p) for p in polygon):
-                raise ValueError('Polygon must have at least three finite points')
-            bounds = (min(p[0] for p in polygon), min(p[1] for p in polygon),
-                max(p[0] for p in polygon)+1, max(p[1] for p in polygon)+1)
         else:
-            bounds = annotation.bbox
+            bounds = cls.vector_bounds(annotation)
+            if polygon is not None:
+                bounds = (bounds[0], bounds[1], bounds[2]+1, bounds[3]+1)
         if bounds is None or len(bounds) != 4 or not all(math.isfinite(v) for v in bounds):
             raise ValueError('Region requires finite xyxy coordinates')
         x1,y1,x2,y2 = bounds

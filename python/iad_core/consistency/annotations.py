@@ -4,13 +4,12 @@ import math
 from contextlib import nullcontext
 from typing import Literal
 
-import numpy as np
 from pydantic import Field
-from scipy.optimize import linear_sum_assignment
 
 from iad_core.advisory.analysis import AnalysisModel
+from iad_core.consistency.annotation_assignment import AnnotationAssignment
 from iad_core.consistency.annotation_models import AnnotationComparison, AnnotationDifference, AnnotationMatchingConfig, InstanceMatch
-from iad_core.consistency.geometry import bbox_iou, union_region
+from iad_core.consistency.geometry import InstanceGeometry, bbox_iou, union_region
 from iad_core.consistency.errors import ConsistencyError
 from iad_core.consistency.task_types import ConsistencyTaskType, TASK_TYPES_BY_FORMAT
 from iad_core.consistency.comparison_domain import ComparisonDomain
@@ -67,15 +66,19 @@ class AnnotationSet(AnalysisModel):
                 raise ConsistencyError('ANNOTATION_UNREADABLE', '图像级审核需要导入时确认的正常／异常分类：' + self.sample_id)
             return
         for annotation in self.annotations:
-            box = annotation.bbox
-            if (annotation.annotation_type != 'bbox' or annotation.geometry_status != 'VALID'
-                    or not annotation.raw_label.strip() or box is None
-                    or max(0, box[0]) >= min(self.width, box[2])
-                    or max(0, box[1]) >= min(self.height, box[3])):
+            try:
+                box = InstanceGeometry.vector_bounds(annotation)
+                if (annotation.geometry_status != 'VALID' or not annotation.raw_label.strip()
+                        or annotation.bbox is None
+                        or any(value is not None and value != size for value, size in (
+                            (annotation.source_width, self.width), (annotation.source_height, self.height)))
+                        or max(0, box[0]) >= min(self.width, box[2])
+                        or max(0, box[1]) >= min(self.height, box[3])):
+                    raise ValueError('需要非空类别、有效原始矩形或多边形及图内可见区域')
+            except ValueError as error:
                 raise ConsistencyError('ANNOTATION_UNREADABLE',
-                    '矩形标注无法审核：' + annotation.annotation_id
-                    + '；需要非空类别、有效原始矩形及图内可见区域。'
-                    + f'原始坐标={box}，图像尺寸={self.width}×{self.height}。')
+                    '区域标注无法审核：' + annotation.annotation_id + '；' + str(error)
+                    + f'。原始坐标={annotation.bbox}，图像尺寸={self.width}×{self.height}。') from error
 
     @classmethod
     def capture(cls, db: Database, sample_id: str, connection=None) -> 'AnnotationSet':
@@ -189,100 +192,29 @@ class AnnotationMatcher:
         location_scores = {pair:box if scores[pair]>0 or box>=self.config.minimum_iou else 0.
             for pair,box in boxes.items()}
         exact = {(i,j) for (i,j),score in scores.items() if score==1}
-        exact_components=list(self.components(exact))
-        plausible_components=list(self.components({pair for pair,score in location_scores.items() if score>0}))
-        for left_component,right_component in exact_components:
-            if left_component & used_left or right_component & used_right:
-                continue
-            if len(left_component)==len(right_component)==1:
-                continue
-            else:
-                left_component,right_component=next((lc,rc) for lc,rc in plausible_components
-                    if lc & left_component or rc & right_component)
-                difference('AMBIGUOUS_MATCH',sorted(left_component),sorted(right_component),
-                    union_region([a[i].bounds for i in left_component]+[b[j].bounds for j in right_component]),
-                    facts={'reason':'Multiple instances have identical geometry'},extra_pending=['Confirm instance correspondence'])
-                used_left.update(left_component);used_right.update(right_component)
-        for left_component,right_component in exact_components:
-            if len(left_component)==len(right_component)==1 and not (left_component & used_left or right_component & used_right):
-                matched(next(iter(left_component)),next(iter(right_component)))
-        # Containment components identify merged/split extents before one-to-one assignment.
-        containment=set()
-        for i,first in a.items():
-            for j,second in b.items():
-                if (first.annotation.annotation_type=='image') != (second.annotation.annotation_type=='image'):
-                    continue
-                if i in used_left and j in used_right:
-                    continue
-                x1,y1=max(first.bounds[0],second.bounds[0]),max(first.bounds[1],second.bounds[1])
-                x2,y2=min(first.bounds[2],second.bounds[2]),min(first.bounds[3],second.bounds[3])
-                intersection=max(0,x2-x1)*max(0,y2-y1)
-                small=min((first.bounds[2]-first.bounds[0])*(first.bounds[3]-first.bounds[1]),
-                    (second.bounds[2]-second.bounds[0])*(second.bounds[3]-second.bounds[1]))
-                segmentation=segmentations[i,j]
-                if first.masked_domain or second.masked_domain:
-                    overlap=first.pixel_iou(second)
-                    intersection=overlap*(first.pixel_area+second.pixel_area)/(1+overlap)
-                    small=min(first.pixel_area,second.pixel_area)
-                elif segmentation is not None:
-                    intersection=segmentation*(first.area+second.area)/(1+segmentation)
-                    small=min(first.area,second.area)
-                if small>0 and intersection/small >= self.config.split_coverage:
-                    containment.add((i,j))
-        for lc,rc in self.components(containment):
-            if (len(lc)>1 and len(rc)==1) or (len(rc)>1 and len(lc)==1):
-                pieces=[a[i] for i in lc] if len(lc)>1 else [b[j] for j in rc]
-                if any(bbox_iou(first.bounds,second.bounds) > 1-self.config.split_coverage
-                       for k,first in enumerate(pieces) for second in pieces[k+1:]):
-                    continue
-                combined=next(iter(b[j] for j in rc)) if len(lc)>1 else next(iter(a[i] for i in lc))
-                coverage=combined.covered_fraction(pieces)
-                if coverage < self.config.split_coverage:
-                    continue
-                all_regions=[a[i].bounds for i in lc]+[b[j].bounds for j in rc]
-                difference('SPLIT_MERGE',sorted(lc),sorted(rc),union_region(all_regions),
-                    facts={'coverage_basis':'visible_pixels' if combined.masked_domain or any(p.masked_domain for p in pieces) else
-                        'segmentation' if combined.pixels is not None and all(p.pixels is not None for p in pieces) else 'bounding_extent',
-                        'combined_coverage':coverage},extra_pending=['Confirm split or merge annotation convention'])
-                used_left.update(lc);used_right.update(rc)
-        rows,cols=sorted(set(a)-used_left),sorted(set(b)-used_right)
-        candidate={(i,j) for i in rows for j in cols if location_scores[i,j]>0}
-        for lc,rc in self.components(candidate):
-            indices_left,indices_right=sorted(lc),sorted(rc)
-            if len(lc)!=len(rc) and (len(lc)==1 or len(rc)==1):
-                difference('AMBIGUOUS_MATCH',indices_left,indices_right,
-                    union_region([a[i].bounds for i in lc]+[b[j].bounds for j in rc]),
-                    facts={'reason':'Overlapping instances require split or merge correspondence'},
-                    extra_pending=['Confirm instance correspondence before inferring a missing annotation'])
-                used_left.update(lc);used_right.update(rc)
-                continue
-            matrix=self.cost_matrix(indices_left,indices_right,location_scores)
-            chosen_rows,chosen_cols=linear_sum_assignment(matrix)
-            optimum=float(matrix[chosen_rows,chosen_cols].sum())
-            chosen=[(int(i),int(j)) for i,j in zip(chosen_rows,chosen_cols) if i<len(indices_left) and j<len(indices_right) and matrix[i,j]<1e5]
-            ambiguous=any(min(a[indices_left[i]].area,b[indices_right[j]].area)<=self.config.tiny_area for i,j in chosen)
-            for i,j in chosen:
-                alternative=matrix.copy();alternative[i,j]=1e6
-                ar,ac=linear_sum_assignment(alternative)
-                if float(alternative[ar,ac].sum())-optimum<=self.config.ambiguity_tolerance:
-                    ambiguous=True
-                    break
-            if ambiguous:
-                difference('AMBIGUOUS_MATCH',indices_left,indices_right,
-                    union_region([a[i].bounds for i in lc]+[b[j].bounds for j in rc]),
-                    facts={'reason':'Tiny regions or multiple equally plausible assignments'},extra_pending=['Confirm instance correspondence'])
-                used_left.update(lc);used_right.update(rc)
-            else:
-                for i,j in chosen:
-                    matched(indices_left[i],indices_right[j])
+        assignment = AnnotationAssignment.solve({i: value.annotation.annotation_id for i, value in a.items()},
+            {j: value.annotation.annotation_id for j, value in b.items()}, location_scores, exact)
+        for i, j in assignment.pairs:
+            matched(i, j)
+        for lc, rc in assignment.groups:
+            pieces = [a[i] for i in lc] if len(lc) > 1 else [b[j] for j in rc]
+            combined = b[rc[0]] if len(lc) > 1 else a[lc[0]]
+            difference('SPLIT_MERGE', lc, rc,
+                union_region([a[i].bounds for i in lc] + [b[j].bounds for j in rc]),
+                facts={'coverage_basis': 'visible_pixels' if combined.masked_domain or any(p.masked_domain for p in pieces) else
+                    'segmentation' if combined.pixels is not None and all(p.pixels is not None for p in pieces) else 'bounding_extent',
+                    'combined_coverage': combined.covered_fraction(pieces)})
+            labels = [{side.policy.category_mapping.get(value.raw_label, value.raw_label) for value in values}
+                for side, values in ((left, [a[i].annotation for i in lc]), (right, [b[j].annotation for j in rc]))]
+            if labels[0] != labels[1]:
+                difference('CATEGORY', lc, rc, union_region([a[i].bounds for i in lc] + [b[j].bounds for j in rc]),
+                    facts={'left_categories': sorted(labels[0]), 'right_categories': sorted(labels[1])})
+            used_left.update(lc)
+            used_right.update(rc)
         for side_index,remaining in enumerate([set(a)-used_left,set(b)-used_right]):
             other=1-side_index
             for index in sorted(remaining):
                 region=list(geometries[side_index][index].bounds)
-                if geometries[side_index][index].area<=self.config.tiny_area:
-                    difference('AMBIGUOUS_MATCH',[index] if side_index==0 else [],[index] if side_index==1 else [],region,
-                        facts={'reason':'Tiny unmatched instance has insufficient geometric evidence'},extra_pending=['Confirm the tiny instance before inferring a missing annotation'])
-                    continue
                 suspect=comparable and not invalid[other] and sides[other].supports_absence
                 if invalid[other]:
                     difference('ANNOTATION_UNREADABLE',[index] if side_index==0 else [],[index] if side_index==1 else [],region,
@@ -295,33 +227,3 @@ class AnnotationMatcher:
             matches=matches,differences=differences,invalid_left=invalid[0],invalid_right=invalid[1],
             confirmed_conflict=any(d.confirmed_conflict for d in differences),ignore_regions=ignore_regions,masking=masking,
             coordinate_frame='RAW_EXACT' if relation=='EXACT' else 'RELATIVE_IMAGE')
-
-    def cost_matrix(self, rows, cols, scores) -> np.ndarray:
-        n,m=len(rows),len(cols)
-        matrix=np.full((n+m,n+m),1e6)
-        matrix[n:,m:]=0
-        for i,row in enumerate(rows):
-            matrix[i,m+i]=.5
-            for j,col in enumerate(cols):
-                if scores[row,col]>0:
-                    matrix[i,j]=1-scores[row,col]
-        for j in range(m):
-            matrix[n+j,j]=.5
-        return matrix
-
-    @staticmethod
-    def components(edges):
-        adjacency={}
-        for i,j in edges:
-            adjacency.setdefault(('left',i),set()).add(('right',j))
-            adjacency.setdefault(('right',j),set()).add(('left',i))
-        while adjacency:
-            pending=[min(adjacency)];left,right=set(),set()
-            while pending:
-                side,index=pending.pop()
-                neighbors=adjacency.pop((side,index),None)
-                if neighbors is None:
-                    continue
-                (left if side=='left' else right).add(index)
-                pending.extend(neighbors)
-            yield left,right

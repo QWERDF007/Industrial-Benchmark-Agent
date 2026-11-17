@@ -195,6 +195,7 @@ def test_finished_content_checks_without_eligible_candidates_are_not_shown_as_un
         assert detail.reason == 'NO_ELIGIBLE_CANDIDATES'
         assert detail.annotation_review_status == 'not_required'
         assert detail.annotation_review_label == '无需标注审核'
+        assert detail.identity_model_reviewed is True
         assert detail.model_conclusion is None and detail.result is None
         assert detail.state == ('CANCELLED' if cancelled else 'RUNNING')
         page = results.images(run_id, query={'group': 'NO_ELIGIBLE_CANDIDATES'})
@@ -289,5 +290,48 @@ def test_business_results_export_every_frozen_anchor_in_order_with_real_terminal
         assert indexed_images[identities[1]].summary.state == 'FAILED'
         assert indexed_images[identities[1]].summary.program_conclusion == '核对失败'
         assert indexed_images[identities[2]].summary.state == 'CANCELLED'
+    finally:
+        runtime.close()
+
+
+@pytest.mark.parametrize('reverse,expected', [(False, '多类别'), (True, '少类别')])
+def test_tabs_use_severe_primary_category_and_refresh_outdated_projection(dataset, tmp_path, reverse, expected):
+    from PIL import Image
+    from tests.consistency_support import start_prepared
+    from iad_core.consistency.agent_results import ConsistencyAgentResults
+    from iad_core.consistency.agent_review import ConsistencyAgentReview
+    from iad_core.consistency.result_index import ConsistencyResultIndex
+
+    database, registry, config = dataset
+    polygons = [[[10, 10], [30, 10], [30, 30], [10, 30]],
+        [[70, 70], [140, 70], [140, 120], [70, 120]]]
+    small = [[[100, 80], [120, 80], [120, 100], [100, 100]]]
+    for name, points in zip(('dent', 'scratch'), (small, polygons) if reverse else (polygons, small)):
+        Image.new('RGB', (320, 240), '#778899').save(tmp_path / 'images' / (name + '.png'))
+        (tmp_path / 'labels' / (name + '.json')).write_text(json.dumps({'imageWidth':320,'imageHeight':240,
+            'shapes':[{'label':'dent','shape_type':'polygon','points':polygon} for polygon in points]}))
+    registry.rescan(config.dataset.id)
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        anchor = config.dataset.id + ':dent.png'
+        run_id = start_prepared(checks, {'submission_id':str(uuid4()),'dataset_ids':[config.dataset.id],
+            'mode':'exact','subjects':{'kind':'samples','sample_ids':[anchor]}})['run_id']
+        checks.session_created(run_id, anchor)
+        checks.retrieve(run_id, anchor)
+        ConsistencyAgentReview(runtime).verify(run_id, anchor)
+        results = ConsistencyAgentResults(database)
+        page = results.images(run_id, query={'group':expected})
+        assert [item.sample.sample_id for item in page.items] == [anchor]
+        assert page.items[0].summary.original_conclusion == expected
+        assert set(page.items[0].summary.original_categories) == {'位置差异', expected}
+        assert page.counts[expected] == 1 and page.counts.get('位置差异', 0) == 0
+        assert results.images(run_id, query={'group':'位置差异'}).total == 0
+        with database.connection() as connection:
+            connection.execute('UPDATE consistency_result_index SET projection_version=0 WHERE job_id=?', (run_id,))
+            assert not ConsistencyResultIndex(connection, run_id).current()
+        assert results.images(run_id, query={'group':expected}).total == 1
+        with database.connection() as connection:
+            assert ConsistencyResultIndex(connection, run_id).current()
     finally:
         runtime.close()

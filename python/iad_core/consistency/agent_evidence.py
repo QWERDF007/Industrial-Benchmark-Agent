@@ -77,4 +77,5 @@ class ConsistencyAgentEvidence:
         selected_members = [members[identity] for identity in candidate_ids]
         selected = group.model_copy(update={'members': selected_members,
             'anchor': group.anchor.model_copy(update={'evidence_id': selected_members[0].image.evidence_id})})
-        return GroupAnalysisInputs(self.runtime).prepare(selected, checkpoint)
+        return GroupAnalysisInputs(self.runtime).prepare(selected, checkpoint,
+            max_side=self.checks.snapshot(run_id).whole_image_max_side)

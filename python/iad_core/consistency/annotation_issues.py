@@ -41,7 +41,7 @@ class BboxAnnotationIssue(IssueEvidenceFields):
     coverage_reason: NonBlankText | None = Field(default=None,
         description='位置问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。')
     same_main_object_as: list[CandidateObjectReference] = Field(default_factory=list,
-        description='仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始框引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。')
+        description='仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。')
 
     @model_validator(mode='after')
     def check_objects(self) -> Self:
@@ -57,7 +57,7 @@ class BboxAnnotationIssue(IssueEvidenceFields):
         if not valid:
             raise ValueError('差异类型与两侧真实对象的标注ID数量不匹配')
         if self.same_main_object_as and (self.type != 'missing_annotation' or candidate != 1):
-            raise ValueError('无主图框的对象归并只接受单个已确认少标对象')
+            raise ValueError('无主图标注的对象归并只接受单个已确认少标对象')
         return self
 
 

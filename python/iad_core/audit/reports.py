@@ -293,7 +293,9 @@ class AuditReports:
             and item.image.is_whole_image and item.image.representation=='raw'),None)
         if image is None:
             raise ValueError('主 Agent 和报告仅能读取冻结完整原图')
-        return RegistrationMediaPage(sample_id=sample_id,evidence_id=evidence_id,total=1,offset=0,images=[image],error=None)
+        from iad_core.evidence.model_inputs import ModelImageInputs
+        return RegistrationMediaPage(sample_id=sample_id,evidence_id=evidence_id,total=1,offset=0,images=[image],error=None).for_model(
+            ModelImageInputs(self.db.db_path),self.state.snapshot(run_id).settings.whole_image_max_side)
 
     def failure(self, run_id: str, message: str):
         with self.db.connection() as connection:

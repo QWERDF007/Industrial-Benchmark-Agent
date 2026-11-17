@@ -12,6 +12,14 @@ export declare const conflictCategoryLabels: {
     readonly 拆分: "拆分";
     readonly 合并: "合并";
 };
+export declare const conflictCategoryPriorities: {
+    readonly 类别不一致: 0;
+    readonly 多类别: 0;
+    readonly 少类别: 0;
+    readonly 位置差异: 1;
+    readonly 拆分: 1;
+    readonly 合并: 1;
+};
 export declare const modelConclusionLabels: {
     readonly 类别不一致: "类别不一致";
     readonly 多类别: "多标";
@@ -21,7 +29,7 @@ export declare const modelConclusionLabels: {
     readonly 合并: "合并";
     readonly EQUIVALENT: "一致";
 };
-export declare const conflictCategories: readonly ["类别不一致", "位置差异", "多类别", "少类别", "拆分", "合并", "对应关系差异"];
+export declare const conflictCategories: readonly ["类别不一致", "位置差异", "多类别", "少类别", "拆分", "合并"];
 export declare const modelAssessmentLabels: {
     readonly NOT_ANALYZED: "未分析";
     readonly RUNNING: "分析中";
@@ -465,21 +473,6 @@ export declare const consistencyCompareParameters: {
                 readonly title: "Minimum Iou";
                 readonly default: 0.5;
             };
-            readonly ambiguity_tolerance: {
-                readonly type: "number";
-                readonly title: "Ambiguity Tolerance";
-                readonly default: 1e-9;
-            };
-            readonly tiny_area: {
-                readonly type: "number";
-                readonly title: "Tiny Area";
-                readonly default: 4;
-            };
-            readonly split_coverage: {
-                readonly type: "number";
-                readonly title: "Split Coverage";
-                readonly default: 0.9;
-            };
             readonly max_instances: {
                 readonly type: "integer";
                 readonly title: "Max Instances";
@@ -802,7 +795,7 @@ export declare const consistencyQueryParameters: {
     readonly difference_type: {
         readonly oneOf: readonly [{
             readonly type: "string";
-            readonly enum: readonly ["QUALITY_LABEL", "CATEGORY", "ANNOTATION_COUNT", "ONE_SIDED_REGION", "GEOMETRY", "SPLIT_MERGE", "AMBIGUOUS_MATCH", "POLICY_UNCONFIRMED", "ANNOTATION_UNREADABLE"];
+            readonly enum: readonly ["QUALITY_LABEL", "CATEGORY", "ANNOTATION_COUNT", "ONE_SIDED_REGION", "GEOMETRY", "SPLIT_MERGE", "POLICY_UNCONFIRMED", "ANNOTATION_UNREADABLE"];
         }, {
             readonly type: "null";
         }];

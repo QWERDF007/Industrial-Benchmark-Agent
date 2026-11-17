@@ -174,7 +174,7 @@ def test_subpixel_instances_with_no_pixel_centres_remain_finite_next_to_masked_r
     assert not any(difference.type == 'SPLIT_MERGE' for difference in result.differences)
     assert len(result.differences) == 2
     small = next(difference for difference in result.differences if difference.right)
-    assert small.type == 'AMBIGUOUS_MATCH' and not small.confirmed_conflict
+    assert small.type == 'ONE_SIDED_REGION' and small.confirmed_conflict
 
 
 @pytest.mark.parametrize('value', ['true', 1, None])

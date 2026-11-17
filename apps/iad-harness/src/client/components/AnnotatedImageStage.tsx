@@ -1,9 +1,11 @@
 import React, { useState } from "react";
 import {AnnotationLayer,type ImageBoxAnnotation,type AnnotationLayerSource} from "./AnnotationLayer.js";
 import {ImageQualityBadge} from './ImageQualityBadge.js';
+import {useImageAnnotations} from '../useImageAnnotations.js';
 import type {ImageQualityLabel} from '../dataset-image-annotations.js';
 
 export interface AnnotatedImageStageProps {
+  sampleId?: string;
   src: string;
   alt?: string;
   width?: number;
@@ -24,6 +26,7 @@ export interface AnnotatedImageStageProps {
  * Automatically respects the natural aspect ratio of the image, preventing distortion and coordinate shift.
  */
 export function AnnotatedImageStage({
+  sampleId,
   src,
   alt = "",
   width,
@@ -44,6 +47,9 @@ export function AnnotatedImageStage({
 
   const imgW = naturalSize.width || width || 800;
   const imgH = naturalSize.height || height || 600;
+
+  const layer=useImageAnnotations(sampleId,annotationLayer===null?null:annotationLayer || (bboxes.length
+    ? {kind:'boxes',annotations:bboxes,width:imgW,height:imgH}:undefined),qualityLabel);
 
   return (
     <div
@@ -82,7 +88,7 @@ export function AnnotatedImageStage({
           }}
         />
 
-        {showAnnotations && (annotationLayer || bboxes.length>0) && <AnnotationLayer fit="contain" source={annotationLayer || {kind:'boxes',annotations:bboxes,width:imgW,height:imgH}} />}
+        {showAnnotations && layer && <AnnotationLayer fit="contain" source={layer} />}
         {children}
         <ImageQualityBadge label={qualityLabel} />
     </div>

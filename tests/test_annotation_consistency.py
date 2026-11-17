@@ -114,7 +114,7 @@ def test_overlapping_resized_regions_are_geometry_differences_not_missing_annota
     assert not result.confirmed_conflict
 
 
-def test_overlapping_many_to_one_regions_require_instance_correspondence_not_missing_labels():
+def test_overlapping_many_to_one_regions_are_split_not_missing_labels():
     pieces = [[859.43,158.02,873.1,303.48],[860.6,301.52,874.37,487.32],
               [857.57,.07,870.62,34.9],[858.54,16.87,872.29,169.36]]
     left = side('left', [box('left',str(i),'defect',bounds) for i,bounds in enumerate(pieces)])
@@ -122,12 +122,12 @@ def test_overlapping_many_to_one_regions_require_instance_correspondence_not_mis
     left.width = right.width = 1000
     left.height = right.height = 700
     result = AnnotationMatcher().compare(left,right,relation='EXACT')
-    assert result.factual_difference_types == ['AMBIGUOUS_MATCH']
+    assert result.factual_difference_types == ['SPLIT_MERGE']
     assert len(result.factual_differences[0].left) == 4
     assert not result.factual_differences[0].confirmed_conflict
 
 
-def test_merged_box_and_overlapping_duplicate_instances_are_not_simple_missing_labels():
+def test_merged_box_is_split_and_an_identical_duplicate_is_extra():
     left=side('left',[box('left','a','dent',[0,0,10,10]),box('left','b','dent',[10,0,20,10])])
     right=side('right',[box('right','merged','dent',[0,0,20,10])])
     result=AnnotationMatcher().compare(left,right,relation='EXACT')
@@ -136,9 +136,10 @@ def test_merged_box_and_overlapping_duplicate_instances_are_not_simple_missing_l
     assert not any(d.type=='ONE_SIDED_REGION' for d in result.differences)
     left.annotations[1].bbox=[0,0,10,10]
     right.annotations[0].bbox=[0,0,10,10]
-    ambiguous=AnnotationMatcher().compare(left,right,relation='EXACT')
-    assert any(d.type=='AMBIGUOUS_MATCH' for d in ambiguous.differences)
-    assert not any(d.type=='ONE_SIDED_REGION' for d in ambiguous.differences)
+    duplicate=AnnotationMatcher().compare(left,right,relation='EXACT')
+    assert len(duplicate.matches)==1
+    assert duplicate.conflict_categories==['多类别']
+    assert [d.type for d in duplicate.differences]==['ONE_SIDED_REGION']
 
 
 def test_real_mask_coverage_differs_from_its_bbox_and_polygon_matches_mask(tmp_path):
@@ -194,14 +195,15 @@ def test_global_assignment_keeps_both_matches_when_the_greedy_choice_loses_one()
     assert not any(d.type=='ONE_SIDED_REGION' for d in result.differences)
 
 
-def test_equal_cost_and_tiny_regions_are_ambiguous_without_missing_label_inference():
+def test_equal_cost_and_tiny_regions_have_definite_geometry_differences():
     left=side('left',[box('left','a','dent',[0,0,10,10]),box('left','b','dent',[2,0,12,10])])
     right=side('right',[box('right','x','dent',[1,0,11,10]),box('right','y','dent',[1,0,11,10])])
     result=AnnotationMatcher().compare(left,right,relation='EXACT')
-    assert [d.type for d in result.differences]==['AMBIGUOUS_MATCH']
+    assert [d.type for d in result.differences]==['GEOMETRY','GEOMETRY']
+    assert len(result.matches)==2
     tiny=AnnotationMatcher().compare(side('left',[box('left','a','dent',[0,0,1,1])]),
         side('right',[box('right','b','dent',[.05,0,1.05,1])]),relation='EXACT')
-    assert [d.type for d in tiny.differences]==['AMBIGUOUS_MATCH']
+    assert [d.type for d in tiny.differences]==['GEOMETRY']
 
 
 def test_partial_coverage_does_not_claim_a_missing_label_and_frozen_values_survive_mutation():
@@ -291,19 +293,87 @@ def test_image_labels_are_compared_without_inventing_segmentation_regions():
     assert [d.type for d in result.differences]==['CATEGORY']
 
 
-def test_identical_instance_ambiguity_includes_other_plausible_correspondences():
+def test_identical_instances_match_exactly_before_assigning_other_overlaps():
     left=side('left',[box('left','a','dent',[0,0,10,10]),box('left','b','dent',[0,0,10,10])])
     right=side('right',[box('right','x','dent',[0,0,10,10]),box('right','y','dent',[1,0,11,10])])
     result=AnnotationMatcher().compare(left,right,relation='EXACT')
-    assert [d.type for d in result.differences]==['AMBIGUOUS_MATCH']
-    assert len(result.differences[0].left)==len(result.differences[0].right)==2
-    assert not result.confirmed_conflict
+    assert len(result.matches)==2
+    assert [d.type for d in result.differences]==['GEOMETRY']
+    assert result.conflict_categories==['位置差异']
 
 
-def test_crowded_ambiguity_is_resolved_before_committing_individual_exact_matches():
+def test_crowded_identical_instances_match_one_to_one_and_report_the_extra():
     left=side('left',[box('left','a','dent',[0,0,10,10]),box('left','b','dent',[1,0,11,10]),
         box('left','c','dent',[1,0,11,10])])
     right=side('right',[box('right','x','dent',[0,0,10,10]),box('right','y','dent',[1,0,11,10])])
     result=AnnotationMatcher().compare(left,right,relation='EXACT')
-    assert result.matches==[]
-    assert [d.type for d in result.differences]==['AMBIGUOUS_MATCH']
+    assert len(result.matches)==2
+    assert [d.type for d in result.differences]==['ONE_SIDED_REGION']
+    assert result.conflict_categories==['多类别']
+
+
+@pytest.mark.parametrize('reverse', [False, True])
+@pytest.mark.parametrize('kind', ['bbox', 'polygon'])
+def test_split_merge_is_definite_when_the_combined_region_has_wider_coverage(reverse, kind):
+    pieces = side('pieces', [box('pieces', 'a', '脏污', [20, 10, 50, 30]),
+        box('pieces', 'b', '脏污', [90, 10, 110, 30])])
+    whole = side('whole', [box('whole', 'c', '脏污', [0, 0, 150, 70])])
+    if kind == 'polygon':
+        for annotation in [*pieces.annotations, *whole.annotations]:
+            x1, y1, x2, y2 = annotation.bbox
+            annotation.annotation_type = 'polygon'
+            annotation.polygon = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
+    left, right = (whole, pieces) if reverse else (pieces, whole)
+    result = AnnotationMatcher().compare(left, right, relation='EXACT')
+    assert result.conflict_categories == ['合并' if reverse else '拆分']
+    assert result.factual_difference_types == ['SPLIT_MERGE']
+    assert len(result.differences) == 1
+    assert not result.matches
+
+
+def test_matching_ties_are_definite_and_stable_when_input_order_changes():
+    left = side('left', [box('left', 'a', 'dent', [0, 0, 10, 10]), box('left', 'b', 'dent', [2, 0, 12, 10])])
+    right = side('right', [box('right', 'x', 'dent', [1, 0, 11, 10]), box('right', 'y', 'dent', [1, 0, 11, 10])])
+    first = AnnotationMatcher().compare(left, right, relation='EXACT')
+    left.annotations.reverse()
+    right.annotations.reverse()
+    second = AnnotationMatcher().compare(left, right, relation='EXACT')
+    assert first.conflict_categories == second.conflict_categories == ['位置差异']
+    assert {(m.left_id, m.right_id) for m in first.matches} == {(m.left_id, m.right_id) for m in second.matches}
+    assert len(first.matches) == 2
+
+
+@pytest.mark.parametrize('left_boxes,right_boxes,expected,pair_count', [
+    ([[20, 10, 50, 30], [90, 10, 110, 30]], [[0, 0, 150, 70]], ['拆分'], 0),
+    ([[0, 0, 150, 70]], [[20, 10, 50, 30], [90, 10, 110, 30]], ['合并'], 0),
+    ([[0, 0, 10, 10], [0, 0, 10, 10]], [[0, 0, 10, 10]], ['多类别'], 1),
+    ([[0, 0, 1, 1]], [], ['多类别'], 0),
+    ([], [[0, 0, 1, 1]], ['少类别'], 0),
+    ([[0, 0, 10, 10], [2, 0, 12, 10]], [[1, 0, 11, 10], [1, 0, 11, 10]], ['位置差异'], 2),
+    ([[0, 0, 10, 10], [0, 0, 10, 10]], [[0, 0, 10, 10], [0, 0, 10, 10]], [], 2),
+])
+def test_saved_ambiguous_groups_are_restored_as_definite_differences(left_boxes, right_boxes, expected, pair_count):
+    from iad_core.consistency.annotation_models import AnnotationComparison
+
+    left = [box('left', 'a' + str(i), 'dent', bounds).model_dump(mode='json') for i, bounds in enumerate(left_boxes)]
+    right = [box('right', 'b' + str(i), 'dent', bounds).model_dump(mode='json') for i, bounds in enumerate(right_boxes)]
+    saved = {'status': 'COMPLETE', 'policy_relation': 'SAME', 'matches': [], 'invalid_left': 0, 'invalid_right': 0,
+        'confirmed_conflict': False, 'differences': [{'difference_id': 'saved_group', 'type': 'AMBIGUOUS_MATCH',
+            'left': left, 'right': right, 'policy_relation': 'SAME', 'facts': {}, 'region': [0, 0, 150, 70]}]}
+    restored = AnnotationComparison.model_validate(saved)
+    assert restored.conflict_categories == expected
+    assert len(restored.matches) == pair_count
+    assert all(d.type in {'GEOMETRY', 'CATEGORY', 'SPLIT_MERGE', 'ONE_SIDED_REGION'} for d in restored.differences)
+    assert len({d.difference_id for d in restored.differences}) == len(restored.differences)
+    if restored.differences:
+        assert restored.differences[0].difference_id == 'saved_group'
+    assert AnnotationComparison.model_validate_json(restored.model_dump_json()) == restored
+
+
+def test_split_merge_preserves_a_simultaneous_category_difference():
+    pieces = side('pieces', [box('pieces', 'a', 'dent', [20, 10, 50, 30]),
+        box('pieces', 'b', 'scratch', [90, 10, 110, 30])])
+    whole = side('whole', [box('whole', 'c', 'dent', [0, 0, 150, 70])])
+    result = AnnotationMatcher().compare(pieces, whole, relation='EXACT')
+    assert result.conflict_categories == ['类别不一致', '拆分']
+    assert result.factual_difference_types == ['CATEGORY', 'SPLIT_MERGE']

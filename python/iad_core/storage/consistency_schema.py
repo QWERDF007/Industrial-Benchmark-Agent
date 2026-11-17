@@ -227,8 +227,12 @@ def init_result_index_schema(connection: Connection) -> None:
         reason TEXT NOT NULL,program_conclusion TEXT NOT NULL,model_conclusion TEXT,agreement TEXT,
         review_state TEXT NOT NULL,categories_json TEXT NOT NULL CHECK(json_valid(categories_json)),
         image_json TEXT NOT NULL CHECK(json_valid(image_json)),gallery_json TEXT,
+        projection_version INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY(job_id,anchor_id),
         FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE)''')
+    columns = {row[1] for row in connection.execute('PRAGMA table_info(consistency_result_index)')}
+    if 'projection_version' not in columns:
+        connection.execute('ALTER TABLE consistency_result_index ADD COLUMN projection_version INTEGER NOT NULL DEFAULT 0')
     connection.execute('CREATE INDEX IF NOT EXISTS idx_consistency_result_order ON consistency_result_index(job_id,ordinal)')
     connection.execute("DELETE FROM consistency_result_index WHERE instr(filename,'/')>0")
     for table in ('consistency_candidate_records', 'consistency_candidate_identity', 'consistency_group_decisions'):

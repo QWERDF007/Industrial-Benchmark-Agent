@@ -1,6 +1,8 @@
+from iad_core.evidence.model_inputs import MODEL_IMAGE_GUIDANCE
+
 QUALITY_OBSERVATION_GUIDANCE = """评分场景写入quality_observation。按target.sampling_group区分原始标注约定的normal、abnormal；unclassified标记观察不完整，不把图级审计结论normal当成良品标签。完整观察后complete填true：Labelme逐个原始非忽略标注填写defects，每个annotation_id恰好一次；分类异常图只填写一个annotation_id为null的整图场景。类别由程序读取原始类别，不重新命名类别。每个场景记录形态morphology、特殊形态special_morphology（未出现填null）、外观appearance、相对尺寸size（tiny/small/medium/large）、位置location（center/edge/corner）、结构区域structural_region（无则null）、对比度contrast（low/medium/high）。尺寸按本任务主体和原始框的相对面积及宽高判断，不用统一像素阈值。形态、特殊形态与外观共同描述类内视觉变化，同一实际变化使用简短一致的名称，不为同一现象拆分命名。良品填写normal：hard及hard_type、confusable、特殊正常纹理texture；常规良品hard和confusable填false、其余填null。不要捏造未出现的场景或重复实例，图证不足时complete填false并写limitation。评分场景只记录视觉事实，不自动作为标注疑点。"""
 
-CORE_AUDIT_PROMPT = """依据冻结原图、原始标注、一致性结果和所选知识，审核标注与可见现象的对应、覆盖、定位及实例组织，对提供的同内容图像核对标注一致性。
+CORE_AUDIT_PROMPT = MODEL_IMAGE_GUIDANCE + "\n\n" + """依据冻结原图、原始标注、一致性结果和所选知识，审核标注与可见现象的对应、覆盖、定位及实例组织，对提供的同内容图像核对标注一致性。
 
 类别按原值核对同一对象的分组一致性；类别定义和缺陷命名由数据集配置管理，不纳入本审计的结论和缺项。
 

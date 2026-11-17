@@ -6,6 +6,7 @@ import {ModuleModelFields} from './ModuleModelFields.js';
 import {ModuleNumberSetting} from './ModuleNumberSetting.js';
 import {Button} from '@deepseek-ai/dsh-client-ui-primitives';
 import {ModuleSelectSetting} from './ModuleSelectSetting.js';
+import {ModelImageSizeSetting} from './ModelImageSizeSetting.js';
 
 export function ConsistencySettingsSection() {
   const business=useModuleSettings('consistency'),encoder=useImageEncoderSettings();
@@ -16,6 +17,7 @@ export function ConsistencySettingsSection() {
     {!settings||!('mode' in settings)?<p role="status">正在读取设置…</p>:<>
       <fieldset className="iad-settings-group" data-settings-group="review"><legend>审核设置</legend>
         <ModuleModelFields settings={settings} save={business.save}/>
+        <ModelImageSizeSetting value={settings.whole_image_max_side} onSave={whole_image_max_side=>business.save({whole_image_max_side})}/>
         <ModuleNumberSetting label="同时检查的主图数" value={settings.concurrency} min={1} step={1}
           validationMessage="并发数量需要为正整数" onSave={concurrency=>business.save({concurrency})}/>
       </fieldset>

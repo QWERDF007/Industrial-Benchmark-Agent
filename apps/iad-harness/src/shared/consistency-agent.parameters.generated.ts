@@ -745,13 +745,13 @@ export const anchorToolParameters = {
                     },
                     "title": "CandidateObjectReference"
                   },
-                  "description": "仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始框引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。",
+                  "description": "仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。",
                   "title": "Same Main Object As"
                 }
               },
               "title": "BboxAnnotationIssue"
             },
-            "description": "MATERIAL必须保存全部独立矩形问题，关联真实两侧框ID与实际原图身份；拆分合并不重复计数量差异。",
+            "description": "MATERIAL必须保存全部独立区域标注问题，关联真实两侧标注ID与实际原图身份；拆分合并不重复计数量差异。",
             "title": "Issues"
           }
         },

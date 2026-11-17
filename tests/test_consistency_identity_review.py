@@ -1,3 +1,4 @@
+from tests.consistency_support import start_prepared
 import json
 from uuid import uuid4
 
@@ -12,12 +13,13 @@ from iad_core.workbench.vision import VlmClient
 from tests.consistency_responses import annotation_response
 
 
+@pytest.mark.parametrize('shape_type', ['rectangle','polygon'])
 @pytest.mark.parametrize('points,crop', [
     ([[100,100],[1100,1000]], (0,10,1200,1090)),
     ([[100.4,100.4],[108.6,108.6]], (99,99,110,110)),
     ([[-4.5,1190.5],[10.5,1202.5]], (0,1189,12,1200)),
     (None,None)])
-def test_bbox_observation_sends_original_pixels_and_only_complete_annotation_crops(dataset, tmp_path, points, crop):
+def test_region_observation_sends_original_pixels_and_only_complete_annotation_crops(dataset, tmp_path, points, crop, shape_type):
     import base64
     import io
     import numpy as np
@@ -25,11 +27,14 @@ def test_bbox_observation_sends_original_pixels_and_only_complete_annotation_cro
     database, registry, config = dataset
     pixels = np.full((1200, 1600), 40000, dtype=np.uint16)
     pixels[1100, 1500] = 65535
+    if shape_type == 'polygon' and points:
+        (x1,y1),(x2,y2)=points
+        points=[[x1,y1],[x2,y1],[x1,y2]]
     for name in ('dent', 'scratch'):
         Image.fromarray(pixels).save(tmp_path / 'images' / (name + '.png'))
         (tmp_path / 'labels' / (name + '.json')).write_text(json.dumps({
             'imageWidth':1600, 'imageHeight':1200,
-            'shapes': ([{'shape_type':'rectangle', 'label':'defect',
+            'shapes': ([{'shape_type':shape_type, 'label':'defect',
                 'points':points}] if points else [])}))
     registry.rescan(config.dataset.id)
     runtime = WorkbenchRuntime(database)
@@ -48,6 +53,8 @@ def test_bbox_observation_sends_original_pixels_and_only_complete_annotation_cro
                 assert image.size == size
                 np.testing.assert_array_equal(np.asarray(image), pixels if size==(1600,1200) else pixels[crop[1]:crop[3],crop[0]:crop[2]])
         for source in facts['sources'].values():
+            if shape_type == 'polygon' and points:
+                assert source['annotations'][0]['polygon'] == points
             crops = [view for view in source['visual_inputs'] if view['crop_bbox'] != [0,0,1600,1200]]
             assert {tuple(view['crop_bbox']) for view in crops} == ({crop} if crop else set())
             assert all(view['representation']=='raw' for view in source['visual_inputs'])
@@ -60,7 +67,7 @@ def test_bbox_observation_sends_original_pixels_and_only_complete_annotation_cro
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor, candidate = [config.dataset.id + ':' + name + '.png' for name in ('dent','scratch')]
-        run = checks.start({'submission_id':str(uuid4()),'dataset_ids':[config.dataset.id],'mode':'exact',
+        run = start_prepared(checks, {'submission_id':str(uuid4()),'dataset_ids':[config.dataset.id],'mode':'exact',
             'subjects':{'kind':'samples','sample_ids':[anchor]}})['run_id']
         checks.session_created(run, anchor)
         selected = checks.retrieve(run, anchor)
@@ -95,7 +102,7 @@ def test_imported_directory_labels_are_compared_without_model_calls(tmp_path, ma
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':main/part.png'
-        run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+        run_id = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         snapshot = checks.snapshot(run_id)
         assert snapshot.task_type == 'anomaly_detection'
@@ -142,7 +149,7 @@ def test_bbox_review_retains_multiple_independent_issues_with_real_ids(dataset):
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':dent.png'
-        run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+        run_id = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         checks.session_created(run_id, anchor)
         selected = checks.retrieve(run_id, anchor)

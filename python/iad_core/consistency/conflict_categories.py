@@ -1,4 +1,5 @@
 from enum import StrEnum
+from collections.abc import Iterable
 
 
 class ConflictCategory(StrEnum):
@@ -8,11 +9,20 @@ class ConflictCategory(StrEnum):
     MISSING = '少类别'
     SPLIT = '拆分'
     MERGE = '合并'
-    CORRESPONDENCE = '对应关系差异'
+
+
+CONFLICT_CATEGORY_PRIORITIES: dict[ConflictCategory, int] = {
+    ConflictCategory.CATEGORY: 0, ConflictCategory.EXTRA: 0, ConflictCategory.MISSING: 0,
+    ConflictCategory.POSITION: 1, ConflictCategory.SPLIT: 1, ConflictCategory.MERGE: 1,
+}
+
+
+def primary_conflict_category(categories: Iterable[ConflictCategory]) -> ConflictCategory | None:
+    return min(categories, key=CONFLICT_CATEGORY_PRIORITIES.__getitem__, default=None)
 
 
 CONFLICT_CATEGORY_DEFAULTS = {
-    'labelme': [category for category in ConflictCategory if category != ConflictCategory.CORRESPONDENCE],
+    'labelme': list(ConflictCategory),
     'folder_classification': [ConflictCategory.CATEGORY],
 }
 

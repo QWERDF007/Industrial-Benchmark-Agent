@@ -57,6 +57,7 @@ class AnchorResultSummary(AnalysisModel):
     program_conclusion: str
     model_conclusion: ConflictCategory | Literal['无冲突'] | None
     result_ref: Identifier
+    identity_model_reviewed: bool = False
     annotation_review_status: AnnotationReviewStatus = 'pending'
     annotation_review_label: str = '等待标注审核'
 

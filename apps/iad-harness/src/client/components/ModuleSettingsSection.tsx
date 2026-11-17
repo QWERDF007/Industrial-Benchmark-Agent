@@ -5,6 +5,7 @@ import {ModuleModelFields} from './ModuleModelFields.js';
 import {Button} from '@deepseek-ai/dsh-client-ui-primitives';
 import {ModuleNumberSetting} from './ModuleNumberSetting.js';
 import {ModuleSelectSetting} from './ModuleSelectSetting.js';
+import {ModelImageSizeSetting} from './ModelImageSizeSetting.js';
 import {moduleSettingsStyles} from '../styles/module-settings.js';
 
 export function ModuleSettingsSection({module}:{module:Exclude<BusinessModule,'consistency'>}) {
@@ -25,6 +26,8 @@ export function ModuleSettingsSection({module}:{module:Exclude<BusinessModule,'c
       </>}
       {'concurrency' in settings && <ModuleNumberSetting label={(module==='exploration'||module==='knowledge')?'并行观察批次数':'同时运行的子 Agent 数量'} value={settings.concurrency} min={1} step={1}
         validationMessage="并发数量需要为正整数" onSave={concurrency=>save({concurrency})}/>}
+      {module==='audit'&&'whole_image_max_side' in settings&&<ModelImageSizeSetting value={settings.whole_image_max_side}
+        onSave={whole_image_max_side=>save({whole_image_max_side})}/>}
       {module!=='audit'&&'whole_image_max_side' in settings && <>
         <ModuleSelectSetting label="整图输入分辨率" value="original" disabled onChange={()=>{}}
           options={[{value:'original',label:'使用原图'}]}/>
