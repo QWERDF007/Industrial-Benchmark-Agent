@@ -14,6 +14,10 @@ import {AnnotatedImageStage} from './AnnotatedImageStage.js';
 import {FullscreenViewer,type FullscreenViewerItem} from './FullscreenViewer.js';
 import {ConsistencyGroupReviewForm} from './ConsistencyGroupReviewForm.js';
 import {ConsistencyModelAnalysis} from './ConsistencyModelAnalysis.js';
+import {TabBar} from './layout/TabBar.js';
+
+const candidateTabs=[{id:'compared',label:'实际对比'},{id:'exact',label:'完全一致'},{id:'similar',label:'相似'}] as const;
+type CandidateTab=typeof candidateTabs[number]['id'];
 
 interface ConsistencyConflictDialogProps {
   conflict:ConsistencyComparisonItem;
@@ -28,24 +32,32 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   onSelect,onMove,onClose,onReviewed}:ConsistencyConflictDialogProps) {
   const currentConflictId=currentConflict.id;
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
+  const [candidateTab,setCandidateTab]=useState<CandidateTab>('compared');
   const [conflictMembers, setConflictMembers] = useState<GalleryMember[]>([]);
   const [membersError,setMembersError]=useState('');
+  const [membersLoading,setMembersLoading]=useState(false);
   const [zoomItem, setZoomItem] = useState<FullscreenViewerItem | null>(null);
   const groupReference=currentConflict.reference;
   const jobId='job_id' in groupReference?groupReference.job_id:undefined;
   const groupAnalysis=useGroupAnalysis(currentConflict.candidateCount?groupReference:null);
   useEffect(()=>{
-    const controller=new AbortController();setConflictMembers([]);setMembersError('');setCandidateIndex(0);
-    if(!currentConflict.candidateCount)return;
-    ConsistencyView.members(groupReference,controller.signal)
+    const controller=new AbortController();setConflictMembers([]);setMembersError('');setCandidateIndex(0);setCandidateTab('compared');
+    setMembersLoading(Boolean(currentConflict.candidateCount));
+    if(currentConflict.candidateCount)ConsistencyView.members(groupReference,controller.signal)
       .then(items=>{if(!controller.signal.aborted)setConflictMembers(items);})
-      .catch(error=>{if(!controller.signal.aborted)setMembersError(message(error));});
+      .catch(error=>{if(!controller.signal.aborted)setMembersError(message(error));})
+      .finally(()=>{if(!controller.signal.aborted)setMembersLoading(false);});
     return()=>controller.abort();
   },[groupReference,currentConflict.candidateCount]);
-  const selectedMember=conflictMembers[candidateIndex] || null;
   const modelResult=groupAnalysis.analysis?.status==='COMPLETED' ? groupAnalysis.analysis.result : null;
   const candidates=useResource<AnchorCandidatePage>(jobId ?
     `/consistency/checks/${encodeURIComponent(jobId)}/anchors/${encodeURIComponent(currentConflictId)}/candidates`:null);
+  const candidateImages=useMemo(()=>candidateTab==='compared'?conflictMembers.map(member=>member.image):
+    (candidates.data?.items.filter(item=>item.kind===candidateTab).map(item=>item.image)||[]),
+    [candidateTab,conflictMembers,candidates.data]);
+  const selectedImage=candidateImages[candidateIndex]||null;
+  const imagesLoading=candidateTab==='compared'?membersLoading:candidates.loading;
+  const imagesError=candidateTab==='compared'?membersError:candidates.error;
   const modelConclusion=ConsistencyView.modelConclusion(modelResult?.overall.text || currentConflict.model.modelType,modelResult?.overall.verdict);
   const displayModelConclusion=modelConclusion ? modelConclusionLabels[modelConclusion] : currentConflict.model.identityConclusion||'';
   const displayGroupConclusion=currentConflict.type;
@@ -53,16 +65,16 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
     displayModelConclusion?`模型：${displayModelConclusion} - 程序：${displayGroupConclusion}`:`程序：${displayGroupConclusion}`;
 
   const currentCandidate=useMemo(()=>{
-    const image=selectedMember?.image;
+    const image=selectedImage;
     return {sampleId:image?.sample.sample_id || '',filename:image?.sample.relative_path.split('/').pop() || '',
       thumbUrl:image?ConsistencyView.media(image,true):'',fullUrl:image?ConsistencyView.media(image):'',
       width:image?.sample.width,height:image?.sample.height};
-  },[selectedMember]);
-  const evidenceId=selectedMember?.comparison?.evidence_id || currentConflict.image?.evidence_id;
+  },[selectedImage]);
+  const evidenceId=selectedImage?.evidence_id || currentConflict.image?.evidence_id;
   const compared=useResource<EvidenceBundle>(evidenceId ? `/consistency/evidence/${encodeURIComponent(evidenceId)}`:null);
-  const anchorSide=selectedMember?.comparison?.anchor_side || currentConflict.image?.side;
+  const anchorSide=selectedImage?(selectedImage.side==='left'?'right':'left'):currentConflict.image?.side;
   const anchorSource=anchorSide?compared.data?.sources[anchorSide]:null;
-  const candidateSource=selectedMember&&anchorSide?compared.data?.sources[anchorSide==='left'?'right':'left']:null;
+  const candidateSource=selectedImage?compared.data?.sources[selectedImage.side]:null;
   const anchorAnnotations=anchorSource?datasetImageAnnotations(anchorSource.annotations.dataset_format??undefined,anchorSource.sample,anchorSource.annotations.annotations):{};
   const candidateAnnotations=candidateSource?datasetImageAnnotations(candidateSource.annotations.dataset_format??undefined,candidateSource.sample,candidateSource.annotations.annotations):{};
   const handlePrevConflict = useCallback(() => {
@@ -103,6 +115,10 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
             </header>
             <ConsistencyGroupReviewForm key={`${jobId}:${currentConflictId}`} jobId={jobId}
               anchorId={currentConflictId} onClose={onClose} onReviewed={onReviewed}>
+              <TabBar label="候选图片分类" items={candidateTabs.map(tab=>({...tab,
+                buttonProps:{id:`dc-candidate-tab-${tab.id}`,'aria-controls':'dc-candidate-panel'}}))}
+                value={candidateTab} onChange={tab=>{if(tab!==candidateTab){setCandidateTab(tab);setCandidateIndex(0);}}}/>
+              <div id="dc-candidate-panel" role="tabpanel" aria-labelledby={`dc-candidate-tab-${candidateTab}`}>
               <div className="dc-compare">
                 <div className="dc-compare-cell">
                   <div
@@ -155,12 +171,12 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                   <div
                     className="dc-compare-photo"
                     role="button"
-                    tabIndex={0}
+                    tabIndex={selectedImage?0:-1}
                     data-dc="zoom-candidate"
-                    aria-disabled={!selectedMember}
+                    aria-disabled={!selectedImage}
                     aria-label="查看候选图大图"
                     title={currentCandidate.filename}
-                    onClick={() => selectedMember &&
+                    onClick={() => selectedImage &&
                       setZoomItem({
                         id: currentConflict.id + '_candidate_' + candidateIndex,
                         sampleId: currentCandidate.sampleId,
@@ -172,7 +188,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       })
                     }
                     onKeyDown={e => {
-                      if (selectedMember && (e.key === 'Enter' || e.key === ' ')) {
+                      if (selectedImage && (e.key === 'Enter' || e.key === ' ')) {
                         setZoomItem({
                           id: currentConflict.id + '_candidate_' + candidateIndex,
                           sampleId: currentCandidate.sampleId,
@@ -185,7 +201,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       }
                     }}
                   >
-                    {selectedMember && <AnnotatedImageStage
+                    {selectedImage && <AnnotatedImageStage
                       sampleId={currentCandidate.sampleId}
                       src={currentCandidate.fullUrl || currentCandidate.thumbUrl}
                       alt="候选图"
@@ -193,6 +209,8 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       height={currentCandidate.height}
                       {...candidateAnnotations}
                     />}
+                    {!selectedImage&&<span role="status" className="iad-result-empty">{imagesLoading?'正在读取…':imagesError?'读取失败':
+                      `暂无${candidateTabs.find(tab=>tab.id===candidateTab)!.label}图`}</span>}
                   </div>
                   <div className="dc-photo-filename" title={currentCandidate.filename}>
                     {currentCandidate.filename}
@@ -200,41 +218,19 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                 </div>
               </div>
 
-              <section className="dc-images-panel" aria-label="对比图">
-                <h3>对比图</h3>
+              <section className="dc-images-panel" aria-label="候选图片">
                 <div className="iad-thumbnail-grid" aria-label="切换对比图片">
-                  {conflictMembers.map((member,index)=>{
-                    const filename=member.image.sample.relative_path.split('/').pop()!;
-                    return <ThumbnailCard key={member.image.sample.sample_id} src={ConsistencyView.media(member.image,true)}
+                  {candidateImages.map((image,index)=>{
+                    const filename=image.sample.relative_path.split('/').pop()!;
+                    return <ThumbnailCard key={image.sample.sample_id} src={ConsistencyView.media(image,true)}
                       variant="comparison" label={filename} data-dc="candidate" data-id={index}
                       aria-pressed={index===candidateIndex} onClick={()=>setCandidateIndex(index)}/>;
                   })}
                 </div>
-                {membersError && <p role="alert" className="iad-error">{membersError}</p>}
+                {imagesError && <p role="alert" className="iad-error">{imagesError}</p>}
                 {compared.error && <p role="alert" className="iad-error">{compared.error}</p>}
               </section>
-              <section className="dc-images-panel" aria-label="候选图">
-                <h3>候选图</h3>
-                {candidates.loading ? <p role="status">正在读取候选图…</p> : candidates.error ?
-                  <p role="alert" className="iad-error">{candidates.error}</p> :
-                  ([['exact','完全一致的图'],['similar','相似图']] as const).map(([kind,label])=>{
-                    const previews=candidates.data?.items.filter(item=>item.kind===kind) || [];
-                    return <div className="dc-candidate-group" data-kind={kind} key={kind}>
-                      <h4>{label}</h4>
-                      {previews.length ? <div className="iad-thumbnail-grid">
-                        {previews.map(candidate=>{
-                          const image=candidate.image,filename=image.sample.relative_path.split('/').pop()!;
-                          return <ThumbnailCard key={candidate.sample_id} variant="comparison" label={filename}
-                            src={ConsistencyView.media(image,true)} data-dc="retrieved-candidate" onClick={()=>setZoomItem({
-                              id:candidate.sample_id,sampleId:candidate.sample_id,title:filename,imageUrl:ConsistencyView.media(image),
-                              width:image.sample.width,height:image.sample.height,
-                              ...datasetImageAnnotations(candidate.annotations.dataset_format??undefined,image.sample,candidate.annotations.annotations),
-                            })}/>;
-                        })}
-                      </div> : null}
-                    </div>;
-                  })}
-              </section>
+              </div>
 
               {/* Program observations remain separate from the model's conclusion. */}
               <section className="dc-fact-panel" aria-label="判定结论">
