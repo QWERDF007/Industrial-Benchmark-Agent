@@ -28,6 +28,50 @@ class CompleteObservation(Observation):
     overview: str | None = None
 
 
+@pytest.mark.parametrize('error_type', [httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectError])
+@pytest.mark.parametrize('outcome', ['recovers', 'fails', 'cancelled'])
+def test_responses_connection_loss_retries_the_same_plan(dataset, error_type, outcome):
+    db, _, config = dataset
+    run_id = 'responses-connection-loss'
+    with db.connection() as connection:
+        connection.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES(?,?,'ANALYSIS_WORKFLOW','RUNNING','{}')",
+            (run_id, config.task.task_id))
+    requests = []
+
+    def respond(request):
+        requests.append(json.loads(request.content))
+        if outcome != 'recovers' or len(requests) == 1:
+            raise error_type('Server disconnected without sending a response.', request=request)
+        return httpx.Response(200, json={'object':'response','status':'completed','output':[
+            {'type':'message','role':'assistant','content':[{'type':'output_text','text':'{"description":"已核对原图。"}'}]}]})
+
+    image = EvidenceImages(db.db_path).capture(SampleRepository(db).get(config.dataset.id + ':dent.png'),
+        'overview', 'coverage', full_resolution=True)
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)),
+        profile=ModelProfile(endpoint='http://model.invalid/v1',api='openai-responses',model_id='gpt-6.1-sol',capacity_mode='provider_managed'))
+    try:
+        def checkpoint():
+            if outcome == 'cancelled' and requests:
+                raise InterruptedError('用户取消')
+
+        with ModelCalls(db).bind(run_id, checkpoint, role='vision'):
+            plan = client.plan(Observation, '核对原图。', [image], client.resolve_model())
+            if outcome == 'recovers':
+                assert client.generate(plan).description == '已核对原图。'
+            else:
+                with pytest.raises(InterruptedError if outcome == 'cancelled' else error_type):
+                    client.generate(plan)
+        assert len(requests) == {'recovers':2, 'fails':3, 'cancelled':1}[outcome]
+        assert all(body == requests[0] for body in requests)
+        calls = ModelCalls(db).list(run_id)
+        assert len(calls) == len(requests)
+        assert all(call.error and call.error.type == error_type.__name__ for call in (calls[:-1] if outcome == 'recovers' else calls))
+        if outcome == 'recovers':
+            assert len(calls) == 2 and calls[1].error is None
+    finally:
+        client.close()
+
+
 @pytest.mark.parametrize('outcome', ['recovers', 'fails', 'cancelled', 'cancelled_during_recording'])
 @pytest.mark.parametrize(('error_code', 'message'), [
     ('upstream_error', 'Upstream request failed'),

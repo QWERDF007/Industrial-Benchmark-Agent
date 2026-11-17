@@ -211,7 +211,8 @@ class VlmClient:
                 plan = self.plan(plan.response_type, plan.instruction, list(plan.images), plan.body['model'],
                     plan.output_reserve, context=plan.context, correction=error, system_prompt=plan.system_prompt)
 
-    @retry(retry=retry_if_exception_type(RetryableModelError), stop=stop_after_attempt(3),
+    @retry(retry=retry_if_exception_type((RetryableModelError, httpx.NetworkError,
+        httpx.RemoteProtocolError, httpx.TimeoutException)), stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, max=2), reraise=True)
     def generate_once(self, plan: GenerationRequest[T]) -> T:
         response_type = plan.response_type
