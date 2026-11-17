@@ -15,12 +15,13 @@ export function selectDistribution(data, selected, names) {
         for (const row of slice.classes) {
             const previous = classes.get(row.category);
             classes.set(row.category, { category: row.category, image_count: (previous?.image_count || 0) + row.image_count,
-                box_count: row.box_count === null ? null : (previous?.box_count || 0) + row.box_count });
+                annotation_count: row.annotation_count === null ? null : (previous?.annotation_count || 0) + row.annotation_count });
         }
     return {
         image_count: slices.reduce((count, slice) => count + slice.image_count, 0),
-        box_count: first.box_count === null ? null : slices.reduce((count, slice) => count + slice.box_count, 0),
-        invalid_box_count: slices.reduce((count, slice) => count + slice.invalid_box_count, 0),
+        annotation_count: first.annotation_count === null ? null : slices.reduce((count, slice) => count + slice.annotation_count, 0),
+        geometry_types: sumCounts(slices.map(slice => slice.geometry_types)),
+        invalid_annotation_count: slices.reduce((count, slice) => count + slice.invalid_annotation_count, 0),
         unannotated_images: slices.reduce((count, slice) => count + slice.unannotated_images, 0),
         classes: [...classes.values()], instance_counts: sumCounts(slices.map(slice => slice.instance_counts)),
         datasets: sumCounts(slices.map(slice => slice.datasets)), quality: sumCounts(slices.map(slice => slice.quality)),

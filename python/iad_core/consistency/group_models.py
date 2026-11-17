@@ -21,6 +21,11 @@ class VisualWindow(AnalysisModel):
     reason: NonBlankText
 
 
+class ModelVisualWindow(VisualWindow):
+    bbox: list[Count] = Field(min_length=4, max_length=4, description=VisualWindow.model_fields['bbox'].description)
+    padding: Count = Field(default_factory=int, description=VisualWindow.model_fields['padding'].description)
+
+
 class GalleryImage(AnalysisModel):
     sample: Sample
     evidence_id: Identifier

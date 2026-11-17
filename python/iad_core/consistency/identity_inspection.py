@@ -11,7 +11,10 @@ from pydantic import Field, create_model, field_validator, model_validator
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.consistency.identity_inputs import IdentityInputs, IdentityInputPlan
-from iad_core.consistency.identity_regions import IdentityRegionCheck, UnmappedRegionCheck
+from iad_core.consistency.identity_regions import IdentityRegionCheck, UnmappedRegionCheck, IdentityDisputeCheck
+from iad_core.consistency.identity_disputes import IdentityDispute, IdentityDisputes
+from iad_core.consistency.identity_geometry import ImageCorrespondence
+import numpy as np
 from iad_core.consistency.identity_models import PAIR_REVIEW_BATCH_SIZE, PAIR_REVIEW_MEDIA_BYTES, PAIR_REVIEW_REGION_BUDGET, candidate_pair_key
 from iad_core.consistency.references import ReferenceAliases
 from iad_core.evidence.images import EvidenceImages, PreparedImage, PreparedImageBundle
@@ -34,8 +37,15 @@ class IdentityRegionDetail(AnalysisModel):
     observation: NonBlankText
 
 
+class DisputeDecision(AnalysisModel):
+    ref: NonBlankText
+    visual_relation: IdentityRelation
+    observation: NonBlankText = Field(description='针对该条争议说明实际对应位置及可见差别，不能只复述原标注局部相同。')
+
+
 class IdentityDecision(AnalysisModel):
     region_refs: ClassVar[tuple[str, ...]] = ()
+    dispute_refs: ClassVar[tuple[str, ...]] = ()
     overview: IdentityRelation
     summary: NonBlankText = Field(description='用一句直白中文给判断及决定性依据；有差异写清位置和变化；两侧共用，用“两图”或“一侧、另一侧”。')
     regions: str = Field(description='按输入 windows 顺序逐区填写：S为相同，D为不同，U为无法确认；每区一个字符，不加分隔符。')
@@ -44,6 +54,8 @@ class IdentityDecision(AnalysisModel):
         description='只写 windows 中 D 或 U 区域的具体事实；相同事实写一次，refs 列出适用的已配准区域。没有 windows 时填空列表；无法配准的区域仅填 unmapped_regions。')
     limitations: list[NonBlankText] = Field(default_factory=list,
         description='两侧共用的具体限制，不使用主图、候选或左右图称呼。')
+    disputes: list[DisputeDecision] = Field(default_factory=list,
+        description='逐条核对输入disputes中的具体争议，恰好覆盖全部ref。依据实际图像独立判断，不直接采纳争议描述。')
 
     @field_validator('summary', 'limitations')
     @classmethod
@@ -56,7 +68,7 @@ class IdentityDecision(AnalysisModel):
 
     @property
     def findings(self):
-        return [self.overview, *self.region_relations.values()]
+        return [self.overview, *self.region_relations.values(), *[item.visual_relation for item in self.disputes]]
 
     @property
     def region_relations(self) -> dict[str, IdentityRelation]:
@@ -64,6 +76,9 @@ class IdentityDecision(AnalysisModel):
 
     @model_validator(mode='after')
     def validate_details(self):
+        if len(self.disputes) != len(self.dispute_refs) or {item.ref for item in self.disputes} != set(self.dispute_refs):
+            raise repairable_output_error('identity_dispute_coverage', '须逐条回应当前全部内容争议，ref不可遗漏或重复。')
+        self.shared_perspective([item.observation for item in self.disputes])
         regions = set(self.region_refs)
         details = self.region_details
         if not set(details) <= regions:
@@ -108,6 +123,7 @@ class PreparedIdentityObservation:
     response_type: type[IdentityDecision]
     fingerprint: str
     references: ReferenceAliases
+    disputes: tuple[IdentityDispute, ...]
 
     @property
     def pair_key(self) -> str:
@@ -115,6 +131,7 @@ class PreparedIdentityObservation:
 
     def record(self, decision: IdentityDecision, call_ids: list[str]) -> dict:
         details = decision.region_details
+        dispute_decisions = {item.ref: item for item in decision.disputes}
         relation = ('unverified' if decision.relation != 'content_different' and (
             self.context['unmapped_regions'] or self.frozen.geometry.candidate_to_main is None) else decision.relation)
         return {'relation': relation, 'reason': decision.reason,
@@ -125,6 +142,11 @@ class PreparedIdentityObservation:
             'region_pairs': self.frozen.region_pairs,
             'required_region_pair_ids': [pair.region_pair_id for pair in self.frozen.region_pairs],
             'overview_relation': decision.overview,
+            'dispute_checks': [IdentityDisputeCheck(observation_id=dispute.observation_id,
+                visual_relation=dispute_decisions['d'+str(index)].visual_relation,
+                observation=dispute_decisions['d'+str(index)].observation,
+                media_ids=self.references.translate(self.context['disputes'][index]['media_ids'], internal=True))
+                for index, dispute in enumerate(self.disputes)],
             'region_checks': [IdentityRegionCheck(region_pair_id=pair.region_pair_id,
                 main_media_id=pair.main_media.evidence_id, candidate_media_id=pair.candidate_media.evidence_id,
                 observation=details.get('r' + str(index)),
@@ -139,7 +161,7 @@ class PreparedIdentityObservation:
 class IdentityInspection:
     def __init__(self, runtime, client):
         self.runtime, self.client = runtime, client
-        self._response_types: dict[tuple[bool, ...], type[IdentityDecision]] = {}
+        self._response_types: dict[tuple[tuple[bool, ...], int], type[IdentityDecision]] = {}
 
     def prepare(self, run_id, anchor_id, candidate_id, sources, checkpoint, *, prompts, revision=0, request_id='verify'):
 
@@ -180,14 +202,54 @@ class IdentityInspection:
                         {'side': ('main', 'candidate')[side], 'window_index': index, 'region_pair_id': pair.region_pair_id,
                             'original_size': [samples[side].width, samples[side].height]},
                         (PreparedImage(media, images.path(media)),)))
+        from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+        max_side = ConsistencyAgentJobs(self.runtime).snapshot(run_id).whole_image_max_side
+        dispute_inputs = IdentityDisputes(self.runtime.db)
+        disputes = dispute_inputs.read(run_id, anchor_id, candidate_id)
+        disputes = dispute_inputs.locate(run_id, anchor_id, candidate_id, disputes, roots, self.client, checkpoint,
+            revision=revision, request_id=request_id, max_side=max_side)
+        extra_media = {}
+        correspondence = ImageCorrespondence(np.asarray(frozen.geometry.candidate_to_main)
+            if frozen.geometry.candidate_to_main is not None else None, frozen.geometry)
+        if disputes:
+            context['disputes'] = []
+            context['dispute_instruction'] = ('逐条核对争议实际位置及对应图证。reason中主图指source_side，候选指另一侧。'
+                '依据实际像素独立判断，在disputes中回应每条ref；争议说明本身不证明两图不同。')
+        for index, dispute in enumerate(disputes):
+            media_ids = list(required)
+            dispute_inputs.validate_windows(dispute.windows,
+                {anchor_id: roots[0].evidence.original_size, candidate_id: roots[1].evidence.original_size})
+            for window in dispute.windows:
+                side = 0 if window.sample_id == anchor_id else 1
+                width, height = roots[side].evidence.original_size
+                x1, y1, x2, y2 = window.bbox
+                box = [max(0, x1-window.padding), max(0, y1-window.padding),
+                    min(width, x2+window.padding), min(height, y2+window.padding)]
+                windows = [(side, box)]
+                if correspondence.matrix is not None:
+                    mapped = correspondence.map_bounds(box, roots[side].evidence.original_size,
+                        roots[1-side].evidence.original_size, to_main=side == 1)
+                    if mapped[0] < mapped[2] and mapped[1] < mapped[3]:
+                        windows.append((1-side, mapped))
+                for position, bounds in windows:
+                    view = images.capture(samples[position], 'roi', 'coverage', bounds, full_resolution=True)
+                    media_ids.append(view.evidence.evidence_id)
+                    if view.evidence.evidence_id not in extra_media:
+                        extra_media[view.evidence.evidence_id] = 'dispute_image_'+str(len(extra_media))
+                        bundles.append(PreparedImageBundle(roots[position].evidence.evidence_id,
+                            {'side': ('main', 'candidate')[position], 'dispute_ref': 'd'+str(index),
+                                'original_size': roots[position].evidence.original_size}, (view,)))
+            context['disputes'].append({'ref': 'd'+str(index), 'source_side':
+                'main' if dispute.anchor_id == anchor_id else 'candidate', 'reason': dispute.reason,
+                'region_pair_ids': dispute.region_pair_ids, 'windows': [window.model_dump(mode='json') for window in dispute.windows],
+                'media_ids': list(dict.fromkeys(media_ids))})
         references = ReferenceAliases({
+            anchor_id: 'main', candidate_id: 'candidate', **extra_media,
             **dict(zip(required, ('main_image', 'candidate_image'))),
             **{identity: 'a' + str(index) for index, identity in enumerate(annotation_ids.values())},
             **{pair.region_pair_id: 'r' + str(index) for index, pair in enumerate(frozen.region_pairs)},
             **{media.evidence_id: 'r' + str(index) + '_' + side for index, pair in enumerate(frozen.region_pairs)
                 for side, media in (('main', pair.main_media), ('candidate', pair.candidate_media)) if media is not None}})
-        from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
-        max_side = ConsistencyAgentJobs(self.runtime).snapshot(run_id).whole_image_max_side
         model_inputs = ModelImageInputs(self.runtime.db.db_path)
         wire_bundles = []
         for bundle in bundles:
@@ -202,7 +264,11 @@ class IdentityInspection:
             wire_bundles.append(PreparedImageBundle(references.public[bundle.evidence_id],
                 references.translate(bundle.context),views))
         layout = tuple(pair.mapping == 'registered' for pair in frozen.region_pairs)
-        if layout not in self._response_types:
+        schema_key = (layout, len(disputes))
+        if schema_key not in self._response_types:
+            dispute_refs = tuple('d'+str(index) for index in range(len(disputes)))
+            dispute_type = create_model('DisputeDecision', __base__=DisputeDecision,
+                ref=(Literal[dispute_refs], ...)) if disputes else DisputeDecision
             unmapped_type = create_model('UnmappedRegions', __base__=AnalysisModel, **{
                 'r' + str(index): (UnmappedFinding, ...) for index, registered in enumerate(layout)
                 if not registered})
@@ -215,10 +281,13 @@ class IdentityInspection:
                     description=IdentityDecision.model_fields['regions'].description)),
                 unmapped_regions=(unmapped_type, ...),
                 details=(list[detail_type], Field(default_factory=list, max_length=None if detail_refs else 0,
-                    description=IdentityDecision.model_fields['details'].description)))
+                    description=IdentityDecision.model_fields['details'].description)),
+                disputes=(list[dispute_type], Field(default_factory=list, min_length=len(disputes), max_length=len(disputes),
+                    description=IdentityDecision.model_fields['disputes'].description)))
             response_type.region_refs = detail_refs
-            self._response_types[layout] = response_type
-        response_type = self._response_types[layout]
+            response_type.dispute_refs = dispute_refs
+            self._response_types[schema_key] = response_type
+        response_type = self._response_types[schema_key]
         fingerprint = hashlib.sha256(json.dumps([prompts, context,
             [view.evidence.model_dump(mode='json') for bundle in bundles for view in bundle.images]], sort_keys=True).encode()).hexdigest()
         if max_side is not None:
@@ -226,7 +295,7 @@ class IdentityInspection:
                 [(view.model_context(),view.model_input.model_dump(exclude={'path'}))
                     for bundle in wire_bundles for view in bundle.images]],sort_keys=True).encode()).hexdigest()
         return PreparedIdentityObservation(anchor_id, candidate_id, revision, request_id, prompts, frozen,
-            references.translate(context), tuple(wire_bundles), response_type, fingerprint, references)
+            references.translate(context), tuple(wire_bundles), response_type, fingerprint, references, tuple(disputes))
 
     def run(self, run_id: str, prepared: list[PreparedIdentityObservation], checkpoint) -> Iterator[tuple[PreparedIdentityObservation, dict]]:
         if not prepared or len(prepared) > PAIR_REVIEW_BATCH_SIZE:

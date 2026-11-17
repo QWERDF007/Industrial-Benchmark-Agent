@@ -20,7 +20,7 @@ def test_audit_freezes_roles_and_partitions_the_complete_scope(native_audit):
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream,
         master_prompt=master, observer_prompt=observer), agent=role)['run_id']
     snapshot = jobs.snapshot(run_id)
-    assert snapshot.schema_version == 4
+    assert snapshot.schema_version == 6
     assert snapshot.master_prompt.model_dump() == master
     assert snapshot.observer_prompt.model_dump() == observer
     batches = AuditBatches(jobs)
@@ -67,7 +67,7 @@ def test_frozen_profile_uses_original_geometry_and_leaves_unknown_identities_unk
     assert profile.metadata['physical_sample_id'].distinct_count is None
     assert profile.metadata['batch_id'].covered_images == 0
     assert profile.benchmark is None
-    assert profile.geometry.box_count == 0
+    assert profile.geometry.annotation_count == 0
     assert profile.geometry.relative_area is None
     assert profile.contrast_measurement is None
 
@@ -77,7 +77,7 @@ def test_geometry_profile_is_computed_from_original_boxes(dataset):
     from iad_core.workbench.analysis_manifest import AnalysisManifests
     db,_,config=dataset
     profile=AuditDatasetProfiles(db).freeze(AnalysisManifests(db).freeze([config.dataset.id]))
-    assert profile.geometry.box_count == 2
+    assert profile.geometry.annotation_count == 2
     assert profile.geometry.instance_distribution == {'0':2,'1':2}
     assert profile.geometry.relative_area.median == pytest.approx(400/76800)
     assert profile.geometry.aspect_ratio.median == 1
@@ -208,14 +208,14 @@ def test_incomplete_recheck_keeps_the_previous_effective_final(native_audit):
     for sample in samples[2:]: save_image(jobs,run_id,sample)
     publish_batch(jobs,run_id,review_requests=[dict(sample_id=samples[0].sample_id,result_revision=1,
         reason='对照关系需要复核。',conflict_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')])])
-    jobs.session_created(run_id,samples[0].sample_id)
+    jobs.session_created(run_id,samples[0].sample_id,review_id=AuditBatches(jobs).rechecks(run_id)[0].review_id)
     incomplete={**original.model_dump(mode='json'),'execution_status':'incomplete','state':None,'findings':[],
         'analysis':'现有视角不足以完成这次定向复核。','conclusion':'本次复核未完成。'}
-    AuditCommits(jobs).accept(run_id,samples[0].sample_id,dict(commit_key='review-progress',final=incomplete))
+    AuditCommits(jobs).accept(run_id,samples[0].sample_id,dict(commit_key='review-progress',final=incomplete),review_id=AuditBatches(jobs).rechecks(run_id)[0].review_id)
     active=jobs.sample(run_id,samples[0].sample_id)
     assert active.state=='COMPLETED' and active.result_revision==1
     assert active.result==original
-    jobs.failure(run_id,samples[0].sample_id,'本次复核未完成')
+    jobs.failure(run_id,samples[0].sample_id,'本次复核未完成',review_id=AuditBatches(jobs).rechecks(run_id)[0].review_id)
     assert jobs.sample(run_id,samples[0].sample_id).result==original
     assert batches.rechecks(run_id,pending_only=False)[0].state=='FAILED'
     assert len(batches.history(run_id,samples[0].sample_id))==1
@@ -223,8 +223,8 @@ def test_incomplete_recheck_keeps_the_previous_effective_final(native_audit):
     assert (statistics.completed_images,statistics.suspect_images,statistics.issue_occurrences)==(6,1,1)
     publish_batch(jobs,run_id,review_requests=[dict(sample_id=samples[0].sample_id,result_revision=1,
         reason='同一处对照仍需核对。',conflict_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')])])
-    jobs.session_created(run_id,samples[0].sample_id)
-    jobs.failure(run_id,samples[0].sample_id,'对照读取失败')
+    jobs.session_created(run_id,samples[0].sample_id,review_id=AuditBatches(jobs).rechecks(run_id)[0].review_id)
+    jobs.failure(run_id,samples[0].sample_id,'对照读取失败',review_id=AuditBatches(jobs).rechecks(run_id)[0].review_id)
     publish_batch(jobs,run_id)
     jobs.cancel(run_id)
     jobs.resume(run_id)
@@ -245,8 +245,8 @@ def test_failed_recheck_leaves_a_completed_image_scope_retryable(native_audit):
     originals=[jobs.sample(run_id,sample.sample_id).result.model_dump_json() for sample in samples]
     publish_batch(jobs,run_id,review_requests=[dict(sample_id=samples[0].sample_id,result_revision=1,
         reason='需要完整原图对照。',conflict_refs=[dict(sample_id=samples[1].sample_id,result_revision=1,kind='image')])])
-    jobs.session_created(run_id,samples[0].sample_id)
-    jobs.failure(run_id,samples[0].sample_id,'对照读取失败')
+    jobs.session_created(run_id,samples[0].sample_id,review_id=AuditBatches(jobs).rechecks(run_id)[0].review_id)
+    jobs.failure(run_id,samples[0].sample_id,'对照读取失败',review_id=AuditBatches(jobs).rechecks(run_id)[0].review_id)
     publish_batch(jobs,run_id)
     reports=AuditReports(jobs.db);reports.begin(run_id)
     master_observed(jobs,run_id,reports.records(run_id,{}))
@@ -375,9 +375,11 @@ def test_global_analysis_reads_the_effective_revision_after_recheck(native_audit
         conflict_refs=[dict(sample_id=samples[2].sample_id,result_revision=1,kind='image')])])
     save_image(jobs,run_id,samples[0],['revised'],commit_key='recheck')
     context=batches.context(run_id)
-    revised=next(item for item in context['items'] if item['sample_id']==samples[0].sample_id)
+    assert context['record_index']['unread']==1
+    records=AuditReports(jobs.db).records(run_id,{})['items']
+    revised=next(item for item in records if item['sample_id']==samples[0].sample_id)
     assert revised['result_revision']==2 and revised['final']['state']=='suspect'
-    assert len(context['items'])==1
+    assert len(records)==1
     with pytest.raises(ValueError,match='实际读取'):
         batches.publish(run_id,dict(commit_key='unread',base_revision=1,discoveries=[]))
     publish_batch(jobs,run_id)

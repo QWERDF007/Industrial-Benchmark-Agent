@@ -158,3 +158,34 @@ def test_recalculate_updates_completed_report_and_export_from_frozen_observation
     with pytest.raises(ValueError, match='历史'):
         AuditQualityReports(jobs.db).recalculate(run_id)
     assert AuditQueries(jobs.db).report(run_id).quality_score == score
+
+
+def test_master_score_tool_pages_rules_and_references_without_repeating_subset_scores(mixed_audit):
+    import json
+    from iad_core.audit.tool_pages import AuditToolPages
+    from iad_core.audit.quality_reports import AuditQualityReports
+    jobs, run_id = mixed_audit
+    save_qualified_images(jobs, run_id)
+    reports = AuditQualityReports(jobs.db)
+    preview = reports.preview(run_id, dict(redundancy_reviewed=False))
+    request = dict(redundancy_reviewed=False, page_size=2, max_chars=4000)
+    items = []
+    while True:
+        page = AuditToolPages.quality(reports, run_id, request)
+        assert len(json.dumps(page, ensure_ascii=False)) <= request['max_chars']
+        assert page['dataset_count'] == len(preview.score.dataset_scores)
+        assert 'dataset_scores' not in page
+        assert all('sample_ids' not in item for item in page['items'])
+        items.extend(page['items'])
+        if page['next_cursor'] is None:
+            break
+        request['cursor'] = page['next_cursor']
+    assert [item['code'] for item in items] == [item.code for item in preview.score.items]
+    item = next(item for item in preview.score.items if item.sample_ids)
+    references = AuditToolPages.quality(reports, run_id,
+        dict(redundancy_reviewed=False, item_code=item.code, page_size=1))
+    assert references['items'] == item.sample_ids[:1]
+    subset = preview.score.dataset_scores[0]
+    page = AuditToolPages.quality(reports, run_id,
+        dict(redundancy_reviewed=False, dataset_id=subset.dataset_id, page_size=1))
+    assert page['score'] == subset.model_dump(mode='json', exclude={'items', 'dataset_scores'})

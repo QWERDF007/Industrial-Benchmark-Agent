@@ -23,7 +23,7 @@ def test_new_audits_freeze_on_demand_and_missing_historical_policy_is_not_rewrit
     from iad_core.audit.state import AuditState
     historical = AuditState(jobs.db)
     assert historical.snapshot(run_id).context_policy == 'legacy'
-    assert AuditBatches(historical).context(run_id)['items']
+    assert AuditBatches(historical).context(run_id)['record_index']['unread']
     with jobs.db.connection() as connection:
         assert connection.execute('SELECT snapshot_json FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()[0] == frozen
 
@@ -107,7 +107,7 @@ def test_compaction_calls_are_recorded_without_marking_business_evidence_observe
     save_image(jobs, run_id, sample)
     reports = AuditReports(jobs.db)
     page = AuditEvidence(jobs).read(run_id, sample.sample_id, dict(sample_id=sample.sample_id))
-    context = AuditBatches(jobs).context(run_id)
+    context = reports.records(run_id, {})
     for purpose in ('compaction', None):
         call_id = 'call_'+uuid4().hex
         request = dict(sessionId=reports.session(run_id).session_id,
@@ -157,3 +157,55 @@ def test_reread_defaults_to_whole_but_initial_delivery_still_contains_every_anno
     assert local.evidence_id == whole.evidence_id
     with pytest.raises(ValueError, match='必需ROI'):
         save_image(jobs, run_id, sample, media_view='whole')
+
+
+def test_master_reads_bounded_facts_with_stable_cursor_as_unread_set_shrinks(native_audit):
+    from uuid import uuid4
+    import json
+    from iad_core.audit.batches import AuditBatches
+    from iad_core.audit.reports import AuditReports
+    from tests.audit_support import save_image, master_observed
+
+    jobs, dataset, upstream, role = native_audit
+    run = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset], consistency_job_id=upstream), agent=role)['run_id']
+    for sample in jobs.samples(run):
+        save_image(jobs, run, sample)
+    reports = AuditReports(jobs.db)
+    index = AuditBatches(jobs).context(run)
+    assert index['kind'] == 'audit_master_index' and index['items'] == []
+    master_observed(jobs, run, {'kind': 'audit_master_index', 'job_id': run, 'items': []}, read_index=False)
+    assert reports.read_versions(run) == set()
+    cursor, delivered = None, []
+    while True:
+        page = reports.records(run, dict(page_size=2, cursor=cursor, unread_only=True, max_chars=12000))
+        assert len(json.dumps(page, ensure_ascii=False)) <= 12000
+        assert page['representation'] == 'facts'
+        delivered.extend(item['sample_id'] for item in page['items'])
+        master_observed(jobs, run, page)
+        cursor = page['next_cursor']
+        if cursor is None:
+            break
+    assert delivered == [sample.sample_id for sample in jobs.samples(run)]
+    assert len(delivered) == len(set(delivered))
+    assert reports.records(run, dict(unread_only=True))['items'] == []
+    detail = reports.records(run, dict(sample_id=delivered[0], unread_only=False, representation='detail'))
+    assert detail['items'][0]['final']['basis'] == ['冻结原图。']
+
+
+def test_dataset_relation_indexes_keep_frozen_candidates_available_in_bounded_pages(native_audit):
+    from iad_core.audit.master_models import AuditMasterDatasetProfile
+    from iad_core.audit.tool_pages import AuditToolPages
+    jobs, dataset, upstream, role = native_audit
+    run = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset], consistency_job_id=upstream), agent=role)['run_id']
+    a, b, c = [sample.sample_id for sample in jobs.samples(run)[:3]]
+    profile = jobs.snapshot(run).dataset_profile.model_copy(update={
+        'strict_duplicate_members': [[a,b,c]], 'strict_duplicate_groups':1, 'strict_duplicate_images':3,
+        'near_candidate_members': [[a,b],[b,c]], 'near_candidate_pairs':2})
+    index = AuditMasterDatasetProfile.capture(profile).model_dump()
+    assert 'near_candidate_members' not in index and index['near_candidate_pairs'] == 2
+    first = AuditToolPages.dataset(profile, dict(section='similar_candidates',page_size=1))
+    assert first['items'] == [[a,b]] and first['next_cursor'] == 1
+    second = AuditToolPages.dataset(profile, dict(section='similar_candidates',cursor=1))
+    assert second['items'] == [[b,c]] and second['next_cursor'] is None
+    assert AuditToolPages.dataset(profile, dict(section='duplicates'))['items'] == [[a,b,c]]
+    assert profile.near_candidate_members == [[a,b],[b,c]]

@@ -1,4 +1,19 @@
 export declare const auditQualityScoreParameters: {
+    readonly cursor: {
+        readonly type: "integer";
+        readonly title: "Cursor";
+        readonly default: 0;
+    };
+    readonly page_size: {
+        readonly type: "integer";
+        readonly title: "Page Size";
+        readonly default: 8;
+    };
+    readonly max_chars: {
+        readonly type: "integer";
+        readonly title: "Max Chars";
+        readonly default: 24000;
+    };
     readonly aliases: {
         readonly type: "array";
         readonly items: {
@@ -94,6 +109,22 @@ export declare const auditQualityScoreParameters: {
         }];
         readonly description: "audit_quality_score返回的预览标识；正式报告原样提交，不自行生成。";
         readonly title: "Preview Id";
+    };
+    readonly item_code: {
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
+        readonly title: "Item Code";
+    };
+    readonly dataset_id: {
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
+        readonly title: "Dataset Id";
     };
 };
 export declare const auditEvidenceParameters: {
@@ -918,6 +949,44 @@ export declare const auditCommitParameters: {
     };
 };
 export declare const auditRecordParameters: {
+    readonly scope: {
+        readonly type: "string";
+        readonly enum: readonly ["all", "defects", "normals"];
+        readonly title: "Scope";
+        readonly default: "all";
+    };
+    readonly representation: {
+        readonly type: "string";
+        readonly enum: readonly ["facts", "detail"];
+        readonly title: "Representation";
+        readonly default: "facts";
+    };
+    readonly unread_only: {
+        readonly type: "boolean";
+        readonly title: "Unread Only";
+        readonly default: true;
+    };
+    readonly cursor: {
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
+        readonly title: "Cursor";
+    };
+    readonly max_chars: {
+        readonly type: "integer";
+        readonly title: "Max Chars";
+        readonly default: 24000;
+    };
+    readonly result_revision: {
+        readonly oneOf: readonly [{
+            readonly type: "integer";
+        }, {
+            readonly type: "null";
+        }];
+        readonly title: "Result Revision";
+    };
     readonly page: {
         readonly type: "integer";
         readonly title: "Page";

@@ -23,6 +23,8 @@ class ModelCallError(AnalysisModel):
 class ModelCallSummary(AnalysisModel):
     call_id: str
     run_id: str
+    purpose: str | None = None
+    context_capacity: Literal['accepted', 'local_rejection', 'provider_rejection', 'sdk_rejection'] | None = None
     operation: Literal['tokenize', 'generate']
     schema_name: Optional[str]
     phase: Optional[str]
@@ -90,7 +92,7 @@ class ModelCalls:
             self.db.connection(after_commit=prepared.commit) as connection,
         ):
             payload = json.loads(connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0])
-            summary = ModelCallSummary(call_id=request.call_id, run_id=run_id, operation='generate',
+            summary = ModelCallSummary(call_id=request.call_id, run_id=run_id, purpose=request.request.get('purpose') or 'business', operation='generate',
                 schema_name=None, phase=payload.get('phase'), sample_id=sample_id,
                 role='agent', request_id=request.call_id, source='native_llm', session_id=session_id, attempt=attempt,
                 started_at=request.started_at.isoformat())
@@ -115,6 +117,13 @@ class ModelCalls:
             summary.usage = (result.usage if result.error is None and result.finish_reason is not None
                 and result.usage and any(result.usage.values()) else None)
             summary.error, summary.http_status = result.error, result.http_status
+            if result.error and ('context' in result.error.message.lower() or result.error.type == 'JOB_CONTEXT_BUDGET'):
+                summary.context_capacity = ('local_rejection' if result.error.type == 'JOB_CONTEXT_BUDGET' else
+                    'sdk_rejection' if 'pi-ai detected' in result.error.message.lower() else
+                    'provider_rejection' if result.http_status == 400 else None)
+            elif not result.error and result.finish_reason in ('stop', 'tool-calls'):
+                summary.context_capacity = 'accepted'
+
             connection.execute('UPDATE model_calls SET summary_json=? WHERE call_id=?', (summary.model_dump_json(), summary.call_id))
             prepared.publish()
 

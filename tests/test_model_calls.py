@@ -410,3 +410,28 @@ def test_recorded_payloads_preserve_provider_failures(dataset, record_call, fail
     assert detail.request_body == '{"original":true}'
     assert detail.response_body == ('original provider error' if failure == 'http' else None)
     assert detail.error.type == ('HTTPStatusError' if failure == 'http' else 'ReadTimeout')
+
+
+@pytest.mark.parametrize('purpose,error,http_status,expected', [
+    ('compaction', None, None, 'accepted'),
+    (None, {'type': 'JOB_CONTEXT_BUDGET', 'message': '输入超过容量预算'}, None, 'local_rejection'),
+    (None, {'type': 'CONTEXT_LENGTH', 'message': 'Pi-ai detected context overflow'}, None, 'sdk_rejection'),
+    (None, {'type': 'HTTP_ERROR', 'message': 'maximum context length exceeded'}, 400, 'provider_rejection'),
+])
+def test_native_capacity_ledger_distinguishes_summary_and_admission_sources(dataset, purpose, error, http_status, expected):
+    db, _, config = dataset
+    with db.connection() as connection:
+        connection.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES('capacity-ledger',?,'MODEL_AUDIT','RUNNING','{}')",
+            (config.task.task_id,))
+    calls = ModelCalls(db)
+    request = {'sessionId': 'master', 'messages': []}
+    if purpose:
+        request['purpose'] = purpose
+    calls.start_native('capacity-ledger', NativeModelCallStart(call_id='capacity-call',
+        started_at='2026-11-17T08:00:00Z', request=request), sample_id=None, session_id='master', attempt=1)
+    calls.finish_native('capacity-ledger', None, NativeModelCallEnd(call_id='capacity-call',
+        finished_at='2026-11-17T08:00:01Z', elapsed_ms=1000, finish_reason='stop' if error is None else None,
+        error=error, http_status=http_status))
+    summary = calls.list('capacity-ledger')[0]
+    assert summary.purpose == (purpose or 'business')
+    assert summary.context_capacity == expected

@@ -38,7 +38,7 @@ def audit_agent_session_location(args, db_path):
 
 
 def audit_agent_session_created(args, db_path):
-    return AuditAgentJobs(workbench(db_path)).session_created(args['run_id'],args['sample_id']).model_dump(mode='json')
+    return AuditAgentJobs(workbench(db_path)).session_created(args['run_id'],args['sample_id'],review_id=args.get('review_id')).model_dump(mode='json')
 
 
 def audit_agent_media(args, db_path):
@@ -54,7 +54,7 @@ def audit_agent_crop(args, db_path):
 
 
 def audit_agent_commit(args, db_path):
-    return AuditCommits(AuditAgentJobs(workbench(db_path))).accept(args['run_id'],args['sample_id'],args['submission']).model_dump(mode='json')
+    return AuditCommits(AuditAgentJobs(workbench(db_path))).accept(args['run_id'],args['sample_id'],args['submission'],review_id=args.get('review_id')).model_dump(mode='json')
 
 
 def audit_agent_model_call_start(args, db_path):
@@ -62,12 +62,12 @@ def audit_agent_model_call_start(args, db_path):
     call = NativeModelCallStart.model_validate(args['request'])
     master = AuditReports(jobs.db).session(args['run_id'])
     session_id = call.request.get('sessionId') or master.session_id
-    sample = next((sample for sample in jobs.samples(args['run_id']) if sample.session_id==session_id),None)
-    if sample is None and session_id!=master.session_id:
+    with jobs.db.connection() as connection:
+        row = connection.execute('SELECT sample_id FROM audit_sample_runs WHERE job_id=? AND session_id=?', (args['run_id'], session_id)).fetchone()
+    if row is None and session_id!=master.session_id:
         raise ValueError('模型请求没有本作业的主或子 Session')
-    sample_id = sample.sample_id if sample else None
-    session = sample or master
-    ModelCalls(jobs.db).start_native(args['run_id'],call,sample_id=sample_id,session_id=session.session_id,attempt=1)
+    sample_id = row[0] if row else None
+    ModelCalls(jobs.db).start_native(args['run_id'],call,sample_id=sample_id,session_id=session_id,attempt=1)
     if jobs.snapshot(args['run_id']).context_policy == 'evidence-on-demand-v1' and call.request.get('purpose'):
         return {}
     if sample_id:
@@ -86,7 +86,7 @@ def audit_agent_model_call_end(args, db_path):
 
 
 def audit_agent_failure(args, db_path):
-    AuditAgentJobs(workbench(db_path)).failure(args['run_id'],args['sample_id'],args['message'])
+    AuditAgentJobs(workbench(db_path)).failure(args['run_id'],args['sample_id'],args['message'],review_id=args.get('review_id'))
     return {}
 
 
@@ -128,7 +128,7 @@ def audit_agent_defect_context(args, db_path):
 
 def audit_agent_defect_profile(args, db_path):
     from iad_core.audit.stages import AuditStages
-    return AuditStages(AuditState(Database(db_path))).publish(args['run_id'], args['submission']).model_dump(mode='json')
+    return AuditStages(AuditState(Database(db_path))).publish(args['run_id'], args['submission']).model_dump(mode='json', exclude={'source_versions'})
 
 
 def audit_agent_report_begin(args, db_path):
@@ -154,7 +154,8 @@ def audit_agent_report_statistics(args, db_path):
 
 def audit_agent_quality_score(args, db_path):
     from iad_core.audit.quality_reports import AuditQualityReports
-    return AuditQualityReports(Database(db_path)).preview(args['run_id'],args['assessment']).model_dump(mode='json')
+    from iad_core.audit.tool_pages import AuditToolPages
+    return AuditToolPages.quality(AuditQualityReports(Database(db_path)), args['run_id'], args['assessment'])
 
 
 def audit_agent_distribution(args, db_path):
@@ -180,7 +181,10 @@ def audit_agent_report_commit(args, db_path):
 def audit_agent_report_draft(args, db_path):
     from iad_core.audit.report_drafts import AuditReportDrafts
     drafts = AuditReportDrafts(Database(db_path))
-    return (drafts.save(args['run_id'],args['submission']) if 'submission' in args else drafts.read(args['run_id'])).model_dump(mode='json')
+    if 'submission' in args:
+        return drafts.save(args['run_id'],args['submission']).model_dump(mode='json')
+    from iad_core.audit.tool_pages import AuditToolPages
+    return AuditToolPages.draft(drafts, args['run_id'], args.get('query', {}))
 
 
 def audit_agent_observation(args, db_path):
@@ -190,13 +194,6 @@ def audit_agent_observation(args, db_path):
 
 def audit_agent_report_evidence(args, db_path):
     return AuditReports(Database(db_path)).evidence(args['run_id'],args['sample_id'],args['evidence_id']).model_dump(mode='json')
-
-
-def audit_agent_report_failure(args, db_path):
-    jobs = AuditAgentJobs(workbench(db_path))
-    AuditReports(jobs.db).failure(args['run_id'],args['message'])
-    jobs.jobs.update(args['run_id'],execution_error={'type':'AuditReportError','message':args['message']},completion_pending=True)
-    return {}
 
 
 def audit_job_prompts(args, db_path):
@@ -225,8 +222,22 @@ def audit_agent_review_context(args, db_path):
     db = Database(db_path)
     context = AuditBatches(AuditState(db)).context(args['run_id'])
     session = AuditReports(db).session(args['run_id'])
-    return {**context, 'observation_notes':[note.model_dump(mode='json') for note in AuditObservationNotes(db).read(args['run_id'],session.session_id)],
-        'report_draft':AuditReportDrafts(db).read(args['run_id']).model_dump(mode='json')}
+    from iad_core.audit.tool_pages import AuditToolPages
+    return {**context, 'observation_notes': {'total':len(AuditObservationNotes(db).read(args['run_id'],session.session_id))},
+        'report_draft':AuditToolPages.draft(AuditReportDrafts(db), args['run_id'], {})}
+
+
+def audit_agent_dataset(args, db_path):
+    from iad_core.audit.tool_pages import AuditToolPages
+    return AuditToolPages.dataset(AuditState(Database(db_path)).snapshot(args['run_id']).dataset_profile, args['query'])
+
+
+def audit_agent_memory(args, db_path):
+    from iad_core.audit.tool_pages import AuditToolPages
+    from iad_core.audit.observation_notes import AuditObservationNotes
+    db = Database(db_path)
+    return AuditToolPages.notes(AuditObservationNotes(db), args['run_id'], AuditReports(db).session(args['run_id']).session_id, args.get('query', {}))
+
 
 
 def audit_agent_review_commit(args, db_path):
@@ -250,5 +261,5 @@ AUDIT_AGENT_OPERATIONS = (audit_agent_configuration,audit_agent_start,audit_agen
     audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,
     audit_agent_phase,audit_agent_defect_context,audit_agent_defect_profile,audit_agent_report_begin,audit_agent_report_state,audit_agent_report_session_created,
     audit_agent_report_statistics,audit_agent_distribution,audit_agent_quality_score,audit_agent_report_records,audit_agent_discovery,
-    audit_agent_report_commit,audit_agent_report_draft,audit_agent_observation,audit_agent_report_evidence,audit_agent_report_failure,audit_job_prompts,
-    audit_agent_prepare_observations,audit_agent_review_context,audit_agent_review_commit,audit_agent_rechecks,audit_agent_versions)
+    audit_agent_report_commit,audit_agent_report_draft,audit_agent_observation,audit_agent_report_evidence,audit_job_prompts,
+    audit_agent_dataset,audit_agent_memory,audit_agent_prepare_observations,audit_agent_review_context,audit_agent_review_commit,audit_agent_rechecks,audit_agent_versions)

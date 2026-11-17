@@ -1,4 +1,4 @@
-import {auditMessages,auditReportTool} from './fixtures/audit-report.js';
+import {auditMessages,auditReportTool,respondAuditSummary} from './fixtures/audit-report.js';
 import {chatRequest} from './fixtures/responses.js';
 import {respondFixtureTools} from './fixtures/analysis-finalization.js';
 import test from 'node:test';
@@ -28,6 +28,7 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
       if(protocol==='openai-responses')assert.equal(body.responses.reasoning.effort,'high');
       if(req.url==='/tokenize'){res.end(JSON.stringify({count:1000,max_model_len:65536}));return;}
       wire.push(body);
+      if(respondAuditSummary(res,body))return;
       const {context,outputs,pages}=auditMessages(body);
       if(context?.phase){
         if(context.phase==='report'&&failReportOnce&&!reportFailed){reportFailed=true;res.writeHead(503);res.end(JSON.stringify({error:{message:'报告模型临时不可用'}}));return;}
@@ -157,7 +158,7 @@ for(const {withKnowledge,protocol='openai-completions',optionalOutput=false,fail
   const callsBeforeReport=wire.length;
   if(withDistribution){
     const aggregates=wire.flatMap(body=>auditMessages(body).outputs).find(output=>Array.isArray(output?.classes)&&output?.image_count!==undefined);
-    assert.equal(aggregates.image_count,2);assert.equal(aggregates.box_count,4);
+    assert.equal(aggregates.image_count,2);assert.equal(aggregates.annotation_count,4);
     assert.deepEqual(aggregates,report.data_distribution.slices[0]);
   }
   const reportRead=await ctx.tools.execute({name:'model_audit_report',arguments:{run_id:job.run_id},

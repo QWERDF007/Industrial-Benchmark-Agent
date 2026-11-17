@@ -149,7 +149,7 @@ class AuditQueries:
             row = connection.execute("SELECT report_html,json_extract(snapshot_json,'$.schema_version') schema_version FROM audit_workflow_runs WHERE job_id=?", (run_id,)).fetchone()
         if row is None or row[0] is None:
             raise ValueError('本作业报告尚未生成')
-        if row['schema_version'] != 5:
+        if row['schema_version'] != 6:
             return dict(filename=f'audit-{run_id}.html',html=row[0])
         from iad_core.workbench.audit_html import AuditHtmlReport
         return AuditHtmlReport(self).render(run_id)

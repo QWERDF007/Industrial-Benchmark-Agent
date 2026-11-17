@@ -74,6 +74,10 @@ def initialize_audit_schema(connection: Connection):
         request_json TEXT NOT NULL, state TEXT NOT NULL DEFAULT 'PENDING', error TEXT,
         PRIMARY KEY(job_id,review_id),
         FOREIGN KEY(job_id,sample_id) REFERENCES audit_sample_runs(job_id,sample_id) ON DELETE CASCADE)''')
+    if 'workflow_version' not in {row[1] for row in connection.execute('PRAGMA table_info(audit_rechecks)')}:
+        connection.execute('ALTER TABLE audit_rechecks ADD COLUMN workflow_version INTEGER NOT NULL DEFAULT 0')
+    connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS audit_recheck_active_image ON audit_rechecks(job_id,sample_id) "
+        "WHERE workflow_version>=6 AND state IN ('PENDING','RUNNING')")
     connection.execute('''CREATE TABLE IF NOT EXISTS audit_master_reads (
         job_id TEXT NOT NULL REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
         call_id TEXT NOT NULL REFERENCES model_calls(call_id) ON DELETE CASCADE,

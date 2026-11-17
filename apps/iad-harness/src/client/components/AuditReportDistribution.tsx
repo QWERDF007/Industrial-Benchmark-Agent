@@ -30,31 +30,31 @@ export function AuditReportDistribution({report}:{report:AuditRunReport}) {
   return <AuditReportSection section="distribution">
     {!data||!overall||!scope?<p>本作业尚无数据分布统计。</p>:<>
       <div className="iad-distribution-summary"><span>图像 {overall.image_count.toLocaleString('zh-CN')} 张</span>
-        {overall.box_count!==null&&<><span>原始标注框 {overall.box_count.toLocaleString('zh-CN')} 个</span><span>无框图像 {overall.unannotated_images.toLocaleString('zh-CN')} 张</span>
-          {!!overall.invalid_box_count&&<span>无效几何 {overall.invalid_box_count} 个</span>}</>}
+        {overall.annotation_count!==null&&<><span>原始标注实例 {overall.annotation_count.toLocaleString('zh-CN')} 个</span><span>无标注图像 {overall.unannotated_images.toLocaleString('zh-CN')} 张</span>
+          {!!overall.invalid_annotation_count&&<span>无效几何 {overall.invalid_annotation_count} 个</span>}</>}
       </div>
       {!!unregistered.length&&<p>未登记：{unregistered.join('、')}。</p>}
       <div className="iad-chart-grid">
-        <DistributionPlot {...scope} id="class-distribution" title="类别分布" spec={view=>view.box_count===null&&view.classes.length<=5?{
+        <DistributionPlot {...scope} id="class-distribution" title="类别分布" spec={view=>view.annotation_count===null&&view.classes.length<=5?{
           type:'donut',unit:'张',rows:view.classes.map(row=>({id:row.category,label:className(row.category),value:row.image_count})),
-        }:{type:'bar',series:[{label:'图像',unit:'张'},...(view.box_count===null?[]:[{label:'标注框',unit:'个'}])],
-          rows:view.classes.map(row=>({id:row.category,label:className(row.category),values:row.box_count===null?[row.image_count]:[row.image_count,row.box_count]}))}}/>
+        }:{type:'bar',series:[{label:'图像',unit:'张'},...(view.annotation_count===null?[]:[{label:'标注实例',unit:'个'}])],
+          rows:view.classes.map(row=>({id:row.category,label:className(row.category),values:row.annotation_count===null?[row.image_count]:[row.image_count,row.annotation_count]}))}}/>
         <DistributionPlot {...scope} id="image-dimensions" title="图像宽高分布" spec={view=>({type:'heatmap',
           data:view.heatmaps.image_dimensions,xLabel:'图像宽度（像素）',yLabel:'图像高度（像素）'})}/>
-        {overall.box_count!==null&&<DistributionPlot {...scope} id="box-dimensions" title="框宽高分布" spec={view=>({
-          type:'heatmap',data:view.heatmaps.box_dimensions,xLabel:'框宽（像素）',yLabel:'框高（像素）'})}/>}
+        {overall.annotation_count!==null&&<DistributionPlot {...scope} id="box-dimensions" title="实例外接宽高分布" spec={view=>({
+          type:'heatmap',data:view.heatmaps.box_dimensions,xLabel:'外接宽（像素）',yLabel:'外接高（像素）'})}/>}
         {(['image_aspect_ratio','box_aspect_ratio','relative_area'] as const).filter(key=>overall.histograms[key]).map(key=>{
-          const title={image_aspect_ratio:'图像长宽比',box_aspect_ratio:'框长宽比',relative_area:'框面积占比'}[key];
+          const title={image_aspect_ratio:'图像长宽比',box_aspect_ratio:'实例外接长宽比',relative_area:'实例面积占比'}[key];
           return <DistributionPlot {...scope} key={key} id={key.replaceAll('_','-')} title={title} spec={view=>({
             type:'distribution',series:view.distributions[key],xLabel:title,unit:key==='image_aspect_ratio'?'张':'个',
             format:key==='relative_area'?'percent':'decimal'})}/>;
         })}
-        {overall.box_count!==null&&<>
-          <DistributionPlot {...scope} id="instance-counts" title="每图标注框数量" spec={view=>({type:'bar',series:[{label:'图像',unit:'张'}],
-            rows:Object.entries(view.instance_counts).map(([count,value])=>({id:count,label:`${count} 个框`,values:[value]}))})}/>
-          <DistributionPlot {...scope} id="box-centers" title="框中心位置分布" spec={view=>({type:'heatmap',
+        {overall.annotation_count!==null&&<>
+          <DistributionPlot {...scope} id="instance-counts" title="每图标注实例数量" spec={view=>({type:'bar',series:[{label:'图像',unit:'张'}],
+            rows:Object.entries(view.instance_counts).map(([count,value])=>({id:count,label:`${count} 个实例`,values:[value]}))})}/>
+          <DistributionPlot {...scope} id="box-centers" title="实例中心位置分布" spec={view=>({type:'heatmap',
             data:view.heatmaps.box_centers,xLabel:'水平位置',yLabel:'垂直位置',format:'decimal',reverseY:true})}/>
-          <DistributionPlot {...scope} id="category-area" title="各类别框面积占比" spec={view=>({type:'boxplot',format:'percent',rows:view.area_by_category})}/>
+          <DistributionPlot {...scope} id="category-area" title="各类别实例面积占比" spec={view=>({type:'boxplot',format:'percent',rows:view.area_by_category})}/>
         </>}
         {['datasets',...sources.map(([key])=>key)].map(key=><DistributionPlot {...scope} key={key} id={`source-${key}`}
           title={`${key==='datasets'?'子数据集':auditMetadataLabels[key]||key}分布`} spec={view=>{

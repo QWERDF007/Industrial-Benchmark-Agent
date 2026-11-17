@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.audit.profile_models import AuditQuantiles
@@ -20,7 +20,7 @@ class AuditHeatmap(AnalysisModel):
 class AuditClassCount(AnalysisModel):
     category: str
     image_count: int
-    box_count: int | None
+    annotation_count: int | None = Field(validation_alias=AliasChoices('annotation_count', 'box_count'))
 
 
 class AuditHistogram(AnalysisModel):
@@ -43,8 +43,9 @@ class AuditCategoryBox(AnalysisModel):
 
 class AuditDistributionSlice(AuditDistributionQuery):
     image_count: int
-    box_count: int | None
-    invalid_box_count: int
+    annotation_count: int | None = Field(validation_alias=AliasChoices('annotation_count', 'box_count'))
+    invalid_annotation_count: int = Field(validation_alias=AliasChoices('invalid_annotation_count', 'invalid_box_count'))
+    geometry_types: dict[str, int] = Field(default_factory=dict)
     unannotated_images: int
     classes: list[AuditClassCount]
     instance_counts: dict[str, int]

@@ -47,6 +47,8 @@ class AnchorVisualInput:
                 'verified_region_pair_ids':[check.region_pair_id for check in gate.region_checks if check.visual_relation == 'same'],
                 'regions':[pair.model_dump(mode='json', include={'region_pair_id','source_annotations','main_window','candidate_window'})
                     for pair in gate.region_pairs]}
+            if gate.dispute_checks:
+                candidate['gate']['dispute_checks'] = [check.model_dump(mode='json') for check in gate.dispute_checks]
             matrix = np.eye(3) if gate.relation == 'pixel_identical' else np.asarray(gate.geometry.candidate_to_main)
             mapping = ImageCorrespondence(matrix, gate.geometry)
             source = next(source for source in prepared.facts['sources'].values() if source['sample_id'] == identity)
@@ -110,6 +112,13 @@ class AnchorVisualInput:
                         + '缺少：' + json.dumps(sorted(required[item.candidate_id] - cited))
                         + '；无效引用：' + json.dumps(sorted(cited - required[item.candidate_id])))
                 if item.gate_dispute is not None:
+                    from iad_core.consistency.identity_disputes import IdentityDisputes
+                    sources = {source['sample_id']: source['original_size'] for source in prepared.facts['sources'].values()
+                        if source['sample_id'] in (anchor_id, item.candidate_id)}
+                    try:
+                        IdentityDisputes.validate_windows(item.gate_dispute.windows, sources)
+                    except ValueError as error:
+                        raise repairable_output_error('visual_dispute_window', str(error)) from error
                     gate = gates[item.candidate_id]
                     if gate.relation == 'pixel_identical' or not set(item.gate_dispute.region_pair_ids) <= set(gate.required_region_pair_ids):
                         raise repairable_output_error('visual_gate_dispute',

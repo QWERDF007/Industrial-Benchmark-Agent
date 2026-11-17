@@ -1,3 +1,68 @@
+export declare const auditDatasetParameters: {
+    readonly cursor: {
+        readonly type: "integer";
+        readonly title: "Cursor";
+        readonly default: 0;
+    };
+    readonly page_size: {
+        readonly type: "integer";
+        readonly title: "Page Size";
+        readonly default: 8;
+    };
+    readonly max_chars: {
+        readonly type: "integer";
+        readonly title: "Max Chars";
+        readonly default: 24000;
+    };
+    readonly section: {
+        readonly type: "string";
+        readonly enum: readonly ["duplicates", "similar_candidates", "benchmark", "benchmark_leakage"];
+        readonly title: "Section";
+        readonly required: true;
+    };
+};
+export declare const auditMemoryParameters: {
+    readonly cursor: {
+        readonly type: "integer";
+        readonly title: "Cursor";
+        readonly default: 0;
+    };
+    readonly page_size: {
+        readonly type: "integer";
+        readonly title: "Page Size";
+        readonly default: 8;
+    };
+    readonly max_chars: {
+        readonly type: "integer";
+        readonly title: "Max Chars";
+        readonly default: 24000;
+    };
+};
+export declare const auditDraftQueryParameters: {
+    readonly cursor: {
+        readonly type: "integer";
+        readonly title: "Cursor";
+        readonly default: 0;
+    };
+    readonly page_size: {
+        readonly type: "integer";
+        readonly title: "Page Size";
+        readonly default: 8;
+    };
+    readonly max_chars: {
+        readonly type: "integer";
+        readonly title: "Max Chars";
+        readonly default: 24000;
+    };
+    readonly field: {
+        readonly oneOf: readonly [{
+            readonly type: "string";
+        }, {
+            readonly type: "null";
+        }];
+        readonly title: "Field";
+    };
+};
 export declare const auditDefectProfileParameters: {
     readonly commit_key: {
         readonly type: "string";

@@ -160,7 +160,7 @@ def test_selected_partial_knowledge_preserves_conflicts_review_and_frozen_counte
     assert support_details.total == 1
     assert support_details.items[0].sample_id == pages[4].sample_id
     assert support_details.check.support_count == 1
-    assert jobs.snapshot(audit['run_id']).schema_version == 5
+    assert jobs.snapshot(audit['run_id']).schema_version == 6
     reviews.submit(KnowledgeCheckReviewSubmission(submission_id=uuid4(),version_id=publication_id,check_id='C1',
         expected_revision=1,status='confirmed',note='之后的核实不改写旧作业。'))
     assert jobs.context(audit['run_id'],first.sample_id).knowledge == selected

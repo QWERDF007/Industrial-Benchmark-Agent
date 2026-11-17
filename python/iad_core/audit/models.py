@@ -47,7 +47,7 @@ class AuditAgentConfiguration(AnalysisModel):
 
 
 class AuditWorkflowSnapshot(AuditAgentConfiguration):
-    schema_version: Literal[4, 5] = 5
+    schema_version: Literal[4, 5, 6] = 6
     quality_score_version: QualityScoreVersion | None = None
     context_policy: ContextPolicy = 'legacy'
     manifest: AnalysisManifest

@@ -22,7 +22,8 @@ def test_observations_cross_batch_boundaries_without_master_review(native_audit)
     batches.settle(run)
     assert all(batch.state == 'COMPLETED' for batch in batches.list(run))
     assert AuditReports(jobs.db).session(run).revision == 0
-    assert len(batches.context(run)['items']) == 6
+    assert batches.context(run)['items'] == []
+    assert batches.context(run)['record_index']['unread'] == 6
     assert batches.context(run)['batch'] is None
 
 
@@ -86,13 +87,52 @@ def test_master_context_only_delivers_unread_effective_versions(native_audit):
         save_image(jobs, run, sample)
     batches = AuditBatches(jobs)
     initial = batches.context(run)
-    assert len(initial['items']) == 6
+    assert initial['items'] == []
+    assert initial['record_index']['unread'] == 6
     master_observed(jobs, run, initial)
     assert batches.context(run)['items'] == []
     publish_batch(jobs, run, review_requests=[dict(sample_id=samples[0].sample_id, result_revision=1,
         reason='核对相同位置的判断分歧。', conflict_refs=[dict(sample_id=samples[1].sample_id, result_revision=1, kind='image')])])
     save_image(jobs, run, samples[0], commit_key='reviewed')
     updated = batches.context(run)
-    assert [(item['sample_id'], item['result_revision']) for item in updated['items']] == [(samples[0].sample_id, 2)]
+    assert [(item['sample_id'], item['result_revision']) for item in AuditReports(jobs.db).records(run, {})['items']] == [(samples[0].sample_id, 2)]
     master_observed(jobs, run, updated)
     assert batches.context(run)['items'] == []
+
+
+def test_explicit_failed_image_submission_is_terminal_and_preserves_structured_reason(native_audit):
+    from iad_core.audit.commits import AuditCommits
+    jobs, dataset, upstream, role = native_audit
+    run = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset], consistency_job_id=upstream), agent=role)['run_id']
+    sample = jobs.samples(run)[0]
+    jobs.session_created(run, sample.sample_id)
+    final = dict(execution_status='failed', state=None, analysis='缺少区分结构亮边和实际破损的依据。',
+        conclusion='', basis=[], evidence_ids=[], check_assessments=[], consistency_review=[], findings=[], limitations=['无法给出有依据的独立结论'])
+    saved = AuditCommits(jobs).accept(run, sample.sample_id, dict(commit_key='failed-final', final=final))
+    current = jobs.sample(run, sample.sample_id)
+    assert current.state == 'FAILED'
+    assert current.result == saved and saved.execution_status == 'failed'
+    assert current.result.analysis == final['analysis']
+    assert jobs.jobs.status(run)['failed'] == 1
+
+
+def test_report_tool_reads_section_index_then_bounded_saved_content(native_audit):
+    from iad_core.audit.report_drafts import AuditReportDrafts
+    from iad_core.audit.tool_pages import AuditToolPages
+    import json
+    jobs, dataset, upstream, role = native_audit
+    run = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset], consistency_job_id=upstream), agent=role)['run_id']
+    for sample in jobs.samples(run):
+        save_image(jobs, run, sample)
+    AuditReports(jobs.db).begin(run)
+    drafts = AuditReportDrafts(jobs.db)
+    facts = ['视野未覆盖侧面。' * 100, '同一批次缺少独立样本。' * 100, '缺少其他光照条件。' * 100]
+    drafts.save(run, dict(base_revision=0, fields={'limitations':facts,'conclusion':'限定于已观察范围。'}))
+    index = AuditToolPages.draft(drafts, run, {})
+    assert index['revision'] == 1 and index['fields']['limitations']['count'] == 3
+    assert len(json.dumps(index)) < 500
+    page = AuditToolPages.draft(drafts, run, dict(field='limitations', page_size=1, max_chars=4000))
+    assert page['items'] == facts[:1] and page['next_cursor'] == 1
+    following = AuditToolPages.draft(drafts, run, dict(field='limitations', cursor=page['next_cursor'], page_size=2))
+    assert following['items'] == facts[1:] and following['next_cursor'] is None
+    assert drafts.read(run).fields['limitations'] == facts

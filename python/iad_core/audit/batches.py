@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from uuid import uuid4
 
 from iad_core.audit.delegation_models import AuditBatch, AuditClue, AuditClueIndex, AuditRecheck
@@ -66,22 +67,21 @@ class AuditBatches:
                 WHERE s.job_id=audit_batches.job_id AND s.sample_id=member.value AND s.state IN ('PENDING','RUNNING'))""", (run_id,))
 
     def context(self, run_id: str) -> dict:
-        from iad_core.audit.master_models import AuditMasterContext, AuditMasterRecord
+        from iad_core.audit.master_models import AuditMasterContext, AuditMasterDatasetProfile
         from iad_core.consistency.annotation_issues import ISSUE_TYPES_BY_FORMAT
         self.settle(run_id)
         reports = AuditReports(self.db)
         session = reports.session(run_id)
         snapshot = self.state.snapshot(run_id)
         on_demand = snapshot.context_policy == 'evidence-on-demand-v1'
-        read = reports.read_versions(run_id)
-        selected = [sample for sample in self.state.samples(run_id) if (sample.sample_id, sample.result_revision) not in read]
-        return AuditMasterContext.model_validate(dict(quality_score_version=snapshot.quality_score_version,kind='audit_records',job_id=run_id,phase='report',
+        from iad_core.audit.master_records import AuditMasterRecords
+        return AuditMasterContext.model_validate(dict(quality_score_version=snapshot.quality_score_version,kind='audit_master_index',job_id=run_id,phase='report', record_index=AuditMasterRecords(reports).index(run_id),
             batch=None,revision=session.revision,
-            items=[AuditMasterRecord.capture(sample) for sample in selected],
+            items=[],
             discoveries=[AuditDiscoveryIndex.capture(item) for item in session.discoveries] if on_demand else session.discoveries,
-            reviews=[item.model_dump(mode='json') for item in self.rechecks(run_id,pending_only=False)],
+            reviews=[], review_counts=dict(Counter(item.state for item in self.rechecks(run_id,pending_only=False))),
             context_policy=snapshot.context_policy,
-            dataset_profile=snapshot.dataset_profile.model_dump(mode='json'),
+            dataset_profile=AuditMasterDatasetProfile.capture(snapshot.dataset_profile),
             applicable_issue_types=ISSUE_TYPES_BY_FORMAT[snapshot.dataset_profile.dataset_format],
             statistics=reports.statistics(run_id).model_dump(mode='json'),knowledge=snapshot.knowledge)).model_dump(mode='json',
                 exclude_computed_fields=True, exclude=set() if on_demand else {'context_policy'})
@@ -132,7 +132,7 @@ class AuditBatches:
                 raise ValueError('审计已停止，不能发布联合分析')
             connection.execute('INSERT INTO audit_global_versions(job_id,revision,batch_number,commit_key,submission_json,request_json) VALUES(?,?,?,?,?,?)',
                 (run_id,revision,0,submission.commit_key,canonical,command if on_demand else None))
+            from iad_core.audit.rechecks import AuditRechecks
             for request in submission.review_requests:
-                connection.execute('''INSERT INTO audit_rechecks(job_id,review_id,batch_number,sample_id,result_revision,request_json)
-                    VALUES(?,?,?,?,?,?)''',(run_id,'review-'+uuid4().hex,0,request.sample_id,request.result_revision,request.model_dump_json()))
+                AuditRechecks.enqueue(connection, run_id, request, 0)
         return AuditGlobalState(revision=revision,discoveries=materialized.discoveries)

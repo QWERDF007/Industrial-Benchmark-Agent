@@ -38,3 +38,10 @@ class UnmappedRegionCheck(AnalysisModel):
     region_pair_id: Identifier
     media_ids: list[Identifier] = Field(min_length=1)
     observation: NonBlankText
+
+
+class IdentityDisputeCheck(AnalysisModel):
+    observation_id: Identifier
+    visual_relation: Literal['same', 'different', 'unverified']
+    observation: NonBlankText
+    media_ids: list[Identifier] = Field(min_length=2)

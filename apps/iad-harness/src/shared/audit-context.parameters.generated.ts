@@ -1,4 +1,77 @@
 /* Generated from Python audit context models. */
+export const auditDatasetParameters = {
+  "cursor": {
+    "type": "integer",
+    "title": "Cursor",
+    "default": 0
+  },
+  "page_size": {
+    "type": "integer",
+    "title": "Page Size",
+    "default": 8
+  },
+  "max_chars": {
+    "type": "integer",
+    "title": "Max Chars",
+    "default": 24000
+  },
+  "section": {
+    "type": "string",
+    "enum": [
+      "duplicates",
+      "similar_candidates",
+      "benchmark",
+      "benchmark_leakage"
+    ],
+    "title": "Section",
+    "required": true
+  }
+} as const;
+export const auditMemoryParameters = {
+  "cursor": {
+    "type": "integer",
+    "title": "Cursor",
+    "default": 0
+  },
+  "page_size": {
+    "type": "integer",
+    "title": "Page Size",
+    "default": 8
+  },
+  "max_chars": {
+    "type": "integer",
+    "title": "Max Chars",
+    "default": 24000
+  }
+} as const;
+export const auditDraftQueryParameters = {
+  "cursor": {
+    "type": "integer",
+    "title": "Cursor",
+    "default": 0
+  },
+  "page_size": {
+    "type": "integer",
+    "title": "Page Size",
+    "default": 8
+  },
+  "max_chars": {
+    "type": "integer",
+    "title": "Max Chars",
+    "default": 24000
+  },
+  "field": {
+    "oneOf": [
+      {
+        "type": "string"
+      },
+      {
+        "type": "null"
+      }
+    ],
+    "title": "Field"
+  }
+} as const;
 export const auditDefectProfileParameters = {
   "commit_key": {
     "type": "string",

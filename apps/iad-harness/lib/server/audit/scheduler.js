@@ -61,19 +61,20 @@ export class AuditWorkflowScheduler {
     }
     async run(runId, signal) {
         const snapshot = await this.bridge.execute('audit_agent_snapshot', { run_id: runId });
-        if (snapshot.schema_version !== 5)
+        if (snapshot.schema_version !== 6)
             throw new Error('历史审计仅供查看，请新建作业');
         const agent = new AuditMasterAgent(this.bridge, this.host, this.providers, this.dataRoot);
         if (!signal.aborted) {
+            let failure;
             try {
                 await agent.run(runId, snapshot, signal);
             }
             catch (error) {
                 if (signal.aborted)
                     return;
-                await this.bridge.execute('audit_agent_report_failure', { run_id: runId, message: error instanceof Error ? error.message : String(error) });
+                failure = { type: 'AuditReportError', message: error instanceof Error ? error.message : String(error) };
             }
-            await this.bridge.execute('audit_agent_finish', { run_id: runId });
+            await this.bridge.execute('audit_agent_finish', { run_id: runId, error: failure });
             await this.writeReport(runId);
         }
     }

@@ -44,16 +44,22 @@ class AuditQualityReports:
         samples = self.state.samples(run_id)
         records = {record.sample.sample_id: record for record in snapshot.manifest.records}
         from iad_core.audit.stages import AuditStages
-        profile = AuditStages(self.state).status(run_id).defect_profile
+        stages = AuditStages(self.state)
+        profile = stages.status(run_id).defect_profile
+        compatible = {revision: stages.compatible(run_id, revision) for revision in {
+            sample.result.quality_observation.normal.profile_revision for sample in samples
+            if sample.result and sample.result.quality_observation and sample.result.quality_observation.normal}}
+        from iad_core.audit.batches import AuditBatches
+        failed_reviews = {(review.sample_id, review.result_revision) for review in AuditBatches(self.state).rechecks(run_id, pending_only=False) if review.state == 'FAILED'}
         images = []
         for sample in samples:
             record, final = records[sample.sample_id], sample.result
             observation = final.quality_observation if final else None
             if observation:
                 self.validate_observation(record, observation)
-            usable = bool(observation and observation.complete)
+            usable = bool(observation and observation.complete and (sample.sample_id, sample.result_revision) not in failed_reviews)
             if usable and observation.normal is not None:
-                usable = bool(profile and profile.features and observation.normal.profile_revision == profile.revision)
+                usable = bool(profile and profile.features and compatible.get(observation.normal.profile_revision, False))
             labels = {item.annotation_id: item.raw_label for item in record.annotations}
             images.append(QualityImage(sample_id=sample.sample_id, dataset_id=record.sample.dataset_id,
                 completed=sample.state == 'COMPLETED' and final is not None and final.execution_status == 'completed',

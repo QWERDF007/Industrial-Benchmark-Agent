@@ -13,6 +13,7 @@ export class ObservedImages {
       (handoffs
         ? '图像上下文采用观察提交协议：当前观察所需的图片在补看、裁图及比较期间保留，只有观察报告、目录或定稿工具成功保存文字事实后才卸载此前实际送达的附件。模型请求成功和读取工具成功都不代表观察事实已保存。成功提交前直接联合比较已有图片，不机械重复读取。\n'
         : '图像上下文采用按需证据协议：图片进入一次正常结束的业务请求后退出后续请求，原图、标注和送达记录仍保留。')
+      +'自然结束后的结构化收尾仅复用已实发证据和文字事实，不重新附图；依据不足须提交执行失败。\n'
       +'历史图片占位不表示读取失败；原生占位中的 image omitted to fit request image limits 在本协议中表示此前图片已退出历史附件，不能据此声称原图未送达。\n'
       +'补看前用简短文字保留已观察的关键事实；需要重新比较时显式调用图像工具。需要同时比较整图与局部时，在同一轮取得所需的完整材料。压缩摘要不算新的读图。仅对本次真实工具错误或当前新附图确实无法观察的情况记录取证限制。'});
     const sessions = this.sessions;
@@ -35,8 +36,12 @@ export class ObservedImages {
       if (!index) indexes.set(session, index = new Map());
       index.set(message.id, event.seq);
     });
-    scope.on('agent/pre-step', async ({agent}, next) => {
+    scope.on('agent/pre-step', async ({agent,messages}, next) => {
       const session = agent.session;
+      const finalizing=messages.some(message=>message.content.some(block=>{
+        if(block.type!=='text')return false;
+        try{return JSON.parse(block.text.split('\n')[0]).kind==='audit_finalize';}catch{return false;}
+      }));
       if (!initialized.has(session)) {
         await sessions.flush(session);
         const reader = await scope.sessionPersistence.open(session.id, 'read');
@@ -50,7 +55,7 @@ export class ObservedImages {
             if (event.type === 'assistant/message' && !event.data.interrupted) {
               const finish = lastAssistantStreamChunk(event.data.stream, 'finish')?.reason.kind;
               if (finish !== 'stop' && finish !== 'tool-calls') continue;
-              if (!handoffs) successful = event.seq;
+              if (!handoffs || finalizing) successful = event.seq;
               else for (const block of event.data.message.content)
                 if (block.type === 'tool-call' && handoffs.has(block.name)) committedCalls.set(block.id, event.seq);
             } else if (handoffs && event.type === 'tool/result' && !event.data.message.isError
@@ -73,6 +78,11 @@ export class ObservedImages {
           initialized.add(session);
           if (targets.length) session.append('image/offload', {targets});
         } finally {await reader.close();}
+      }
+      if(finalizing){
+        const targets=observed.get(session);
+        if(targets?.length)session.append('image/offload',{targets});
+        observed.delete(session);
       }
       return next();
     });

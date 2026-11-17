@@ -9,7 +9,9 @@ from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeMod
 
 def save_image(jobs, run_id, sample, findings=(), *, reviews=(), source_refs=(), check_assessments=(), observations=(),
         hypothesis_assessments=(),visual_features=(),quality_observation=None,selected_evidence=(),media_view=None,commit_key='final',analysis='已观察主图及全部局部。'):
-    jobs.session_created(run_id, sample.sample_id)
+    review = jobs.context(run_id, sample.sample_id).review
+    review_id = review.review_id if review else None
+    jobs.session_created(run_id, sample.sample_id, review_id=review_id)
     query = {'sample_id':sample.sample_id}
     if jobs.snapshot(run_id).context_policy == 'evidence-on-demand-v1': query['view'] = media_view or 'all'
     page = AuditEvidence(jobs).read(run_id, sample.sample_id, query)
@@ -23,10 +25,19 @@ def save_image(jobs, run_id, sample, findings=(), *, reviews=(), source_refs=(),
         conclusion='发现独立疑点。' if findings else '本次未发现疑点。', basis=['冻结原图。'], evidence_ids=ids, check_assessments=list(check_assessments), consistency_review=list(reviews),
         observations=list(observations),hypothesis_assessments=list(hypothesis_assessments),visual_features=list(visual_features),selected_evidence=list(selected_evidence),findings=[dict(finding_id=fid,type='image_label_mismatch' if jobs.context(run_id,sample.sample_id).target.dataset_format=='folder_classification' else 'missing_annotation',description='有效覆盖需复核。',location='主体',annotation_ids=[],
             consistency_issue_refs=list(source_refs),check_ids=[],evidence_ids=ids,normal_explanation='需排除成像影响。',limitations=[]) for fid in findings],limitations=[])
-    return AuditCommits(jobs).accept(run_id, sample.sample_id, dict(commit_key=commit_key, final=final))
+    return AuditCommits(jobs).accept(run_id, sample.sample_id, dict(commit_key=commit_key, final=final), review_id=review_id)
 
 
-def master_observed(jobs, run_id, context, evidence_ids=()):
+def master_observed(jobs, run_id, context, evidence_ids=(), *, read_index=True):
+    if read_index and context.get('kind') == 'audit_master_index':
+        cursor = None
+        while True:
+            page = AuditReports(jobs.db).records(run_id, dict(scope=context['record_index']['scope'], cursor=cursor))
+            master_observed(jobs, run_id, page, evidence_ids)
+            cursor = page['next_cursor']
+            if cursor is None:
+                return
+
     reports = AuditReports(jobs.db)
     session = reports.session(run_id)
     call = NativeModelCallStart(call_id='call_'+uuid4().hex, started_at='2026-11-11T12:00:00Z',

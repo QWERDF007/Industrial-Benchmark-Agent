@@ -22,6 +22,7 @@ export declare class JobSessionHost {
     private readonly ctx;
     private readonly sessions;
     private readonly stop;
+    private capacity?;
     private readonly active;
     private readonly notices;
     private constructor();
@@ -36,6 +37,8 @@ export declare class JobSessionHost {
         evidenceOnDemand?: boolean;
         imageHandoffTools?: readonly string[];
     }, operation: (agent: Agent) => T | Promise<T>): Promise<T>;
+    pageChars(agent: Agent): Promise<number>;
+    checkpoint(agent: Agent): Promise<void>;
     read(id: string): Promise<{
         header: SessionHeader;
         events: readonly SessionEvent[];

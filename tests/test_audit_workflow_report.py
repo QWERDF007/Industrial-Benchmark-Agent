@@ -285,7 +285,7 @@ def test_new_completed_final_rejects_insufficient_business_state_and_foreign_ups
     accepted=save_image(jobs,run_id,first)
     assert accepted.execution_status=='completed'
     assert accepted.consistency_review==[]
-    assert jobs.snapshot(run_id).schema_version==5
+    assert jobs.snapshot(run_id).schema_version==6
 
 
 def test_report_requires_real_read_versions_and_discoveries_and_retry_preserves_image_finals(native_audit):
@@ -525,8 +525,8 @@ def test_audit_freezes_completed_consistency_retry_history_without_serializing_d
     assert jobs.context(run,samples[0].sample_id).consistency.result.reason == 'NO_CANDIDATES'
     from iad_core.audit.batches import AuditBatches
     from iad_core.audit.reports import AuditReports
-    records=AuditBatches(jobs).context(run)['items']
-    assert records==AuditReports(jobs.db).records(run,dict(page_size=100))['items']
+    assert AuditBatches(jobs).context(run)['items']==[]
+    records=AuditReports(jobs.db).records(run,dict(page_size=100))['items']
     assert records[0]['consistency']['result']['reason']=='NO_CANDIDATES'
     assert not {'error_history','errors','requests','trace_ref','diagnostics_ref','candidate_records'} & records[0]['consistency'].keys()
     page = AuditEvidence(jobs).read(run,samples[0].sample_id,dict(sample_id=samples[0].sample_id))

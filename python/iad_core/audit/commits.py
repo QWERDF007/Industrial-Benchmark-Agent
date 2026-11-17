@@ -9,7 +9,7 @@ class AuditCommits:
     def __init__(self, jobs):
         self.jobs, self.db = jobs, jobs.db
 
-    def accept(self, run_id: str, sample_id: str, request: dict) -> AuditFinal:
+    def accept(self, run_id: str, sample_id: str, request: dict, *, review_id: str | None = None) -> AuditFinal:
         snapshot = self.jobs.snapshot(run_id)
         commit_type = AuditEvidenceCommit if snapshot.context_policy == 'evidence-on-demand-v1' else AuditCommit
         submission = commit_type.model_validate(request)
@@ -25,8 +25,9 @@ class AuditCommits:
                 if history[0] != canonical:
                     raise ValueError('同一终稿提交键不可用于不同内容')
                 return commit_type.model_validate_json(history[0]).final
-            review_row = connection.execute("SELECT review_id FROM audit_rechecks WHERE job_id=? AND sample_id=? AND state='RUNNING'",(run_id,sample_id)).fetchone()
-            if row['state'] == 'COMPLETED' and review_row is None:
+            from iad_core.audit.rechecks import AuditRechecks
+            review_row = AuditRechecks.running(connection, run_id, sample_id, review_id, row['result_revision'])
+            if row['state'] in ('COMPLETED', 'FAILED') and review_row is None:
                 raise ValueError('本场主图终稿已经提交')
             status = connection.execute('SELECT status FROM job_runs WHERE job_id=?', (run_id,)).fetchone()[0]
             if status != 'RUNNING':
@@ -80,7 +81,7 @@ class AuditCommits:
             if final.quality_observation is not None:
                 from iad_core.audit.quality_reports import AuditQualityReports
                 AuditQualityReports.validate_observation(record, final.quality_observation)
-            if snapshot.schema_version == 5:
+            if snapshot.schema_version >= 5:
                 from iad_core.audit.stages import AuditStages
                 stages = AuditStages(self.jobs)
                 if stages.role(record) == 'normal' and stages.status(run_id).phase in ('defects', 'defect_profile', 'blocked'):
@@ -116,18 +117,19 @@ class AuditCommits:
             if len({finding.finding_id for finding in final.findings}) != len(final.findings):
                 raise ValueError('同图疑点ID不能重复')
             connection.execute('INSERT INTO audit_image_commits VALUES(?,?,?,?)',(run_id,sample_id,submission.commit_key,canonical))
-            if review_row and final.execution_status!='completed':
+            if review_row and final.execution_status=='incomplete':
                 return final
-            state = 'COMPLETED' if final.execution_status == 'completed' else 'RUNNING'
+            state = {'completed':'COMPLETED', 'incomplete':'RUNNING', 'failed':'FAILED'}[final.execution_status]
             connection.execute('''UPDATE audit_sample_runs SET state=?,result_json=?,commit_key=?,submission_json=?
                 WHERE job_id=? AND sample_id=?''', (state,final.model_dump_json(),submission.commit_key,canonical,run_id,sample_id))
-            if state == 'COMPLETED':
+            if state in ('COMPLETED', 'FAILED'):
                 revision = row['result_revision'] + 1
                 connection.execute('INSERT INTO audit_image_versions(job_id,sample_id,revision,result_json,review_id) VALUES(?,?,?,?,?)',
                     (run_id,sample_id,revision,final.model_dump_json(),review_row[0] if review_row else None))
                 connection.execute('UPDATE audit_sample_runs SET result_revision=? WHERE job_id=? AND sample_id=?',(revision,run_id,sample_id))
                 if review_row:
-                    connection.execute("UPDATE audit_rechecks SET state='COMPLETED' WHERE job_id=? AND review_id=?",(run_id,review_row[0]))
+                    connection.execute('UPDATE audit_rechecks SET state=?,error=? WHERE job_id=? AND review_id=?',
+                        (state, final.analysis if state == 'FAILED' else None, run_id, review_id))
                 else:
-                    self.jobs.jobs.record(run_id, sample_id, connection=connection)
+                    self.jobs.jobs.record(run_id, sample_id, RuntimeError(final.analysis) if state == 'FAILED' else None, connection=connection)
             return final

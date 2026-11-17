@@ -46,6 +46,8 @@ class GateDispute(AnalysisModel):
     reason: NonBlankText
     region_pair_ids: list[Identifier] = Field(default_factory=list,
         description='本次实际观察到内容矛盾的真实配对区域ID；仅原图证据时为空。')
+    windows: list[VisualWindow] = Field(default_factory=list,
+        description='争议位置的原图像素窗口，供身份复核观察；引用本次主图或当前候选。')
 
 
 class CandidateVisualObservation(AnalysisModel):

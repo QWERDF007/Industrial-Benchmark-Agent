@@ -37,17 +37,17 @@ def test_distribution_tool_counts_original_boxes_and_unique_images_from_frozen_i
     jobs, dataset_id, run_id = distribution_audit
     result = audit_agent_distribution(dict(run_id=run_id), jobs.db.db_path)
     assert result['image_count'] == 6
-    assert result['box_count'] == 4
-    assert result['invalid_box_count'] == 0
-    assert result['classes'] == [dict(category='edge', image_count=2, box_count=3),
-        dict(category='hole', image_count=1, box_count=1)]
+    assert result['annotation_count'] == 4
+    assert result['invalid_annotation_count'] == 0
+    assert result['classes'] == [dict(category='edge', image_count=2, annotation_count=3),
+        dict(category='hole', image_count=1, annotation_count=1)]
     assert sum(cell[2] for cell in result['heatmaps']['image_dimensions']['cells']) == 6
     assert sum(cell[2] for cell in result['heatmaps']['box_dimensions']['cells']) == 4
     assert sum(cell[2] for cell in result['heatmaps']['relative_box_dimensions']['cells']) == 4
     assert result['instance_counts'] == {'0': 4, '1': 1, '3': 1}
     filtered = audit_agent_distribution(dict(run_id=run_id, query=dict(dataset_id=dataset_id, category='edge')), jobs.db.db_path)
-    assert (filtered['image_count'], filtered['box_count']) == (2, 3)
-    assert filtered['classes'] == [dict(category='edge', image_count=2, box_count=3)]
+    assert (filtered['image_count'], filtered['annotation_count']) == (2, 3)
+    assert filtered['classes'] == [dict(category='edge', image_count=2, annotation_count=3)]
     assert filtered['heatmaps']['box_dimensions']['x_edges'] == result['heatmaps']['box_dimensions']['x_edges']
 
     (tmp_path / 'labels' / 'part-0.json').write_text(json.dumps(dict(shapes=[])))
@@ -116,11 +116,11 @@ def test_distribution_service_handles_empty_cross_filters_and_invalid_geometry(d
     second = second.model_copy(update={'sample': second.sample.model_copy(update={'dataset_id': 'other'})})
     source = AuditDistributions(manifest.model_copy(update={'dataset_ids': [dataset_id, 'other'], 'records': [first, second, *remaining]}))
     whole = source.view()
-    assert (whole.image_count, whole.box_count, whole.invalid_box_count) == (6, 5, 1)
+    assert (whole.image_count, whole.annotation_count, whole.invalid_annotation_count) == (6, 5, 1)
     assert sum(whole.histograms['relative_area'].counts) == 4
-    assert source.geometry().box_count == 4
+    assert source.geometry().annotation_count == 5
     empty = source.view(AuditDistributionQuery(dataset_id='other', category='hole'))
-    assert (empty.image_count, empty.box_count) == (0, 0)
+    assert (empty.image_count, empty.annotation_count) == (0, 0)
     assert empty.classes == []
     assert empty.histograms['relative_area'].density == []
     assert empty.heatmaps['box_dimensions'].cells == []
@@ -141,8 +141,8 @@ def test_folder_distribution_counts_image_labels_without_inventing_boxes(distrib
         for index, record in enumerate(manifest.records)]
     source = AuditDistributions(manifest.model_copy(update={'records': records}))
     result = source.view()
-    assert result.box_count is None
-    assert [(item.category, item.image_count, item.box_count) for item in result.classes] == [('FAIL', 2, None), ('PASS', 4, None)]
+    assert result.annotation_count is None
+    assert [(item.category, item.image_count, item.annotation_count) for item in result.classes] == [('FAIL', 2, None), ('PASS', 4, None)]
     assert list(result.heatmaps) == ['image_dimensions']
     assert list(result.histograms) == ['image_aspect_ratio']
     assert result.instance_counts == {} and result.area_by_category == []
@@ -167,3 +167,41 @@ def test_boxplot_whiskers_outliers_and_normalized_upper_boundary_use_all_origina
     heatmap = view.heatmaps['relative_box_dimensions']
     assert sum(count for _, _, count in heatmap.cells) == 5
     assert sum(count for _, y, count in heatmap.cells if y == len(heatmap.y_edges) - 2) == 1
+
+
+def test_polygon_and_rectangle_instances_share_statistics_without_rasterizing(distribution_audit):
+    from iad_core.audit.distribution import AuditDistributions
+    from iad_core.audit.distribution_models import AuditDistributionQuery
+    from iad_core.storage.models import Annotation
+
+    jobs, dataset_id, run_id = distribution_audit
+    manifest = jobs.snapshot(run_id).manifest
+    record = manifest.records[0]
+    sample = record.sample.model_copy(update={'width': 100, 'height': 100})
+    annotations = [
+        Annotation(annotation_id='triangle', sample_id=sample.sample_id, raw_label='edge',
+            annotation_type='polygon', polygon=[[0, 0], [20, 0], [0, 20]]),
+        Annotation(annotation_id='rectangle', sample_id=sample.sample_id, raw_label='edge',
+            annotation_type='bbox', bbox=[0, 0, 20, 20]),
+        Annotation(annotation_id='invalid', sample_id=sample.sample_id, raw_label='hole',
+            annotation_type='polygon', polygon=[[0, 0], [10, 10], [20, 20]]),
+    ]
+    source = AuditDistributions(manifest.model_copy(update={'records': [
+        record.model_copy(update={'sample': sample, 'annotations': annotations}),
+        manifest.records[-1].model_copy(update={'annotations': []}),
+    ]}))
+    view = source.view()
+    assert view.annotation_count == 3
+    assert view.geometry_types == {'bbox': 1, 'polygon': 2}
+    assert view.invalid_annotation_count == 1
+    assert view.unannotated_images == 1
+    assert [(row.category, row.image_count, row.annotation_count) for row in view.classes] == [('edge', 1, 2), ('hole', 1, 1)]
+    assert view.summaries['relative_area'].minimum == pytest.approx(.02)
+    assert view.summaries['relative_area'].maximum == pytest.approx(.04)
+    assert sum(view.histograms['relative_area'].counts) == 2
+    assert source.geometry().annotation_count == 3
+    assert source.geometry().annotated_images == 1
+    assert source.geometry().invalid_annotation_count == 1
+    edge = source.view(AuditDistributionQuery(dataset_id=dataset_id, category='edge'))
+    assert edge.annotation_count == 2 and edge.classes[0].image_count == 1
+    assert edge.geometry_types == {'bbox': 1, 'polygon': 1}

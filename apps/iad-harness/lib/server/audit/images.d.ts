@@ -12,6 +12,7 @@ export declare class AuditImageAgents {
     private readonly subagents;
     private readonly snapshot;
     private readonly failures;
+    private readonly reviews;
     private readonly samples;
     constructor(bridge: PythonBridge, runId: string, attachments: NativeMediaAttachments, subagents: SubagentRuntime, snapshot: AuditWorkflowSnapshot, samples: AuditSampleRun[], failures: Map<string, unknown>);
     private identity;

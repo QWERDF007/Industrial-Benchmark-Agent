@@ -59,31 +59,29 @@ class AuditReports:
             program_issue_types=dict(program_images),
             observation_images=len(observations),observation_occurrences=sum(map(len,observations)))
 
+    def matching_versions(self, run_id: str, query: AuditRecordQuery) -> list[dict]:
+        conditions, values = ['job_id=?'], [run_id]
+        if query.sample_id:
+            conditions.append('sample_id=?')
+            values.append(query.sample_id)
+        if query.state:
+            conditions.append("CASE WHEN state='COMPLETED' AND result_json IS NOT NULL THEN json_extract(result_json,'$.state') ELSE 'incomplete' END=?")
+            values.append(query.state)
+        for value, field, key in ((query.issue_type, 'findings', 'type'),
+                (query.consistency_assessment, 'consistency_review', 'assessment'), (query.knowledge_id, 'check_assessments', 'check_id')):
+            if value:
+                conditions.append(f"EXISTS (SELECT 1 FROM json_each(result_json,'$.{field}') entry WHERE json_extract(entry.value,'$.{key}')=?)")
+                values.append(value)
+        with self.db.connection() as connection:
+            return [dict(row) for row in connection.execute('SELECT sample_id,ordinal,result_revision FROM audit_sample_runs WHERE '
+                + ' AND '.join(conditions) + ' ORDER BY ordinal', values)]
+
     def matching(self, run_id: str, query: AuditRecordQuery) -> list[AuditSampleRun]:
-        selected = []
-        for sample in self.state.samples(run_id):
-            final = sample.result
-            status = final.state if sample.state == 'COMPLETED' and final else 'incomplete'
-            if query.sample_id and query.sample_id != sample.sample_id or query.state and query.state != status:
-                continue
-            if query.issue_type and (final is None or not any(f.type == query.issue_type for f in final.findings)):
-                continue
-            if query.consistency_assessment and (final is None or not any(r.assessment == query.consistency_assessment for r in final.consistency_review)):
-                continue
-            if query.knowledge_id and (not final or not any(a.check_id == query.knowledge_id for a in final.check_assessments)):
-                continue
-            selected.append(sample)
-        return selected
+        return [self.state.sample(run_id, item['sample_id']) for item in self.matching_versions(run_id, query)]
 
     def records(self, run_id: str, query: dict) -> dict:
-        from iad_core.audit.master_models import AuditMasterRecord
-        query = AuditRecordQuery.model_validate(query)
-        selected = self.matching(run_id,query)
-        start = (query.page-1)*query.page_size
-        items = [AuditMasterRecord.capture(sample).model_dump(mode='json',exclude_computed_fields=True)
-            for sample in selected[start:start+query.page_size]]
-        return dict(kind='audit_records',job_id=run_id,
-            total=len(selected),page=query.page,page_size=query.page_size,items=items)
+        from iad_core.audit.master_records import AuditMasterRecords
+        return AuditMasterRecords(self).page(run_id, query)
 
     def session(self, run_id: str) -> AuditReportSession:
         with self.db.connection() as connection:
@@ -111,7 +109,8 @@ class AuditReports:
         return self.session(run_id)
 
     def delivered(self, run_id: str, call, evidence_ids: list[str] = ()):
-        samples = {sample.sample_id:sample for sample in self.state.samples(run_id)}
+        with self.db.connection() as connection:
+            samples = {row[0] for row in connection.execute('SELECT sample_id FROM audit_sample_runs WHERE job_id=?', (run_id,))}
         delivered = set()
         for message in call.request.get('messages',[]):
             for block in message.get('content',[]):
@@ -121,13 +120,13 @@ class AuditReports:
                     page = json.loads(block['text'].splitlines()[0])
                 except (ValueError,KeyError):
                     continue
-                if isinstance(page,dict) and page.get('kind')=='audit_records' and page.get('job_id')==run_id:
+                if isinstance(page,dict) and page.get('kind')=='audit_records' and page.get('job_id')==run_id and page.get('representation', 'facts') in ('facts', 'detail'):
                     delivered.update((item['sample_id'],item['result_revision']) for item in page['items'])
-        if {item[0] for item in delivered} - samples.keys():
+        if {item[0] for item in delivered} - samples:
             raise ValueError('主 Agent 读取包含本作业范围外记录')
         from iad_core.evidence.registrations import PreparedRegistration
         with self.db.connection() as connection:
-            available = {image.image.evidence_id for row in connection.execute('SELECT media_json FROM audit_sample_media WHERE job_id=?',(run_id,))
+            available = {image.image.evidence_id for row in (connection.execute('SELECT media_json FROM audit_sample_media WHERE job_id=?',(run_id,)) if evidence_ids else [])
                 for image in PreparedRegistration.model_validate_json(row[0]).images
                 if image.image.is_whole_image and image.image.representation=='raw'}
             if set(evidence_ids) - available:

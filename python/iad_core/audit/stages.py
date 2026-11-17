@@ -49,16 +49,16 @@ class AuditStages:
         return self.resolve(self.state.snapshot(run_id), samples, self.profile(run_id))
 
     def context(self, run_id: str) -> dict:
-        from iad_core.audit.master_models import AuditMasterRecord
+        from iad_core.audit.master_records import AuditMasterRecords
+        from iad_core.audit.master_models import AuditMasterDatasetProfile
+        from iad_core.audit.reports import AuditReports
         if self.status(run_id).phase != 'defect_profile':
             raise ValueError('全部缺陷图像审计完成后才能生成缺陷画像')
-        records = {record.sample.sample_id: record for record in self.state.snapshot(run_id).manifest.records}
         profile = self.profile(run_id)
-        return dict(kind='audit_records', job_id=run_id, phase='defect_profile', revision=profile.revision if profile else 0,
-            items=[{**AuditMasterRecord.capture(sample).model_dump(mode='json'),
-                'category_labels': sorted({annotation.raw_label for annotation in records[sample.sample_id].annotations if not annotation.is_ignored})}
-                for sample in self.state.samples(run_id) if self.role(records[sample.sample_id]) == 'defect'],
-            previous_profile=profile.model_dump(mode='json') if profile else None)
+        return dict(kind='audit_master_index', job_id=run_id, phase='defect_profile', revision=profile.revision if profile else 0,
+            items=[], record_index=AuditMasterRecords(AuditReports(self.db)).index(run_id, 'defects'),
+            dataset_profile=AuditMasterDatasetProfile.capture(self.state.snapshot(run_id).dataset_profile).model_dump(mode='json'),
+            previous_profile=profile.model_dump(mode='json', exclude={'source_versions'}) if profile else None)
 
     def publish(self, run_id: str, request: dict) -> AuditDefectProfile:
         from iad_core.audit.reports import AuditReports
@@ -101,6 +101,10 @@ class AuditStages:
             raise ValueError('缺陷画像版本已变化')
         profile = AuditDefectProfile(revision=submission.base_revision+1, source_versions=versions,
             features=submission.features, limitations=submission.limitations)
+        from iad_core.audit.profile_semantics import AuditProfileSemantics
+        semantics = AuditProfileSemantics(self.state, run_id)
+        changed = previous is not None and semantics.facts(previous) != semantics.facts(profile)
+        profile = profile.model_copy(update={'semantic_revision': (previous.semantic_revision + int(changed)) if previous else 1})
         with self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
             job = connection.execute('SELECT status FROM job_runs WHERE job_id=?', (run_id,)).fetchone()
@@ -108,21 +112,26 @@ class AuditStages:
                 raise ValueError('作业已停止，不能发布缺陷画像')
             connection.execute('INSERT INTO audit_defect_profiles VALUES(?,?,?,?,?)',
                 (run_id, profile.revision, submission.commit_key, canonical, profile.model_dump_json()))
-            if previous:
-                from uuid import uuid4
+            if previous and changed:
                 from iad_core.audit.delegation_models import AuditReviewRequest
-                reference = next((ref for feature in profile.features for ref in feature.references), None)
+                from iad_core.audit.rechecks import AuditRechecks
+                references = [ref for feature in profile.features for ref in feature.references]
+                if not references:
+                    references = [dict(sample_id=identity, result_revision=version, kind='image') for identity, version in versions.items()][:1]
                 for sample in samples:
-                    if self.role(records[sample.sample_id]) != 'normal' or sample.state != 'COMPLETED' or reference is None:
+                    if self.role(records[sample.sample_id]) != 'normal' or sample.state != 'COMPLETED':
                         continue
                     review = AuditReviewRequest(sample_id=sample.sample_id, result_revision=sample.result_revision,
-                        reason='缺陷画像已更新，请依据当前缺陷参考重新核对良品判断。', conflict_refs=[reference])
+                        reason='缺陷判别依据已更新，请依据当前缺陷参考重新核对良品判断。', conflict_refs=references[:4])
                     batch = connection.execute('SELECT number FROM audit_batches,json_each(sample_ids_json) m WHERE job_id=? AND m.value=?',
                         (run_id, sample.sample_id)).fetchone()
-                    connection.execute('INSERT INTO audit_rechecks VALUES(?,?,?,?,?,?,?,?)',
-                        (run_id, 'review_'+uuid4().hex, batch[0], sample.sample_id, sample.result_revision,
-                            review.model_dump_json(), 'PENDING', None))
+                    AuditRechecks.enqueue(connection, run_id, review, batch[0])
+
         return profile
+
+    def compatible(self, run_id: str, profile_revision: int | None) -> bool:
+        from iad_core.audit.profile_semantics import AuditProfileSemantics
+        return AuditProfileSemantics(self.state, run_id).compatible(profile_revision, self.profile(run_id))
 
     def validate_observation(self, run_id, sample_id, observation, observed):
         if not observation.complete:

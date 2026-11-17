@@ -11,7 +11,7 @@ const report = {
   conclusion:'可用于本范围的视觉探索，不能直接认证为正式测试集。',coverage_analysis:'覆盖转角与环状邻接。',
   consistency_analysis:'根据原始标注关系分析，本轮仍有遗漏待复核。',knowledge_analysis:'',knowledge_titles:{},
   independence_analysis:'没有物理件登记，独立性未评价。',review_priorities:['先复核重复出现的遗漏。'],limitations:['没有像素标注。'],
-  dataset_profile:{dataset_format:'labelme',total_images:12,geometry:{box_count:18,annotated_images:8,
+  dataset_profile:{dataset_format:'labelme',total_images:12,geometry:{annotation_count:18,annotated_images:8,
     relative_area:{q25:0.001,median:0.002,q75:0.003},relative_width:{q25:0.02,median:0.04,q75:0.06},
     relative_height:{q25:0.01,median:0.03,q75:0.05},aspect_ratio:{q25:0.5,median:1,q75:2},
     center_x:{q25:0.2,median:0.5,q75:0.8},center_y:{q25:0.1,median:0.4,q75:0.7}},
@@ -52,8 +52,8 @@ test('score summary shows a composite donut and each frozen weighted contributio
 test('audit distribution presents program aggregates as charts while retaining necessary explanation tables',()=>{
   const summary={minimum:.005,q25:.00875,median:.015,q75:.025,maximum:.04,lower_whisker:.005,upper_whisker:.04,count:4,outliers:[]};
   const heatmap={x_edges:[0,100,400],y_edges:[0,100,300],cells:[[1,1,6]]};
-  const view={dataset_id:null,category:null,image_count:6,box_count:4,invalid_box_count:0,unannotated_images:4,
-    classes:[{category:'edge',image_count:2,box_count:3},{category:'hole',image_count:1,box_count:1}],
+  const view={dataset_id:null,category:null,image_count:6,annotation_count:4,geometry_types:{polygon:3,bbox:1},invalid_annotation_count:0,unannotated_images:4,
+    classes:[{category:'edge',image_count:2,annotation_count:3},{category:'hole',image_count:1,annotation_count:1}],
     instance_counts:{0:4,1:1,3:1},datasets:{scope:6},quality:{PASS:6},metadata:{station:{'':6},camera:{camA:6}},
     heatmaps:{image_dimensions:heatmap,box_dimensions:heatmap,relative_box_dimensions:heatmap,
       box_centers:{x_edges:[0,.5,1],y_edges:[0,.5,1],cells:[[1,1,4]]}},
@@ -67,7 +67,7 @@ test('audit distribution presents program aggregates as charts while retaining n
   assert.match(html,/类别/);
   const distribution=html.split('data-report-section="distribution"')[1].split('data-report-section="consistency"')[0];
   assert.doesNotMatch(distribution,/<table/,'数据分布不应为图表重复绘制数据表');
-  assert.match(distribution,/edge[^"<]*图像（张）：2[^"<]*标注框（个）：3/);
+  assert.match(distribution,/edge[^"<]*图像（张）：2[^"<]*标注实例（个）：3/);
   assert.match(distribution,/未登记：站点/);
   assert.match(html,/edge/);
   assert.match(html,/data-chart-type="heatmap"/);
@@ -81,7 +81,7 @@ test('audit distribution presents program aggregates as charts while retaining n
     assert.match(figures.find(figure=>figure.includes(`data-chart="${id}"`)),/data-chart-type="distribution"/,'长宽比和框面积统一使用占比分布曲线');
   assert.match(figures.find(figure=>figure.includes('data-chart="relative-area"')),/数量（个）：2，占比：50%/);
   assert.doesNotMatch(distribution,/<select|数据分布类别|归一化比例|频数/,'移除类别、单位和密度视图切换');
-  assert.match(figures.find(figure=>figure.includes('data-chart="box-dimensions"')),/框宽（像素）/);
+  assert.match(figures.find(figure=>figure.includes('data-chart="box-dimensions"')),/外接宽（像素）/);
   const centers=figures.find(figure=>figure.includes('data-chart="box-centers"'));
   assert.match(centers,/水平位置 0\.5–1，垂直位置 0\.5–1，数量：4/);
   assert.doesNotMatch(centers,/%/,'框中心位置使用0–1坐标');

@@ -16,6 +16,7 @@ export class AuditImageAgents {
     subagents;
     snapshot;
     failures;
+    reviews = new Map();
     samples;
     constructor(bridge, runId, attachments, subagents, snapshot, samples, failures) {
         this.bridge = bridge;
@@ -30,7 +31,7 @@ export class AuditImageAgents {
         const sample = sessionId ? this.samples.get(sessionId) : undefined;
         if (!sample)
             throw new Error('图级工具只属于本图独立子 Agent');
-        return { run_id: this.runId, sample_id: sample.sample_id };
+        return { run_id: this.runId, sample_id: sample.sample_id, review_id: this.reviews.get(sample.session_id) };
     }
     register(scope) {
         const onDemand = this.snapshot.context_policy === 'evidence-on-demand-v1';
@@ -45,7 +46,7 @@ export class AuditImageAgents {
         scope.tools.register(defineTool({ name: 'audit_commit', description: '提交当前图的独立结果、全部疑点、简短观察与视觉特征，逐项回应上游差异、所选知识和本批线索。证据只引用实际观察的完整原图。',
             parameters: onDemand ? auditEvidenceCommitParameters : auditCommitParameters, output: workbenchJsonOutput, execute: async (submission, execution) => {
                 const result = await this.bridge.execute('audit_agent_commit', { ...this.identity(execution.agent?.id), submission }, execution.signal);
-                if (result.execution_status === 'completed')
+                if (result.execution_status !== 'incomplete')
                     execution.concludeTurn();
                 return onDemand ? { execution_status: result.execution_status } : result;
             } }));
@@ -57,7 +58,10 @@ export class AuditImageAgents {
         const allowed = new Set(allowedSampleIds);
         const pending = samples.filter(sample => allowed.has(sample.sample_id) && (requested.has(sample.sample_id) || sample.state === 'PENDING' || sample.state === 'RUNNING'));
         await runConcurrent(pending, this.snapshot.settings.concurrency, signal, async (sample) => {
-            const identity = { run_id: this.runId, sample_id: sample.sample_id };
+            const review = reviews.find(item => item.sample_id === sample.sample_id);
+            if (review)
+                this.reviews.set(sample.session_id, review.review_id);
+            const identity = { run_id: this.runId, sample_id: sample.sample_id, review_id: review?.review_id };
             const childId = SessionId(sample.session_id);
             const abort = () => this.subagents.interrupt(childId, { kind: 'ancestor', agent: parent });
             try {
@@ -101,7 +105,20 @@ export class AuditImageAgents {
                 signal.throwIfAborted();
                 if (this.failures.has(sample.session_id))
                     throw this.failures.get(sample.session_id);
-                const saved = await this.bridge.execute('audit_agent_sample', identity);
+                let saved = await this.bridge.execute('audit_agent_sample', identity);
+                if (saved.state !== 'FAILED' && saved.result_revision <= sample.result_revision) {
+                    await this.subagents.sendMessage(parent, childId, [{ type: 'text', text: JSON.stringify({ kind: 'audit_finalize', sample_id: sample.sample_id, review_id: review?.review_id }) + '\n本次只执行结构化收尾。复用已观察的事实和已实发证据，不再读取或发送图片；通过audit_commit提交有充分依据的completed结果，仍无法判断则提交execution_status=failed、state=null及具体原因。不得从频次猜测业务结论。' }], { signal });
+                    const finalizingChild = parent.ctx.agents.get(childId);
+                    if (!finalizingChild)
+                        throw new Error('图级收尾会话未能恢复');
+                    await finalizingChild.whenIdle();
+                    signal.throwIfAborted();
+                    if (this.failures.has(sample.session_id))
+                        throw this.failures.get(sample.session_id);
+                    saved = await this.bridge.execute('audit_agent_sample', identity);
+                }
+                if (saved.state === 'FAILED')
+                    throw new Error(saved.result?.analysis || '图级审计执行失败');
                 if (saved.state !== 'COMPLETED' || saved.result_revision <= sample.result_revision)
                     throw new Error('子 Agent 结束但未提交当前图级终稿');
             }
@@ -110,6 +127,7 @@ export class AuditImageAgents {
                     await this.bridge.execute('audit_agent_failure', { ...identity, message: error instanceof Error ? error.message : String(error) });
             }
             finally {
+                this.reviews.delete(sample.session_id);
                 signal.removeEventListener('abort', abort);
                 await this.subagents.drainContinuableChildren(parent, [childId]);
             }

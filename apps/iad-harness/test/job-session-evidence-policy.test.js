@@ -93,7 +93,7 @@ test('tool images are sent once after the originating response is saved, and exp
   assert.equal(events.filter(event=>event.type==='image/offload').length,3);
 });
 
-test('one native overflow summary preserves unobserved tool material and reports its real capacity failure',{timeout:15000},async t=>{
+for(const oversized of [true,false])test(oversized?'oversized required material fails admission without marking the new image observed':'pending tool images survive pressure until the next business observation',{timeout:15000},async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-evidence-pressure-'));
   const requests=[],starts=[],errors=[];
   const provider=http.createServer(async(req,res)=>{
@@ -103,7 +103,10 @@ test('one native overflow summary preserves unobserved tool material and reports
       res.writeHead(200,{'Content-Type':'text/event-stream'});
       res.end('data: '+JSON.stringify({choices:[{index:0,delta:{content:'Opened the required next original; it has not been observed yet.'},finish_reason:'stop'}],usage:{prompt_tokens:200,completion_tokens:16}})+'\n\ndata: [DONE]\n\n');
     }else if(requests.length===1)respondFixtureTools(res,[{name:'required_material',arguments:{}}],{protocol:'openai-completions',model:'native'});
-    else{
+    else if(!oversized){
+      res.writeHead(200,{'Content-Type':'text/event-stream'});
+      res.end('data: '+JSON.stringify({choices:[{index:0,delta:{content:'Observed the next original.'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');
+    }else{
       res.writeHead(400,{'Content-Type':'application/json'});
       res.end(JSON.stringify({error:{code:'context_length_exceeded',message:'maximum context length exceeded by required current material'}}));
     }
@@ -116,21 +119,56 @@ test('one native overflow summary preserves unobserved tool material and reports
   await host.withAgent('pressure',{evidenceOnDemand:true,agentOptions:{provider:'fixture',model:'native',maxTokens:128},setup:async scope=>{
     scope.provide('credentials',{resolve:async()=>({value:'fixture-key'})});new LocalAttachmentStore(scope,{dshHome:root});
     attachment=await scope.attachments.saveImage({data:png,mediaType:'image/png',name:'whole.png'});
-    await scope.plugin(piAi,{providers:{fixture:{api:'openai-completions',baseURL:`http://127.0.0.1:${provider.address().port}/v1`,apiKeyEnv:'FIXTURE_KEY',models:[{id:'native',input:['text','image'],contextWindow:8192,maxTokens:128}]}}});
+    await scope.plugin(piAi,{providers:{fixture:{api:'openai-completions',baseURL:`http://127.0.0.1:${provider.address().port}/v1`,apiKeyEnv:'FIXTURE_KEY',models:[{id:'native',input:['text','image'],contextWindow:oversized?8192:32768,maxTokens:128}]}}});
     new NativeModelCalls().attach(scope,{start:async request=>{starts.push(request);},end:async()=>{}});
     scope.on('agent/error',event=>errors.push(String(event.error)));
     scope.tools.register(defineTool({name:'required_material',description:'Read the complete next original and its required metadata.',parameters:{},
-      output:{schema:{type:'json'},render:()=>[{type:'text',text:'Required original metadata. '.repeat(5000)},{type:'image',attachment}]},execute:()=>({})}));
+      output:{schema:{type:'json'},render:()=>[{type:'text',text:'Required original metadata. '.repeat(oversized?5000:1000)},{type:'image',attachment}]},execute:()=>({})}));
   }},async agent=>{
     agent.followup({id:MessageId('first'),role:'user',source:{kind:'user'},content:[{type:'image',attachment}]});await agent.whenIdle();
   });
-  assert.equal(starts.filter(call=>call.request.purpose==='compaction').length,1);
-  assert.equal(requests.length,3);
-  assert.equal(errors.length,1);assert.match(errors[0],/above threshold|maximum context length exceeded/);
+  assert.equal(starts.filter(call=>call.request.purpose==='compaction').length,0);
+  assert.equal(requests.length,oversized?1:2);
+  assert.equal(errors.length,oversized?1:0);
+  if(oversized)assert.match(errors[0],/容量预算/);
+  else assert.equal(requests.at(-1).messages.flatMap(message=>Array.isArray(message.content)?message.content:[]).filter(block=>block.type==='image_url').length,1,'待观察图片必须由业务请求实际读取，不能被摘要代替');
   const events=(await host.read('pressure')).events;
   const initial=events.find(event=>event.type==='user/message'&&event.data.id==='first');
   const offloads=events.filter(event=>event.type==='image/offload');
-  assert.equal(offloads.length,1);
+  assert.equal(offloads.length,oversized?1:2);
   assert.ok(offloads[0].data.targets.every(target=>target.seq===initial.seq));
-  assert.ok((await host.exportJsonl('pressure')).includes('Required original metadata. '.repeat(5000)));
+  assert.ok((await host.exportJsonl('pressure')).includes('Required original metadata. '.repeat(oversized?5000:1000)));
+});
+
+test('pending text facts reach a business request before becoming eligible for compaction',{timeout:15000},async t=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-fact-delivery-'));
+  const requests=[],errors=[];
+  const facts='Current unobserved annotation facts. '.repeat(1000);
+  const provider=http.createServer(async(req,res)=>{
+    let raw='';for await(const chunk of req)raw+=chunk;
+    const body=JSON.parse(raw);requests.push(body);
+    if(requests.length===1)respondFixtureTools(res,[{name:'read_facts',arguments:{}}]);
+    else{
+      res.writeHead(200,{'Content-Type':'text/event-stream'});
+      res.end('data: '+JSON.stringify({choices:[{index:0,delta:{content:'Fact index retained.'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');
+    }
+  });
+  await new Promise(resolve=>provider.listen(0,'127.0.0.1',resolve));
+  const host=await JobSessionHost.open(root,async id=>path.join(root,id,'events.jsonl'));
+  t.after(async()=>{await host.dispose();provider.closeAllConnections();await new Promise(resolve=>provider.close(resolve));await fs.rm(root,{recursive:true,force:true});});
+  await host.create('facts');
+  await host.withAgent('facts',{evidenceOnDemand:true,agentOptions:{provider:'fixture',model:'native',maxTokens:128},setup:async scope=>{
+    scope.provide('credentials',{resolve:async()=>({value:'fixture-key'})});
+    await scope.plugin(piAi,{providers:{fixture:{api:'openai-completions',baseURL:`http://127.0.0.1:${provider.address().port}/v1`,apiKeyEnv:'FIXTURE_KEY',models:[{id:'native',input:['text'],contextWindow:32768,maxTokens:128}]}}});
+    scope.on('agent/error',event=>errors.push(String(event.error)));
+    scope.tools.register(defineTool({name:'read_facts',description:'Read the current page.',parameters:{},
+      output:{schema:{type:'json'},render:()=>[{type:'text',text:facts}]},execute:()=>({})}));
+  }},async agent=>{
+    agent.followup({id:MessageId('first'),role:'user',source:{kind:'user'},content:[{type:'text',text:'Read the next facts page.'}]});
+    await agent.whenIdle();
+  });
+  assert.deepEqual(errors,[]);
+  assert.equal(requests.length,2,'当前事实直接进入业务请求，不先交给摘要模型');
+  assert.ok(requests[1].messages.some(message=>message.role==='tool'&&message.content===facts));
+  assert.equal((await host.read('facts')).events.filter(event=>event.type==='compaction/summary').length,0);
 });

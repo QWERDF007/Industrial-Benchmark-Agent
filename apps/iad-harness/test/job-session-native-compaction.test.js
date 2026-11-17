@@ -45,14 +45,16 @@ for(const mode of ['pressure','overflow','images','bounded-overflow'])test(`offi
     await host.create('native-job');
     await host.withAgent('native-job',options,async agent=>{
       for(let index=0;index<3;index++){
-        agent.followup({id:MessageId('part-'+index),role:'user',source:{kind:'user'},content:[{type:'text',text:index<2?'Counterexample NG-7, pending sample-13. '+'observed appearance '.repeat(1200):'Continue sample-13.'},...(mode==='images'?[{type:'image',attachment}]:[])]});
+        agent.followup({id:MessageId('part-'+index),role:'user',source:{kind:'user'},content:[{type:'text',text:index<2?'Counterexample NG-7, pending sample-13. '+'observed appearance '.repeat(mode==='bounded-overflow'?150:1200):'Continue sample-13.'},...(mode==='images'?[{type:'image',attachment}]:[])]});
         await agent.whenIdle();
       }
     });
     if(mode==='bounded-overflow'){
-      assert.ok(errors.some(error=>error.includes('context')));assert.ok(rejected);
-      assert.equal(starts.filter(call=>call.request.purpose==='compaction').length,1,'已有摘要无法修复当前请求时不再次压缩旧摘要');
-      assert.equal(businessRequests,3,'容量错误须保留为实际失败，不进行无效重试');
+      assert.deepEqual(errors,[]);assert.ok(rejected);
+      assert.equal(starts.filter(call=>call.request.purpose==='compaction').length,1,'服务端超限只执行一次有效压缩恢复');
+      assert.equal(businessRequests,4,'超限后仅使用已缩小的输入恢复一次');
+      const business=requests.filter(body=>!JSON.stringify(body.messages.at(-1)).includes('compaction engine'));
+      assert.ok(JSON.stringify(business.at(-1).messages).length<JSON.stringify(business[2].messages).length);
     }else assert.deepEqual(errors,[]);
     assert.equal(starts.length,ends.length);
     const events=(await host.read('native-job')).events;

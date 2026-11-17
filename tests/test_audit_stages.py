@@ -108,3 +108,74 @@ def test_published_defect_profile_controls_normal_evidence_and_survives_reload(m
     from iad_core.audit.stage_models import AuditDefectProfile
     stale = AuditDefectProfile(**{**profile.model_dump(), 'source_versions': {defect_id:2}})
     assert AuditStages.resolve(jobs.snapshot(run), [AuditStageSample.capture(sample) for sample in jobs.samples(run)], stale).phase == 'defect_profile'
+
+
+def test_equivalent_profile_refresh_reuses_normals_and_semantic_change_merges_reviews(mixed_audit):
+    from copy import deepcopy
+    from iad_core.audit.stages import AuditStages
+    from iad_core.audit.batches import AuditBatches
+    from iad_core.audit.reports import AuditReports
+    from iad_core.audit.evidence import AuditEvidence
+    from iad_core.audit.delegation_models import AuditReviewRequest
+    from tests.audit_support import master_observed, batch_submission
+
+    jobs, run = mixed_audit
+    stages, reports, batches = AuditStages(jobs), AuditReports(jobs.db), AuditBatches(jobs)
+    defect = stages.status(run).pending_sample_ids[0]
+    save_image(jobs, run, jobs.sample(run, defect))
+    reports.begin(run, phase='defect_profile')
+    master_observed(jobs, run, stages.context(run), [AuditEvidence(jobs).prepare(run, defect, defect).evidence_id])
+    feature = dict(feature_id='scratch', category='划痕', signature='局部细暗线', normal_distinctions='接缝连续',
+        references=[dict(sample_id=defect, result_revision=1, kind='image')])
+    first = stages.publish(run, dict(commit_key='p1', base_revision=0, features=[feature]))
+    assert first.semantic_revision == 1
+    for sample in jobs.samples(run):
+        if sample.sample_id != defect:
+            save_image(jobs, run, sample)
+    master_observed(jobs, run, batches.context(run))
+    request = dict(sample_id=defect, result_revision=1, reason='复看缺陷', conflict_refs=feature['references'])
+    batches.publish(run, batch_submission(jobs, run, review_requests=[request]))
+    review = batches.rechecks(run)[0]
+    jobs.session_created(run, defect, review_id=review.review_id)
+    from iad_core.audit.commits import AuditCommits
+    AuditCommits(jobs).accept(run, defect, dict(commit_key='defect-v2', final=jobs.sample(run, defect).result.model_dump()), review_id=review.review_id)
+    context = stages.context(run)
+    assert context['record_index']['unread'] == 1
+    page = reports.records(run, dict(scope='defects'))
+    assert [(item['sample_id'],item['result_revision']) for item in page['items']] == [(defect,2)]
+    master_observed(jobs, run, page)
+    feature2 = deepcopy(feature)
+    feature2['references'][0]['result_revision'] = 2
+    second = stages.publish(run, dict(commit_key='p2', base_revision=1, features=[feature2]))
+    assert second.semantic_revision == first.semantic_revision
+    assert batches.rechecks(run) == []
+    assert stages.compatible(run, first.revision)
+
+    master_observed(jobs, run, batches.context(run))
+    request['result_revision'] = 2
+    request['conflict_refs'] = feature2['references']
+    batches.publish(run, batch_submission(jobs, run, review_requests=[request]))
+    review = batches.rechecks(run)[0]
+    jobs.session_created(run, defect, review_id=review.review_id)
+    AuditCommits(jobs).accept(run, defect, dict(commit_key='defect-v3', final=jobs.sample(run, defect).result.model_dump()), review_id=review.review_id)
+    master_observed(jobs, run, reports.records(run, dict(scope='defects')))
+    feature3 = deepcopy(feature2)
+    feature3['references'][0]['result_revision'] = 3
+    feature3['normal_distinctions'] = '连续性不足以区分，还需对照局部破损'
+    third = stages.publish(run, dict(commit_key='p3', base_revision=2, features=[feature3]))
+    assert third.semantic_revision == 2
+    normals = [sample for sample in jobs.samples(run) if sample.sample_id != defect]
+    assert {item.sample_id for item in batches.rechecks(run)} == {sample.sample_id for sample in normals}
+    assert not stages.compatible(run, first.revision)
+    queued = batches.rechecks(run)[0]
+    with jobs.db.connection() as connection:
+        from iad_core.audit.rechecks import AuditRechecks
+        AuditRechecks.enqueue(connection, run, AuditReviewRequest(sample_id=queued.sample_id,
+            result_revision=queued.result_revision, reason='额外核对外观', conflict_refs=feature3['references']), queued.batch_number)
+    assert len([item for item in batches.rechecks(run) if item.sample_id == queued.sample_id]) == 1
+    jobs.session_created(run, queued.sample_id, review_id=queued.review_id)
+    active = [item for item in batches.rechecks(run) if item.sample_id == queued.sample_id]
+    assert len(active) == 1 and active[0].state == 'RUNNING'
+    assert '额外核对外观' in active[0].reason
+    with pytest.raises(ValueError, match='复核'):
+        AuditCommits(jobs).accept(run, queued.sample_id, dict(commit_key='wrong-review', final=jobs.sample(run, queued.sample_id).result.model_dump()), review_id='wrong')

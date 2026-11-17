@@ -141,6 +141,12 @@ class IdentityInputs:
             raise ValueError('必须保存全部未配对区域的实际观察')
         pairs = {pair.region_pair_id: pair for pair in plan.region_pairs}
         media = {view.evidence_id for view in record.media}
+        if record.dispute_checks:
+            from iad_core.consistency.identity_disputes import IdentityDisputes
+            observed = {item.observation_id for item in IdentityDisputes(self.db).read(run_id, anchor_id, record.candidate_id)}
+            if any(check.observation_id not in observed or not set(check.media_ids) <= media
+                    for check in record.dispute_checks):
+                raise ValueError('内容争议核对须引用本图像对真实观察和实际图证')
         for check in record.region_checks:
             pair = pairs.get(check.region_pair_id)
             if (pair is None or pair.mapping != 'registered' or pair.main_media is None or pair.candidate_media is None

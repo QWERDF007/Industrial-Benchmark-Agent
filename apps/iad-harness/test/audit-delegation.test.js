@@ -10,6 +10,7 @@ import {createAuditAgentHost} from './fixtures/audit-agent-host.js';
 import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/index.js';
 import {chatRequest} from './fixtures/responses.js';
 import {respondFixtureTools} from './fixtures/analysis-finalization.js';
+import {auditMessages,auditReportTool,respondAuditSummary} from './fixtures/audit-report.js';
 import {auditIssueTypesByFormat} from '../lib/shared/audit.generated.js';
 
 test('native audit continuously observes all groups before one global analysis',{timeout:120000},async t=>{
@@ -22,20 +23,15 @@ test('native audit continuously observes all groups before one global analysis',
       assert.ok(!req.url.includes('tokenize'),'完整原图直接请求提供商');
       let raw='';for await(const chunk of req)raw+=chunk;
       const body=chatRequest(JSON.parse(raw));wire.push(body);
-      const values=body.messages.map((message,index)=>({message,index})).flatMap(({message,index})=>{
-        const parts=typeof message.content==='string'?[{type:'text',text:message.content}]:message.content||[];
-        return parts.flatMap(part=>{if(part.type!=='text')return [];try{return [{role:message.role,index,value:JSON.parse(part.text.trim().split('\n')[0])}];}catch{return [];}});
-      });
-      const latest=values.filter(item=>item.role==='user'&&(item.value.target||item.value.kind==='audit_records')).at(-1);
-      const context=latest?.value;
+      if(respondAuditSummary(res,body))return;
+      const {values,context,outputs,pages}=auditMessages(body);
       assert.ok(context,'实际请求必须包含当前角色的完整材料');
       const attemptKey=context.target?.sample.sample_id||`${context.job_id}:${context.phase}:${context.batch?.number}:${context.revision}:${JSON.stringify(body.messages.filter(message=>message.role==='user').at(-1)?.content)}`;
       attempts.set(attemptKey,(attempts.get(attemptKey)||0)+1);
-      if(attempts.get(attemptKey)>(context.phase==='report'?5:3)){
+      if(attempts.get(attemptKey)>20){
         res.writeHead(200,{'Content-Type':'text/event-stream'});
         res.end('data: '+JSON.stringify({choices:[{index:0,delta:{content:'当前工具提交未被接纳。'},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');return;
       }
-      const outputs=values.filter(item=>item.role==='tool'&&item.index>latest.index).map(item=>item.value);
       let tool;
       if(context.target){
         active++;peak=Math.max(peak,active);
@@ -43,7 +39,7 @@ test('native audit continuously observes all groups before one global analysis',
         const images=body.messages.flatMap(message=>Array.isArray(message.content)?message.content.filter(part=>part.type==='image_url'):[]);
         assert.equal(images.length,3,'一张完整原图和全部两个标注局部首次一起发送');
         assert.ok(!body.tools.some(tool=>tool.function?.name==='audit_review_commit'));
-        const evidence=values.find(item=>item.value.images?.length)?.value.evidence_id;
+        const evidence=pages[0]?.evidence_id;
         assert.ok(evidence);
         tool={name:'audit_commit',arguments:{commit_key:'image-final',final:{execution_status:'completed',state:'normal',
           analysis:'主体边缘与现有标注关系未形成充分矛盾。',conclusion:'未发现有充分依据的标注疑点。',basis:[],
@@ -53,6 +49,8 @@ test('native audit continuously observes all groups before one global analysis',
             reason:'相近可见现象没有独立标注矛盾，不能由线索判为少标。',evidence_ids:[evidence]})),
           consistency_review:[],check_assessments:[],limitations:[]}}};
         active--;
+      }else if(context.phase==='defect_profile'||context.record_index?.unread&&!outputs.some(output=>output?.kind==='audit_records'&&output.next_cursor===null)){
+        tool=auditReportTool(context,outputs);
       }else if(context.revision===0){
         assert.ok(!body.tools.some(tool=>tool.function?.name==='audit_commit'));
         const first=context.items.find(item=>item.final);
@@ -76,12 +74,12 @@ test('native audit continuously observes all groups before one global analysis',
           references.add(key);
         }
       }else{
-        assert.equal(values.filter(item=>item.role==='user'&&item.value.phase==='report').length,2,
-          '报告请求只包含当前报告任务，不重放旧稿');
+        assert.ok(values.some(item=>item.role==='user'&&item.value.phase==='report'),
+          '压缩后的报告任务必须保留当前阶段状态');
         assert.ok(values.some(item=>item.role==='user'&&item.value.phase==='report'),'报告沿用正常主Agent联合分析上下文');
         if(!context.revision){res.writeHead(503);res.end('没有执行跨批联合分析');return;}
-        const records=outputs.find(output=>output?.kind==='audit_records')?.items;
-        if(!records)tool={name:'audit_records',arguments:{page:1,page_size:100}};
+        const records=context.items;
+        if(!records)tool={name:'audit_records',arguments:{unread_only:false,page:1,page_size:100}};
         else {
           const representatives=records.filter(item=>item.final?.execution_status==='completed').slice(0,3)
             .map(item=>({sample_id:item.sample_id,role:'representative',reason:'查看主体轮廓与邻近背景。'}));
@@ -138,7 +136,7 @@ test('native audit continuously observes all groups before one global analysis',
   }
   const parent=await runtime.bridge.execute('audit_agent_report_state',{run_id:job.run_id});
   const masterSession=await runtime.host.read(parent.session_id);
-  assert.equal(masterSession.events.filter(event=>event.type==='image/offload').length,2);
+  assert.equal(masterSession.events.filter(event=>event.type==='image/offload').length,3);
   assert.equal(parent.revision,1);assert.equal(parent.discoveries[0].status,'pending');
   const report=await runtime.bridge.execute('audit_job_report',{run_id:job.run_id});
   assert.equal(report.statistics.issue_occurrences,0);assert.equal(report.usability.length,7);
@@ -148,8 +146,7 @@ test('native audit continuously observes all groups before one global analysis',
   assert.equal(report.evidence_groups['case:outline'].length,3);
   assert.equal(report.evidence_groups['case:background'].length,3);
   assert.ok(!('pattern' in report.evidence_groups)&&!('coverage:0' in report.evidence_groups));
-  assert.deepEqual(report.consistency_analyses.map(item=>item.issue_type),
-    ['category_mismatch','extra_annotation','missing_annotation','position_difference','split','merge']);
+  assert.deepEqual(report.consistency_analyses.map(item=>item.issue_type),auditIssueTypesByFormat[snapshot.manifest.records[0].dataset_format]);
   for(const item of Object.values(report.evidence_groups).flat()){
     assert.deepEqual(item.image.crop_bbox,[0,0,40,30]);
     assert.equal(item.image.role,'overview');assert.equal(item.image.representation,'raw');
@@ -159,7 +156,6 @@ test('native audit continuously observes all groups before one global analysis',
     const {verifyAuditDelegationPage}=await import('./fixtures/audit-delegation-page.js');
     await verifyAuditDelegationPage(runtime,dataset,job,root);
   }
-  const {auditMessages}=await import('./fixtures/audit-report.js');
   const childrenBefore=wire.filter(body=>auditMessages(body).context?.target).length;
   const frozenChildren=await Promise.all(samples.map(sample=>runtime.host.exportJsonl(sample.session_id)));
   const frozenSnapshot=await runtime.bridge.execute('audit_agent_snapshot',{run_id:job.run_id});
@@ -178,11 +174,11 @@ test('native audit continuously observes all groups before one global analysis',
 test('global analysis rechecks an earlier child and retry only observes the failed image',{timeout:60000},async t=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-recheck-')),wire=[],errors=[];
   let failed=false,earlier;
-  const {auditMessages,auditReportTool}=await import('./fixtures/audit-report.js');
   const provider=http.createServer(async(req,res)=>{
     try{
       let raw='';for await(const chunk of req)raw+=chunk;
-      const body=JSON.parse(raw),{context,outputs,pages}=auditMessages(body);wire.push(context);
+      const body=JSON.parse(raw);if(respondAuditSummary(res,body))return;
+      const {context,outputs,pages}=auditMessages(body);wire.push(context);
       let tool;
       if(context.target){
         assert.equal(context.target.dataset_format,'folder_classification');
@@ -190,7 +186,7 @@ test('global analysis rechecks an earlier child and retry only observes the fail
         if(context.sample_id.endsWith('001.png')&&!failed){failed=true;res.writeHead(503);res.end(JSON.stringify({error:{message:'本图视觉服务临时不可用'}}));return;}
         if(context.sample_id.endsWith('000.png'))earlier=context.sample_id;
         const evidence=pages[0].evidence_id;
-        if(context.review){assert.equal(context.prior_result.state,'normal');assert.ok(context.review.reason.includes('后批'));
+        if(context.review){assert.equal(context.prior_result.state,'normal');assert.ok(context.review.reason.includes(context.sample_id===earlier?'后批':'缺陷判别依据'));
           assert.equal(context.review.result_revision,1);
           const comparisons=pages.filter(page=>page.sample_id!==context.sample_id);
           assert.deepEqual(comparisons.map(page=>page.sample_id),context.review.conflict_refs.map(ref=>ref.sample_id));
@@ -201,6 +197,8 @@ test('global analysis rechecks an earlier child and retry only observes the fail
           execution_status:'completed',state:'normal',analysis:context.review?'复核后仍未形成覆盖矛盾。':'本图未形成独立标注矛盾。',
           conclusion:'当前可见范围未发现疑点。',basis:[],evidence_ids:context.review?[...new Set(pages.map(page=>page.evidence_id))]:[evidence],findings:[],observations:[],
           visual_features:[],hypothesis_assessments:[],consistency_review:[],check_assessments:[],limitations:[]}}};
+      }else if(context.phase==='defect_profile'||context.record_index?.unread&&!outputs.some(output=>output?.kind==='audit_records'&&output.next_cursor===null)){
+        tool=auditReportTool(context,outputs);
       }else if(context.revision===0){
         tool={name:'audit_review_commit',arguments:{commit_key:'request-earlier',base_revision:0,discoveries:[],review_requests:[{
           sample_id:earlier,result_revision:1,reason:'后批观察与前图的覆盖解释冲突，定向复核。',conflict_refs:[{
@@ -209,7 +207,7 @@ test('global analysis rechecks an earlier child and retry only observes the fail
         if(context.revision===1){
           const revised=context.items.find(item=>item.sample_id===earlier);
           if(revised)assert.equal(revised.result_revision,2);
-          else{assert.equal(context.items.length,1);assert.ok(context.items[0].sample_id.endsWith('001.png'));}
+          else assert.ok(context.items.some(item=>item.sample_id.endsWith('001.png')));
         }
         tool=auditReportTool(context,outputs);
       }

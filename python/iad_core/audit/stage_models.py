@@ -23,6 +23,7 @@ class AuditDefectProfileCommit(AnalysisModel):
 
 
 class AuditDefectProfileView(AnalysisModel):
+    semantic_revision: int = Field(default=1, ge=1)
     revision: int = Field(ge=1)
     features: list[AuditDefectFeature]
     limitations: list[str]

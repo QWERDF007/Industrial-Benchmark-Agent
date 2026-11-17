@@ -61198,13 +61198,14 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
       classes.set(row.category, {
         category: row.category,
         image_count: (previous?.image_count || 0) + row.image_count,
-        box_count: row.box_count === null ? null : (previous?.box_count || 0) + row.box_count
+        annotation_count: row.annotation_count === null ? null : (previous?.annotation_count || 0) + row.annotation_count
       });
     }
     return {
       image_count: slices.reduce((count2, slice2) => count2 + slice2.image_count, 0),
-      box_count: first.box_count === null ? null : slices.reduce((count2, slice2) => count2 + slice2.box_count, 0),
-      invalid_box_count: slices.reduce((count2, slice2) => count2 + slice2.invalid_box_count, 0),
+      annotation_count: first.annotation_count === null ? null : slices.reduce((count2, slice2) => count2 + slice2.annotation_count, 0),
+      geometry_types: sumCounts(slices.map((slice2) => slice2.geometry_types)),
+      invalid_annotation_count: slices.reduce((count2, slice2) => count2 + slice2.invalid_annotation_count, 0),
       unannotated_images: slices.reduce((count2, slice2) => count2 + slice2.unannotated_images, 0),
       classes: [...classes.values()],
       instance_counts: sumCounts(slices.map((slice2) => slice2.instance_counts)),
@@ -61265,20 +61266,20 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
           overall.image_count.toLocaleString("zh-CN"),
           " \u5F20"
         ] }),
-        overall.box_count !== null && /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)(import_jsx_runtime56.Fragment, { children: [
+        overall.annotation_count !== null && /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)(import_jsx_runtime56.Fragment, { children: [
           /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("span", { children: [
-            "\u539F\u59CB\u6807\u6CE8\u6846 ",
-            overall.box_count.toLocaleString("zh-CN"),
+            "\u539F\u59CB\u6807\u6CE8\u5B9E\u4F8B ",
+            overall.annotation_count.toLocaleString("zh-CN"),
             " \u4E2A"
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("span", { children: [
-            "\u65E0\u6846\u56FE\u50CF ",
+            "\u65E0\u6807\u6CE8\u56FE\u50CF ",
             overall.unannotated_images.toLocaleString("zh-CN"),
             " \u5F20"
           ] }),
-          !!overall.invalid_box_count && /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("span", { children: [
+          !!overall.invalid_annotation_count && /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("span", { children: [
             "\u65E0\u6548\u51E0\u4F55 ",
-            overall.invalid_box_count,
+            overall.invalid_annotation_count,
             " \u4E2A"
           ] })
         ] })
@@ -61289,14 +61290,14 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
         "\u3002"
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)("div", { className: "iad-chart-grid", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "class-distribution", title: "\u7C7B\u522B\u5206\u5E03", spec: (view) => view.box_count === null && view.classes.length <= 5 ? {
+        /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "class-distribution", title: "\u7C7B\u522B\u5206\u5E03", spec: (view) => view.annotation_count === null && view.classes.length <= 5 ? {
           type: "donut",
           unit: "\u5F20",
           rows: view.classes.map((row) => ({ id: row.category, label: className(row.category), value: row.image_count }))
         } : {
           type: "bar",
-          series: [{ label: "\u56FE\u50CF", unit: "\u5F20" }, ...view.box_count === null ? [] : [{ label: "\u6807\u6CE8\u6846", unit: "\u4E2A" }]],
-          rows: view.classes.map((row) => ({ id: row.category, label: className(row.category), values: row.box_count === null ? [row.image_count] : [row.image_count, row.box_count] }))
+          series: [{ label: "\u56FE\u50CF", unit: "\u5F20" }, ...view.annotation_count === null ? [] : [{ label: "\u6807\u6CE8\u5B9E\u4F8B", unit: "\u4E2A" }]],
+          rows: view.classes.map((row) => ({ id: row.category, label: className(row.category), values: row.annotation_count === null ? [row.image_count] : [row.image_count, row.annotation_count] }))
         } }),
         /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "image-dimensions", title: "\u56FE\u50CF\u5BBD\u9AD8\u5206\u5E03", spec: (view) => ({
           type: "heatmap",
@@ -61304,14 +61305,14 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
           xLabel: "\u56FE\u50CF\u5BBD\u5EA6\uFF08\u50CF\u7D20\uFF09",
           yLabel: "\u56FE\u50CF\u9AD8\u5EA6\uFF08\u50CF\u7D20\uFF09"
         }) }),
-        overall.box_count !== null && /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "box-dimensions", title: "\u6846\u5BBD\u9AD8\u5206\u5E03", spec: (view) => ({
+        overall.annotation_count !== null && /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "box-dimensions", title: "\u5B9E\u4F8B\u5916\u63A5\u5BBD\u9AD8\u5206\u5E03", spec: (view) => ({
           type: "heatmap",
           data: view.heatmaps.box_dimensions,
-          xLabel: "\u6846\u5BBD\uFF08\u50CF\u7D20\uFF09",
-          yLabel: "\u6846\u9AD8\uFF08\u50CF\u7D20\uFF09"
+          xLabel: "\u5916\u63A5\u5BBD\uFF08\u50CF\u7D20\uFF09",
+          yLabel: "\u5916\u63A5\u9AD8\uFF08\u50CF\u7D20\uFF09"
         }) }),
         ["image_aspect_ratio", "box_aspect_ratio", "relative_area"].filter((key2) => overall.histograms[key2]).map((key2) => {
-          const title = { image_aspect_ratio: "\u56FE\u50CF\u957F\u5BBD\u6BD4", box_aspect_ratio: "\u6846\u957F\u5BBD\u6BD4", relative_area: "\u6846\u9762\u79EF\u5360\u6BD4" }[key2];
+          const title = { image_aspect_ratio: "\u56FE\u50CF\u957F\u5BBD\u6BD4", box_aspect_ratio: "\u5B9E\u4F8B\u5916\u63A5\u957F\u5BBD\u6BD4", relative_area: "\u5B9E\u4F8B\u9762\u79EF\u5360\u6BD4" }[key2];
           return /* @__PURE__ */ (0, import_react48.createElement)(DistributionPlot, { ...scope, key: key2, id: key2.replaceAll("_", "-"), title, spec: (view) => ({
             type: "distribution",
             series: view.distributions[key2],
@@ -61320,13 +61321,13 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
             format: key2 === "relative_area" ? "percent" : "decimal"
           }) });
         }),
-        overall.box_count !== null && /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)(import_jsx_runtime56.Fragment, { children: [
-          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "instance-counts", title: "\u6BCF\u56FE\u6807\u6CE8\u6846\u6570\u91CF", spec: (view) => ({
+        overall.annotation_count !== null && /* @__PURE__ */ (0, import_jsx_runtime56.jsxs)(import_jsx_runtime56.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "instance-counts", title: "\u6BCF\u56FE\u6807\u6CE8\u5B9E\u4F8B\u6570\u91CF", spec: (view) => ({
             type: "bar",
             series: [{ label: "\u56FE\u50CF", unit: "\u5F20" }],
-            rows: Object.entries(view.instance_counts).map(([count2, value]) => ({ id: count2, label: `${count2} \u4E2A\u6846`, values: [value] }))
+            rows: Object.entries(view.instance_counts).map(([count2, value]) => ({ id: count2, label: `${count2} \u4E2A\u5B9E\u4F8B`, values: [value] }))
           }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "box-centers", title: "\u6846\u4E2D\u5FC3\u4F4D\u7F6E\u5206\u5E03", spec: (view) => ({
+          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "box-centers", title: "\u5B9E\u4F8B\u4E2D\u5FC3\u4F4D\u7F6E\u5206\u5E03", spec: (view) => ({
             type: "heatmap",
             data: view.heatmaps.box_centers,
             xLabel: "\u6C34\u5E73\u4F4D\u7F6E",
@@ -61334,7 +61335,7 @@ ${chartNumber(value, spec.format || "decimal")}\uFF0C${count2} \u4E2A`
             format: "decimal",
             reverseY: true
           }) }),
-          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "category-area", title: "\u5404\u7C7B\u522B\u6846\u9762\u79EF\u5360\u6BD4", spec: (view) => ({ type: "boxplot", format: "percent", rows: view.area_by_category }) })
+          /* @__PURE__ */ (0, import_jsx_runtime56.jsx)(DistributionPlot, { ...scope, id: "category-area", title: "\u5404\u7C7B\u522B\u5B9E\u4F8B\u9762\u79EF\u5360\u6BD4", spec: (view) => ({ type: "boxplot", format: "percent", rows: view.area_by_category }) })
         ] }),
         ["datasets", ...sources.map(([key2]) => key2)].map((key2) => /* @__PURE__ */ (0, import_react48.createElement)(
           DistributionPlot,

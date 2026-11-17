@@ -82,7 +82,7 @@ class AuditAgentJobs(AuditState):
         anchors = [results.detail(request.consistency_job_id, record.sample.sample_id) for record in manifest.records]
         if any(anchor.result is None or anchor.state != 'COMPLETED' for anchor in anchors):
             raise ValueError('一致性作业尚未形成所选主图的终稿')
-        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=5, quality_score_version=QUALITY_SCORE_VERSION, context_policy='evidence-on-demand-v1', manifest=manifest, agent=role,
+        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=6, quality_score_version=QUALITY_SCORE_VERSION, context_policy='evidence-on-demand-v1', manifest=manifest, agent=role,
             report_instruction=request.report_instruction, consistency_job_id=request.consistency_job_id,
             knowledge=self.freeze_knowledge(request.knowledge),
             master_prompt=request.master_prompt,observer_prompt=request.observer_prompt,
@@ -102,7 +102,7 @@ class AuditAgentJobs(AuditState):
                     for index in range(0,len(sample_ids),snapshot.settings.batch_size)])
 
         job = self.jobs.start('MODEL_AUDIT', manifest.records[0].sample.task_id,
-            dict(audit_workflow_version=5, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
+            dict(audit_workflow_version=6, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
                 sample_ids=[record.sample.sample_id for record in manifest.records], instruction=request.master_prompt.user_prompt,
                 model_name=role.profile.model_id, model_profile=role.profile.model_dump(),
                 knowledge_version_id=snapshot.knowledge.selection.version_id if snapshot.knowledge else None),
@@ -111,21 +111,28 @@ class AuditAgentJobs(AuditState):
         return {**job, 'created':True}
 
 
-    def session_created(self, run_id: str, sample_id: str) -> AuditSampleRun:
-        self.sample(run_id, sample_id)
-        with self.db.connection() as connection:
+    def session_created(self, run_id: str, sample_id: str, *, review_id: str | None = None) -> AuditSampleRun:
+        sample = self.sample(run_id, sample_id)
+        with self.jobs.lock, self.db.connection() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            revision = connection.execute('SELECT result_revision FROM audit_sample_runs WHERE job_id=? AND sample_id=?', (run_id, sample_id)).fetchone()[0]
+            from iad_core.audit.rechecks import AuditRechecks
+            AuditRechecks.start(connection, run_id, sample_id, review_id, revision)
             connection.execute("UPDATE audit_sample_runs SET session_created=1,state=CASE WHEN state='COMPLETED' THEN state ELSE 'RUNNING' END WHERE job_id=? AND sample_id=?", (run_id,sample_id))
-            connection.execute("UPDATE audit_rechecks SET state='RUNNING' WHERE job_id=? AND sample_id=? AND state='PENDING'",(run_id,sample_id))
         return self.sample(run_id,sample_id)
 
-    def failure(self, run_id: str, sample_id: str, message: str):
+    def failure(self, run_id: str, sample_id: str, message: str, *, review_id: str | None = None):
         with self.jobs.lock, self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')
             sample = connection.execute('SELECT state FROM audit_sample_runs WHERE job_id=? AND sample_id=?', (run_id,sample_id)).fetchone()
             if sample is None:
                 raise LookupError('主图不属于当前审计作业')
             if sample['state'] in ('COMPLETED','FAILED'):
-                connection.execute("UPDATE audit_rechecks SET state='FAILED',error=? WHERE job_id=? AND sample_id=? AND state IN ('PENDING','RUNNING')",(message,run_id,sample_id))
+                active = connection.execute("SELECT review_id FROM audit_rechecks WHERE job_id=? AND sample_id=? AND state IN ('PENDING','RUNNING')", (run_id, sample_id)).fetchall()
+                if active and (len(active) != 1 or active[0][0] != review_id):
+                    raise ValueError('复核失败必须对应唯一的活动复核 ID')
+                if active:
+                    connection.execute("UPDATE audit_rechecks SET state='FAILED',error=? WHERE job_id=? AND review_id=?", (message, run_id, review_id))
                 return
             connection.execute("UPDATE audit_sample_runs SET state='FAILED' WHERE job_id=? AND sample_id=?", (run_id,sample_id))
             self.jobs.record(run_id,sample_id,JobExecutionError(message,source_run_id=run_id,source_phase='AUDITING'),connection=connection)
@@ -181,7 +188,7 @@ class AuditAgentJobs(AuditState):
         return self.jobs.status(run_id)
 
     def resume(self, run_id: str):
-        if self.snapshot(run_id).schema_version != 5:
+        if self.snapshot(run_id).schema_version != 6:
             raise ValueError('历史审计仅供查看，请新建作业')
         if self.is_archived(run_id):
             raise ValueError('历史审计保留查看与导出，请新建作业使用当前审核流程')

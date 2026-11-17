@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import Field
+from pydantic import AliasChoices, Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.benchmark.readiness import BenchmarkReadiness
@@ -15,7 +15,9 @@ class AuditQuantiles(AnalysisModel):
 
 
 class AuditGeometryProfile(AnalysisModel):
-    box_count: int
+    annotation_count: int = Field(validation_alias=AliasChoices('annotation_count', 'box_count'))
+    invalid_annotation_count: int = 0
+    geometry_types: dict[str, int] = Field(default_factory=dict)
     annotated_images: int
     instance_distribution: dict[str,int]
     relative_area: AuditQuantiles | None

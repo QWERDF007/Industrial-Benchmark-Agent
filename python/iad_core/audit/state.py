@@ -23,7 +23,7 @@ class AuditState:
             row=connection.execute("SELECT json_extract(snapshot_json,'$.schema_version') FROM audit_workflow_runs WHERE job_id=?",(run_id,)).fetchone()
         if row is None:
             raise LookupError('原生审计作业不存在')
-        return row[0] not in (4, 5)
+        return row[0] not in (4, 5, 6)
 
     def snapshot(self, run_id: str) -> AuditWorkflowSnapshot:
         if run_id in self._snapshots:
@@ -32,7 +32,7 @@ class AuditState:
             row = connection.execute("SELECT snapshot_json,json_extract(snapshot_json,'$.schema_version') FROM audit_workflow_runs WHERE job_id=?", (run_id,)).fetchone()
         if row is None:
             raise LookupError('原生审计作业不存在')
-        if row[1] not in (4, 5):
+        if row[1] not in (4, 5, 6):
             raise ValueError('历史审计已归档，请查看冻结报告或新建作业')
         snapshot = AuditWorkflowSnapshot.model_validate_json(row[0])
         self._snapshots[run_id] = snapshot

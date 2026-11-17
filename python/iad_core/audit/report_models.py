@@ -64,6 +64,13 @@ class AuditStatistics(AnalysisModel):
 
 
 class AuditRecordQuery(AnalysisModel):
+    scope: Literal['all', 'defects', 'normals'] = 'all'
+    representation: Literal['facts', 'detail'] = 'facts'
+    unread_only: bool = True
+    cursor: str | None = Field(default=None, pattern=r'^\d+$')
+    max_chars: int = Field(default=24000, ge=4000, le=64000)
+    result_revision: int | None = Field(default=None, ge=1)
+
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=30, ge=1, le=100)
     sample_id: str | None = None

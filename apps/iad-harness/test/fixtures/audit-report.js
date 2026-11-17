@@ -1,33 +1,43 @@
 import {randomUUID} from 'node:crypto';
+import {sendResponses} from './responses.js';
 
 export function auditMessages(body) {
   const values=body.messages.flatMap((message,index)=>{
     const parts=typeof message.content==='string'?[{type:'text',text:message.content}]:message.content||[];
     return parts.flatMap(part=>{
       if(part.type!=='text')return [];
-      return part.text.split('\n').flatMap(line=>{
+      return part.text.replaceAll('<compacted-summary>','').replaceAll('</compacted-summary>','').split('\n').flatMap(line=>{
         try{return [{role:message.role,index,value:JSON.parse(line)}];}catch{return [];}
       });
     });
   });
   const latest=values.filter(item=>item.role==='user'&&(item.value.target||item.value.phase)).at(-1);
   const context=latest?.value;
-  if(context?.phase==='report'){
-    const retained=new Map(values.filter(item=>item.role==='user'&&item.value.phase==='defect_profile')
-      .flatMap(item=>item.value.items).map(item=>[item.sample_id,item]));
-    for(const item of context.items)retained.set(item.sample_id,item);
+  if(context?.phase){
+    const retained=new Map();
+    for(const value of values.filter(item=>item.value?.kind==='audit_records'||item.role==='user'&&item.value?.phase))
+      for(const item of value.value.items||[]){
+        const previous=retained.get(item.sample_id);
+        if(!previous||previous.result_revision<=item.result_revision)retained.set(item.sample_id,item);
+      }
     context.items=[...retained.values()];
   }
-  return {context,outputs:values.filter(item=>item.role==='tool'&&item.index>latest.index).map(item=>item.value),
+
+  return {values,context,outputs:[...(context?.retained_outputs||[]),...values.filter(item=>item.role==='tool'&&item.index>(latest?.index??-1)).map(item=>item.value)],
     pages:values.map(item=>item.value).filter(value=>Array.isArray(value?.images))};
 }
 
 export function auditReportTool(context,outputs,{includeCounter=false,includeDistribution=false}={}) {
+  if(context.record_index?.unread){
+    const pages=outputs.filter(output=>output?.kind==='audit_records');
+    if(!pages.length||pages.at(-1).next_cursor!==null)return {name:'audit_records',arguments:{scope:context.record_index.scope,
+      unread_only:true,page_size:30,cursor:pages.at(-1)?.next_cursor??null}};
+  }
   if(context.phase==='defect_profile'){
     const item=context.items[0];
     if(!outputs.some(output=>output?.sample_id===item.sample_id&&output?.images?.length))return {
       name:'audit_report_evidence',arguments:{sample_id:item.sample_id,evidence_id:item.final.evidence_ids[0]}};
-    return {name:'audit_defect_profile',arguments:{commit_key:'defect-profile',base_revision:context.revision,
+    return {name:'audit_defect_profile',arguments:{commit_key:'defect-profile-'+context.revision,base_revision:context.revision,
       features:[{feature_id:'surface',category:item.category_labels[0],signature:'主体表面的线状形态',
         normal_distinctions:'比较边缘连续性及是否伴有表面破损。',
         references:[{sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'}]}],limitations:[]}};
@@ -70,8 +80,8 @@ export function auditReportTool(context,outputs,{includeCounter=false,includeDis
   }
   if(includeDistribution&&!outputs.some(output=>Array.isArray(output?.classes)&&output?.image_count!==undefined))
     return {name:'audit_distribution',arguments:{}};
-  const records=outputs.find(output=>output?.kind==='audit_records')?.items;
-  if(!records)return {name:'audit_records',arguments:{page:1,page_size:100}};
+  const records=context.items.length?context.items:outputs.find(output=>output?.kind==='audit_records')?.items;
+  if(!records)return {name:'audit_records',arguments:{unread_only:false,page:1,page_size:100}};
   const completed=records.filter(item=>item.final?.execution_status==='completed');
   const hasIssues=Object.keys(context.statistics.upstream_issue_types).length>0||Object.values(context.statistics.program_issue_types).some(Boolean);
   const scopes=Object.keys(context.statistics.consistency_cross).map(source_status=>({source_status,
@@ -98,4 +108,17 @@ export function auditReportTool(context,outputs,{includeCounter=false,includeDis
       ['exploration','training_experiment','debug','image_evaluation','bbox_evaluation','pixel_evaluation','formal_benchmark'].map(purpose=>({
         purpose,status:['exploration','training_experiment','debug'].includes(purpose)?'candidate':'not_evaluated',reason:'评价依据为冻结原图及实际已有结果。'})),
     review_priorities:[],limitations:['未完成范围不能视为正常。']}}};
+}
+
+export function respondAuditSummary(response,body) {
+  if(!JSON.stringify(body.messages.at(-1)).includes('compaction engine'))return false;
+  const {context,outputs}=auditMessages(body);
+  const compact=context?{...context,retained_outputs:outputs.filter(output=>output?.saved_fields||output?.discovery||output?.sample_id&&output?.images?.length||output?.kind==='audit_records').map(output=>output.kind==='audit_records'?{...output,items:[]}:output.images?{sample_id:output.sample_id,images:[{}]}:output),items:(context.items||[]).map(item=>({sample_id:item.sample_id,result_revision:item.result_revision,
+    state:item.state,category_labels:item.category_labels,consistency:{source_status:item.consistency.source_status},
+    final:item.final?{execution_status:item.final.execution_status,state:item.final.state,evidence_ids:item.final.evidence_ids,findings:item.final.findings}:null}))}:null;
+  const text=compact?JSON.stringify(compact):'已保存的阶段状态和图级版本以工具索引为准；继续读取未读有效版本。';
+  if(body.responses){sendResponses(response,'native-audit',{content:text});return true;}
+  response.writeHead(200,{'Content-Type':'text/event-stream'});
+  response.end('data: '+JSON.stringify({choices:[{index:0,delta:{content:text},finish_reason:'stop'}],usage:{prompt_tokens:1000,completion_tokens:100}})+'\n\ndata: [DONE]\n\n');
+  return true;
 }

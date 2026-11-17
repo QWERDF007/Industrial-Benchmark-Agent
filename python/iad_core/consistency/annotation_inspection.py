@@ -7,6 +7,7 @@ from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.consistency.agent_review_models import AnchorAssessmentDecision, AnchorObservation, AnchorVisualRequest, AnchorVisualResult, CandidateVisualObservation, GateDispute
 from iad_core.consistency.annotation_issues import BboxAnnotationIssue
 from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
+from iad_core.consistency.group_models import VisualWindow, ModelVisualWindow
 from iad_core.consistency.references import ReferenceAliases
 from iad_core.evidence.images import PreparedImageBundle
 
@@ -22,6 +23,8 @@ class AnnotationDecision(AnalysisModel):
     limitations: list[NonBlankText] = Field(default_factory=list, description='只记录本次实际看不清或无法比较的具体部分。')
     disputed_regions: list[str] = Field(default_factory=list,
         description='仅 verdict 为 GATE_DISPUTE 时填写内容争议对应的本候选局部编号；其他判断必须为空列表。差别在完整原图其他位置时也填空列表，在 explanation 写具体位置及差别。')
+    disputed_windows: list[ModelVisualWindow] = Field(default_factory=list,
+        description='仅GATE_DISPUTE填写。用原图像素给出争议处的小范围窗口，sample_id引用main或当前候选，bbox为[x0,y0,x1,y1]。')
 
 
 class AnnotationModelContext:
@@ -63,9 +66,11 @@ class AnnotationInspection:
                     raise ValueError('资格争议不能同时提交标注差异')
                 observation = CandidateVisualObservation(candidate_id=identity, description=decision.explanation,
                     media_ids=media, limitations=decision.limitations, gate_dispute=GateDispute(reason=decision.explanation,
-                        region_pair_ids=self.references.translate(decision.disputed_regions, internal=True)))
+                        region_pair_ids=self.references.translate(decision.disputed_regions, internal=True),
+                        windows=[VisualWindow.model_validate(self.references.translate(window.model_dump(), internal=True))
+                            for window in decision.disputed_windows]))
             else:
-                if decision.disputed_regions:
+                if decision.disputed_regions or decision.disputed_windows:
                     raise ValueError('普通标注判断不能包含资格争议区域')
                 issues = [BboxAnnotationIssue.model_validate({**self.references.translate(issue.model_dump(), internal=True),
                     'media_ids': media}) for issue in decision.issues]
@@ -97,6 +102,8 @@ class AnnotationInspection:
 
         candidates = {}
         for identity in self.inputs.request.candidate_ids:
+            window_type = create_model('DisputedWindow', __base__=ModelVisualWindow,
+                sample_id=(Literal['main', self.references.public[identity]], ...))
             regions = tuple(self.references.public[ref] for ref in
                 self.inputs.request.facts['candidates'][identity]['gate']['verified_region_pair_ids'])
             verdicts = ('EQUIVALENT', 'MATERIAL', 'UNCERTAIN') + (
@@ -104,7 +111,9 @@ class AnnotationInspection:
             decision = create_model('AnnotationDecision', __base__=AnnotationDecision,
                 verdict=(Literal[verdicts], ...),
                 disputed_regions=(list[Literal[regions]] if regions else list[str], Field(default_factory=list,
-                    max_length=len(regions), description=AnnotationDecision.model_fields['disputed_regions'].description)))
+                    max_length=len(regions), description=AnnotationDecision.model_fields['disputed_regions'].description)),
+                disputed_windows=(list[window_type], Field(default_factory=list,
+                    description=AnnotationDecision.model_fields['disputed_windows'].description)))
             candidates[self.references.public[identity]] = (decision, ...)
         decisions = create_model('CandidateReviews', __base__=AnalysisModel, **candidates)
         response_type = create_model('AnnotationReview', __base__=AnalysisModel,

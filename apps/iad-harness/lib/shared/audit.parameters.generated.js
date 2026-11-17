@@ -1,5 +1,20 @@
 /* Generated from Python AuditAgentStart by scripts/generate-contracts.js. */
 export const auditQualityScoreParameters = {
+    "cursor": {
+        "type": "integer",
+        "title": "Cursor",
+        "default": 0
+    },
+    "page_size": {
+        "type": "integer",
+        "title": "Page Size",
+        "default": 8
+    },
+    "max_chars": {
+        "type": "integer",
+        "title": "Max Chars",
+        "default": 24000
+    },
     "aliases": {
         "type": "array",
         "items": {
@@ -114,6 +129,28 @@ export const auditQualityScoreParameters = {
         ],
         "description": "audit_quality_score返回的预览标识；正式报告原样提交，不自行生成。",
         "title": "Preview Id"
+    },
+    "item_code": {
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
+        "title": "Item Code"
+    },
+    "dataset_id": {
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
+        "title": "Dataset Id"
     }
 };
 export const auditEvidenceParameters = {
@@ -1072,6 +1109,57 @@ export const auditCommitParameters = {
     }
 };
 export const auditRecordParameters = {
+    "scope": {
+        "type": "string",
+        "enum": [
+            "all",
+            "defects",
+            "normals"
+        ],
+        "title": "Scope",
+        "default": "all"
+    },
+    "representation": {
+        "type": "string",
+        "enum": [
+            "facts",
+            "detail"
+        ],
+        "title": "Representation",
+        "default": "facts"
+    },
+    "unread_only": {
+        "type": "boolean",
+        "title": "Unread Only",
+        "default": true
+    },
+    "cursor": {
+        "oneOf": [
+            {
+                "type": "string"
+            },
+            {
+                "type": "null"
+            }
+        ],
+        "title": "Cursor"
+    },
+    "max_chars": {
+        "type": "integer",
+        "title": "Max Chars",
+        "default": 24000
+    },
+    "result_revision": {
+        "oneOf": [
+            {
+                "type": "integer"
+            },
+            {
+                "type": "null"
+            }
+        ],
+        "title": "Result Revision"
+    },
     "page": {
         "type": "integer",
         "title": "Page",

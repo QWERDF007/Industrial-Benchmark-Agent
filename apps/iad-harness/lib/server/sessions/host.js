@@ -15,6 +15,7 @@ import { imageOffloadProjection } from '@deepseek-ai/dsh-compaction-image-offloa
 import SubagentRuntime from '@deepseek-ai/dsh-subagent';
 import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process';
 import SessionQuery from '@deepseek-ai/dsh-session-query-sqlite';
+import { JobSessionCapacity } from './capacity.js';
 import { ObservedImages } from './observed-images.js';
 import { Mutex } from 'async-mutex';
 export class JobSessionHost {
@@ -23,6 +24,7 @@ export class JobSessionHost {
     ctx;
     sessions;
     stop;
+    capacity;
     active = new Map();
     notices = new Map();
     constructor(root, locate, ctx, sessions, stop) {
@@ -91,7 +93,7 @@ export class JobSessionHost {
             await runtime.ctx.plugin(AgentLoop, { agents: [] });
             if (options.evidenceOnDemand)
                 new ObservedImages(runtime.sessions).attach(runtime.ctx, options.imageHandoffTools);
-            const retention = options.evidenceOnDemand ? { retainTokens: 0, compactionRetries: 0, maxOverflowRetries: 0 } : {};
+            const retention = options.evidenceOnDemand ? { auto: false, retainTokens: 0, compactionRetries: 0, maxOverflowRetries: 0 } : {};
             let owner = runtime.ctx;
             if (options.subagents !== undefined) {
                 await runtime.ctx.plugin(SessionQuery, { path: ':memory:', openAt: 'never' });
@@ -103,13 +105,18 @@ export class JobSessionHost {
                 await owner.inject(['llm', 'systemPrompt', 'tools'], async (injected) => { await options.sharedSetup(injected); });
                 const maxTokens = options.agentOptions?.maxTokens ?? 4096;
                 await owner.plugin(BasicCompaction, { headroomTokens: maxTokens, maxTokens, ...retention });
+                if (options.evidenceOnDemand)
+                    await owner.inject(['llm', 'tokenMeter', 'compaction', 'sessions', 'sessionPersistence'], injected => { runtime.capacity = new JobSessionCapacity(injected, runtime.sessions); runtime.capacity.attach(); });
             }
             const handle = await owner.agents.resume({ resumeSessionId: sessionId, ...options,
                 setup: async (scope, agent) => {
                     const commit = await options.setup?.(scope, agent);
                     const maxTokens = agent.options.maxTokens ?? 4096;
-                    if (!options.sharedSetup)
+                    if (!options.sharedSetup) {
                         await scope.plugin(BasicCompaction, { headroomTokens: maxTokens, maxTokens, ...retention });
+                        if (options.evidenceOnDemand)
+                            await scope.inject(['llm', 'tokenMeter', 'compaction', 'sessions', 'sessionPersistence'], injected => { runtime.capacity = new JobSessionCapacity(injected, runtime.sessions); runtime.capacity.attach(); });
+                    }
                     return commit;
                 } });
             try {
@@ -129,6 +136,16 @@ export class JobSessionHost {
         finally {
             await dispose();
         }
+    }
+    async pageChars(agent) {
+        const runtime = this.active.get(agent.id);
+        return runtime?.capacity ? runtime.capacity.pageChars(agent) : 64000;
+    }
+    async checkpoint(agent) {
+        const runtime = this.active.get(agent.id);
+        if (!runtime)
+            throw new Error('阶段检查点缺少活动作业会话');
+        await runtime.sessions.flush(agent.session);
     }
     async read(id) {
         const active = this.active.get(id);
