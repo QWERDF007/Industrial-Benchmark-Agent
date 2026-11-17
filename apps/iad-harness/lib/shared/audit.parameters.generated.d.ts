@@ -401,6 +401,14 @@ export declare const auditCommitParameters: {
                                     readonly title: "Annotation Id";
                                     readonly required: true;
                                 };
+                                readonly basis: {
+                                    readonly type: "array";
+                                    readonly items: {
+                                        readonly type: "string";
+                                    };
+                                    readonly description: "本图可见依据，先解释为何符合相应形态、尺寸、位置和对比度场景，不引用出现频次。";
+                                    readonly title: "Basis";
+                                };
                                 readonly morphology: {
                                     readonly type: "string";
                                     readonly title: "Morphology";
@@ -470,7 +478,7 @@ export declare const auditCommitParameters: {
                             readonly confusable: {
                                 readonly type: "boolean";
                                 readonly title: "Confusable";
-                                readonly required: true;
+                                readonly default: false;
                             };
                             readonly texture: {
                                 readonly oneOf: readonly [{
@@ -479,6 +487,84 @@ export declare const auditCommitParameters: {
                                     readonly type: "null";
                                 }];
                                 readonly title: "Texture";
+                            };
+                            readonly texture_reason: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "string";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Texture Reason";
+                            };
+                            readonly profile_revision: {
+                                readonly oneOf: readonly [{
+                                    readonly type: "integer";
+                                }, {
+                                    readonly type: "null";
+                                }];
+                                readonly title: "Profile Revision";
+                            };
+                            readonly qualification: {
+                                readonly type: "object";
+                                readonly additionalProperties: false;
+                                readonly properties: {
+                                    readonly feature_id: {
+                                        readonly type: "string";
+                                        readonly title: "Feature Id";
+                                        readonly required: true;
+                                    };
+                                    readonly reference: {
+                                        readonly type: "object";
+                                        readonly additionalProperties: false;
+                                        readonly properties: {
+                                            readonly sample_id: {
+                                                readonly type: "string";
+                                                readonly title: "Sample Id";
+                                                readonly required: true;
+                                            };
+                                            readonly result_revision: {
+                                                readonly type: "integer";
+                                                readonly title: "Result Revision";
+                                                readonly required: true;
+                                            };
+                                            readonly kind: {
+                                                readonly type: "string";
+                                                readonly enum: readonly ["finding", "observation", "feature", "image"];
+                                                readonly title: "Kind";
+                                                readonly required: true;
+                                            };
+                                            readonly index: {
+                                                readonly oneOf: readonly [{
+                                                    readonly type: "integer";
+                                                }, {
+                                                    readonly type: "null";
+                                                }];
+                                                readonly title: "Index";
+                                            };
+                                        };
+                                        readonly title: "AuditResultReference";
+                                        readonly required: true;
+                                    };
+                                    readonly similar_features: {
+                                        readonly type: "array";
+                                        readonly items: {
+                                            readonly type: "string";
+                                        };
+                                        readonly title: "Similar Features";
+                                        readonly required: true;
+                                    };
+                                    readonly normal_reason: {
+                                        readonly type: "string";
+                                        readonly title: "Normal Reason";
+                                        readonly required: true;
+                                    };
+                                    readonly difficulty_reason: {
+                                        readonly type: "string";
+                                        readonly title: "Difficulty Reason";
+                                        readonly required: true;
+                                    };
+                                };
+                                readonly title: "HardNormalQualification";
                             };
                         };
                         readonly title: "QualityNormalScene";
@@ -666,7 +752,7 @@ export declare const auditCommitParameters: {
                         };
                         readonly type: {
                             readonly type: "string";
-                            readonly enum: readonly ["image_label_mismatch", "category_mismatch", "extra_annotation", "missing_annotation", "position_difference", "split", "merge"];
+                            readonly enum: readonly ["image_label_mismatch", "category_mismatch", "extra_annotation", "missing_annotation", "missing_content", "extra_content", "split", "merge"];
                             readonly description: "按可见问题分类；类别差异指有效同内容对照中同一对象的原始分组差异。";
                             readonly title: "Type";
                             readonly required: true;
@@ -676,7 +762,7 @@ export declare const auditCommitParameters: {
                             readonly items: {
                                 readonly type: "string";
                             };
-                            readonly description: "引用当前主图真实annotation_id；类别、多标、位置和合并至少1个，拆分至少2个，少标或图像级可以为空。";
+                            readonly description: "引用当前主图真实annotation_id；类别、多标实例、内容差异和合并至少1个，拆分至少2个，少标实例或图像级可以为空。";
                             readonly title: "Annotation Ids";
                         };
                         readonly consistency_issue_refs: {
@@ -1194,7 +1280,7 @@ export declare const auditReportParameters: {
                 };
                 readonly issue_type: {
                     readonly type: "string";
-                    readonly enum: readonly ["image_label_mismatch", "category_mismatch", "extra_annotation", "missing_annotation", "position_difference", "split", "merge"];
+                    readonly enum: readonly ["image_label_mismatch", "category_mismatch", "extra_annotation", "missing_annotation", "missing_content", "extra_content", "split", "merge", "position_difference"];
                     readonly description: "沿用本数据格式的现有差异类型，每类单独分析，不合并多标少标或拆分合并。";
                     readonly title: "Issue Type";
                     readonly required: true;

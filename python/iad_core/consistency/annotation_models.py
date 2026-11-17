@@ -33,6 +33,15 @@ class AnnotationDifference(AnalysisModel):
     confirmed_conflict: bool = False
 
 
+    @property
+    def content_categories(self) -> list[ConflictCategory]:
+        from iad_core.consistency.annotation_coverage import AnnotationCoverage
+        facts = self.facts if 'left_only_pixels' in self.facts and 'right_only_pixels' in self.facts else (
+            AnnotationCoverage.recorded(self.left, self.right).facts if self.left and self.right else {})
+        return [category for category, key in ((ConflictCategory.MISSING_CONTENT, 'right_only_pixels'),
+            (ConflictCategory.EXTRA_CONTENT, 'left_only_pixels')) if facts.get(key, 0) > 0]
+
+
 class InstanceMatch(AnalysisModel):
     left_id: Identifier
     right_id: Identifier
@@ -129,12 +138,13 @@ class AnnotationComparison(AnalysisModel):
                 case 'QUALITY_LABEL' | 'CATEGORY':
                     categories.add(ConflictCategory.CATEGORY)
                 case 'GEOMETRY':
-                    categories.add(ConflictCategory.POSITION)
+                    categories.update(difference.content_categories)
                 case 'ONE_SIDED_REGION':
                     categories.add(ConflictCategory.EXTRA if difference.left else ConflictCategory.MISSING)
                 case 'ANNOTATION_COUNT':
                     categories.add(ConflictCategory.EXTRA if difference.facts['left_count']>difference.facts['right_count'] else ConflictCategory.MISSING)
                 case 'SPLIT_MERGE':
+                    categories.update(difference.content_categories)
                     categories.add(ConflictCategory.SPLIT if len(difference.left)>len(difference.right) else ConflictCategory.MERGE)
         return [category for category in ConflictCategory if category in categories]
 

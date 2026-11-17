@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from iad_core.consistency.agent_review_models import AnchorAssessmentRecord, AnchorAssessmentSubmission
 from iad_core.consistency.candidate_records import CandidateRecords
+from iad_core.consistency.recorded_issues import RecordedIssues
 
 
 class AnchorAssessments:
@@ -15,7 +16,7 @@ class AnchorAssessments:
                 SELECT MAX(id) FROM consistency_candidate_assessments WHERE job_id=? AND anchor_id=? GROUP BY candidate_id)
             ORDER BY id''', (run_id, anchor_id, run_id, anchor_id)).fetchall()
         return [AnchorAssessmentRecord(assessment_id=row['id'],
-            submission=AnchorAssessmentSubmission.model_validate_json(row['submission_json'])) for row in rows]
+            submission=RecordedIssues.read(AnchorAssessmentSubmission, row['submission_json'], connection, run_id, anchor_id)) for row in rows]
 
     @staticmethod
     def append(connection: Connection, run_id: str, anchor_id: str, submission: AnchorAssessmentSubmission, *, request_id: str | None = None) -> AnchorAssessmentRecord:

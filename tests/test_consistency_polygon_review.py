@@ -29,7 +29,7 @@ def test_equal_polygon_bounds_do_not_hide_different_contours():
         'polygon':[[10,10],[30,30],[10,30]]})
     assessment=GroupPairAssessment(candidate_id='candidate',verdict='MATERIAL',conclusion='位置差异',
         categories=['位置差异'],explanation='两侧轮廓覆盖的对象区域不同。',findings=['轮廓覆盖不同'],issues=[{
-            'type':'position_difference','main_annotation_ids':[main.annotation_id],
+            'type':'missing_content','main_annotation_ids':[main.annotation_id],
             'candidate_annotation_ids':[candidate.annotation_id],'media_ids':['main_image','candidate_image'],
             'description':'一侧遗漏对象右上部分。','review_suggestion':'核对真实轮廓。',
             'coverage_effect':'material_change','coverage_reason':'一侧轮廓没有覆盖对象右上部分。'}])

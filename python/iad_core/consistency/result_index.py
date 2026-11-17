@@ -11,7 +11,7 @@ from iad_core.consistency.gallery_statistics import GalleryStatisticFact, Galler
 class ConsistencyResultIndex:
     """Rebuildable projections; source-table triggers invalidate changed anchors atomically."""
 
-    VERSION = 3
+    VERSION = 4
 
     def __init__(self, connection: Connection, run_id: str, *, errors: list[dict] = ()):
         self.connection, self.run_id = connection, run_id

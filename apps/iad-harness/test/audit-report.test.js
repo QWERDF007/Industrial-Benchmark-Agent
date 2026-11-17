@@ -234,12 +234,12 @@ test('quality issues use a concrete title, description, nearby images and number
 });
 
 test('consistency compares program and reviewed categories with plain definitions and matching image units',()=>{
-  const html=render({...report,statistics:{...report.statistics,program_issue_types:{position_difference:4},upstream_issue_types:{},
+  const html=render({...report,statistics:{...report.statistics,program_issue_types:{missing_content:4},upstream_issue_types:{},
     issue_types:{split:{image_count:9,occurrences:9}}}});
   const chapter=html.split('<h2>三、数据是否自洽</h2>')[1].split('<h2>四、标注质量与复核重点</h2>')[0];
   assert.match(chapter,/<h3>3\.1 各类结果是什么意思<\/h3>/);
   assert.match(chapter,/主图是当前被检查的图/);
-  for(const label of ['无候选','无有效候选','标注一致','标注冲突','待核实','类别不一致','多标','少标','位置差异','拆分','合并'])
+  for(const label of ['无候选','无有效候选','标注一致','标注冲突','待核实','类别不一致','少标实例','多标实例','少标内容','多标内容','拆分','合并'])
     assert.match(chapter,new RegExp('<th scope="row">'+label+'</th><td>'));
   assert.equal((chapter.match(/data-consistency-definitions=/g)||[]).length,2);
   assert.match(chapter,/<th scope="col">类别<\/th><th scope="col">含义<\/th>/);
@@ -252,14 +252,14 @@ test('consistency compares program and reviewed categories with plain definition
   assert.doesNotMatch(conflictTable,/<th scope="row">无候选<\/th>|<th scope="row">标注一致<\/th>/);
   assert.doesNotMatch(chapter,/<dl|<h4>3\.1\./,'两张分类说明表替代逐项定义小节');
   assert.match(chapter,/同一目标在两张图中的类别记录不同/);
-  assert.match(chapter,/主图有标注，对照图中同一处可见内容没有相应标注/);
-  assert.match(chapter,/对照图有标注，主图中同一处可见内容没有相应标注/);
+  assert.match(chapter,/主图多出一个完整实例标注/);
+  assert.match(chapter,/候选图有完整的缺陷实例标注/);
   const program=chapter.match(/<figure[^>]*data-chart="program-conflicts"[\s\S]*?<\/figure>/)?.[0];
   const model=chapter.match(/<figure[^>]*data-chart="model-conflicts"[\s\S]*?<\/figure>/)?.[0];
   assert.ok(program);assert.ok(model);
   assert.match(program,/程序统计/);assert.match(model,/模型复核统计/);
-  assert.match(program,/类别不一致，数量（张）：0；多标，数量（张）：0；少标，数量（张）：0；位置差异，数量（张）：4；拆分，数量（张）：0；合并，数量（张）：0/);
-  assert.match(model,/类别不一致，数量（张）：0；多标，数量（张）：0；少标，数量（张）：0；位置差异，数量（张）：0；拆分，数量（张）：0；合并，数量（张）：0/);
+  assert.match(program,/类别不一致，数量（张）：0；少标实例，数量（张）：0；多标实例，数量（张）：0；少标内容，数量（张）：4；多标内容，数量（张）：0；拆分，数量（张）：0；合并，数量（张）：0/);
+  assert.match(model,/类别不一致，数量（张）：0；少标实例，数量（张）：0；多标实例，数量（张）：0；少标内容，数量（张）：0；多标内容，数量（张）：0；拆分，数量（张）：0；合并，数量（张）：0/);
   assert.ok(chapter.indexOf('data-chart="program-conflicts"')<chapter.indexOf('3.3 无候选'));
   assert.doesNotMatch(chapter,/拆分 9 张/,'一致性冲突不使用本次图像审计疑点数量');
   const classification=render({...report,dataset_profile:{...report.dataset_profile,dataset_format:'folder_classification'},
@@ -372,7 +372,7 @@ test('adequate diversity coverage stays in score charts without scarcity details
         count:0,denominator:50,ratio:0,deduction:null,scenario:'',sample_ids:[]},
     ]};
   const html=render({...report,quality_score:score});
-  assert.doesNotMatch(html,/data-score-rule="D1"|良品图像共 50 张，该场景有 33 张/);
+  assert.doesNotMatch(html,/data-score-rule="D1"|<p>良品图像共 50 张，该场景有 33 张/);
   assert.match(html,/困难良品稀缺，扣分（分）：0/);
   assert.match(html,/<h4>2\.1\.1 困难良品内部类型稀缺<\/h4>/);
   assert.match(html,/data-score-rule="D3"/);

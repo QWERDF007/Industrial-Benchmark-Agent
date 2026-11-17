@@ -6,7 +6,7 @@ from iad_core.consistency.agent_review_models import AnchorAssessmentDecision
 from iad_core.consistency.group_analysis_models import GroupPairAssessment
 
 
-@pytest.mark.parametrize('lower', ['position_difference', 'split', 'merge'])
+@pytest.mark.parametrize('lower', ['missing_content', 'extra_content', 'split', 'merge'])
 @pytest.mark.parametrize(('higher', 'expected'), [
     ('category_mismatch', '类别不一致'), ('extra_annotation', '多类别'), ('missing_annotation', '少类别'),
 ])

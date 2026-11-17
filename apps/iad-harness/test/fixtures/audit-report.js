@@ -11,11 +11,27 @@ export function auditMessages(body) {
     });
   });
   const latest=values.filter(item=>item.role==='user'&&(item.value.target||item.value.phase)).at(-1);
-  return {context:latest?.value,outputs:values.filter(item=>item.role==='tool'&&item.index>latest.index).map(item=>item.value),
+  const context=latest?.value;
+  if(context?.phase==='report'){
+    const retained=new Map(values.filter(item=>item.role==='user'&&item.value.phase==='defect_profile')
+      .flatMap(item=>item.value.items).map(item=>[item.sample_id,item]));
+    for(const item of context.items)retained.set(item.sample_id,item);
+    context.items=[...retained.values()];
+  }
+  return {context,outputs:values.filter(item=>item.role==='tool'&&item.index>latest.index).map(item=>item.value),
     pages:values.map(item=>item.value).filter(value=>Array.isArray(value?.images))};
 }
 
 export function auditReportTool(context,outputs,{includeCounter=false,includeDistribution=false}={}) {
+  if(context.phase==='defect_profile'){
+    const item=context.items[0];
+    if(!outputs.some(output=>output?.sample_id===item.sample_id&&output?.images?.length))return {
+      name:'audit_report_evidence',arguments:{sample_id:item.sample_id,evidence_id:item.final.evidence_ids[0]}};
+    return {name:'audit_defect_profile',arguments:{commit_key:'defect-profile',base_revision:context.revision,
+      features:[{feature_id:'surface',category:item.category_labels[0],signature:'主体表面的线状形态',
+        normal_distinctions:'比较边缘连续性及是否伴有表面破损。',
+        references:[{sample_id:item.sample_id,result_revision:item.result_revision,kind:'image'}]}],limitations:[]}};
+  }
   if(context.revision===0){
     const refs=context.items.flatMap(item=>item.final?.execution_status==='completed'?item.final.findings.map((_,index)=>({
       sample_id:item.sample_id,result_revision:item.result_revision,kind:'finding',index})):[]);

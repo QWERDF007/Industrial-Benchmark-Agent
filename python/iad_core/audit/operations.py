@@ -112,20 +112,29 @@ def audit_agent_interrupt(args, db_path):
     return result
 
 
-def audit_agent_prepare_inputs(args, db_path):
+def audit_agent_phase(args, db_path):
+    from iad_core.audit.stages import AuditStages
     jobs = AuditAgentJobs(workbench(db_path))
-    jobs.jobs.update(args['run_id'],phase='PREPARING_AUDIT_INPUT')
-    for sample in jobs.samples(args['run_id']):
-        if sample.state != 'COMPLETED':
-            AuditEvidence(jobs).prepare(args['run_id'],sample.sample_id,sample.sample_id)
-    jobs.jobs.update(args['run_id'],phase='AUDITING')
-    return {}
+    phase = AuditStages(jobs).status(args['run_id'])
+    if phase.phase in ('defects', 'normals'):
+        jobs.jobs.update(args['run_id'], phase='AUDITING_DEFECTS' if phase.phase == 'defects' else 'AUDITING_NORMALS')
+    return phase.model_dump(mode='json')
+
+
+def audit_agent_defect_context(args, db_path):
+    from iad_core.audit.stages import AuditStages
+    return AuditStages(AuditState(Database(db_path))).context(args['run_id'])
+
+
+def audit_agent_defect_profile(args, db_path):
+    from iad_core.audit.stages import AuditStages
+    return AuditStages(AuditState(Database(db_path))).publish(args['run_id'], args['submission']).model_dump(mode='json')
 
 
 def audit_agent_report_begin(args, db_path):
     jobs = AuditAgentJobs(workbench(db_path))
-    result = AuditReports(jobs.db).begin(args['run_id'])
-    jobs.jobs.update(args['run_id'],phase='GENERATING_AUDIT_REPORT')
+    result = AuditReports(jobs.db).begin(args['run_id'], phase=args.get('phase', 'report'))
+    jobs.jobs.update(args['run_id'],phase='SUMMARIZING_DEFECT_PROFILE' if args.get('phase') == 'defect_profile' else 'GENERATING_AUDIT_REPORT')
     return result.model_dump(mode='json')
 
 
@@ -239,7 +248,7 @@ AUDIT_AGENT_OPERATIONS = (audit_agent_configuration,audit_agent_start,audit_agen
     audit_agent_context,audit_agent_session_location,audit_agent_session_created,audit_agent_media,audit_agent_reference,audit_agent_crop,
     audit_agent_commit,audit_agent_model_call_start,audit_agent_model_call_end,audit_agent_failure,
     audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,
-    audit_agent_prepare_inputs,audit_agent_report_begin,audit_agent_report_state,audit_agent_report_session_created,
+    audit_agent_phase,audit_agent_defect_context,audit_agent_defect_profile,audit_agent_report_begin,audit_agent_report_state,audit_agent_report_session_created,
     audit_agent_report_statistics,audit_agent_distribution,audit_agent_quality_score,audit_agent_report_records,audit_agent_discovery,
     audit_agent_report_commit,audit_agent_report_draft,audit_agent_observation,audit_agent_report_evidence,audit_agent_report_failure,audit_job_prompts,
     audit_agent_prepare_observations,audit_agent_review_context,audit_agent_review_commit,audit_agent_rechecks,audit_agent_versions)

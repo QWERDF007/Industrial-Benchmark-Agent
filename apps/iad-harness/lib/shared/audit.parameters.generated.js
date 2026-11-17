@@ -464,6 +464,14 @@ export const auditCommitParameters = {
                                     "title": "Annotation Id",
                                     "required": true
                                 },
+                                "basis": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    },
+                                    "description": "本图可见依据，先解释为何符合相应形态、尺寸、位置和对比度场景，不引用出现频次。",
+                                    "title": "Basis"
+                                },
                                 "morphology": {
                                     "type": "string",
                                     "title": "Morphology",
@@ -555,7 +563,7 @@ export const auditCommitParameters = {
                             "confusable": {
                                 "type": "boolean",
                                 "title": "Confusable",
-                                "required": true
+                                "default": false
                             },
                             "texture": {
                                 "oneOf": [
@@ -567,6 +575,98 @@ export const auditCommitParameters = {
                                     }
                                 ],
                                 "title": "Texture"
+                            },
+                            "texture_reason": {
+                                "oneOf": [
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Texture Reason"
+                            },
+                            "profile_revision": {
+                                "oneOf": [
+                                    {
+                                        "type": "integer"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ],
+                                "title": "Profile Revision"
+                            },
+                            "qualification": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "properties": {
+                                    "feature_id": {
+                                        "type": "string",
+                                        "title": "Feature Id",
+                                        "required": true
+                                    },
+                                    "reference": {
+                                        "type": "object",
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "sample_id": {
+                                                "type": "string",
+                                                "title": "Sample Id",
+                                                "required": true
+                                            },
+                                            "result_revision": {
+                                                "type": "integer",
+                                                "title": "Result Revision",
+                                                "required": true
+                                            },
+                                            "kind": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "finding",
+                                                    "observation",
+                                                    "feature",
+                                                    "image"
+                                                ],
+                                                "title": "Kind",
+                                                "required": true
+                                            },
+                                            "index": {
+                                                "oneOf": [
+                                                    {
+                                                        "type": "integer"
+                                                    },
+                                                    {
+                                                        "type": "null"
+                                                    }
+                                                ],
+                                                "title": "Index"
+                                            }
+                                        },
+                                        "title": "AuditResultReference",
+                                        "required": true
+                                    },
+                                    "similar_features": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "title": "Similar Features",
+                                        "required": true
+                                    },
+                                    "normal_reason": {
+                                        "type": "string",
+                                        "title": "Normal Reason",
+                                        "required": true
+                                    },
+                                    "difficulty_reason": {
+                                        "type": "string",
+                                        "title": "Difficulty Reason",
+                                        "required": true
+                                    }
+                                },
+                                "title": "HardNormalQualification"
                             }
                         },
                         "title": "QualityNormalScene"
@@ -778,7 +878,8 @@ export const auditCommitParameters = {
                                 "category_mismatch",
                                 "extra_annotation",
                                 "missing_annotation",
-                                "position_difference",
+                                "missing_content",
+                                "extra_content",
                                 "split",
                                 "merge"
                             ],
@@ -791,7 +892,7 @@ export const auditCommitParameters = {
                             "items": {
                                 "type": "string"
                             },
-                            "description": "引用当前主图真实annotation_id；类别、多标、位置和合并至少1个，拆分至少2个，少标或图像级可以为空。",
+                            "description": "引用当前主图真实annotation_id；类别、多标实例、内容差异和合并至少1个，拆分至少2个，少标实例或图像级可以为空。",
                             "title": "Annotation Ids"
                         },
                         "consistency_issue_refs": {
@@ -1391,9 +1492,11 @@ export const auditReportParameters = {
                         "category_mismatch",
                         "extra_annotation",
                         "missing_annotation",
-                        "position_difference",
+                        "missing_content",
+                        "extra_content",
                         "split",
-                        "merge"
+                        "merge",
+                        "position_difference"
                     ],
                     "description": "沿用本数据格式的现有差异类型，每类单独分析，不合并多标少标或拆分合并。",
                     "title": "Issue Type",

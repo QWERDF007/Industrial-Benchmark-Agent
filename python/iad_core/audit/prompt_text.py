@@ -1,6 +1,15 @@
 from iad_core.evidence.model_inputs import MODEL_IMAGE_GUIDANCE
 
-QUALITY_OBSERVATION_GUIDANCE = """评分场景写入quality_observation。按target.sampling_group区分原始标注约定的normal、abnormal；unclassified标记观察不完整，不把图级审计结论normal当成良品标签。完整观察后complete填true：Labelme逐个原始非忽略标注填写defects，每个annotation_id恰好一次；分类异常图只填写一个annotation_id为null的整图场景。类别由程序读取原始类别，不重新命名类别。每个场景记录形态morphology、特殊形态special_morphology（未出现填null）、外观appearance、相对尺寸size（tiny/small/medium/large）、位置location（center/edge/corner）、结构区域structural_region（无则null）、对比度contrast（low/medium/high）。尺寸按本任务主体和原始框的相对面积及宽高判断，不用统一像素阈值。形态、特殊形态与外观共同描述类内视觉变化，同一实际变化使用简短一致的名称，不为同一现象拆分命名。良品填写normal：hard及hard_type、confusable、特殊正常纹理texture；常规良品hard和confusable填false、其余填null。不要捏造未出现的场景或重复实例，图证不足时complete填false并写limitation。评分场景只记录视觉事实，不自动作为标注疑点。"""
+DEFECT_PROFILE_PROMPT = """全部有标注缺陷图像已独立审计，当前处于缺陷画像阶段，良品尚未审计。读取本次items的全部图级事实，综合原始类别、形态、外观、结构位置、对比度和现有疑点，形成供良品比较的紧凑缺陷画像。
+每种有实际依据的代表性缺陷用一个feature，category保持原始类别，signature说清可见特征，normal_distinctions说明与正常结构或纹理应如何区分；同一现象不重复命名。每种feature只选择1至2张最能说明问题的真实缺陷图，使用audit_report_evidence实际看图，并引用该图当前版本。其余图级事实直接复用，不重新查看全部图片，不凭类别名称猜测缺陷外观。
+通过audit_defect_profile提交commit_key、当前base_revision、features和实际limitations后结束本轮。画像最多16种；证据不足时留空并说明缺口。当前阶段不生成报告、不调用audit_review_commit、不审计良品。"""
+
+QUALITY_OBSERVATION_GUIDANCE = """评分场景写入quality_observation。按target.sampling_group区分原始标注约定的normal、abnormal，unclassified标记观察不完整，不把图级审计结论normal当成良品标签。
+先根据可见图像判断是否符合对应场景，再由程序统计频次和稀缺；频次低不能作为属于该场景的理由。每个缺陷场景在basis简要说明符合对应形态、尺寸、位置和对比度的具体可见依据。
+Labelme逐个原始非忽略标注填写defects，每个annotation_id恰好一次；分类异常图只填写一个annotation_id为null的整图场景。类别由程序读取原始类别，不重新命名类别。场景记录morphology、special_morphology（未出现为null）、appearance、size（tiny/small/medium/large）、location（center/edge/corner）、structural_region（无则null）、contrast（low/medium/high）。尺寸结合本任务主体和原始标注的相对大小，不用统一像素阈值。形态与外观使用简短一致的名称，同一实际变化不拆成多个名字。
+良品在缺陷审计及主Agent缺陷画像之后分析。先观察主图，再对照defect_profile判断是否与实际缺陷难以区分。疑似困难良品时按需用audit_images读取对应feature的一个代表缺陷原图，不逐一查看全部参考；通过对照排除真实缺陷后，hard填true并记录hard_type、profile_revision、qualification（feature_id、reference、similar_features、normal_reason、difficulty_reason）。难点须是可见的缺陷混淆，普通亮度、反光、稀疏纹理本身不足以认定困难。疑似真实缺陷尚未排除时不能计为困难良品，应记录审计疑点和评分证据缺口。
+确认普通良品时hard填false，qualification为null，profile_revision采用当前画像版本。confusable不单独分类，统一填false。texture仅记录实际特殊正常纹理，并在texture_reason说明图像依据；未出现为null。缺少实际缺陷参考时不能默认普通良品，评分complete填false并说明缺口。场景证据充分才complete填true。不要捏造未出现的场景或重复实例；评分场景不自动成为标注疑点。
+标注问题区分完整实例缺失/额外（missing_annotation、extra_annotation）与同一对象覆盖不足/过多（missing_content、extra_content）。同一对象两向覆盖变化分别记录，拆分合并本身不计实例增减；不用position_difference。"""
 
 CORE_AUDIT_PROMPT = MODEL_IMAGE_GUIDANCE + "\n\n" + """依据冻结原图、原始标注、一致性结果和所选知识，审核标注与可见现象的对应、覆盖、定位及实例组织，对提供的同内容图像核对标注一致性。
 
@@ -34,7 +43,7 @@ REPORT_EVIDENCE_GUIDANCE = """报告帮助读者看懂这批图像、标注和�
 
 MASTER_AUDIT_SYSTEM_PROMPT = CORE_AUDIT_PROMPT + "\n\n" + QUALITY_OBSERVATION_GUIDANCE + """
 
-你是主 Agent，在全量独立图级审计完成后统一跨图分析、维护发现账本、处理明确冲突的定向复审并完成报告。子 Agent 负责独立图级判断和终稿。批次只用于任务分组和进度，不逐批核对或发布下一批线索。
+你是主 Agent，先综合全部有标注缺陷审计形成缺陷画像，交给后续良品审计；全部图级审计完成后统一跨图分析、维护发现账本、处理明确冲突的定向复审并完成报告。子 Agent 负责独立图级判断和终稿。批次只用于任务分组和进度，不逐批核对或发布下一批线索。
 
 上下文items只携带尚未实际读取的有效图级版本，复审后只补充变化版本。已经读取的事实继续沿用，不因items为空重复读取全范围；需要细节时按需调用audit_records。
 

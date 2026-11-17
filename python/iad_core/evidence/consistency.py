@@ -5,7 +5,7 @@ from pathlib import Path
 from importlib.metadata import version
 from typing import Callable
 
-from iad_core.consistency import annotations, annotation_assignment, annotation_models, geometry, comparison_domain, policy
+from iad_core.consistency import annotations, annotation_assignment, annotation_coverage, annotation_models, geometry, comparison_domain, policy
 from iad_core.consistency.annotations import AnnotationMatcher, AnnotationSet
 from iad_core.consistency.annotation_inventory import AnnotationObservation
 from iad_core.consistency.comparison_domain import ComparisonDomain
@@ -30,7 +30,7 @@ from iad_core.storage.repositories import SampleRepository
 from iad_core.storage.review_repository import ReviewRepository
 
 ALGORITHM_FINGERPRINT=hashlib.sha256(Path(__file__).read_bytes()+b''.join(module.__name__.encode()+Path(module.__file__).read_bytes()
-    for module in (annotations,annotation_assignment,annotation_models,geometry,comparison_domain,policy,pixels,verify,verification_models,images,masks,consistency_media,consistency_sources,retained,evidence_models))
+    for module in (annotations,annotation_assignment,annotation_coverage,annotation_models,geometry,comparison_domain,policy,pixels,verify,verification_models,images,masks,consistency_media,consistency_sources,retained,evidence_models))
     +json.dumps({package:version(package) for package in ('pillow','numpy','scipy','pydantic')},sort_keys=True).encode()).hexdigest()
 
 

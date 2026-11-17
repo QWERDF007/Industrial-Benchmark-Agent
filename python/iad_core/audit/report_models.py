@@ -7,12 +7,13 @@ from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.audit.quality_models import QualityAssessment, QualityScore
 from iad_core.workbench.job_models import JobStatus
 from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES, IssueType, ISSUE_TYPES_BY_FORMAT as AUDIT_ISSUE_TYPES_BY_FORMAT
-from iad_core.consistency.conflict_categories import CONFLICT_CATEGORY_LABELS, CONFLICT_CATEGORY_DESCRIPTIONS
+from iad_core.consistency.conflict_categories import ConflictCategory, CONFLICT_CATEGORY_LABELS, CONFLICT_CATEGORY_DESCRIPTIONS
 from iad_core.advisory.analysis import VisualEvidence
 from iad_core.workbench.analysis_manifest import AnalysisRegistration
 from iad_core.audit.delegation_models import AuditResultReference, AuditReviewRequest
 
-AUDIT_ISSUE_LABELS = {kind:CONFLICT_CATEGORY_LABELS[category] for kind,category in ISSUE_CATEGORIES.items()}
+AUDIT_ISSUE_LABELS = {kind:CONFLICT_CATEGORY_LABELS[category] for kind,category in ISSUE_CATEGORIES.items() if category in CONFLICT_CATEGORY_LABELS}
+AUDIT_ISSUE_LABELS['position_difference'] = ConflictCategory.POSITION.value
 AUDIT_ASSESSMENT_LABELS = {'supported':'支持为疑点','unsupported':'不支持为疑点','insufficient':'证据不足'}
 AUDIT_CONSISTENCY_LABELS = {'NO_CANDIDATES':'无候选','NO_ELIGIBLE_CANDIDATES':'无有效候选',
     'PROGRAM_REVIEWED:EQUIVALENT':'无标注一致',
@@ -25,7 +26,8 @@ AUDIT_CONSISTENCY_DESCRIPTIONS = {
     'MODEL_REVIEWED:MATERIAL':'已有内容相同的对照图，比较后发现至少一处标注不同，具体差别按下面的类型归类。',
     'MODEL_REVIEWED:UNCERTAIN':'已有内容相同的对照图，但部分标注关系还需要复看，例如目标的边缘看不清。',
 }
-AUDIT_ISSUE_DESCRIPTIONS = {kind:CONFLICT_CATEGORY_DESCRIPTIONS[category] for kind,category in ISSUE_CATEGORIES.items()}
+AUDIT_ISSUE_DESCRIPTIONS = {kind:CONFLICT_CATEGORY_DESCRIPTIONS[category] for kind,category in ISSUE_CATEGORIES.items() if category in CONFLICT_CATEGORY_DESCRIPTIONS}
+AUDIT_ISSUE_DESCRIPTIONS['position_difference'] = '两侧原始标注覆盖的内容存在差异。'
 AUDIT_ISSUE_DESCRIPTIONS['image_label_mismatch'] = '内容相同的两张图，整图标签不同，例如一张记为OK，另一张记为NG。'
 AUDIT_CAPABILITY_LABELS = {'representative_test_set':'代表性测试集','ordinary_normal':'普通正常','hard_normal':'困难良品',
     'near_ok_ng_pair':'相似异标签对','tiny_defect':'微小异常','low_contrast_defect':'低对比异常','structural_relation':'结构关系',

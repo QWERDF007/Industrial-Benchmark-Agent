@@ -561,7 +561,7 @@ export declare const anchorToolParameters: {
                                 };
                                 readonly type: {
                                     readonly type: "string";
-                                    readonly enum: readonly ["category_mismatch", "extra_annotation", "missing_annotation", "position_difference", "split", "merge"];
+                                    readonly enum: readonly ["category_mismatch", "extra_annotation", "missing_annotation", "missing_content", "extra_content", "split", "merge"];
                                     readonly title: "Type";
                                     readonly required: true;
                                 };
@@ -594,7 +594,7 @@ export declare const anchorToolParameters: {
                                     }, {
                                         readonly type: "null";
                                     }];
-                                    readonly description: "位置问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。";
+                                    readonly description: "内容问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。";
                                     readonly title: "Coverage Effect";
                                 };
                                 readonly coverage_reason: {
@@ -603,7 +603,7 @@ export declare const anchorToolParameters: {
                                     }, {
                                         readonly type: "null";
                                     }];
-                                    readonly description: "位置问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。";
+                                    readonly description: "内容问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。";
                                     readonly title: "Coverage Reason";
                                 };
                                 readonly same_main_object_as: {
@@ -628,7 +628,7 @@ export declare const anchorToolParameters: {
                                         };
                                         readonly title: "CandidateObjectReference";
                                     };
-                                    readonly description: "仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。";
+                                    readonly description: "仅用于主图少标实例：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。";
                                     readonly title: "Same Main Object As";
                                 };
                             };

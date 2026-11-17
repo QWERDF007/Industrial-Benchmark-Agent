@@ -8,6 +8,7 @@ from pydantic import Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.annotation_assignment import AnnotationAssignment
+from iad_core.consistency.annotation_coverage import AnnotationCoverage
 from iad_core.consistency.annotation_models import AnnotationComparison, AnnotationDifference, AnnotationMatchingConfig, InstanceMatch
 from iad_core.consistency.geometry import InstanceGeometry, bbox_iou, union_region
 from iad_core.consistency.errors import ConsistencyError
@@ -182,7 +183,7 @@ class AnnotationMatcher:
                     'SEGMENTATION' if segmentation is not None else 'LOCATION_ONLY'))
             region = union_region([a[i].bounds,b[j].bounds])
             if score < 1:
-                difference('GEOMETRY',[i],[j],region,facts={'bbox_iou':boxes[i,j], 'segmentation_iou':segmentation},
+                difference('GEOMETRY',[i],[j],region,facts={'bbox_iou':boxes[i,j], 'segmentation_iou':segmentation, **AnnotationCoverage.compare([a[i]], [b[j]]).facts},
                     extra_pending=['Confirm instance correspondence for low-overlap regions'] if score<self.config.minimum_iou else [],
                     conflict=comparable and score>=self.config.minimum_iou)
             first,second = left.annotations[i],right.annotations[j]
@@ -203,7 +204,8 @@ class AnnotationMatcher:
                 union_region([a[i].bounds for i in lc] + [b[j].bounds for j in rc]),
                 facts={'coverage_basis': 'visible_pixels' if combined.masked_domain or any(p.masked_domain for p in pieces) else
                     'segmentation' if combined.pixels is not None and all(p.pixels is not None for p in pieces) else 'bounding_extent',
-                    'combined_coverage': combined.covered_fraction(pieces)})
+                    'combined_coverage': combined.covered_fraction(pieces),
+                    **AnnotationCoverage.compare([a[i] for i in lc], [b[j] for j in rc]).facts})
             labels = [{side.policy.category_mapping.get(value.raw_label, value.raw_label) for value in values}
                 for side, values in ((left, [a[i].annotation for i in lc]), (right, [b[j].annotation for j in rc]))]
             if labels[0] != labels[1]:

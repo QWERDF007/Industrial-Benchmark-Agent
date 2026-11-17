@@ -52,7 +52,9 @@ class AnnotationObservation(AnalysisModel):
     @classmethod
     def capture(cls,left:'AnnotationSet',right:'AnnotationSet',comparison:'AnnotationComparison',relation:Relation,*,reverse:bool=False,
                 matching:'AnnotationMatchingConfig | None'=None) -> 'AnnotationObservation':
-        if comparison.coordinate_frame=='UNAVAILABLE' and relation!='EXACT' and ComparisonDomain.can_compare_layout(left,right,relation):
+        if (comparison.coordinate_frame=='UNAVAILABLE' and relation!='EXACT' or any(
+                item.type in ('GEOMETRY', 'SPLIT_MERGE') and 'left_only_pixels' not in item.facts
+                for item in comparison.differences)) and ComparisonDomain.can_compare_layout(left,right,relation):
             from iad_core.consistency.annotations import AnnotationMatcher
             comparison=AnnotationMatcher(matching).compare(left,right,relation=relation)
         inventory=AnnotationInventory.compare(left,right)
@@ -62,6 +64,8 @@ class AnnotationObservation(AnalysisModel):
         if not geometry_compared:categories.update(inventory.categories)
         if reverse:
             inverse={ConflictCategory.EXTRA:ConflictCategory.MISSING,ConflictCategory.MISSING:ConflictCategory.EXTRA,
+                ConflictCategory.MISSING_CONTENT:ConflictCategory.EXTRA_CONTENT,
+                ConflictCategory.EXTRA_CONTENT:ConflictCategory.MISSING_CONTENT,
                 ConflictCategory.SPLIT:ConflictCategory.MERGE,ConflictCategory.MERGE:ConflictCategory.SPLIT}
             categories={inverse.get(category,category) for category in categories}
             inventory=inventory.model_copy(update={'left':inventory.right,'right':inventory.left})

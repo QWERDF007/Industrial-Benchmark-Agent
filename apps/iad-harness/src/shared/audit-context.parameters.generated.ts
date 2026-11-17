@@ -1,4 +1,101 @@
 /* Generated from Python audit context models. */
+export const auditDefectProfileParameters = {
+  "commit_key": {
+    "type": "string",
+    "title": "Commit Key",
+    "required": true
+  },
+  "base_revision": {
+    "type": "integer",
+    "title": "Base Revision",
+    "required": true
+  },
+  "features": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "feature_id": {
+          "type": "string",
+          "title": "Feature Id",
+          "required": true
+        },
+        "category": {
+          "type": "string",
+          "title": "Category",
+          "required": true
+        },
+        "signature": {
+          "type": "string",
+          "description": "实际缺陷的可见形态、外观和位置关系。",
+          "title": "Signature",
+          "required": true
+        },
+        "normal_distinctions": {
+          "type": "string",
+          "description": "比较良品时应核对的可见差别，不能凭频次或普通纹理判断困难。",
+          "title": "Normal Distinctions",
+          "required": true
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "sample_id": {
+                "type": "string",
+                "title": "Sample Id",
+                "required": true
+              },
+              "result_revision": {
+                "type": "integer",
+                "title": "Result Revision",
+                "required": true
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "finding",
+                  "observation",
+                  "feature",
+                  "image"
+                ],
+                "title": "Kind",
+                "required": true
+              },
+              "index": {
+                "oneOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Index"
+              }
+            },
+            "title": "AuditResultReference"
+          },
+          "title": "References",
+          "required": true
+        }
+      },
+      "title": "AuditDefectFeature"
+    },
+    "title": "Features",
+    "required": true
+  },
+  "limitations": {
+    "type": "array",
+    "items": {
+      "type": "string"
+    },
+    "title": "Limitations"
+  }
+} as const;
 export const auditReviewParameters = {
   "commit_key": {
     "type": "string",
@@ -694,9 +791,11 @@ export const auditReportDraftParameters = {
                 "category_mismatch",
                 "extra_annotation",
                 "missing_annotation",
-                "position_difference",
+                "missing_content",
+                "extra_content",
                 "split",
-                "merge"
+                "merge",
+                "position_difference"
               ],
               "description": "沿用本数据格式的现有差异类型，每类单独分析，不合并多标少标或拆分合并。",
               "title": "Issue Type",
@@ -1449,6 +1548,14 @@ export const auditEvidenceCommitParameters = {
                   "title": "Annotation Id",
                   "required": true
                 },
+                "basis": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "本图可见依据，先解释为何符合相应形态、尺寸、位置和对比度场景，不引用出现频次。",
+                  "title": "Basis"
+                },
                 "morphology": {
                   "type": "string",
                   "title": "Morphology",
@@ -1540,7 +1647,7 @@ export const auditEvidenceCommitParameters = {
               "confusable": {
                 "type": "boolean",
                 "title": "Confusable",
-                "required": true
+                "default": false
               },
               "texture": {
                 "oneOf": [
@@ -1552,6 +1659,98 @@ export const auditEvidenceCommitParameters = {
                   }
                 ],
                 "title": "Texture"
+              },
+              "texture_reason": {
+                "oneOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Texture Reason"
+              },
+              "profile_revision": {
+                "oneOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Profile Revision"
+              },
+              "qualification": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "feature_id": {
+                    "type": "string",
+                    "title": "Feature Id",
+                    "required": true
+                  },
+                  "reference": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "sample_id": {
+                        "type": "string",
+                        "title": "Sample Id",
+                        "required": true
+                      },
+                      "result_revision": {
+                        "type": "integer",
+                        "title": "Result Revision",
+                        "required": true
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "finding",
+                          "observation",
+                          "feature",
+                          "image"
+                        ],
+                        "title": "Kind",
+                        "required": true
+                      },
+                      "index": {
+                        "oneOf": [
+                          {
+                            "type": "integer"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "title": "Index"
+                      }
+                    },
+                    "title": "AuditResultReference",
+                    "required": true
+                  },
+                  "similar_features": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "title": "Similar Features",
+                    "required": true
+                  },
+                  "normal_reason": {
+                    "type": "string",
+                    "title": "Normal Reason",
+                    "required": true
+                  },
+                  "difficulty_reason": {
+                    "type": "string",
+                    "title": "Difficulty Reason",
+                    "required": true
+                  }
+                },
+                "title": "HardNormalQualification"
               }
             },
             "title": "QualityNormalScene"
@@ -1763,7 +1962,8 @@ export const auditEvidenceCommitParameters = {
                 "category_mismatch",
                 "extra_annotation",
                 "missing_annotation",
-                "position_difference",
+                "missing_content",
+                "extra_content",
                 "split",
                 "merge"
               ],
@@ -1776,7 +1976,7 @@ export const auditEvidenceCommitParameters = {
               "items": {
                 "type": "string"
               },
-              "description": "引用当前主图真实annotation_id；类别、多标、位置和合并至少1个，拆分至少2个，少标或图像级可以为空。",
+              "description": "引用当前主图真实annotation_id；类别、多标实例、内容差异和合并至少1个，拆分至少2个，少标实例或图像级可以为空。",
               "title": "Annotation Ids"
             },
             "consistency_issue_refs": {

@@ -4,14 +4,15 @@ import { LlmError, MessageId } from '@deepseek-ai/dsh-llm';
 import * as piAi from '@deepseek-ai/dsh-llm-pi-ai';
 import { defineTool } from '@deepseek-ai/dsh-tools';
 import { auditQualityScoreParameters, auditGlobalParameters, auditRecordParameters, auditReportEvidenceParameters } from '../../shared/audit.parameters.generated.js';
-import { auditReviewParameters, auditDiscoveryParameters, auditObservationParameters, auditReportDraftParameters, auditReportFinalizeParameters } from '../../shared/audit-context.parameters.generated.js';
+import { auditDefectProfileParameters, auditReviewParameters, auditDiscoveryParameters, auditObservationParameters, auditReportDraftParameters, auditReportFinalizeParameters } from '../../shared/audit-context.parameters.generated.js';
 import { auditDistributionParameters } from '../../shared/distribution.parameters.generated.js';
+import { promptDefaults } from '../../shared/prompt-defaults.generated.js';
 import { NativeMediaAttachments, nativeMediaOutput } from '../sessions/media.js';
 import { NativeModelCalls } from '../sessions/model-calls.js';
 import { workbenchJsonOutput } from '../tool-output.js';
 import { auditSessionPath } from './session-path.js';
 import { AuditImageAgents } from './images.js';
-const masterTools = ['audit_observation', 'audit_report_draft', 'audit_report_section', 'audit_quality_score', 'audit_statistics', 'audit_distribution', 'audit_records', 'audit_report_evidence', 'audit_review_commit', 'audit_report_commit'];
+const masterTools = ['audit_defect_profile', 'audit_observation', 'audit_report_draft', 'audit_report_section', 'audit_quality_score', 'audit_statistics', 'audit_distribution', 'audit_records', 'audit_report_evidence', 'audit_review_commit', 'audit_report_commit'];
 export class AuditMasterAgent {
     bridge;
     host;
@@ -43,7 +44,7 @@ export class AuditMasterAgent {
         const onDemand = snapshot.context_policy === 'evidence-on-demand-v1';
         const failures = new Map();
         let observers;
-        await this.host.withAgent(state.session_id, { signal, subagents: snapshot.settings.concurrency, evidenceOnDemand: onDemand, imageHandoffTools: ['audit_observation', 'audit_commit', 'audit_review_commit', 'audit_report_section', 'audit_report_commit'],
+        await this.host.withAgent(state.session_id, { signal, subagents: snapshot.settings.concurrency, evidenceOnDemand: onDemand, imageHandoffTools: ['audit_defect_profile', 'audit_observation', 'audit_commit', 'audit_review_commit', 'audit_report_section', 'audit_report_commit'],
             agentOptions: { provider, model: profile.model_id, maxTokens: profile.max_output_tokens ?? undefined },
             setup: async (scope) => { scope.tools.restrict({ allow: onDemand ? [...masterTools, 'audit_discovery'] : masterTools }); },
             sharedSetup: async (scope) => {
@@ -80,6 +81,14 @@ export class AuditMasterAgent {
                 });
                 scope.systemPrompt.section({ name: 'audit-role', order: 100, interpolate: false,
                     text: ({ agent }) => (agent?.id === state.session_id ? master : snapshot.observer_prompt).system_prompt || '' });
+                scope.tools.register(defineTool({ name: 'audit_defect_profile', description: '综合全部已完成缺陷结果，实际查看少量代表缺陷原图，提交供良品审计使用的缺陷画像。成功结束本阶段，不生成报告。',
+                    parameters: auditDefectProfileParameters, output: workbenchJsonOutput, execute: async (submission, execution) => {
+                        if (execution.agent?.id !== state.session_id)
+                            throw new Error('仅主 Agent 可以发布缺陷画像');
+                        const result = await this.bridge.execute('audit_agent_defect_profile', { ...identity, submission }, execution.signal);
+                        execution.concludeTurn();
+                        return result;
+                    } }));
                 scope.tools.register(defineTool({ name: 'audit_statistics', description: '读取按有效图级版本计算的覆盖、疑点、观察、一致性交叉和知识作用统计。', parameters: {}, output: workbenchJsonOutput,
                     execute: (_args, execution) => this.bridge.execute('audit_agent_report_statistics', identity, execution.signal) }));
                 scope.tools.register(defineTool({ name: 'audit_quality_score', description: '由程序按冻结系数和当前有效图级记录计算综合分、三维分和完整扣分明细。归并同义场景，实际观察相似候选后确认低信息增量组；不得填入分数或推测数量。正式报告的quality_assessment原样采用返回的assessment，图级复审变化后重新预览。',
@@ -128,16 +137,38 @@ export class AuditMasterAgent {
                 await this.bridge.execute('audit_agent_prepare_observations', identity, signal);
                 while (true) {
                     signal.throwIfAborted();
-                    await agent.runMaintenance(async () => {
-                        try {
-                            await observers.run(agent, signal);
-                        }
-                        finally {
-                            for (const message of [...agent.inbox.nextTurn, ...agent.inbox.nextStep])
-                                if (message.source.kind === 'subagent-settled')
-                                    agent.inbox.remove(message.id);
-                        }
-                    });
+                    const phase = await this.bridge.execute('audit_agent_phase', identity, signal);
+                    if (phase.phase === 'blocked')
+                        throw new Error(phase.limitations.join('；'));
+                    if (phase.phase === 'defects' || phase.phase === 'normals') {
+                        await agent.runMaintenance(async () => {
+                            try {
+                                await observers.run(agent, signal, phase.pending_sample_ids);
+                            }
+                            finally {
+                                for (const message of [...agent.inbox.nextTurn, ...agent.inbox.nextStep])
+                                    if (message.source.kind === 'subagent-settled')
+                                        agent.inbox.remove(message.id);
+                            }
+                        });
+                        continue;
+                    }
+                    if (phase.phase === 'defect_profile') {
+                        await this.bridge.execute('audit_agent_report_begin', { ...identity, phase: 'defect_profile' }, signal);
+                        const context = await this.bridge.execute('audit_agent_defect_context', identity, signal);
+                        failures.delete(state.session_id);
+                        agent.followup({ id: MessageId(randomUUID()), role: 'user', source: { kind: 'user' }, content: [
+                                { type: 'text', text: JSON.stringify(context) + '\n\n' + promptDefaults.auditDefectProfile },
+                            ] });
+                        await agent.whenIdle();
+                        signal.throwIfAborted();
+                        if (failures.has(state.session_id))
+                            throw failures.get(state.session_id);
+                        const next = await this.bridge.execute('audit_agent_phase', identity, signal);
+                        if (next.phase === 'defect_profile')
+                            throw new Error('主 Agent 结束但未提交缺陷画像');
+                        continue;
+                    }
                     await this.bridge.execute('audit_agent_report_begin', identity, signal);
                     const context = await this.bridge.execute('audit_agent_review_context', identity, signal);
                     failures.delete(state.session_id);

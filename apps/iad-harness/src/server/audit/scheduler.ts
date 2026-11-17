@@ -53,10 +53,8 @@ export class AuditWorkflowScheduler implements ModelRouting {
 
   private async run(runId:string,signal:AbortSignal):Promise<void> {
     const snapshot=await this.bridge.execute<AuditWorkflowSnapshot>('audit_agent_snapshot',{run_id:runId});
-    const {samples}=await this.bridge.execute<{samples:AuditSampleRun[]}>('audit_agent_samples',{run_id:runId});
-    const pending=samples.filter(sample=>sample.state!=='COMPLETED');
+    if(snapshot.schema_version!==5)throw new Error('历史审计仅供查看，请新建作业');
     const agent=new AuditMasterAgent(this.bridge,this.host,this.providers,this.dataRoot);
-    if(pending.length)await this.bridge.execute('audit_agent_prepare_inputs',{run_id:runId},signal);
     if(!signal.aborted){
       try{await agent.run(runId,snapshot,signal);}
       catch(error){

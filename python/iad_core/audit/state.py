@@ -12,6 +12,7 @@ from iad_core.workbench.session_models import ImageSessionLocation
 class AuditState:
     def __init__(self, db):
         self.db = db
+        self._snapshots = {}
 
     def owns(self, run_id: str) -> bool:
         with self.db.connection() as connection:
@@ -22,16 +23,20 @@ class AuditState:
             row=connection.execute("SELECT json_extract(snapshot_json,'$.schema_version') FROM audit_workflow_runs WHERE job_id=?",(run_id,)).fetchone()
         if row is None:
             raise LookupError('原生审计作业不存在')
-        return row[0] != 4
+        return row[0] not in (4, 5)
 
     def snapshot(self, run_id: str) -> AuditWorkflowSnapshot:
+        if run_id in self._snapshots:
+            return self._snapshots[run_id]
         with self.db.connection() as connection:
-            row = connection.execute('SELECT snapshot_json FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
+            row = connection.execute("SELECT snapshot_json,json_extract(snapshot_json,'$.schema_version') FROM audit_workflow_runs WHERE job_id=?", (run_id,)).fetchone()
         if row is None:
             raise LookupError('原生审计作业不存在')
-        if json.loads(row[0]).get('schema_version') != 4:
+        if row[1] not in (4, 5):
             raise ValueError('历史审计已归档，请查看冻结报告或新建作业')
-        return AuditWorkflowSnapshot.model_validate_json(row[0])
+        snapshot = AuditWorkflowSnapshot.model_validate_json(row[0])
+        self._snapshots[run_id] = snapshot
+        return snapshot
 
     @staticmethod
     def _sample(row) -> AuditSampleRun:
@@ -58,9 +63,11 @@ class AuditState:
         from iad_core.audit.observation_notes import AuditObservationNotes
         snapshot, sample = self.snapshot(run_id), self.sample(run_id, sample_id)
         review = next((item for item in AuditBatches(self).rechecks(run_id) if item.sample_id==sample_id),None)
-        return AuditAgentContext(quality_score_version=snapshot.quality_score_version,job_id=run_id, sample_id=sample_id, session_id=sample.session_id,
+        from iad_core.audit.stages import AuditStages
+        profile = AuditStages(self).profile(run_id)
+        return AuditAgentContext(defect_profile=profile, quality_score_version=snapshot.quality_score_version,job_id=run_id, sample_id=sample_id, session_id=sample.session_id,
             target=next(record for record in snapshot.manifest.records if record.sample.sample_id == sample_id),
-            consistency=AuditConsistencyContext(**sample.consistency.model_dump(include=set(AuditConsistencyContext.model_fields))),
+            consistency=AuditConsistencyContext.capture(sample.consistency),
             knowledge=snapshot.knowledge,saved_progress=sample.result if sample.result and sample.result.execution_status!='completed' else None,
             batch=AuditBatches(self).for_sample(run_id,sample_id),review=review,
             prior_result=sample.result if review else None,
@@ -69,7 +76,9 @@ class AuditState:
     def record(self, run_id: str, target_id: str, sample_id: str) -> AnalysisRegistration:
         sample = self.sample(run_id, target_id)
         from iad_core.audit.batches import AuditBatches
-        if sample_id == target_id or any(ref.sample_id == sample_id
+        from iad_core.audit.stages import AuditStages
+        profile = AuditStages(self).profile(run_id)
+        if (profile and any(ref.sample_id == sample_id for feature in profile.features for ref in feature.references)) or sample_id == target_id or any(ref.sample_id == sample_id
                 for review in AuditBatches(self).rechecks(run_id,pending_only=False)
                 if review.sample_id == target_id for ref in review.conflict_refs):
             return next(record for record in self.snapshot(run_id).manifest.records if record.sample.sample_id == sample_id)

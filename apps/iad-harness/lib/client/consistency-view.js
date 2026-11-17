@@ -5,7 +5,8 @@ export const initialConsistencyFilters = { search: '', model: 'all', agreement: 
 export class ConsistencyView {
     static programConclusion(categories, fallback) {
         const labels = conflictCategoryLabels;
-        const primary = [...categories].sort((left, right) => conflictCategoryPriorities[left] - conflictCategoryPriorities[right])[0] ?? fallback;
+        const primary = conflictCategories.filter(category => categories.includes(category))
+            .sort((left, right) => conflictCategoryPriorities[left] - conflictCategoryPriorities[right])[0] ?? fallback;
         return labels[primary] ?? primary;
     }
     static modelConclusion(value, verdict) {

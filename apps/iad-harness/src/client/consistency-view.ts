@@ -45,7 +45,8 @@ export type ConsistencyAnalysisReference=GalleryReference|AnchorReviewReference;
 export class ConsistencyView {
   static programConclusion(categories:GalleryItem['conflict_categories'],fallback:string):string {
     const labels:Readonly<Partial<Record<string,string>>>=conflictCategoryLabels;
-    const primary=[...categories].sort((left,right)=>conflictCategoryPriorities[left]-conflictCategoryPriorities[right])[0]??fallback;
+    const primary=conflictCategories.filter(category=>categories.includes(category))
+      .sort((left,right)=>conflictCategoryPriorities[left]-conflictCategoryPriorities[right])[0]??fallback;
     return labels[primary]??primary;
   }
 

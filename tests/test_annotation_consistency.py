@@ -176,6 +176,8 @@ def test_imported_policy_and_parse_failure_remain_distinct_from_empty_annotation
     registry.save(config,require_existing=True)
     (Path(config.annotations.root)/'dent.json').write_text('{broken')
     registry.rescan(config.dataset.id)
+    from iad_core.duplicate.index import PixelIndex
+    PixelIndex(db).prepare([config.dataset.id+':dent.png', config.dataset.id+':normal.png'])
     snapshot=AnnotationSet.capture(db,config.dataset.id+':dent.png')
     assert snapshot.policy.policy_id=='line-a'
     assert snapshot.policy.category_mapping=={'dent':'凹陷'}
@@ -242,11 +244,11 @@ def test_polygon_at_image_edge_uses_clipped_original_raster_bounds():
     assert result.matches[0].segmentation_iou==1
 
 
-def test_two_small_regions_inside_a_large_extent_do_not_prove_a_merge():
+def test_two_small_regions_inside_a_large_extent_are_split_with_missing_content():
     left=side('left',[box('left','a','dent',[0,0,10,10]),box('left','b','dent',[90,0,100,10])])
     right=side('right',[box('right','large','dent',[0,0,100,10])])
     result=AnnotationMatcher().compare(left,right,relation='EXACT')
-    assert not any(d.type=='SPLIT_MERGE' for d in result.differences)
+    assert result.conflict_categories == ['少标内容', '拆分']
 
 
 def test_same_extent_different_mask_pixels_report_geometry_instead_of_two_missing_instances(tmp_path):
@@ -299,7 +301,7 @@ def test_identical_instances_match_exactly_before_assigning_other_overlaps():
     result=AnnotationMatcher().compare(left,right,relation='EXACT')
     assert len(result.matches)==2
     assert [d.type for d in result.differences]==['GEOMETRY']
-    assert result.conflict_categories==['位置差异']
+    assert result.conflict_categories==['少标内容','多标内容']
 
 
 def test_crowded_identical_instances_match_one_to_one_and_report_the_extra():
@@ -325,7 +327,7 @@ def test_split_merge_is_definite_when_the_combined_region_has_wider_coverage(rev
             annotation.polygon = [[x1, y1], [x2, y1], [x2, y2], [x1, y2]]
     left, right = (whole, pieces) if reverse else (pieces, whole)
     result = AnnotationMatcher().compare(left, right, relation='EXACT')
-    assert result.conflict_categories == ['合并' if reverse else '拆分']
+    assert result.conflict_categories == ['多标内容' if reverse else '少标内容', '合并' if reverse else '拆分']
     assert result.factual_difference_types == ['SPLIT_MERGE']
     assert len(result.differences) == 1
     assert not result.matches
@@ -338,18 +340,18 @@ def test_matching_ties_are_definite_and_stable_when_input_order_changes():
     left.annotations.reverse()
     right.annotations.reverse()
     second = AnnotationMatcher().compare(left, right, relation='EXACT')
-    assert first.conflict_categories == second.conflict_categories == ['位置差异']
+    assert first.conflict_categories == second.conflict_categories == ['少标内容','多标内容']
     assert {(m.left_id, m.right_id) for m in first.matches} == {(m.left_id, m.right_id) for m in second.matches}
     assert len(first.matches) == 2
 
 
 @pytest.mark.parametrize('left_boxes,right_boxes,expected,pair_count', [
-    ([[20, 10, 50, 30], [90, 10, 110, 30]], [[0, 0, 150, 70]], ['拆分'], 0),
-    ([[0, 0, 150, 70]], [[20, 10, 50, 30], [90, 10, 110, 30]], ['合并'], 0),
+    ([[20, 10, 50, 30], [90, 10, 110, 30]], [[0, 0, 150, 70]], ['少标内容', '拆分'], 0),
+    ([[0, 0, 150, 70]], [[20, 10, 50, 30], [90, 10, 110, 30]], ['多标内容', '合并'], 0),
     ([[0, 0, 10, 10], [0, 0, 10, 10]], [[0, 0, 10, 10]], ['多类别'], 1),
     ([[0, 0, 1, 1]], [], ['多类别'], 0),
     ([], [[0, 0, 1, 1]], ['少类别'], 0),
-    ([[0, 0, 10, 10], [2, 0, 12, 10]], [[1, 0, 11, 10], [1, 0, 11, 10]], ['位置差异'], 2),
+    ([[0, 0, 10, 10], [2, 0, 12, 10]], [[1, 0, 11, 10], [1, 0, 11, 10]], ['少标内容','多标内容'], 2),
     ([[0, 0, 10, 10], [0, 0, 10, 10]], [[0, 0, 10, 10], [0, 0, 10, 10]], [], 2),
 ])
 def test_saved_ambiguous_groups_are_restored_as_definite_differences(left_boxes, right_boxes, expected, pair_count):
@@ -375,5 +377,5 @@ def test_split_merge_preserves_a_simultaneous_category_difference():
         box('pieces', 'b', 'scratch', [90, 10, 110, 30])])
     whole = side('whole', [box('whole', 'c', 'dent', [0, 0, 150, 70])])
     result = AnnotationMatcher().compare(pieces, whole, relation='EXACT')
-    assert result.conflict_categories == ['类别不一致', '拆分']
+    assert result.conflict_categories == ['类别不一致', '少标内容', '拆分']
     assert result.factual_difference_types == ['CATEGORY', 'SPLIT_MERGE']

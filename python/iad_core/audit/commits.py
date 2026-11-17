@@ -80,6 +80,18 @@ class AuditCommits:
             if final.quality_observation is not None:
                 from iad_core.audit.quality_reports import AuditQualityReports
                 AuditQualityReports.validate_observation(record, final.quality_observation)
+            if snapshot.schema_version == 5:
+                from iad_core.audit.stages import AuditStages
+                stages = AuditStages(self.jobs)
+                if stages.role(record) == 'normal' and stages.status(run_id).phase in ('defects', 'defect_profile', 'blocked'):
+                    raise ValueError('缺陷审计及主 Agent 缺陷画像完成后才能提交良品审计')
+                if final.quality_observation is not None:
+                    stages.validate_observation(run_id, sample_id, final.quality_observation, delivered)
+                    if (final.state == 'suspect' and final.quality_observation.normal is not None
+                            and final.quality_observation.normal.hard):
+                        raise ValueError('存在独立质量疑点时不能直接将该图计为困难良品')
+                if any(finding.type == 'position_difference' for finding in final.findings):
+                    raise ValueError('请将覆盖变化定性为少标内容或多标内容')
             annotation_ids = {item.annotation_id for item in record.annotations}
             if any(set(observation.annotation_ids) - annotation_ids for observation in final.observations):
                 raise ValueError('观察引用不属于本图冻结标注')

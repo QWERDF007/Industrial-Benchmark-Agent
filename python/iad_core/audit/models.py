@@ -13,6 +13,8 @@ from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisRegis
 from iad_core.workbench.job_models import JobStatus
 from iad_core.workbench.model_profile import FrozenModelRole
 from iad_core.workbench.module_settings import AuditSettingsValues
+from iad_core.audit.consistency_models import AuditCandidateContext, AuditUpstreamResult
+from iad_core.audit.stage_models import AuditDefectProfileView
 from iad_core.audit.quality_models import QualityObservation, QualityScoreVersion
 from iad_core.audit.knowledge_models import AuditKnowledge, AuditKnowledgeSelection
 from iad_core.audit.prompt_text import (DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDIT_SYSTEM_PROMPT,
@@ -21,7 +23,7 @@ from iad_core.analysis.prompt_models import AnalysisRolePrompts
 from iad_core.analysis.evidence_models import ContextPolicy, AnalysisEvidenceCandidate
 from iad_core.audit.delegation_models import AuditBatch, AuditRecheck, AuditHypothesisAssessment, AuditVisualFeature, AuditObservationNote
 from iad_core.audit.profile_models import AuditDatasetProfile
-from iad_core.consistency.annotation_issues import IssueType
+from iad_core.consistency.annotation_issues import IssueType, ACTIVE_ISSUE_TYPES
 from iad_core.workbench.audit_result_models import AuditSampleItem
 from iad_core.evidence.registrations import RegistrationMediaQuery
 
@@ -45,7 +47,7 @@ class AuditAgentConfiguration(AnalysisModel):
 
 
 class AuditWorkflowSnapshot(AuditAgentConfiguration):
-    schema_version: Literal[4] = 4
+    schema_version: Literal[4, 5] = 5
     quality_score_version: QualityScoreVersion | None = None
     context_policy: ContextPolicy = 'legacy'
     manifest: AnalysisManifest
@@ -73,13 +75,13 @@ class AuditFinding(AnalysisModel):
     evidence_ids: list[str] = Field(min_length=1)
     normal_explanation: str
     limitations: list[str]
-    type: IssueType = Field(description='按可见问题分类；类别差异指有效同内容对照中同一对象的原始分组差异。')
-    annotation_ids: list[str] = Field(default_factory=list,description='引用当前主图真实annotation_id；类别、多标、位置和合并至少1个，拆分至少2个，少标或图像级可以为空。')
+    type: IssueType = Field(json_schema_extra={'enum': list(ACTIVE_ISSUE_TYPES)}, description='按可见问题分类；类别差异指有效同内容对照中同一对象的原始分组差异。')
+    annotation_ids: list[str] = Field(default_factory=list,description='引用当前主图真实annotation_id；类别、多标实例、内容差异和合并至少1个，拆分至少2个，少标实例或图像级可以为空。')
     consistency_issue_refs: list[str] = Field(default_factory=list,description='只引用本图上游result.issues中的真实issue_id，独立发现且不采纳上游问题时为空。')
 
     @model_validator(mode='after')
     def validate_object_reference(self):
-        minimum = {'category_mismatch':1,'extra_annotation':1,'position_difference':1,'split':2,'merge':1}.get(self.type,0)
+        minimum = {'category_mismatch':1,'extra_annotation':1,'missing_content':1,'extra_content':1,'split':2,'merge':1}.get(self.type,0)
         if len(set(self.annotation_ids)) != len(self.annotation_ids) or len(self.annotation_ids) < minimum:
             raise ValueError('疑点必须引用本图实际标注对象，拆分至少涉及两个原始对象')
         return self
@@ -129,9 +131,10 @@ class AuditFinal(AnalysisModel):
                 raise ValueError('完整审计必须有两类结论之一、真实图证和结论正文')
             if (self.state == 'suspect') != bool(self.findings):
                 raise ValueError('图级疑点结论与疑点记录不一致')
-        positions = [tuple(sorted(finding.annotation_ids)) for finding in self.findings if finding.type=='position_difference']
+        positions = [(finding.type, tuple(sorted(finding.annotation_ids))) for finding in self.findings
+            if finding.type in ('missing_content', 'extra_content')]
         if len(positions) != len(set(positions)):
-            raise ValueError('同一标注对象的位置差异只能记录一次')
+            raise ValueError('同一标注对象的同方向内容问题只能记录一次')
         if self.execution_status != 'completed' and self.state is not None:
             raise ValueError('未完成审计不能生成完整业务结论')
         return self
@@ -165,12 +168,16 @@ class AuditResultVersion(AnalysisModel):
 
 
 class AuditConsistencyContext(AnchorResultSummary):
-    result: AnchorResult | None
+    result: AuditUpstreamResult | None
     evidence: list[AnchorEvidenceReference]
-    assessments: list[AnchorAssessmentRecord]
-    gates: list[CandidateIdentityRecord]
-    observations: list[AnchorObservation]
+    gates: list[AuditCandidateContext]
     captured_evidence: list[AnchorEvidenceReference]
+
+    @classmethod
+    def capture(cls, source: AnchorResultDetail):
+        return cls(**source.model_dump(include=set(AnchorResultSummary.model_fields)),
+            result=AuditUpstreamResult.capture(source.result), evidence=source.evidence,
+            gates=[AuditCandidateContext.capture(gate) for gate in source.gates], captured_evidence=source.captured_evidence)
 
 
 class AuditAgentContext(AnalysisModel):
@@ -181,6 +188,7 @@ class AuditAgentContext(AnalysisModel):
     target: AnalysisRegistration
     consistency: AuditConsistencyContext
     knowledge: AuditKnowledge | None
+    defect_profile: AuditDefectProfileView | None = None
     saved_progress: AuditFinal | None = None
     batch: AuditBatch | None = None
     review: AuditRecheck | None = None

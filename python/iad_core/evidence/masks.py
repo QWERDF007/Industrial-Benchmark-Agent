@@ -1,6 +1,6 @@
 import io
 from pathlib import Path
-from typing import List, Optional, Protocol
+from typing import List, Optional, Protocol, NamedTuple
 
 from PIL import Image, ImageChops, ImageDraw
 
@@ -9,6 +9,11 @@ from iad_core.evidence.files import ImageFiles
 
 
 class ImageDimensions(Protocol):
+    width: int
+    height: int
+
+
+class ImageExtent(NamedTuple):
     width: int
     height: int
 

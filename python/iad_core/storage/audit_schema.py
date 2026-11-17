@@ -5,6 +5,10 @@ def initialize_audit_schema(connection: Connection):
     connection.execute('''CREATE TABLE IF NOT EXISTS audit_workflow_runs (
         job_id TEXT PRIMARY KEY REFERENCES job_runs(job_id) ON DELETE CASCADE,
         snapshot_json TEXT NOT NULL, summary_json TEXT, report_html TEXT)''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS audit_defect_profiles (
+        job_id TEXT NOT NULL REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
+        revision INTEGER NOT NULL, commit_key TEXT NOT NULL, request_json TEXT NOT NULL,
+        profile_json TEXT NOT NULL, PRIMARY KEY(job_id,revision), UNIQUE(job_id,commit_key))''')
     connection.execute('''CREATE TABLE IF NOT EXISTS audit_sample_runs (
         job_id TEXT NOT NULL REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
         sample_id TEXT NOT NULL REFERENCES samples(sample_id), ordinal INTEGER NOT NULL,

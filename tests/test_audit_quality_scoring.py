@@ -30,15 +30,16 @@ def test_consistency_counts_each_completed_image_once_at_highest_severity():
         item.consistency_categories = [ConflictCategory.MISSING, ConflictCategory.EXTRA]
     for item in images[30:35]:
         item.consistency_categories = [ConflictCategory.EXTRA]
-    images[35].consistency_categories = [ConflictCategory.POSITION, ConflictCategory.SPLIT, ConflictCategory.MERGE]
+    images[35].consistency_categories = [ConflictCategory.MISSING_CONTENT, ConflictCategory.SPLIT, ConflictCategory.MERGE]
     score = AuditQualityScorer().score(images)
-    assert score.dimensions['consistency'].score == pytest.approx(93.3)
+    assert score.dimensions['consistency'].score == pytest.approx(92.94)
     counts = {item.code: item.count for item in score.items}
     assert counts['category_mismatch'] == 10
     assert counts['missing_annotation'] == 20
     assert counts['extra_annotation'] == 5
-    assert counts['position_difference'] == counts['split'] == counts['merge'] == 1
-    assert score.dataset_scores[0].dimensions['consistency'].score == pytest.approx(93.3)
+    assert counts['missing_content'] == 1
+    assert counts['split'] == counts['merge'] == 0
+    assert score.dataset_scores[0].dimensions['consistency'].score == pytest.approx(92.94)
 
 
 def defect(index, category='划痕', **values):
@@ -69,7 +70,7 @@ def test_diversity_uses_instance_scope_and_does_not_penalize_absent_scenes():
     assert items['B3'].deduction > 0  # independent size and location causes
     assert items['B2'].deduction == 0
     assert items['C1'].deduction == 0
-    assert len([item for item in score.items if item.dimension == 'diversity']) == 14
+    assert len([item for item in score.items if item.dimension == 'diversity']) == 13
     assert score.total is not None
 
 
@@ -162,3 +163,34 @@ def test_rare_category_has_twenty_point_budget_and_visual_coverage_has_ten():
     assert score.total == pytest.approx(97)
     assert [(item.code, item.direction) for item in score.items if item.code.startswith('C')] == [
         ('C1', '对比度'), ('C2', '对比度'), ('C3', '缺陷组合'), ('C4', '缺陷组合')]
+
+
+def test_content_has_lower_penalty_and_each_image_has_one_scoring_bucket():
+    images = [image(0, consistency_categories=[ConflictCategory.MISSING_CONTENT, ConflictCategory.EXTRA]),
+        image(1, consistency_categories=[ConflictCategory.EXTRA_CONTENT, ConflictCategory.MISSING_CONTENT]),
+        image(2, consistency_categories=[ConflictCategory.SPLIT, ConflictCategory.MERGE]), image(3)]
+    score = AuditQualityScorer().score(images)
+    items = {item.code: item for item in score.items}
+    assert score.dimensions['consistency'].score == pytest.approx(67.5)
+    assert items['extra_annotation'].count == 1
+    assert items['missing_content'].count == 1
+    assert items['extra_content'].count == 0
+    assert items['split'].count == 1 and items['merge'].count == 0
+    assert sum(item.count for item in score.items if item.dimension == 'consistency') == 3
+
+
+
+def test_hard_normal_budget_requires_qualification_before_scarcity():
+    from iad_core.audit.quality_models import QualityNormalScene
+    images = [image(i, observation_complete=True, is_normal=True,
+        normal=QualityNormalScene(hard=False)) for i in range(100)]
+    images[0].normal = QualityNormalScene(hard=True, hard_type='与划痕相似的接缝')
+    scorer = AuditQualityScorer()
+    assert next(item for item in scorer.score(images).items if item.code == 'D1').count == 0
+    images[0].normal = QualityNormalScene(hard=True, hard_type='与划痕相似的接缝', profile_revision=1,
+        qualification=dict(feature_id='scratch', reference=dict(sample_id='real_defect', result_revision=1, kind='image'),
+            similar_features=['均为表面细暗线'], normal_reason='接缝沿完整结构边缘连续延伸', difficulty_reason='短段局部与浅划痕形态相近'))
+    items = {item.code:item for item in scorer.score(images).items}
+    assert items['D1'].count == 1 and items['D1'].maximum == items['D1'].deduction == 16
+    assert 'D3' not in items
+    assert sum(item.maximum for item in items.values() if item.direction == '困难良品') == 25

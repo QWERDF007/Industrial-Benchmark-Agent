@@ -4,11 +4,12 @@ from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.audit.delegation_models import AuditResultReference
+from iad_core.audit.stage_models import HardNormalQualification
 from iad_core.consistency.conflict_categories import ConflictCategory
 
 
-QualityScoreVersion = Literal['1.1', '1.2', '1.3']
-QUALITY_SCORE_VERSION: QualityScoreVersion = '1.3'
+QualityScoreVersion = Literal['1.1', '1.2', '1.3', '1.4']
+QUALITY_SCORE_VERSION: QualityScoreVersion = '1.4'
 
 
 class AuditScoreWeights(AnalysisModel):
@@ -32,6 +33,7 @@ class AuditScoreWeights(AnalysisModel):
 
 class QualityDefectScene(AnalysisModel):
     annotation_id: str | None
+    basis: list[NonBlankText] = Field(default_factory=list, description='本图可见依据，先解释为何符合相应形态、尺寸、位置和对比度场景，不引用出现频次。')
     morphology: NonBlankText
     special_morphology: str | None = None
     appearance: NonBlankText
@@ -44,8 +46,11 @@ class QualityDefectScene(AnalysisModel):
 class QualityNormalScene(AnalysisModel):
     hard: bool
     hard_type: str | None = None
-    confusable: bool
+    confusable: bool = False
     texture: str | None = None
+    texture_reason: NonBlankText | None = None
+    profile_revision: int | None = Field(default=None, ge=1)
+    qualification: HardNormalQualification | None = None
 
     @model_validator(mode='after')
     def hard_subtype(self):

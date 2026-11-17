@@ -53,11 +53,12 @@ export class AuditImageAgents {
       }}));
   }
 
-  async run(parent:Agent,signal:AbortSignal):Promise<void> {
+  async run(parent:Agent,signal:AbortSignal,allowedSampleIds:readonly string[]):Promise<void> {
     const {samples}=await this.bridge.execute<{samples:AuditSampleRun[]}>('audit_agent_samples',{run_id:this.runId});
     const {reviews}=await this.bridge.execute<{reviews:AuditRecheck[]}>('audit_agent_rechecks',{run_id:this.runId});
     const requested=new Set(reviews.map(review=>review.sample_id));
-    const pending=samples.filter(sample=>requested.has(sample.sample_id)||sample.state==='PENDING'||sample.state==='RUNNING');
+    const allowed=new Set(allowedSampleIds);
+    const pending=samples.filter(sample=>allowed.has(sample.sample_id)&&(requested.has(sample.sample_id)||sample.state==='PENDING'||sample.state==='RUNNING'));
     await runConcurrent(pending,this.snapshot.settings.concurrency,signal,async sample=>{
       const identity={run_id:this.runId,sample_id:sample.sample_id};
       const childId=SessionId(sample.session_id);

@@ -7,7 +7,9 @@ from sqlite3 import Connection, Row
 from typing import IO
 from urllib.parse import quote
 
-from iad_core.consistency.agent_models import ConsistencyAnchorRun, ConsistencyCheckSnapshot
+from iad_core.consistency.recorded_issues import RecordedIssues
+from pydantic import TypeAdapter
+from iad_core.consistency.agent_models import AnchorResult, ConsistencyAnchorRun, ConsistencyCheckSnapshot
 from iad_core.consistency.agent_assessments import AnchorAssessments
 from iad_core.consistency.agent_evidence_records import AnchorEvidenceRecords
 from iad_core.consistency.agent_result_models import (AnchorCandidatePage, AnchorCandidatePreview, AnchorImageItem, AnchorImagePage, AnchorImageQuery, AnchorResultDetail,
@@ -27,6 +29,9 @@ from iad_core.workbench.job_models import JobFailure
 from iad_core.workbench.calls import ModelCalls
 from iad_core.consistency.identity_models import IdentityResultFields
 from iad_core.consistency.identity_repository import CandidateIdentityRecords
+
+
+ANCHOR_RESULT = TypeAdapter(AnchorResult)
 
 
 class ConsistencyAgentResults:
@@ -61,12 +66,12 @@ class ConsistencyAgentResults:
             yield connection, row['status'], payload, CheckSnapshots.read(connection, run_id)
 
     @staticmethod
-    def _anchor(row: Row, job_status: str) -> ConsistencyAnchorRun:
+    def _anchor(row: Row, job_status: str, connection=None) -> ConsistencyAnchorRun:
         anchor = ConsistencyAnchorRun.model_validate({name: row[name] for name in ConsistencyAnchorRun.model_fields
             if name not in ('candidates', 'result', 'visual_plan')} | {'session_created': bool(row['session_created']),
                 'candidates': json.loads(row['candidates_json']) if row['candidates_json'] else None,
                 'visual_plan': json.loads(row['visual_plan_json']) if row['visual_plan_json'] else None,
-                'result': json.loads(row['result_json']) if row['result_json'] else None})
+                'result': (RecordedIssues.read(ANCHOR_RESULT, row['result_json'], connection, row['job_id'], row['anchor_id']) if connection is not None else json.loads(row['result_json'])) if row['result_json'] else None})
         if anchor.state in ('PENDING', 'RUNNING') and job_status in ('INTERRUPTED', 'CANCELLED'):
             anchor.state = job_status
         return anchor
@@ -87,7 +92,7 @@ class ConsistencyAgentResults:
 
     def anchors(self, run_id: str) -> list[ConsistencyAnchorRun]:
         with self.db.connection() as connection:
-            return [self._anchor(row, row['job_status']) for row in connection.execute('''SELECT a.*,j.status job_status
+            return [self._anchor(row, row['job_status'], connection) for row in connection.execute('''SELECT a.*,j.status job_status
                 FROM consistency_anchor_runs a JOIN job_runs j ON j.job_id=a.job_id
                 WHERE a.job_id=? ORDER BY a.ordinal''', (run_id,))]
 
@@ -98,14 +103,14 @@ class ConsistencyAgentResults:
                 (run_id, anchor_id)).fetchone()
             if row is None:
                 raise LookupError('主图不属于当前作业')
-            return self._anchor(row, row['job_status'])
+            return self._anchor(row, row['job_status'], connection)
 
     @staticmethod
     def references(run_id: str, anchor_id: str) -> str:
         return '/api/iad/consistency/checks/' + quote(run_id, safe='') + '/anchors/' + quote(anchor_id, safe='')
 
     def _summary(self, connection, row, status, payload, snapshot, *, sample_formats=None) -> AnchorResultSummary:
-        anchor = self._anchor(row, status)
+        anchor = self._anchor(row, status, connection)
         original = set()
         geometry_checks = []
         identity = None
@@ -186,7 +191,7 @@ class ConsistencyAgentResults:
                 (run_id, anchor_id)).fetchone()
             if row is None:
                 raise LookupError('主图不属于当前作业')
-            anchor = self._anchor(row, status)
+            anchor = self._anchor(row, status, connection)
             identity = CandidateIdentityRecords.read(connection, run_id, anchor_id, anchor.candidates) if anchor.candidates else None
             from iad_core.consistency.candidate_records import CandidateRecords
             history = CandidateRecords.history(connection, run_id, anchor_id)
@@ -207,7 +212,7 @@ class ConsistencyAgentResults:
                 gates=identity.gates if identity else [],
                 captured_evidence=captured,
                 requests=[AnchorVisualRequest.model_validate_json(request['request_json']) for request in requests],
-                observations=[AnchorObservation.model_validate_json(request['observation_json']) for request in requests
+                observations=[RecordedIssues.read(AnchorObservation, request['observation_json'], connection, run_id, anchor_id) for request in requests
                     if request['observation_json'] is not None],
                 evidence=[reference for reference in captured
                     if snapshot.review_pipeline is None or identity and reference.candidate_id in identity.eligible_ids],
@@ -220,7 +225,7 @@ class ConsistencyAgentResults:
                 (run_id, anchor_id)).fetchone()
             if row is None:
                 raise LookupError('主图不属于当前作业')
-            anchor = self._anchor(row, status)
+            anchor = self._anchor(row, status, connection)
             shared = {row[0] for row in connection.execute('''SELECT DISTINCT c.call_id FROM model_call_pairs c
                 JOIN consistency_pair_reviews p ON p.job_id=c.job_id AND p.pair_key=c.pair_key,
                     json_each(p.task_json,'$.links') link
@@ -291,7 +296,7 @@ class ConsistencyAgentResults:
                 if summary.original_conclusion:
                     if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8'):
                         identity = CandidateIdentityRecords.read(connection, run_id, summary.anchor_id,
-                            self._anchor(row, status).candidates,
+                            self._anchor(row, status, connection).candidates,
                             records_enabled=snapshot.review_pipeline in ('identity-v5', 'identity-v7', 'identity-v8'))
                         group.members = [member for member in group.members if member.image.sample_id in identity.eligible_ids]
                     evidence = [FrozenEvidence.model_validate_json(connection.execute(
@@ -352,7 +357,7 @@ class ConsistencyAgentResults:
                 raise LookupError('主图尚未生成比较证据')
             group = FrozenAnalysisGroup.model_validate_json(row['group_json'])
             if snapshot.review_pipeline in ('identity-v4', 'identity-v5', 'identity-v7', 'identity-v8'):
-                identity = CandidateIdentityRecords.read(connection, run_id, anchor_id, self._anchor(row, status).candidates)
+                identity = CandidateIdentityRecords.read(connection, run_id, anchor_id, self._anchor(row, status, connection).candidates)
                 group.members = [member for member in group.members if member.image.sample_id in identity.eligible_ids]
             return GalleryMemberPage(query_id=run_id, group_id=anchor_id, anchor=group.anchor, items=group.members, total=len(group.members))
 
@@ -370,7 +375,7 @@ class ConsistencyAgentResults:
                 (run_id, anchor_id)).fetchone()
             if row is None:
                 raise LookupError('主图不属于当前作业')
-            anchor = self._anchor(row, status)
+            anchor = self._anchor(row, status, connection)
             selected = anchor.candidates.candidates if anchor.candidates else []
             if selected and row['group_json'] is None:
                 raise LookupError('尚未生成候选图像证据')

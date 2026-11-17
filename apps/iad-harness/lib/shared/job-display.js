@@ -55,7 +55,7 @@ export const jobPhases = {
     PREPARING_SHARED_INDEX: '准备共享图像索引', SHARED_INDEX_READY: '共享索引就绪',
     VERIFYING_CONTENT: '核对图像内容',
     OBSERVING_ANCHOR: '视觉核对', AWAITING_SUBMISSION: '校验主图结论', AGENT_REVIEWING: '主图审核',
-    SUMMARIZING_CONSISTENCY_RESULTS: '汇总结果', PREPARING_AUDIT_INPUT: '准备审计输入', GENERATING_AUDIT_REPORT: '汇总审计报告',
+    SUMMARIZING_CONSISTENCY_RESULTS: '汇总结果', PREPARING_AUDIT_INPUT: '准备审计输入', AUDITING_DEFECTS: '审计缺陷图像', SUMMARIZING_DEFECT_PROFILE: '汇总缺陷特征', AUDITING_NORMALS: '审计良品图像', GENERATING_AUDIT_REPORT: '汇总审计报告',
 };
 const workflows = {
     exploration: { title: '方向探索', stages: [

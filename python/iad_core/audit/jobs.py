@@ -82,7 +82,7 @@ class AuditAgentJobs(AuditState):
         anchors = [results.detail(request.consistency_job_id, record.sample.sample_id) for record in manifest.records]
         if any(anchor.result is None or anchor.state != 'COMPLETED' for anchor in anchors):
             raise ValueError('一致性作业尚未形成所选主图的终稿')
-        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=4, quality_score_version=QUALITY_SCORE_VERSION, context_policy='evidence-on-demand-v1', manifest=manifest, agent=role,
+        snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=5, quality_score_version=QUALITY_SCORE_VERSION, context_policy='evidence-on-demand-v1', manifest=manifest, agent=role,
             report_instruction=request.report_instruction, consistency_job_id=request.consistency_job_id,
             knowledge=self.freeze_knowledge(request.knowledge),
             master_prompt=request.master_prompt,observer_prompt=request.observer_prompt,
@@ -102,7 +102,7 @@ class AuditAgentJobs(AuditState):
                     for index in range(0,len(sample_ids),snapshot.settings.batch_size)])
 
         job = self.jobs.start('MODEL_AUDIT', manifest.records[0].sample.task_id,
-            dict(audit_workflow_version=4, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
+            dict(audit_workflow_version=5, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
                 sample_ids=[record.sample.sample_id for record in manifest.records], instruction=request.master_prompt.user_prompt,
                 model_name=role.profile.model_id, model_profile=role.profile.model_dump(),
                 knowledge_version_id=snapshot.knowledge.selection.version_id if snapshot.knowledge else None),
@@ -181,6 +181,8 @@ class AuditAgentJobs(AuditState):
         return self.jobs.status(run_id)
 
     def resume(self, run_id: str):
+        if self.snapshot(run_id).schema_version != 5:
+            raise ValueError('历史审计仅供查看，请新建作业')
         if self.is_archived(run_id):
             raise ValueError('历史审计保留查看与导出，请新建作业使用当前审核流程')
         def persist(connection):

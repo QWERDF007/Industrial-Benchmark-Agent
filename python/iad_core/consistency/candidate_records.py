@@ -6,6 +6,7 @@ from iad_core.advisory.analysis import AnalysisModel
 from iad_core.consistency.agent_review_models import AnchorAssessmentRecord, AnchorAssessmentSubmission, AnchorObservation, AnchorVisualStart
 from iad_core.consistency.identity_models import CandidateIdentityRecord
 from iad_core.consistency.candidate_selection import AnchorCandidates
+from iad_core.consistency.recorded_issues import RecordedIssues
 from iad_core.consistency.identity_prompts import IDENTITY_PIPELINE, IDENTITY_PROMPT_VERSION
 
 
@@ -40,7 +41,7 @@ class CandidateRecords:
         gates = {gate.candidate_id: gate for gate in cls.gates(connection, run_id, anchor_id)}
         observations = {item.observation_id: item.request for row in connection.execute('''SELECT observation_json
             FROM consistency_visual_requests WHERE job_id=? AND anchor_id=? AND observation_json IS NOT NULL''', (run_id, anchor_id))
-            if (item := AnchorObservation.model_validate_json(row[0]))}
+            if (item := RecordedIssues.read(AnchorObservation, row[0], connection, run_id, anchor_id))}
         rows = connection.execute('''SELECT id,candidate_id,gate_revision,record_json FROM consistency_candidate_records
             WHERE job_id=? AND anchor_id=? AND phase='audit' AND id IN (
                 SELECT MAX(id) FROM consistency_candidate_records WHERE job_id=? AND anchor_id=? AND phase='audit' GROUP BY candidate_id)
@@ -48,7 +49,7 @@ class CandidateRecords:
         return [AnchorAssessmentRecord(assessment_id=row['id'], submission=submission)
             for row in rows if row['candidate_id'] in gates and gates[row['candidate_id']].gate_status == 'eligible'
             and gates[row['candidate_id']].revision == row['gate_revision']
-            and (submission := AnchorAssessmentSubmission.model_validate_json(row['record_json']))
+            and (submission := RecordedIssues.read(AnchorAssessmentSubmission, row['record_json'], connection, run_id, anchor_id))
             and all(reference in observations and cls.observation_current(gates, observations[reference]) for reference in submission.observation_ids)]
 
     @staticmethod
@@ -128,5 +129,5 @@ class CandidateRecords:
                 revision=row['revision'], gate_revision=row['gate_revision'], request_id=row['request_id'],
                 active=gates[row['candidate_id']].revision == row['revision'] if is_gate else row['id'] in audits,
                 gate=CandidateIdentityRecord.model_validate_json(row['record_json']).model_copy(update={'revision': row['revision']}) if is_gate else None,
-                audit=None if is_gate else AnchorAssessmentSubmission.model_validate_json(row['record_json'])))
+                audit=None if is_gate else RecordedIssues.read(AnchorAssessmentSubmission, row['record_json'], connection, run_id, anchor_id)))
         return result

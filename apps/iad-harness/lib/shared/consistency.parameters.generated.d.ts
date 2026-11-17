@@ -1,35 +1,39 @@
 export declare const pairReviewBatchSize: 32;
 export declare const pairReviewMinBatchSize: 8;
 export declare const conflictCategoryDefaults: {
-    readonly labelme: readonly ["类别不一致", "位置差异", "多类别", "少类别", "拆分", "合并"];
+    readonly labelme: readonly ["类别不一致", "少类别", "多类别", "少标内容", "多标内容", "拆分", "合并"];
     readonly folder_classification: readonly ["类别不一致"];
 };
 export declare const conflictCategoryLabels: {
     readonly 类别不一致: "类别不一致";
-    readonly 多类别: "多标";
-    readonly 少类别: "少标";
-    readonly 位置差异: "位置差异";
+    readonly 少类别: "少标实例";
+    readonly 多类别: "多标实例";
+    readonly 少标内容: "少标内容";
+    readonly 多标内容: "多标内容";
     readonly 拆分: "拆分";
     readonly 合并: "合并";
 };
 export declare const conflictCategoryPriorities: {
     readonly 类别不一致: 0;
-    readonly 多类别: 0;
     readonly 少类别: 0;
-    readonly 位置差异: 1;
-    readonly 拆分: 1;
-    readonly 合并: 1;
+    readonly 多类别: 0;
+    readonly 少标内容: 1;
+    readonly 多标内容: 1;
+    readonly 拆分: 2;
+    readonly 合并: 2;
 };
 export declare const modelConclusionLabels: {
     readonly 类别不一致: "类别不一致";
-    readonly 多类别: "多标";
-    readonly 少类别: "少标";
-    readonly 位置差异: "位置差异";
+    readonly 少类别: "少标实例";
+    readonly 多类别: "多标实例";
+    readonly 少标内容: "少标内容";
+    readonly 多标内容: "多标内容";
     readonly 拆分: "拆分";
     readonly 合并: "合并";
+    readonly 位置差异: "位置差异";
     readonly EQUIVALENT: "一致";
 };
-export declare const conflictCategories: readonly ["类别不一致", "位置差异", "多类别", "少类别", "拆分", "合并"];
+export declare const conflictCategories: readonly ["类别不一致", "少类别", "多类别", "少标内容", "多标内容", "拆分", "合并"];
 export declare const modelAssessmentLabels: {
     readonly NOT_ANALYZED: "未分析";
     readonly RUNNING: "分析中";

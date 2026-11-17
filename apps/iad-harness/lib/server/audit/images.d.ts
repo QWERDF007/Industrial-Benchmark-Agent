@@ -16,6 +16,6 @@ export declare class AuditImageAgents {
     constructor(bridge: PythonBridge, runId: string, attachments: NativeMediaAttachments, subagents: SubagentRuntime, snapshot: AuditWorkflowSnapshot, samples: AuditSampleRun[], failures: Map<string, unknown>);
     private identity;
     register(scope: Context): void;
-    run(parent: Agent, signal: AbortSignal): Promise<void>;
+    run(parent: Agent, signal: AbortSignal, allowedSampleIds: readonly string[]): Promise<void>;
 }
 //# sourceMappingURL=images.d.ts.map

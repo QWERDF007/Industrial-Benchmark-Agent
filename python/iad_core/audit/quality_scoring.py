@@ -2,7 +2,7 @@ from collections import Counter, defaultdict
 
 from scipy.cluster.hierarchy import DisjointSet
 
-from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES
+from iad_core.consistency.conflict_categories import CONFLICT_RULES, primary_conflict_category
 
 from iad_core.audit.quality_models import (
     AuditScoreWeights, QualityDimension, QualityImage, QualityScore, QualityScoreItem, QualitySceneAlias,
@@ -19,9 +19,8 @@ DIVERSITY_RULES = (
     ('C2', '对比度', '其他对比度层次失衡', 5),
     ('C3', '缺陷组合', '同类多缺陷图像稀缺', 4),
     ('C4', '缺陷组合', '跨类别组合图像稀缺', 3),
-    ('D1', '困难良品', '困难良品稀缺', 10),
+    ('D1', '困难良品', '困难良品稀缺', 16),
     ('D2', '困难良品', '困难良品内部类型稀缺', 5),
-    ('D3', '困难良品', '易混淆良品稀缺', 6),
     ('D4', '困难良品', '特殊正常纹理稀缺', 4),
 )
 
@@ -68,21 +67,16 @@ class AuditQualityScorer:
         return result
 
     def consistency(self, images: list[QualityImage]) -> list[QualityScoreItem]:
-        buckets = {code: [] for code in ('category_mismatch', 'missing_annotation', 'extra_annotation')}
+        buckets = {category: [] for category in CONFLICT_RULES}
         for image in images:
-            for code in buckets:
-                if ISSUE_CATEGORIES[code] in image.consistency_categories:
-                    buckets[code].append(image.sample_id)
-                    break
-        for code in ('position_difference', 'split', 'merge'):
-            buckets[code] = [image.sample_id for image in images if ISSUE_CATEGORIES[code] in image.consistency_categories]
-        return [QualityScoreItem(code=code, dimension='consistency', direction='标注一致性',
-            label=label, maximum=100 * severity, count=len(buckets[code]), denominator=len(images),
-            ratio=len(buckets[code]) / len(images) if images else None,
-            deduction=100 * severity * len(buckets[code]) / len(images) if images else None,
-            sample_ids=buckets[code]) for code, label, severity in (
-                ('category_mismatch', '类别不一致', 1), ('missing_annotation', '少标', 1), ('extra_annotation', '多标', .7),
-                ('position_difference', '位置差异', 0), ('split', '拆分', 0), ('merge', '合并', 0))]
+            category = primary_conflict_category(image.consistency_categories)
+            if category is not None:
+                buckets[category].append(image.sample_id)
+        return [QualityScoreItem(code=rule.issue_type, dimension='consistency', direction='标注一致性',
+            label=rule.label, maximum=100 * rule.severity, count=len(buckets[category]), denominator=len(images),
+            ratio=len(buckets[category]) / len(images) if images else None,
+            deduction=100 * rule.severity * len(buckets[category]) / len(images) if images else None,
+            sample_ids=buckets[category]) for category, rule in CONFLICT_RULES.items()]
 
     def diversity(self, images: list[QualityImage], aliases: list[QualitySceneAlias], ready: bool) -> list[QualityScoreItem]:
         names = {(item.axis, item.source): item.canonical for item in aliases}
@@ -130,16 +124,14 @@ class AuditQualityScorer:
         add('C3', same_class, len(abnormal), cause_axis='same-class')
         add('C4', cross_class, len(abnormal), cause_axis='cross-class')
         normal = [image for image in images if image.is_normal and image.normal]
-        hard = [image for image in normal if image.normal.hard]
+        hard = [image for image in normal if image.normal.hard and image.normal.qualification]
         hard_types = {names.get(('hard_type', image.normal.hard_type), image.normal.hard_type) for image in hard}
         add('D1', [(next(iter(hard_types)) if len(hard_types) == 1 else '困难良品', image.sample_id, image.sample_id)
             for image in hard], len(normal), cause_axis='normal')
         add('D2', [(names.get(('hard_type', image.normal.hard_type), image.normal.hard_type), image.sample_id, image.sample_id)
             for image in hard], len(hard), distribution=True, cause_axis='normal')
-        add('D3', [(names.get(('confusable', '易混淆良品'), '易混淆良品'), image.sample_id, image.sample_id)
-            for image in normal if image.normal.confusable], len(normal), cause_axis='normal')
         add('D4', [(names.get(('texture', image.normal.texture), image.normal.texture), image.sample_id, image.sample_id)
-            for image in normal if image.normal.texture], len(normal), cause_axis='normal')
+            for image in normal if image.normal.texture and image.normal.texture_reason], len(normal), cause_axis='normal')
         items, causes = [], {}
         for code, direction, label, maximum in DIVERSITY_RULES:
             candidate = max(candidates[code], key=lambda item: (item[0], item[3]), default=None)

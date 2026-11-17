@@ -16,7 +16,7 @@ const rules = {
     C2: { description: '检查同一缺陷类别中其他对比度层次的样本分布。', population: 'category', scene: 'category' },
     C3: { description: '检查一张异常图像内同时出现多个同类缺陷的样本覆盖，按图像计数。', population: 'abnormal', scene: 'category' },
     C4: { description: '检查一张异常图像内同时出现不同缺陷类别的组合覆盖，按图像计数。', population: 'abnormal', scene: 'combination' },
-    D1: { description: '检查良品中具有判断难度的样本覆盖。', population: 'normal', scene: 'scene' },
+    D1: { description: '检查已与实际缺陷对照、确认难以区分的良品样本覆盖。', population: 'normal', scene: 'scene' },
     D2: { description: '检查困难良品内部不同困难类型的样本覆盖。', population: 'hard', scene: 'scene' },
     D3: { description: '检查良品中容易与缺陷混淆的样本覆盖。', population: 'normal', scene: 'scene' },
     D4: { description: '检查良品中特殊正常纹理的样本覆盖。', population: 'normal', scene: 'scene' },

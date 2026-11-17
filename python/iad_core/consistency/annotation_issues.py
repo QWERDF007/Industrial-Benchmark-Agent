@@ -3,17 +3,20 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
-from iad_core.consistency.conflict_categories import ConflictCategory, CONFLICT_CATEGORY_DEFAULTS, CONFLICT_CATEGORY_LABELS
+from iad_core.consistency.conflict_categories import ConflictCategory, CONFLICT_CATEGORY_DEFAULTS, CONFLICT_CATEGORY_LABELS, CONFLICT_RULES
 
 
 IssueType = Literal['image_label_mismatch', 'category_mismatch', 'extra_annotation', 'missing_annotation',
-    'position_difference', 'split', 'merge']
+    'missing_content', 'extra_content', 'split', 'merge', 'position_difference']
 
 ISSUE_CATEGORIES = {'image_label_mismatch': ConflictCategory.CATEGORY, 'category_mismatch': ConflictCategory.CATEGORY,
     'extra_annotation': ConflictCategory.EXTRA, 'missing_annotation': ConflictCategory.MISSING,
-    'position_difference': ConflictCategory.POSITION, 'split': ConflictCategory.SPLIT, 'merge': ConflictCategory.MERGE}
+    'position_difference': ConflictCategory.POSITION,
+    'missing_content': ConflictCategory.MISSING_CONTENT, 'extra_content': ConflictCategory.EXTRA_CONTENT, 'split': ConflictCategory.SPLIT, 'merge': ConflictCategory.MERGE}
 
-ISSUE_TYPES_BY_FORMAT: dict[str, list[IssueType]] = {format: [kind for category in CONFLICT_CATEGORY_LABELS
+ACTIVE_ISSUE_TYPES = tuple(kind for kind, category in ISSUE_CATEGORIES.items() if category in CONFLICT_RULES)
+
+ISSUE_TYPES_BY_FORMAT: dict[str, list[IssueType]] = {format: [kind for category in CONFLICT_RULES
     if category in categories for kind, value in ISSUE_CATEGORIES.items()
     if value == category and (kind == 'image_label_mismatch') == (format == 'folder_classification')]
     for format, categories in CONFLICT_CATEGORY_DEFAULTS.items()}
@@ -32,16 +35,16 @@ class CandidateObjectReference(AnalysisModel):
 
 
 class BboxAnnotationIssue(IssueEvidenceFields):
-    type: Literal['category_mismatch', 'extra_annotation', 'missing_annotation', 'position_difference', 'split', 'merge']
+    type: Literal['category_mismatch', 'extra_annotation', 'missing_annotation', 'missing_content', 'extra_content', 'split', 'merge', 'position_difference'] = Field(json_schema_extra={'enum': [kind for kind, category in ISSUE_CATEGORIES.items() if category in CONFLICT_RULES and kind != 'image_label_mismatch']})
     main_annotation_ids: list[str] = Field(default_factory=list)
     candidate_annotation_ids: list[str] = Field(default_factory=list)
     region_pair_ids: list[str] = Field(default_factory=list, description='支持本问题的已核实区域对ID；像素一致的程序捷径可为空。')
     coverage_effect: Literal['unchanged', 'material_change', 'unverified'] | None = Field(default=None,
-        description='位置问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。')
+        description='内容问题必须确认实际缺陷覆盖存在material_change；不能仅因坐标、中心或尺寸数值不同报告问题。')
     coverage_reason: NonBlankText | None = Field(default=None,
-        description='位置问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。')
+        description='内容问题说明实际缺陷的漏盖、偏离或范围实质变化，不自行制定像素阈值。')
     same_main_object_as: list[CandidateObjectReference] = Field(default_factory=list,
-        description='仅用于主图少标：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。')
+        description='仅用于主图少标实例：实际共同观察且确认是同一主图对象的其他候选原始标注引用；没有确认则留空。程序验证真实映射区域与唯一对应，不能按文字或重叠猜测。')
 
     @model_validator(mode='after')
     def check_objects(self) -> Self:
@@ -50,6 +53,8 @@ class BboxAnnotationIssue(IssueEvidenceFields):
             raise ValueError('问题中的标注ID不得重复')
         valid = {'category_mismatch': main >= 1 and candidate >= 1,
             'position_difference': main >= 1 and candidate >= 1,
+            'missing_content': main >= 1 and candidate >= 1,
+            'extra_content': main >= 1 and candidate >= 1,
             'extra_annotation': main >= 1 and candidate == 0,
             'missing_annotation': main == 0 and candidate >= 1,
             'split': main >= 2 and candidate == 1,

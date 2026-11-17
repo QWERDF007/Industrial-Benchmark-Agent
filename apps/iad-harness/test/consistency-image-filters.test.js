@@ -119,14 +119,14 @@ test('program cards prioritize count and category differences over geometry whil
     image('picture_1072.png',{...reviewed('位置差异','多类别'),original_categories:['位置差异','多类别']}),
     image('picture_1074.png',{...reviewed('位置差异','少类别'),original_categories:['位置差异','少类别']}),
   ]);
-  for(const [index,label] of ['多标','少标'].entries()) {
+  for(const [index,label] of ['多标实例','少标实例'].entries()) {
     const html=renderToStaticMarkup(React.createElement(ConsistencyResultCard,{item:cards[index],action:'open-conflict',onOpen(){}}));
     assert.match(html,new RegExp('程序结论：'+label));
     assert.doesNotMatch(html,/程序结论：位置差异|位置差异、多标|位置差异、少标/);
     assert.match(html,new RegExp('模型结论：'+label));
     assert.equal(cards[index].type,label);
   }
-  assert.equal(ConsistencyView.programConclusion(['位置差异','多类别'],'位置差异'),'多标');
+  assert.equal(ConsistencyView.programConclusion(['位置差异','多类别'],'位置差异'),'多标实例');
   assert.equal(ConsistencyView.programConclusion(['位置差异','类别不一致'],'位置差异'),'类别不一致');
   assert.equal(ConsistencyView.programConclusion(['位置差异'],'位置差异'),'位置差异');
   assert.equal(ConsistencyView.programConclusion([],'无候选'),'无候选');
@@ -135,13 +135,16 @@ test('program cards prioritize count and category differences over geometry whil
 
 test('program conclusion uses category and count first and location split merge second',()=>{
   for(const [categories,expected] of [
-    [['位置差异','多类别'],'多标'],
-    [['合并','少类别'],'少标'],
+    [['位置差异','多类别'],'多标实例'],
+    [['合并','少类别'],'少标实例'],
     [['拆分','类别不一致'],'类别不一致'],
-    [['对应关系差异','位置差异'],'位置差异'],
+    [['对应关系差异','少标内容'],'少标内容'],
     [['对应关系差异','拆分'],'拆分'],
     [['对应关系差异','合并'],'合并'],
     [['拆分','合并'],'拆分'],
+    [['拆分','多标内容'],'多标内容'],
+    [['多标内容','少标内容'],'少标内容'],
+    [['多标内容','多类别'],'多标实例'],
   ])assert.equal(ConsistencyView.programConclusion(categories,''),expected);
 });
 

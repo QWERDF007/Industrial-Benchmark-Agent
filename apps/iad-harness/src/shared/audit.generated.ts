@@ -57,27 +57,32 @@ export const auditStateLabels = {
 export const auditIssueLabels = {
   "image_label_mismatch": "类别不一致",
   "category_mismatch": "类别不一致",
-  "extra_annotation": "多标",
-  "missing_annotation": "少标",
-  "position_difference": "位置差异",
+  "extra_annotation": "多标实例",
+  "missing_annotation": "少标实例",
+  "missing_content": "少标内容",
+  "extra_content": "多标内容",
   "split": "拆分",
-  "merge": "合并"
+  "merge": "合并",
+  "position_difference": "位置差异"
 } as const;
 export const auditIssueDescriptions = {
   "image_label_mismatch": "内容相同的两张图，整图标签不同，例如一张记为OK，另一张记为NG。",
   "category_mismatch": "同一目标在两张图中的类别记录不同。",
-  "extra_annotation": "主图有标注，对照图中同一处可见内容没有相应标注。",
-  "missing_annotation": "对照图有标注，主图中同一处可见内容没有相应标注。",
-  "position_difference": "两张图都标了同一目标，但框圈住的实际内容有明显差别，例如一侧漏掉了目标的一部分。",
-  "split": "同一组可见内容在主图中分成多个框，在对照图中用一个框圈住。",
-  "merge": "同一组可见内容在主图中用一个框圈住，在对照图中分成多个框。"
+  "extra_annotation": "主图多出一个完整实例标注，候选图没有对应实例标注。",
+  "missing_annotation": "候选图有完整的缺陷实例标注，主图缺少对应实例标注。",
+  "missing_content": "同一对象的主图标注漏盖候选图已覆盖的部分内容。",
+  "extra_content": "同一对象的主图标注额外覆盖候选图未覆盖的部分内容。",
+  "split": "同一组内容在主图中用多个标注，在候选图中用一个标注。",
+  "merge": "同一组内容在主图中用一个标注，在候选图中用多个标注。",
+  "position_difference": "两侧原始标注覆盖的内容存在差异。"
 } as const;
 export const auditIssueTypesByFormat = {
   "labelme": [
     "category_mismatch",
-    "extra_annotation",
     "missing_annotation",
-    "position_difference",
+    "extra_annotation",
+    "missing_content",
+    "extra_content",
     "split",
     "merge"
   ],

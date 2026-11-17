@@ -39,27 +39,32 @@ class AuditQualityReports:
         from iad_core.audit.reports import AuditReports
         assessment = QualityAssessment.model_validate(request)
         snapshot = self.state.snapshot(run_id)
-        if snapshot.quality_score_version is None:
-            raise ValueError('历史审计不追加评分，请新建审计作业')
+        if snapshot.quality_score_version != QUALITY_SCORE_VERSION:
+            raise ValueError('历史评分观察保持冻结，请新建审计作业使用当前规则')
         samples = self.state.samples(run_id)
         records = {record.sample.sample_id: record for record in snapshot.manifest.records}
+        from iad_core.audit.stages import AuditStages
+        profile = AuditStages(self.state).status(run_id).defect_profile
         images = []
         for sample in samples:
             record, final = records[sample.sample_id], sample.result
             observation = final.quality_observation if final else None
             if observation:
                 self.validate_observation(record, observation)
+            usable = bool(observation and observation.complete)
+            if usable and observation.normal is not None:
+                usable = bool(profile and profile.features and observation.normal.profile_revision == profile.revision)
             labels = {item.annotation_id: item.raw_label for item in record.annotations}
             images.append(QualityImage(sample_id=sample.sample_id, dataset_id=record.sample.dataset_id,
                 completed=sample.state == 'COMPLETED' and final is not None and final.execution_status == 'completed',
                 consistency_categories=sample.consistency.categories,
-                observation_complete=observation.complete if observation else False,
+                observation_complete=usable,
                 is_normal=AnalysisSourceRoles.resolve(record.dataset_format, record.sample.quality_status,
                     record.sample.annotation_availability.status, len(record.annotations)) == 'normal',
                 defects=[QualityDefect(**item.model_dump(), category=labels[item.annotation_id]
                     if item.annotation_id is not None else record.sample.quality_status.value)
-                    for item in observation.defects] if observation and observation.complete else [],
-                normal=observation.normal if observation and observation.complete else None))
+                    for item in observation.defects] if usable else [],
+                normal=observation.normal if usable else None))
         keys = [(item.axis, item.source) for item in assessment.aliases]
         if len(keys) != len(set(keys)):
             raise ValueError('同一评分场景只能有一个归并名称')
@@ -106,6 +111,8 @@ class AuditQualityReports:
                 'JOIN audit_workflow_runs w USING(job_id) JOIN job_runs j USING(job_id) WHERE r.job_id=?', (run_id,)).fetchone()
         if original is None or original['status'] != 'COMPLETED':
             raise ValueError('只能重新计算已完成的评分报告')
+        if json.loads(original['snapshot_json']).get('quality_score_version') != QUALITY_SCORE_VERSION:
+            raise ValueError('历史评分观察保持冻结，新规则请新建审计作业')
         stored = AuditStoredReport.model_validate_json(original['result_json'])
         if stored.quality_score is None:
             raise ValueError('历史审计没有完整评分观察，不追加评分')

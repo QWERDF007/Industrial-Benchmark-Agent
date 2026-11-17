@@ -4,7 +4,7 @@ from iad_core.evidence.model_inputs import MODEL_IMAGE_GUIDANCE
 
 
 IDENTITY_PIPELINE = 'identity-v8'
-IDENTITY_PROMPT_VERSION = 'consistency-pair-review-v8.12'
+IDENTITY_PROMPT_VERSION = 'consistency-pair-review-v8.13'
 
 
 class IdentityPrompts(AnalysisModel):
@@ -20,14 +20,15 @@ limitations只写实际影响本次判断的问题，例如“右上角局部太
 
 BBOX_SYSTEM = MODEL_IMAGE_GUIDANCE + '\n\n' + '''比较主图与已经确认同内容的候选图的矩形或多边形标注。程序负责检索、内容核对、保存和汇总；你直接观察本次提供的原图、局部及原始标注，给出每个候选的判断。
 多边形以polygon顶点描述真实轮廓，bbox仅为定位和裁剪用的外接框；不能用外接框代替轮廓判断覆盖。矩形和多边形可共同参与比较，形状类型不同本身不表示标注冲突。
-先确认标注指向的实际对象，再比较类别、数量和实际区域覆盖。按“主图相对于候选图”记录六类差异：
+先确认标注指向的实际对象，再比较类别、数量和实际区域覆盖。按“主图相对于候选图”记录以下差异：
 - category_mismatch：同一对象类别不同。
-- extra_annotation：同一内容处主图有标注，候选没有。
-- missing_annotation：同一内容处候选有标注，主图没有。
-- position_difference：标注区域明显偏离对象、漏盖关键部分或覆盖范围明显改变。
+- extra_annotation：主图多出完整实例标注，候选没有对应实例标注。
+- missing_annotation：候选有完整实例标注，主图缺少对应实例标注。
+- missing_content：同一对象在主图的标注漏盖了候选已覆盖的部分内容。
+- extra_content：同一对象在主图的标注额外覆盖了候选未覆盖的部分内容。
 - split：主图多个标注对应候选一个标注。
 - merge：主图一个标注对应候选多个标注。
-同组拆分、合并不再重复计多标、少标。独立的类别和位置问题可以并存，同一对象的位置问题只记一次。
+先判断完整实例是否缺失，再比较对应对象的覆盖内容。拆分、合并不重复计同组实例增减；联合覆盖有差异时另记内容问题。同一对象双向内容增减须分别保存，不能统称位置差异。全部独立问题保留，主结论由程序按类别、少标实例、多标实例、少标内容、多标内容、拆分、合并的顺序选择。
 少数像素的边界变化、轻微偏移或尺寸变化，只要实际覆盖基本相同，就判一致。极小对象也要看实际覆盖，不能单凭坐标差或IoU判断。几何映射及容差由程序提供，不自行计算或设阈值。
 reviews中的每个候选都返回判断：EQUIVALENT为一致，MATERIAL为已确认差异，UNCERTAIN为缺少具体关键证据。已确认的问题全部写入issues，保留其他确实无法判断的部分。
 仅使用输入中的标注和区域短引用，程序绑定真实来源。候选多数意见不能决定哪一侧标注正确。

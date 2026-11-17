@@ -99,8 +99,12 @@ class AuditReports:
         from iad_core.audit.discoveries import AuditDiscoveries
         return AuditDiscoveries(self).page(run_id, query)
 
-    def begin(self, run_id: str):
-        if any(sample.state in ('PENDING','RUNNING') for sample in self.state.samples(run_id)):
+    def begin(self, run_id: str, *, phase: str = 'report'):
+        from iad_core.audit.stages import AuditStages
+        if phase == 'defect_profile':
+            if AuditStages(self.state).status(run_id).phase != 'defect_profile':
+                raise ValueError('全部缺陷审计完成后才能汇总缺陷画像')
+        elif any(sample.state in ('PENDING','RUNNING') for sample in self.state.samples(run_id)):
             raise ValueError('所有主图处理结束后才能汇总报告')
         with self.db.connection() as connection:
             connection.execute("UPDATE audit_report_runs SET state='RUNNING',error=NULL WHERE job_id=? AND state!='COMPLETED'", (run_id,))

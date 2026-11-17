@@ -4,9 +4,10 @@ export const pairReviewMinBatchSize = 8;
 export const conflictCategoryDefaults = {
     "labelme": [
         "类别不一致",
-        "位置差异",
-        "多类别",
         "少类别",
+        "多类别",
+        "少标内容",
+        "多标内容",
         "拆分",
         "合并"
     ],
@@ -16,34 +17,39 @@ export const conflictCategoryDefaults = {
 };
 export const conflictCategoryLabels = {
     "类别不一致": "类别不一致",
-    "多类别": "多标",
-    "少类别": "少标",
-    "位置差异": "位置差异",
+    "少类别": "少标实例",
+    "多类别": "多标实例",
+    "少标内容": "少标内容",
+    "多标内容": "多标内容",
     "拆分": "拆分",
     "合并": "合并"
 };
 export const conflictCategoryPriorities = {
     "类别不一致": 0,
-    "多类别": 0,
     "少类别": 0,
-    "位置差异": 1,
-    "拆分": 1,
-    "合并": 1
+    "多类别": 0,
+    "少标内容": 1,
+    "多标内容": 1,
+    "拆分": 2,
+    "合并": 2
 };
 export const modelConclusionLabels = {
     "类别不一致": "类别不一致",
-    "多类别": "多标",
-    "少类别": "少标",
-    "位置差异": "位置差异",
+    "少类别": "少标实例",
+    "多类别": "多标实例",
+    "少标内容": "少标内容",
+    "多标内容": "多标内容",
     "拆分": "拆分",
     "合并": "合并",
+    "位置差异": "位置差异",
     "EQUIVALENT": "一致"
 };
 export const conflictCategories = [
     "类别不一致",
-    "位置差异",
-    "多类别",
     "少类别",
+    "多类别",
+    "少标内容",
+    "多标内容",
     "拆分",
     "合并"
 ];

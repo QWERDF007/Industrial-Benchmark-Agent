@@ -91,3 +91,39 @@ def report_submission(**overrides):
             reason='可用原图开展视觉探索。' if purpose in ('exploration','training_experiment','debug') else '没有本范围正式评测就绪证据。')
             for purpose in ('exploration','training_experiment','debug','image_evaluation','bbox_evaluation','pixel_evaluation','formal_benchmark')],
         review_priorities=[], limitations=[]) | overrides
+
+
+def save_qualified_images(jobs, run_id, *, texture=None):
+    from iad_core.audit.stages import AuditStages
+    stages, evidence = AuditStages(jobs), AuditEvidence(jobs)
+    records = {record.sample.sample_id:record for record in jobs.snapshot(run_id).manifest.records}
+    defects = [sample for sample in jobs.samples(run_id) if stages.role(records[sample.sample_id]) == 'defect']
+    assert defects
+    for sample in defects:
+        record = records[sample.sample_id]
+        save_image(jobs, run_id, sample, quality_observation=dict(complete=True, defects=[
+            dict(annotation_id=item.annotation_id, basis=['主体表面有局部短暗线'], morphology='短线', appearance='暗线',
+                size='small', location='center', contrast='low') for item in record.annotations]))
+    defect = defects[0]
+    context = stages.context(run_id)
+    image = evidence.prepare(run_id, defect.sample_id, defect.sample_id)
+    master_observed(jobs, run_id, context, [image.evidence_id])
+    reference = dict(sample_id=defect.sample_id, result_revision=1, kind='image')
+    profile = stages.publish(run_id, dict(commit_key='profile', base_revision=0, features=[dict(feature_id='scratch',
+        category=records[defect.sample_id].annotations[0].raw_label, signature='局部短细暗线',
+        normal_distinctions='核对暗线是否沿完整结构连续延伸。', references=[reference])]))
+    for sample in jobs.samples(run_id):
+        if sample.sample_id in {item.sample_id for item in defects}:
+            continue
+        page = evidence.read(run_id, sample.sample_id, dict(sample_id=defect.sample_id, view='whole'))
+        call = NativeModelCallStart(call_id='call_'+uuid4().hex, started_at='2026-11-10T12:00:00Z', request={'fixture':'defect comparison'})
+        calls = ModelCalls(jobs.db)
+        calls.start_native(run_id, call, sample_id=sample.sample_id, session_id=sample.session_id, attempt=1)
+        evidence.delivered(run_id, sample.sample_id, call.call_id, [item.image.evidence_id for item in page.images])
+        calls.finish_native(run_id, sample.sample_id, NativeModelCallEnd(call_id=call.call_id,
+            finished_at='2026-11-10T12:00:01Z', elapsed_ms=1000, finish_reason='tool-calls'))
+        save_image(jobs, run_id, sample, quality_observation=dict(complete=True, normal=dict(hard=True,
+            hard_type='结构边缘', profile_revision=profile.revision, texture=texture,
+            texture_reason='正常边缘形成平行纹理' if texture else None,
+            qualification=dict(feature_id='scratch', reference=reference, similar_features=['局部均为细暗线'],
+                normal_reason='良品暗线沿完整结构连续，缺陷为局部中断', difficulty_reason='短段外观接近，需要结合边缘连续性区分'))))

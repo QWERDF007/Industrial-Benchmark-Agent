@@ -324,7 +324,7 @@ def test_tabs_use_severe_primary_category_and_refresh_outdated_projection(datase
         page = results.images(run_id, query={'group':expected})
         assert [item.sample.sample_id for item in page.items] == [anchor]
         assert page.items[0].summary.original_conclusion == expected
-        assert set(page.items[0].summary.original_categories) == {'位置差异', expected}
+        assert set(page.items[0].summary.original_categories) == {'少标内容' if reverse else '多标内容', expected}
         assert page.counts[expected] == 1 and page.counts.get('位置差异', 0) == 0
         assert results.images(run_id, query={'group':'位置差异'}).total == 0
         with database.connection() as connection:
