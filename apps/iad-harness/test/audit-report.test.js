@@ -292,6 +292,11 @@ test('scored reports put composite and dimension scores in conclusion and chart 
   assert.match(html,/<h2[^>]*>三、数据分布<\/h2>/);
   assert.match(html,/<h2[^>]*>十、引用知识及审计结果<\/h2>/);
   const details=html.split('data-report-section="score"')[1].split('data-report-section="distribution"')[0];
+  const figures=[...details.matchAll(/<figure\b[\s\S]*?<\/figure>/g)].map(match=>match[0]);
+  assert.match(figures[0],/data-chart="quality-score-summary" data-chart-type="donut"/);
+  assert.equal(figures.length,4);
+  for(const figure of figures)assert.match(figure,/<figcaption>[\s\S]*class="iad-chart-controls"[\s\S]*class="iad-multiselect"[\s\S]*aria-label="选择子数据集"/);
+  assert.doesNotMatch(details,/<option[^>]*>整体<\/option>|<select/);
   assert.match(details,/data-chart-type="bar"/);
   assert.match(details,/该类别已归类缺陷实例共 203 个，该场景有 3 个/);
   assert.match(details,/弯曲划痕/);
@@ -300,7 +305,7 @@ test('scored reports put composite and dimension scores in conclusion and chart 
   assert.doesNotMatch(details,/特殊形态样本稀缺|同类缺陷形态稀缺|同类缺陷外观变体稀缺/);
   assert.match(details,/同一原因已计入「困难良品稀缺」/);
   assert.doesNotMatch(details,/<table|>category_mismatch</);
-  assert.match(details,/类别不一致/);
+  assert.match(details,/类别不一致，扣分：10\.0\/100，数量：1\/10，百分比：10%/);
 });
 
 
@@ -352,7 +357,8 @@ test('score analysis respects image units normal evidence and translated scene n
   assert.match(details,/困难良品图像共 42 张，该场景有 1 张/);
   assert.match(details,/图像证据<\/h6><div class="iad-thumbnail-grid"/);
   assert.doesNotMatch(details,/下方原图展示参与|核对正常纹理与困难场景/);
-  assert.match(details,/本项只记录观察到的现象，不参与扣分/);
+  assert.doesNotMatch(details,/data-score-rule="split"|<h4>[^<]*拆分/);
+  assert.match(details,/拆分，扣分：0\.0\/100，数量：8\/100，百分比：8%/);
   assert.doesNotMatch(details,/>[^<]*(?:tiny|15：low)[^<]*</);
 });
 
@@ -382,4 +388,46 @@ test('adequate diversity coverage stays in score charts without scarcity details
   const adequate=render({...report,quality_score:{...score,items:[score.items[0]]}});
   assert.doesNotMatch(adequate,/data-score-rule=/);
   assert.match(adequate,/本组未发现需要扣分的覆盖问题/);
+});
+
+test('consistency-only reports keep four chapters and paginate actual pairs in two rows',()=>{
+  const image={sample_id:'main',caption:'原图',reason:'',role:'representative',image:{evidence_id:'main',original_size:[40,40]},
+    source:{dataset_format:'labelme',sample:{relative_path:'main.png'},annotations:[]}};
+  const quality_score={status:'complete',total:100,weights:{consistency:1},completed_images:12,total_images:12,observed_images:0,limitations:[],dataset_scores:[],dimensions:{consistency:{label:'数据一致性',score:100,deduction:0}},items:[{code:'missing_annotation',dimension:'consistency',direction:'标注一致性',label:'少标实例',maximum:100,count:1,denominator:12,ratio:1/12,deduction:0,scenario:'',sample_ids:['main']}]};
+  for(const count of [2,6,10]){
+    const pairs=Array.from({length:count},(_,index)=>({pair_id:String(index),main:image,
+      candidate:{...image,sample_id:'candidate-'+index,role:'counter',image:{...image.image,evidence_id:'candidate-'+index}}}));
+    const html=render({...report,quality_score,statistics:{...report.statistics,upstream_issue_types:report.statistics.issue_types},audit_scope:'consistency',evidence_pairs:{'consistency:missing_annotation':pairs,'score:missing_annotation':pairs}});
+    assert.deepEqual([...html.matchAll(/data-report-section="([^"]+)"/g)].map(match=>match[1]),['conclusion','score','distribution','consistency']);
+    assert.ok(!html.includes('覆盖了哪些视觉场景'));
+    const details=html.split('data-report-section="score"')[1].split('data-report-section="distribution"')[0];
+    assert.doesNotMatch(details,/图像证据|<img|data-audit-evidence-pairs|data-score-rule=|<h[4-6]>/);
+    assert.doesNotMatch(details,/下图展示各评分项|本组未发现需要扣分/);
+    assert.equal([...html.matchAll(/aria-label="第\d+对图像证据"/g)].length,Math.min(count,4));
+    assert.equal([...html.matchAll(/aria-label="放大第\d+对主图"/g)].length,Math.min(count,4));
+    assert.equal([...html.matchAll(/aria-label="放大第\d+对对比图"/g)].length,Math.min(count,4));
+    assert.doesNotMatch(html, /iad-thumbnail-caption|>主图<|>对比图</);
+    assert.ok(html.includes('四、数据是否自洽'));
+    const consistency=html.split('data-report-section="consistency"')[1];
+    const numbers=[...consistency.matchAll(/<h[3-6]>([0-9.]+) /g)].map(match=>match[1]);
+    assert.equal(new Set(numbers).size,numbers.length,'问题分析与图证使用统一章节编号');
+    assert.ok(consistency.indexOf('遗漏集中在转角邻接处')<consistency.indexOf('data-audit-evidence-pairs'),'分析先于图像证据');
+    assert.match(html, /data-audit-evidence-pairs[^>]*>[\s\S]*?class="iad-thumbnail-grid"><section class="iad-audit-evidence-pair"/);
+    assert.doesNotMatch(html, /class="dc-compare"/);
+    if(count>4)assert.ok(html.includes(`共 ${count*2} 张`));
+    else assert.doesNotMatch(html,/aria-label="图像证据分页"/);
+  }
+});
+
+
+test('consistency scope retains the audit outcome donut beside the score',()=>{
+  const html=render({...report,audit_scope:'consistency',total_samples:2176,audited_samples:2176,
+    suspect_samples:170,distribution:{normal:2006,suspect:170},
+    statistics:{...report.statistics,total_images:2176,completed_images:2176,normal_images:2006,suspect_images:170,incomplete_images:0}});
+  const conclusion=html.split('data-report-section="conclusion"')[1].split('data-report-section=')[0];
+  assert.match(conclusion,/<figcaption>本轮审计结果<\/figcaption>/);
+  assert.match(conclusion,/审计正常，数量（张）：2,006/);
+  assert.match(conclusion,/发现疑点，数量（张）：170/);
+  assert.doesNotMatch(conclusion,/未比较|未完成/);
+  assert.doesNotMatch(conclusion,/数据一致性结果|无有效候选/);
 });

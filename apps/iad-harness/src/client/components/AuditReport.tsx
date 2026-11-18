@@ -26,7 +26,7 @@ export function AuditReport({job,revision}:{job:JobSnapshot|null;revision:number
       {report?.archived&&<p>历史审计已归档，可下载冻结报告。</p>}
       {report&&!report.archived&&<AuditReportContent report={report} imageUrl={item=>report.knowledge_version_id&&knowledgeImages.has(item.image.evidence_id)
         ?analysisImageUrl({kind:'published',versionId:report.knowledge_version_id},item.image.evidence_id)
-        :nativeAuditEvidenceUrl(report.run_id,item.sample_id,item.image)}/>}
+        :nativeAuditEvidenceUrl(report.run_id,item.target_id??item.sample_id,item.image)}/>}
     </div>
   </section>;
 }

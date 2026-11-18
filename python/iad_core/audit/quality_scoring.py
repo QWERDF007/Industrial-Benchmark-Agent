@@ -5,7 +5,7 @@ from scipy.cluster.hierarchy import DisjointSet
 from iad_core.consistency.conflict_categories import CONFLICT_RULES, primary_conflict_category
 
 from iad_core.audit.quality_models import (
-    AuditScoreWeights, QualityDimension, QualityImage, QualityScore, QualityScoreItem, QualitySceneAlias,
+    AuditScope, AuditScoreWeights, QualityDimension, QualityImage, QualityScore, QualityScoreItem, QualitySceneAlias,
 )
 
 DIVERSITY_RULES = (
@@ -28,16 +28,20 @@ DIVERSITY_RULES = (
 class AuditQualityScorer:
     def score(self, images: list[QualityImage], weights: AuditScoreWeights | None = None, *,
             exact_groups: list[list[str]] | None = None, redundant_groups: list[list[str]] | None = None,
-            aliases: list[QualitySceneAlias] = ()) -> QualityScore:
+            aliases: list[QualitySceneAlias] = (), scope: AuditScope = 'full') -> QualityScore:
         weights = weights or AuditScoreWeights()
         completed = [image for image in images if image.completed]
         items = self.consistency(completed)
         diversity_ready = bool(completed) and all(image.observation_complete for image in completed)
-        items.extend(self.diversity(completed, aliases, diversity_ready))
+        if scope == 'full':
+            items.extend(self.diversity(completed, aliases, diversity_ready))
         redundancy_ready = bool(completed) and exact_groups is not None and redundant_groups is not None
-        items.extend(self.redundancy(completed, exact_groups or [], redundant_groups or [], redundancy_ready))
+        if scope == 'full':
+            items.extend(self.redundancy(completed, exact_groups or [], redundant_groups or [], redundancy_ready))
         dimensions = {}
         for key, label in (('consistency', '数据一致性'), ('diversity', '数据多样性'), ('redundancy', '数据冗余度')):
+            if scope == 'consistency' and key != 'consistency':
+                continue
             selected = [item for item in items if item.dimension == key]
             deduction = sum(item.deduction for item in selected) if all(item.deduction is not None for item in selected) else None
             dimensions[key] = QualityDimension(label=label, deduction=deduction,
@@ -45,15 +49,16 @@ class AuditQualityScorer:
         limitations = []
         if len(completed) != len(images) or not images:
             limitations.append('审计图像尚未全部完成')
-        if not diversity_ready:
+        if scope == 'full' and not diversity_ready:
             limitations.append('视觉场景归类证据不完整')
-        if exact_groups is None:
+        if scope == 'full' and exact_groups is None:
             limitations.append('严格重复关系未完成冻结')
-        if redundant_groups is None:
+        if scope == 'full' and redundant_groups is None:
             limitations.append('低信息增量相似图尚未完成图证确认')
+        effective_weights = {'consistency': 1.0} if scope == 'consistency' else weights.normalized()
         result = QualityScore(status='insufficient' if limitations else 'complete',
-            total=None if limitations else sum(weights.normalized()[key] * value.score for key, value in dimensions.items()),
-            weights=weights.normalized(), total_images=len(images), completed_images=len(completed),
+            total=None if limitations else sum(effective_weights[key] * value.score for key, value in dimensions.items()),
+            weights=effective_weights, total_images=len(images), completed_images=len(completed),
             observed_images=sum(image.observation_complete for image in completed),
             limitations=limitations, items=items, dimensions=dimensions)
         dataset_ids = sorted({image.dataset_id for image in images})
@@ -62,7 +67,7 @@ class AuditQualityScorer:
                 child = result
             else:
                 child = self.score([image for image in images if image.dataset_id == dataset_id], weights,
-                    exact_groups=exact_groups, redundant_groups=redundant_groups, aliases=aliases)
+                    exact_groups=exact_groups, redundant_groups=redundant_groups, aliases=aliases, scope=scope)
             result.dataset_scores.append(child.model_copy(update={'dataset_id': dataset_id, 'dataset_scores': []}))
         return result
 

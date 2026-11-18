@@ -72,7 +72,7 @@ def test_final_report_stores_program_score_and_legacy_preview_is_rejected(mixed_
     reports.commit(run_id, report_submission(quality_assessment=preview.assessment.model_dump()))
     view = AuditQueries(jobs.db).report(run_id)
     assert view.quality_score == preview.score
-    assert {item.sample_id for item in view.evidence_groups['score:D1']} == set(next(item for item in preview.score.items if item.code == 'D1').sample_ids[:4])
+    assert {item.sample_id for item in view.evidence_groups['score:D1']} == set(next(item for item in preview.score.items if item.code == 'D1').sample_ids[:10])
     assert view.evidence_groups['score:'+dataset_id+':D1'] == view.evidence_groups['score:D1']
     with jobs.db.connection() as connection:
         connection.execute("UPDATE audit_workflow_runs SET snapshot_json=json_remove(snapshot_json,'$.quality_score_version') WHERE job_id=?", (run_id,))
@@ -103,7 +103,7 @@ def test_score_galleries_use_frozen_observations_without_master_image_reloads(mi
     for code in ('D1', 'D2', 'D4'):
         item = next(item for item in preview.score.items if item.code == code)
         gallery = view.evidence_groups['score:' + code]
-        assert [image.sample_id for image in gallery] == item.sample_ids[:4]
+        assert [image.sample_id for image in gallery] == item.sample_ids[:10]
         assert gallery == view.evidence_groups['score:' + dataset_id + ':' + code]
         assert all(image.image.is_whole_image and image.image.representation == 'raw' for image in gallery)
     assert all(not view.evidence_groups.get('score:' + item.code)

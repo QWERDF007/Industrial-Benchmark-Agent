@@ -18,6 +18,8 @@ export const chartStyles=`
 .iad-chart-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;min-width:0}
 .iad-distribution-summary{display:flex;flex-wrap:wrap;gap:12px 28px;font-variant-numeric:tabular-nums}
 .iad-distribution-summary span{white-space:nowrap}
+.iad-chart-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;min-width:0}
+.iad-chart-panel-label{margin:0;text-align:center;color:var(--iad-chart-muted)}
 .iad-chart-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:24px}
 .iad-chart-pair>:only-child{grid-column:1/-1}
 .iad-score-summary .iad-chart-plot,.iad-chart[data-chart="outcomes"] .iad-chart-plot{width:100%;max-width:640px;--iad-chart-height:320px}

@@ -76,3 +76,29 @@ test('distribution curves expose actual bin counts and per-subset percentages in
     xLabel:'框面积占比',unit:'个',series:[{id:'a',label:'甲',data:{edges:[0,1],counts:[0]}}]}}));
   assert.match(empty,/暂无统计数据/);
 });
+
+
+test('shared chart panels compare actual subset scores within one chart header',()=>{
+  const panel=(label,value)=>({label,spec:{type:'donut',unit:'分',format:'score',
+    center:{label:'综合得分',value},rows:[{id:'earned',label:'数据一致性',value},{id:'unearned',label:'未得分',value:100-value}]}});
+  const html=renderToStaticMarkup(React.createElement(Chart,{title:'综合得分',spec:null,panels:[panel('训练集',92),panel('测试集',80)],controls:'范围选择'}));
+  assert.equal((html.match(/<figcaption/g)||[]).length,1);
+  assert.equal((html.match(/role="img"/g)||[]).length,2);
+  assert.match(html,/aria-label="训练集；综合得分 92\.0 分/);
+  assert.match(html,/aria-label="测试集；综合得分 80\.0 分/);
+  assert.doesNotMatch(html,/请选择子数据集/);
+});
+
+
+test('bar tooltip uses the supplied lines for both hover and accessible readings',()=>{
+  const tooltip='类别不一致\n扣分：0.1/100\n数量：2/2176\n百分比：0.09191%';
+  const spec={type:'bar',series:[{label:'扣分',unit:'分'}],
+    rows:[{id:'category',label:'类别不一致',values:[.0919117647],tooltip}]};
+  const theme={ink:'#172338',muted:'#536174',grid:'#e2e8f0',surface:'#fff',font:'sans-serif',
+    palette:['#285ed6'],tones:{},reducedMotion:true};
+  const options=chartOptions(spec,theme);
+  assert.equal(options.tooltip.formatter([{dataIndex:0}]),tooltip);
+  assert.equal(options.tooltip.formatter({dataIndex:0}),tooltip);
+  const html=renderToStaticMarkup(React.createElement(Chart,{title:'标注一致性扣分',spec}));
+  assert.match(html,/类别不一致，扣分：0\.1\/100，数量：2\/2176，百分比：0\.09191%/);
+});

@@ -17,6 +17,15 @@ class AuditQueries:
 
     def projection(self, run_id: str) -> list[AuditSampleItem]:
         snapshot = self.state.snapshot(run_id)
+        if snapshot.settings.audit_scope == 'consistency':
+            from iad_core.audit.consistency_summary import ConsistencyAudit
+            audit = ConsistencyAudit(self.db)
+            imported = {r.summary.anchor_id:r for r in audit.records(run_id)}
+            return [AuditSampleItem(audit_scope='consistency', run_id=run_id, sample_id=r.sample.sample_id,
+                dataset_id=r.sample.dataset_id, filename=r.sample.relative_path, width=r.sample.width, height=r.sample.height,
+                audit_state=audit.sample_state(imported[r.sample.sample_id]),
+                overview_evidence_id=None, has_findings=bool(imported[r.sample.sample_id].result.issues),
+                insufficient_evidence=False, consistency_pending=False) for r in snapshot.manifest.records]
         with self.db.connection() as connection:
             rows = connection.execute('''SELECT a.sample_id,a.state execution_status,
                 COALESCE(json_extract(a.result_json,'$.state'),'unprocessed') audit_state,
@@ -38,6 +47,7 @@ class AuditQueries:
     def samples(self, query: AuditSampleQuery) -> AuditSamplePage:
         if self.state.is_archived(query.run_id):
             return AuditSamplePage(run_id=query.run_id,total=0,page=query.page,page_size=query.page_size,distribution={},items=[],archived=True)
+        scope = self.state.snapshot(query.run_id).settings.audit_scope
         items = self.projection(query.run_id)
         counts = Counter(item.audit_state for item in items)
         selected = [item for item in items if (query.status == 'all' or item.audit_state == query.status)
@@ -47,19 +57,32 @@ class AuditQueries:
             group = next((group for group in AuditReports(self.db).session(query.run_id).discoveries if group.group_id==query.group_id),None)
             ids = {ref.sample_id for ref in [*group.support_refs,*group.counter_refs]} if group else set()
             selected = [item for item in selected if item.sample_id in ids]
-        if query.issue_type or query.consistency_assessment or query.knowledge_id:
+        if scope == 'consistency' and query.issue_type:
+            from iad_core.audit.consistency_summary import ConsistencyAudit
+            ids = {r.summary.anchor_id for r in ConsistencyAudit(self.db).records(query.run_id) if any(i.type == query.issue_type for i in r.result.issues)}
+            selected = [item for item in selected if item.sample_id in ids]
+        elif query.issue_type or query.consistency_assessment or query.knowledge_id:
             from iad_core.audit.reports import AuditReports
             from iad_core.audit.report_models import AuditRecordQuery
             ids = {sample.sample_id for sample in AuditReports(self.db).matching(query.run_id,AuditRecordQuery(
                 issue_type=query.issue_type,consistency_assessment=query.consistency_assessment,knowledge_id=query.knowledge_id))}
             selected = [item for item in selected if item.sample_id in ids]
-        states = ('suspect','normal','incomplete')
+        states = ('suspect','normal') if scope == 'consistency' else ('suspect','normal','incomplete')
         start = (query.page - 1) * query.page_size
-        return AuditSamplePage(run_id=query.run_id, total=len(selected), page=query.page, page_size=query.page_size,
+        return AuditSamplePage(audit_scope=scope, run_id=query.run_id, total=len(selected), page=query.page, page_size=query.page_size,
             distribution={state: counts[state] for state in states},
             items=selected[start:start + query.page_size])
 
     def sample(self, run_id: str, sample_id: str) -> NativeAuditSampleDetail:
+        if self.state.snapshot(run_id).settings.audit_scope == 'consistency':
+            from iad_core.audit.consistency_summary import ConsistencyAudit
+            conclusion = next((r for r in ConsistencyAudit(self.db).records(run_id) if r.summary.anchor_id == sample_id), None)
+            if conclusion is None:
+                raise LookupError('图像不属于当前作业')
+            return NativeAuditSampleDetail(sample=next(i for i in self.projection(run_id) if i.sample_id == sample_id),
+                final=None, knowledge=None, consistency=None, upstream_conclusion=conclusion,
+                registration=next(r for r in self.state.snapshot(run_id).manifest.records if r.sample.sample_id == sample_id),
+                evidence=[], errors=[])
         context = self.state.context(run_id, sample_id)
         sample = self.state.sample(run_id, sample_id)
         item = next(item for item in self.projection(run_id) if item.sample_id == sample_id)
@@ -83,7 +106,15 @@ class AuditQueries:
             errors=[error.message for error in job.errors if error.sample_id == sample_id])
 
     def evidence(self, run_id: str, sample_id: str, evidence_id: str) -> dict:
-        image = next((item.image for item in self.sample(run_id,sample_id).evidence if item.image.evidence_id == evidence_id), None)
+        with self.db.connection() as connection:
+            rows = connection.execute('SELECT media_json FROM audit_sample_media WHERE job_id=? AND target_id=?', (run_id,sample_id))
+            image = next((image.image for row in rows for image in PreparedRegistration.model_validate_json(row[0]).images
+                if image.image.evidence_id == evidence_id), None)
+        if image is None:
+            from iad_core.audit.report_models import AuditReportImage
+            with self.db.connection() as connection:
+                rows = connection.execute('SELECT image_json FROM audit_report_media WHERE job_id=? AND target_id=?', (run_id,sample_id))
+                image = next((item.image for row in rows for item in [AuditReportImage.model_validate_json(row[0])] if item.image.evidence_id == evidence_id), None)
         if image is None:
             raise LookupError('证据不属于当前审计主图')
         return {'path': EvidenceImages(self.db.db_path).path(image), 'media_type': image.media_type}
@@ -100,13 +131,19 @@ class AuditQueries:
             report = AuditRunReport.model_validate_json(row[0])
             return report if report.data_distribution is not None else report.model_copy(update={
                 'data_distribution': AuditDistributions.for_run(self.db, run_id).catalog()})
+        if self.state.snapshot(run_id).settings.audit_scope == 'consistency':
+            from iad_core.audit.consistency_summary import ConsistencyAudit
+            return ConsistencyAudit(self.db).report(run_id)
         from iad_core.audit.presentation import AuditPresentation
         return AuditPresentation(self).report(run_id)
 
     def report_data(self, run_id: str) -> AuditRunReport:
         job = JobFamilies(self.db).snapshot(run_id, ('MODEL_AUDIT',))
-        items = self.projection(run_id)
         snapshot = self.state.snapshot(run_id)
+        if snapshot.settings.audit_scope == 'consistency':
+            from iad_core.audit.consistency_summary import ConsistencyAudit
+            return ConsistencyAudit(self.db).report(run_id)
+        items = self.projection(run_id)
         from iad_core.audit.reports import AuditReports
         reports = AuditReports(self.db)
         statistics, session = reports.statistics(run_id), reports.session(run_id)
@@ -149,7 +186,4 @@ class AuditQueries:
             row = connection.execute("SELECT report_html,json_extract(snapshot_json,'$.schema_version') schema_version FROM audit_workflow_runs WHERE job_id=?", (run_id,)).fetchone()
         if row is None or row[0] is None:
             raise ValueError('本作业报告尚未生成')
-        if row['schema_version'] != 6:
-            return dict(filename=f'audit-{run_id}.html',html=row[0])
-        from iad_core.workbench.audit_html import AuditHtmlReport
-        return AuditHtmlReport(self).render(run_id)
+        return dict(filename=f'audit-{run_id}.html',html=row[0])

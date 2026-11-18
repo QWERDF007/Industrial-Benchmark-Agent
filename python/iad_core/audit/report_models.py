@@ -88,6 +88,7 @@ class AuditRepresentative(AnalysisModel):
 
 class AuditReportImage(AnalysisModel):
     sample_id: str
+    target_id: str | None = None
     role: Literal['representative','counter']
     caption: str
     reason: str
@@ -227,7 +228,7 @@ class AuditEvidenceAnalysis(AnalysisModel):
     analysis: NonBlankText = Field(description='围绕现象、共性、差异与判断边界的综合分析，不写逐图详情。')
     evidence_refs: list[AuditResultReference] = Field(description='支撑本项分析的当前有效图级记录。没有相关材料时为空并在正文说明。')
     representatives: list[AuditRepresentative] = Field(default_factory=list,
-        description='精选3至8张主Agent已实际观察、能共同解释本段分析的完整原图；对照图设为counter。')
+        description='精选5至10张主Agent已实际观察、能共同解释本段分析的完整原图；对照图设为counter。')
     related_case_ids: list[NonBlankText] = Field(default_factory=list,
         description='按与本段分析的关系和重要程度关联案例，在本段就地复用其原图。')
 
@@ -250,7 +251,7 @@ class AuditConsistencyScope(AnalysisModel):
     evidence_refs: list[AuditResultReference] = Field(default_factory=list,
         description='每张精选原图都须关联其当前有效图级版本；通常kind为image，sample_id与representatives中的原图一致。')
     representatives: list[AuditRepresentative] = Field(default_factory=list,
-        description='从该范围精选3至8张主Agent已实际查看的完整原图；用于比较的图指定counter。')
+        description='从该范围精选5至10张主Agent已实际查看的完整原图；用于比较的图指定counter。')
 
     @model_validator(mode='after')
     def referenced_originals(self):
@@ -350,12 +351,36 @@ class AuditStoredReport(AuditReportCommit):
     quality_score: QualityScore | None = None
 
 
+class ConsistencyAnalysisText(AnalysisModel):
+    issue_type: IssueType
+    analysis: NonBlankText = Field(description='用自然中文说明这一类问题的共同表现及影响，不列图像文件名、路径或内部编号。')
+
+
+class ConsistencyAuditText(AnalysisModel):
+    conclusion: NonBlankText = Field(description='用两三句自然中文概括本次标注情况、主要问题及其多少，直接说明审计发现。')
+    consistency_analysis: NonBlankText = Field(description='用两三句自然中文总结本章节的主要问题、共性及影响，不逐张举例，不写图像名称、内部流程或免责说明。')
+    analyses: list[ConsistencyAnalysisText]
+
+
+class ConsistencyStoredReport(ConsistencyAuditText):
+    audit_scope: Literal['consistency'] = 'consistency'
+    quality_score: QualityScore
+
+
+class AuditEvidencePair(AnalysisModel):
+    pair_id: str
+    source_job_id: str
+    issue_ids: list[str]
+    main: AuditReportImage
+    candidate: AuditReportImage
+
+
 class AuditReportSession(AnalysisModel):
     job_id: str
     session_id: str
     session_created: bool
     state: JobStatus
-    result: AuditStoredReport | None
+    result: AuditStoredReport | ConsistencyStoredReport | None
     error: str | None
     revision: int = 0
     discoveries: list[AuditDiscovery] = Field(default_factory=list)

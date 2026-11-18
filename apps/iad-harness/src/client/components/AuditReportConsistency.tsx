@@ -34,11 +34,11 @@ export function AuditReportConsistency({report,sources,imageUrl}:{report:AuditRu
         <th scope="row">{definition.title}</th><td>{definition.description}</td>
       </tr>)}</tbody>
     </table>)}
-    {!!sources.length&&<><AuditReportHeading level={3} number={auditReportSections.consistency.prefix+'2'}>程序统计与模型复核统计</AuditReportHeading>
+    {!!sources.length&&<><AuditReportHeading level={3} number={auditReportSections.consistency.prefix+'2'}>{report.audit_scope==='consistency'?'上游一致性统计':'程序统计与模型复核统计'}</AuditReportHeading>
       <p>下面的统计来自本次选用的一致性检查。程序根据原始标注的匹配结果找出差异，模型再结合图像内容复核。两张分类图都按主图计数：同一张图在同一类中只算一次，不同类型可以重叠。</p>
       {!!kinds.length&&program!=null&&<AuditReportChart kind="program-conflicts" title="程序统计：标注差异分类" unit="张" maximum={maximum}
         rows={kinds.map(kind=>({label:auditIssueLabels[kind],value:program[kind]||0}))}/>}
-      {!!kinds.length&&<AuditReportChart kind="model-conflicts" title="模型复核统计：标注冲突分类" unit="张" maximum={maximum}
+      {!!kinds.length&&<AuditReportChart kind="model-conflicts" title={report.audit_scope==='consistency'?'上游结论：标注冲突分类':'模型复核统计：标注冲突分类'} unit="张" maximum={maximum}
         rows={kinds.map(kind=>({label:auditIssueLabels[kind],value:conflicts[kind]?.image_count||0}))}/>}
       <AuditReportChart kind="consistency" title="来源检查的对照图与比较结果" unit="张" rows={sources}/>
       {scopes.map((key,index)=><article className="iad-audit-discovery" data-consistency-scope={key} key={key}>
@@ -48,14 +48,13 @@ export function AuditReportConsistency({report,sources,imageUrl}:{report:AuditRu
         <AuditEvidenceGallery items={report.evidence_groups['scope:'+key]||[]} imageUrl={imageUrl} heading={{level:4,number:auditReportSections.consistency.prefix+(index+3)+'.1'}}/>
       </article>)}</>}
     {analyses.filter(item=>program?.[item.issue_type]||conflicts[item.issue_type]?.occurrences).map((item,index)=>{
-      const count=conflicts[item.issue_type];
+      const count=conflicts[item.issue_type],pairs=report.evidence_pairs?.['consistency:'+item.issue_type]??[];
       return <article className="iad-audit-discovery" key={item.issue_type}>
-        <AuditEvidenceSection content={{number:auditReportSections.consistency.prefix+(scopes.length+index+3),title:item.title||auditIssueLabels[item.issue_type],description:item.description||'',
+        <AuditEvidenceSection content={{number:auditReportSections.consistency.prefix+(scopes.length+index+3),title:item.title||auditIssueLabels[item.issue_type],description:[item.description,item.analysis,item.audit_result].filter(Boolean).join('\n\n'),
           facts:[...(program==null?[]:[{label:'程序发现差异',text:`${program[item.issue_type]||0} 张图像`}]),
-            {label:'模型复核后保留',text:`${count?.image_count||0} 张图像，${count?.occurrences||0} 项`}],
-          galleries:[{title:'图像证据',images:item.related_case_ids?.length?auditCaseImages(report,item.related_case_ids):report.evidence_groups['consistency:'+item.issue_type]||[]}],analysis:[
-            {title:'图像观察与对照',text:item.analysis},
-            {title:'本次判断',text:item.audit_result||''} ]}} imageUrl={imageUrl}/>
+            {label:report.audit_scope==='consistency'?'上游记录问题':'模型复核后保留',text:`${count?.image_count||0} 张图像，${count?.occurrences||0} 项`}],
+          galleries:pairs.length?[{title:'图像证据',pairs}]:[{title:'图像证据',images:item.related_case_ids?.length?auditCaseImages(report,item.related_case_ids):report.evidence_groups['consistency:'+item.issue_type]||[]}],
+          analysis:[]}} imageUrl={imageUrl}/>
       </article>;
     })}
   </AuditReportSection>;

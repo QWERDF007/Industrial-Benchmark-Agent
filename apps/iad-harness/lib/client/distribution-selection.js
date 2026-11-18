@@ -35,10 +35,10 @@ export function selectDistribution(data, selected, names) {
                 }
             return [key, { x_edges: heatmap.x_edges, y_edges: heatmap.y_edges, cells: [...cells.values()] }];
         })),
-        distributions: Object.fromEntries(Object.keys(first.histograms).map(key => [key, slices.map(slice => ({
-                id: slice.dataset_id, label: names[slice.dataset_id] || slice.dataset_id,
-                data: { edges: slice.histograms[key].edges, counts: slice.histograms[key].counts },
-            }))])),
+        distributions: Object.fromEntries(Object.entries(first.histograms).map(([key, histogram]) => [key, [{
+                    id: key, label: slices.length === 1 ? (names[first.dataset_id] || first.dataset_id) : '所选子数据集',
+                    data: { edges: histogram.edges, counts: histogram.counts.map((_, index) => slices.reduce((sum, slice) => sum + slice.histograms[key].counts[index], 0)) },
+                }]])),
         area_by_category: slices.flatMap(slice => slice.area_by_category.map(row => ({ id: JSON.stringify([slice.dataset_id, row.category]),
             label: slices.length === 1 ? row.category : `${row.category} / ${names[slice.dataset_id] || slice.dataset_id}`,
             statistics: row.statistics }))),

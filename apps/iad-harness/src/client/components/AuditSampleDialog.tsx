@@ -1,3 +1,4 @@
+import {conflictCategoryLabels} from '../../shared/consistency.parameters.generated.js';
 import {auditAssessmentLabels,auditIssueLabels} from '../../shared/audit.generated.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from './ThumbnailCard.js';
@@ -16,6 +17,10 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
   const resource = useResource<NativeAuditSampleDetail>(`/audit/jobs/${encodeURIComponent(sample.run_id)}/samples/${encodeURIComponent(sample.sample_id)}`);
   const [lightbox, setLightbox] = useState<ImageSource | null>(null);
   const detail = resource.data;
+  const upstream=detail?.upstream_conclusion?.summary;
+  const modelConclusion=upstream?.model_conclusion;
+  const upstreamTitle=upstream?(modelConclusion?`模型：${modelConclusion==='无冲突'?'一致':conflictCategoryLabels[modelConclusion]} - 程序：${upstream.program_conclusion}`
+    :upstream.identity_model_reviewed&&upstream.reason==='NO_ELIGIBLE_CANDIDATES'?'模型：无有效候选':`程序：${upstream.program_conclusion}`):'';
   const pictures = useMemo(() => {
     return [...(detail?.evidence||[]).filter(item=>item.image.role==='overview'&&item.image.representation==='raw')].sort((left,right)=>Number(right.sample_id===sample.sample_id)-Number(left.sample_id===sample.sample_id)).map(item=>{
       const record=item.source,image=item.image;
@@ -27,7 +32,8 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
     });
   }, [detail, sample.run_id, sample.sample_id]);
   const mainImage = pictures[0]?.view || {src:auditSampleImage(sample, taskId),
-    title:sample.filename, width:sample.width, height:sample.height,sampleId:sample.sample_id};
+    title:sample.filename, width:sample.width, height:sample.height,sampleId:sample.sample_id,
+    ...(detail?.registration?datasetImageAnnotations(detail.registration.dataset_format,detail.registration.sample,detail.registration.annotations):{})};
   return <><Modal title="图像审计详情" className="audit-dialog" header={false} onClose={onClose}>
     <header className="audit-dialog-head"><h2>图像审计详情</h2><IconButton icon="close" label="关闭图像审计详情" onClick={onClose} /></header>
     <div className="audit-dialog-body audit-analysis-sections">
@@ -53,10 +59,14 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
         </div>
       </section>}
       <section className="dc-fact-panel" data-audit-section="conclusion"><h3>判定结论</h3>
-        <p>{detail?.final?.conclusion || ''}</p>
+        <p>{upstreamTitle || detail?.final?.conclusion || ''}</p>
         {!!detail?.errors.length && <p>{detail.errors.join('；')}</p>}
       </section>
-      <section className="dc-analysis-panel" data-audit-section="analysis"><h3>模型分析</h3>
+      {detail?.upstream_conclusion&&<section className="dc-analysis-panel"><h3>上游一致性结论</h3>
+        <p>引用数据一致性作业的已完成结果。</p>
+        {detail.upstream_conclusion.result.issues.map(issue=><p key={issue.issue_id}>{auditIssueLabels[issue.type]}：{issue.description}</p>)}
+      </section>}
+      {!detail?.upstream_conclusion&&<section className="dc-analysis-panel" data-audit-section="analysis"><h3>模型分析</h3>
         <p>{detail?.final?.analysis || ''}</p>
         {!!detail?.final?.findings.length&&<ol>{detail.final.findings.map(finding=><li key={finding.finding_id} data-finding-id={finding.finding_id}>
           <p>{'type' in finding?auditIssueLabels[finding.type]+'：':''}{finding.location}：{finding.description}</p><p>{finding.normal_explanation}</p>
@@ -67,7 +77,7 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
           .map(check=><p key={check.check_id}>{detail.knowledge?.entries.find(item=>item.check.check_id===check.check_id)?.check.title||'知识条目'}：{check.description}</p>)}
         {detail?.final&&'observations' in detail.final&&detail.final.observations.map((item,index)=><p key={index}>观察：{item.description}</p>)}
         {!!detail?.final?.limitations.length&&<p>{detail.final.limitations.join('；')}</p>}
-      </section>
+      </section>}
 
     </div><footer className="audit-dialog-foot"><Button onClick={onClose}>关闭</Button></footer>
   </Modal>{lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}</>;

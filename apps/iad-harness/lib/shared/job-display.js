@@ -55,7 +55,7 @@ export const jobPhases = {
     PREPARING_SHARED_INDEX: '准备共享图像索引', SHARED_INDEX_READY: '共享索引就绪',
     VERIFYING_CONTENT: '核对图像内容',
     OBSERVING_ANCHOR: '视觉核对', AWAITING_SUBMISSION: '校验主图结论', AGENT_REVIEWING: '主图审核',
-    SUMMARIZING_CONSISTENCY_RESULTS: '汇总结果', PREPARING_AUDIT_INPUT: '准备审计输入', AUDITING_DEFECTS: '审计缺陷图像', SUMMARIZING_DEFECT_PROFILE: '汇总缺陷特征', AUDITING_NORMALS: '审计良品图像', GENERATING_AUDIT_REPORT: '汇总审计报告',
+    SUMMARIZING_CONSISTENCY_RESULTS: '汇总结果', PREPARING_CONSISTENCY_SUMMARY: '准备一致性统计', ANALYZING_CONSISTENCY_ISSUES: '分析一致性问题', FINALIZING_REPORT: '生成报告', PREPARING_AUDIT_INPUT: '准备审计输入', AUDITING_DEFECTS: '审计缺陷图像', SUMMARIZING_DEFECT_PROFILE: '汇总缺陷特征', AUDITING_NORMALS: '审计良品图像', GENERATING_AUDIT_REPORT: '汇总审计报告',
 };
 const workflows = {
     exploration: { title: '方向探索', stages: [
@@ -80,9 +80,9 @@ const workflows = {
             { title: '汇总结果', phases: ['SUMMARIZING_CONSISTENCY_RESULTS', 'CONSISTENCY_FINISHED', 'CONSISTENCY_MODEL_BATCHES_FINISHED'] }
         ] },
     audit: { title: '模型审计', stages: [
-            { title: '准备输入', phases: ['PREPARING_KNOWLEDGE', 'PREPARING_AUDIT_INPUT'] },
+            { title: '准备输入', phases: ['PREPARING_KNOWLEDGE', 'PREPARING_AUDIT_INPUT', 'PREPARING_CONSISTENCY_SUMMARY'] },
             { title: '逐图审计', phases: ['COMPARING', 'AUDITING', 'AUDITING_IMAGES', 'AUDITING_DEFECTS', 'SUMMARIZING_DEFECT_PROFILE', 'AUDITING_NORMALS', 'GLOBAL', 'REGIONS', 'SYNTHESIS'] },
-            { title: '汇总报告', phases: ['GENERATING_AUDIT_REPORT', 'SAMPLE_COMPLETED', 'AUDIT_FINISHED'] }
+            { title: '汇总报告', phases: ['GENERATING_AUDIT_REPORT', 'ANALYZING_CONSISTENCY_ISSUES', 'FINALIZING_REPORT', 'SAMPLE_COMPLETED', 'AUDIT_FINISHED'] }
         ] },
 };
 export function jobWorkflow(job, now = Date.now()) {

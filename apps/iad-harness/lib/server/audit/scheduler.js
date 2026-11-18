@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
+import { ConsistencySummary } from './consistency-summary.js';
 import { AuditMasterAgent } from './agent.js';
 import { auditSessionPath } from './session-path.js';
 export class AuditWorkflowScheduler {
@@ -67,7 +68,10 @@ export class AuditWorkflowScheduler {
         if (!signal.aborted) {
             let failure;
             try {
-                await agent.run(runId, snapshot, signal);
+                if (snapshot.settings.audit_scope === 'consistency')
+                    await new ConsistencySummary(this.bridge, this.host, this.providers).run(runId, snapshot, signal);
+                else
+                    await agent.run(runId, snapshot, signal);
             }
             catch (error) {
                 if (signal.aborted)
@@ -79,12 +83,14 @@ export class AuditWorkflowScheduler {
         }
     }
     async writeReport(runId) {
+        await this.bridge.execute('audit_agent_report_freeze', { run_id: runId });
         const { samples } = await this.bridge.execute('audit_agent_samples', { run_id: runId });
         for (const sample of samples)
             if (sample.state === 'COMPLETED')
                 await this.host.notice(sample.session_id, { type: 'iad/job', summary: '图级审计已提交',
                     value: { kind: 'audit-final', job_id: sample.job_id, sample_id: sample.sample_id, final: sample.result }, record_id: 'audit-final:' + sample.sample_id });
-        const location = await this.bridge.execute('audit_agent_session_location', { session_id: samples[0].session_id });
+        const session = await this.bridge.execute('audit_agent_report_state', { run_id: runId });
+        const location = await this.bridge.execute('audit_agent_session_location', { session_id: session.session_id });
         const directory = path.dirname(auditSessionPath(this.dataRoot, location));
         const summary = await this.bridge.execute('audit_job_report', { run_id: runId });
         const report = await this.bridge.execute('audit_job_export', { run_id: runId });

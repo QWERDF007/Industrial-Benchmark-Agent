@@ -79,19 +79,27 @@ class AuditAgentJobs(AuditState):
                 or frozen[record.sample.sample_id].quality_status != record.sample.quality_status for record in manifest.records):
             raise ValueError('所选图像或标注版本与一致性作业冻结范围不一致，请先重新检查一致性')
         results = ConsistencyAgentResults(self.db)
-        anchors = [results.detail(request.consistency_job_id, record.sample.sample_id) for record in manifest.records]
+        lightweight = configuration.settings.audit_scope == 'consistency'
+        if lightweight and (request.knowledge or request.benchmark_build_id):
+            raise ValueError('数据一致性范围不使用知识或Benchmark成果')
+        conclusions = results.conclusions(request.consistency_job_id, set(frozen) & {record.sample.sample_id for record in manifest.records}) if lightweight else []
+        anchors = [] if lightweight else [results.detail(request.consistency_job_id, record.sample.sample_id) for record in manifest.records]
         if any(anchor.result is None or anchor.state != 'COMPLETED' for anchor in anchors):
             raise ValueError('一致性作业尚未形成所选主图的终稿')
         snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=6, quality_score_version=QUALITY_SCORE_VERSION, context_policy='evidence-on-demand-v1', manifest=manifest, agent=role,
             report_instruction=request.report_instruction, consistency_job_id=request.consistency_job_id,
             knowledge=self.freeze_knowledge(request.knowledge),
             master_prompt=request.master_prompt,observer_prompt=request.observer_prompt,
-            dataset_profile=AuditDatasetProfiles(self.db).freeze(manifest,request.benchmark_build_id))
+            dataset_profile=AuditDatasetProfiles(self.db).freeze(manifest,request.benchmark_build_id,include_relationships=not lightweight))
 
         def persist(connection, run_id):
             connection.execute('INSERT INTO audit_workflow_runs(job_id,snapshot_json) VALUES(?,?)', (run_id, snapshot.model_dump_json()))
             connection.execute('INSERT INTO audit_report_runs(job_id,session_id) VALUES(?,?)',
                 (run_id,'audit-report-'+uuid5(NAMESPACE_URL,run_id).hex))
+            if lightweight:
+                connection.executemany('INSERT INTO audit_upstream_records VALUES(?,?,?,?)',
+                    [(run_id, record.summary.anchor_id, index, record.model_dump_json()) for index, record in enumerate(conclusions)])
+                return
             connection.executemany('''INSERT INTO audit_sample_runs
                 (job_id,sample_id,ordinal,session_id,state,consistency_json) VALUES(?,?,?,?,?,?)''',
                 [(run_id, anchor.anchor_id, index, 'audit-' + uuid5(NAMESPACE_URL, run_id + ':' + anchor.anchor_id).hex,
@@ -102,12 +110,12 @@ class AuditAgentJobs(AuditState):
                     for index in range(0,len(sample_ids),snapshot.settings.batch_size)])
 
         job = self.jobs.start('MODEL_AUDIT', manifest.records[0].sample.task_id,
-            dict(audit_workflow_version=6, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
+            dict(audit_workflow_version=6, audit_scope=configuration.settings.audit_scope, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
                 sample_ids=[record.sample.sample_id for record in manifest.records], instruction=request.master_prompt.user_prompt,
                 model_name=role.profile.model_id, model_profile=role.profile.model_dump(),
                 knowledge_version_id=snapshot.knowledge.selection.version_id if snapshot.knowledge else None),
-            None, '准备逐图原生审计', persist=persist)
-        self.jobs.update(job['run_id'],phase='PREPARING_AUDIT_INPUT',completion_pending=True)
+            None, '准备一致性结论汇总' if lightweight else '准备逐图原生审计', persist=persist)
+        self.jobs.update(job['run_id'],phase='PREPARING_CONSISTENCY_SUMMARY' if lightweight else 'PREPARING_AUDIT_INPUT',completion_pending=True)
         return {**job, 'created':True}
 
 

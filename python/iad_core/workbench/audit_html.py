@@ -18,14 +18,16 @@ class AuditHtmlReport:
             raise ValueError('请等待作业结束后导出冻结报告')
         images = {}
         retained = EvidenceImages(self.results.db.db_path)
-        for group in report.evidence_groups.values():
+        groups = [*report.evidence_groups.values(),
+            *[[image for pair in pairs for image in (pair.main, pair.candidate)] for pairs in report.evidence_pairs.values()]]
+        for group in groups:
             for item in group:
                 image = item.image
                 if not image.is_whole_image or image.representation != 'raw':
                     raise ValueError('报告证据只展示完整原图')
-                if image.evidence_id not in images:
+                if image.sha256 not in images:
                     encoded = base64.b64encode(Path(retained.path(image)).read_bytes()).decode('ascii')
-                    images[image.evidence_id] = f'data:{image.media_type};base64,{encoded}'
+                    images[image.sha256] = f'data:{image.media_type};base64,{encoded}'
         payload = json.dumps(dict(report=report.model_dump(mode='json'),images=images),ensure_ascii=False,
             separators=(',',':')).replace('<','\\u003c').replace('>','\\u003e').replace('&','\\u0026')
         runtime = files('iad_core.workbench').joinpath('assets/audit-report.js').read_text(encoding='utf-8')

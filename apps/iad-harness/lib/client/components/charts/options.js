@@ -19,7 +19,7 @@ function distributionSeries(spec) {
 }
 export function chartReadings(spec) {
     switch (spec.type) {
-        case 'bar': return spec.rows.map(row => [row.label, ...spec.series.map((series, index) => `${series.label}（${series.unit}）：${chartNumber(row.values[index], spec.format)}`), row.details].filter(Boolean).join('\n'));
+        case 'bar': return spec.rows.map(row => row.tooltip ?? [row.label, ...spec.series.map((series, index) => `${series.label}（${series.unit}）：${chartNumber(row.values[index], spec.format)}`), row.details].filter(Boolean).join('\n'));
         case 'donut': return [...(spec.center ? [`${spec.center.label} ${chartNumber(spec.center.value, spec.format)} ${spec.unit}`] : []),
             ...spec.rows.map(row => [row.label, `${spec.format === 'score' ? '得分' : '数量'}（${spec.unit}）：${chartNumber(row.value, spec.format)}`, row.details].filter(Boolean).join('\n'))];
         case 'distribution': {

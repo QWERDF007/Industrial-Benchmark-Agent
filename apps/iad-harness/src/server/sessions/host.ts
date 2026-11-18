@@ -72,6 +72,13 @@ export class JobSessionHost {
     }
   }
 
+  async withModel<T>(id:string, operation:(scope:Context)=>Promise<T>):Promise<T> {
+    const runtime=await JobSessionHost.open(this.root,this.locate,true);
+    this.active.set(id,runtime);
+    try{return await operation(runtime.ctx);}
+    finally{this.active.delete(id);await runtime.dispose();}
+  }
+
   async withAgent<T>(id: string, options: {agentOptions?: AgentOptions; setup?: AgentSetup; sharedSetup?:(scope:Context)=>Promise<void>; signal?: AbortSignal; subagents?: number; evidenceOnDemand?: boolean; imageHandoffTools?: readonly string[]},
     operation: (agent: Agent) => T | Promise<T>): Promise<T> {
     options.signal?.throwIfAborted();

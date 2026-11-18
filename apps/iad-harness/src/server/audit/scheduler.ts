@@ -4,6 +4,7 @@ import type {AuditAgentConfiguration,AuditSampleRun,AuditReportSession,AuditWork
 import type {BridgeDispatch,ModelRouting,PythonBridge} from '../python-bridge/index.js';
 import type {NativeProviders} from '../models/providers.js';
 import type {JobSessionHost} from '../sessions/host.js';
+import {ConsistencySummary} from './consistency-summary.js';
 import {AuditMasterAgent} from './agent.js';
 import {auditSessionPath} from './session-path.js';
 
@@ -57,7 +58,10 @@ export class AuditWorkflowScheduler implements ModelRouting {
     const agent=new AuditMasterAgent(this.bridge,this.host,this.providers,this.dataRoot);
     if(!signal.aborted){
       let failure:{type:string;message:string}|undefined;
-      try{await agent.run(runId,snapshot,signal);}
+      try{
+        if(snapshot.settings.audit_scope==='consistency')await new ConsistencySummary(this.bridge,this.host,this.providers).run(runId,snapshot,signal);
+        else await agent.run(runId,snapshot,signal);
+      }
       catch(error){
         if(signal.aborted)return;
         failure={type:'AuditReportError',message:error instanceof Error?error.message:String(error)};
@@ -68,10 +72,12 @@ export class AuditWorkflowScheduler implements ModelRouting {
   }
 
   private async writeReport(runId:string):Promise<void> {
+    await this.bridge.execute('audit_agent_report_freeze',{run_id:runId});
     const {samples}=await this.bridge.execute<{samples:AuditSampleRun[]}>('audit_agent_samples',{run_id:runId});
     for(const sample of samples)if(sample.state==='COMPLETED')await this.host.notice(sample.session_id,{type:'iad/job',summary:'图级审计已提交',
       value:{kind:'audit-final',job_id:sample.job_id,sample_id:sample.sample_id,final:sample.result},record_id:'audit-final:'+sample.sample_id});
-    const location=await this.bridge.execute<ImageSessionLocation>('audit_agent_session_location',{session_id:samples[0].session_id});
+    const session=await this.bridge.execute<AuditReportSession>('audit_agent_report_state',{run_id:runId});
+    const location=await this.bridge.execute<ImageSessionLocation>('audit_agent_session_location',{session_id:session.session_id});
     const directory=path.dirname(auditSessionPath(this.dataRoot,location));
     const summary=await this.bridge.execute('audit_job_report',{run_id:runId});
     const report=await this.bridge.execute<{html:string}>('audit_job_export',{run_id:runId});

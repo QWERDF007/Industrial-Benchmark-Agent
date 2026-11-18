@@ -76,6 +76,17 @@ export class JobSessionHost {
             detach();
         }
     }
+    async withModel(id, operation) {
+        const runtime = await JobSessionHost.open(this.root, this.locate, true);
+        this.active.set(id, runtime);
+        try {
+            return await operation(runtime.ctx);
+        }
+        finally {
+            this.active.delete(id);
+            await runtime.dispose();
+        }
+    }
     async withAgent(id, options, operation) {
         options.signal?.throwIfAborted();
         const sessionId = SessionId(id);

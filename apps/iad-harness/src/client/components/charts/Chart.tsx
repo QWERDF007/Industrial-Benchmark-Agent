@@ -9,17 +9,29 @@ import type {ChartSpec,ChartTheme,ChartTone} from './types.js';
 use([BarChart,BoxplotChart,HeatmapChart,LineChart,PieChart,ScatterChart,AriaComponent,
   GraphicComponent,GridComponent,LegendComponent,TooltipComponent,VisualMapComponent,SVGRenderer]);
 
-export function Chart({id,title,spec,onSelect,description,controls}:{id?:string;title:string;spec:ChartSpec|null;
-  onSelect?(id:string):void;description?:string;controls?:React.ReactNode}) {
+export interface ChartPanel {label:string;spec:ChartSpec}
+
+export function Chart({id,title,spec,panels,onSelect,description,controls}:{id?:string;title:string;spec:ChartSpec|null;
+  panels?:readonly ChartPanel[];onSelect?(id:string):void;description?:string;controls?:React.ReactNode}) {
+  const type=spec?.type??panels?.[0]?.spec.type;
+  const chartType=useRef(type);
+  if(type)chartType.current=type;
+  return <figure className="iad-chart" data-chart={id||chartType.current} data-chart-type={chartType.current}>
+    <figcaption>{title}{controls&&<div className="iad-chart-controls">{controls}</div>}</figcaption>
+    {description&&<p className="iad-chart-description">{description}</p>}
+    {panels?.length?<div className="iad-chart-panels">{panels.map(panel=><section key={panel.label}>
+      <p className="iad-chart-panel-label">{panel.label}</p><ChartPlot title={panel.label} spec={panel.spec} onSelect={onSelect}/>
+    </section>)}</div>:spec?<ChartPlot title={title} spec={spec} onSelect={onSelect}/>
+      :<p className="iad-chart-empty" role="status">请选择子数据集</p>}
+  </figure>;
+}
+
+function ChartPlot({title,spec,onSelect}:{title:string;spec:ChartSpec;onSelect?(id:string):void}) {
   const host=useRef<HTMLDivElement>(null);
-  const chartType=useRef(spec?.type);
-  if(spec)chartType.current=spec.type;
   const current=useRef({spec,onSelect});current.current={spec,onSelect};
   const draw=useRef<()=>void>(()=>{});
-  const hasData=spec!==null;
-  const summary=[title,...(spec?chartReadings(spec):[])].join('；').replaceAll('\n','，');
+  const summary=[title,...chartReadings(spec)].join('；').replaceAll('\n','，');
   useEffect(()=>{
-    if(!hasData)return;
     const element=host.current!;
     const chart=init(element,undefined,{renderer:'svg'});
     const motion=window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -43,11 +55,7 @@ export function Chart({id,title,spec,onSelect,description,controls}:{id?:string;
     motion.addEventListener('change',render);
     return()=>{resize.disconnect();themeChanges.disconnect();motion.removeEventListener('change',render);
       draw.current=()=>{};chart.dispose();};
-  },[hasData]);
+  },[]);
   useEffect(()=>draw.current(),[spec]);
-  return <figure className="iad-chart" data-chart={id||chartType.current} data-chart-type={chartType.current}>
-    <figcaption>{title}{controls&&<div className="iad-chart-controls">{controls}</div>}</figcaption>
-    {description&&<p className="iad-chart-description">{description}</p>}
-    {spec?<div className="iad-chart-plot" ref={host} role="img" aria-label={summary}/>:<p className="iad-chart-empty" role="status">请选择子数据集</p>}
-  </figure>;
+  return <div className="iad-chart-plot" ref={host} role="img" aria-label={summary}/>;
 }

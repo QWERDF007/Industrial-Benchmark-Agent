@@ -26,6 +26,7 @@ export type DatasetPageId = Exclude<PageId, 'industrial-consistency'>;
 export type WorkbenchLocation = ConsistencyLocation | {
   pageId: DatasetPageId;
   datasetId: string;
+  datasetGroupId?: string;
   datasetIds?: string[];
   explorationVersion?: string;
   job?: string;

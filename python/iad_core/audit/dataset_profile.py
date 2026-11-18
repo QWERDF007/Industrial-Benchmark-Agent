@@ -21,7 +21,7 @@ class AuditDatasetProfiles:
     def __init__(self, db):
         self.db = db
 
-    def freeze(self, manifest: AnalysisManifest, build_id: str | None = None) -> AuditDatasetProfile:
+    def freeze(self, manifest: AnalysisManifest, build_id: str | None = None, *, include_relationships: bool = True) -> AuditDatasetProfile:
         records = manifest.records
         ids = {record.sample.sample_id for record in records}
         configs = {identity:DatasetRegistry(self.db).get(identity) for identity in manifest.dataset_ids}
@@ -37,11 +37,11 @@ class AuditDatasetProfiles:
             metadata[name] = AuditMetadataCoverage(covered_images=len(values),
                 distinct_count=len(distribution) if distribution else None,distribution=dict(distribution))
         geometry = AuditDistributions(manifest).geometry()
-        groups = ContentRelations(self.db).groups(list(ids))
+        groups = ContentRelations(self.db).groups(list(ids)) if include_relationships else []
         covered = {identity for group in groups for identity in group.sample_ids} >= ids
         duplicates = [ids.intersection(group.sample_ids) for group in groups if len(ids.intersection(group.sample_ids))>1]
         tasks={record.sample.task_id for record in records}
-        pairs = [pair for task_id in tasks for pair in PairObservations(self.db).current(task_id)
+        pairs = [pair for task_id in (tasks if include_relationships else ()) for pair in PairObservations(self.db).current(task_id)
             if pair.sample_id_a in ids and pair.sample_id_b in ids and pair.verification.relation=='NEAR_CANDIDATE']
         benchmark = None
         if build_id is not None:

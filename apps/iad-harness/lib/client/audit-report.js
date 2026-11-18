@@ -10,6 +10,7 @@ export const auditReportSections = Object.fromEntries(sections.map(([key, title]
     }]));
 export const scoredAuditReportSections = Object.fromEntries([...sections.slice(0, 1), ['score', '得分细分'], ...sections.slice(1)]
     .map(([key, title], index) => [key, { title: `${['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][index]}、${title}`, prefix: `${index + 1}.` }]));
+export const consistencyAuditReportSections = Object.fromEntries([['conclusion', '总体结论'], ['score', '得分明细'], ['distribution', '数据分布'], ['consistency', '数据是否自洽']].map(([key, title], index) => [key, { title: `${['一', '二', '三', '四'][index]}、${title}`, prefix: `${index + 1}.` }]));
 export const AuditReportSectionsContext = createContext(auditReportSections);
 export const useAuditReportSections = () => useContext(AuditReportSectionsContext);
 export const auditMetadataLabels = { physical_sample_id: '物理件', capture_sequence_id: '采集序列',

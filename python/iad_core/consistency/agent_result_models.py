@@ -154,6 +154,12 @@ class AnchorResultDetail(AnchorResultSummary):
     error_history: list[JobFailure]
 
 
+class ConsistencyConclusionRecord(AnalysisModel):
+    summary: AnchorResultSummary
+    result: AnchorResult
+    evidence: list[AnchorEvidenceReference] = Field(default_factory=list)
+
+
 class ModelRoleDiagnostics(AnalysisModel):
     recording: DiagnosticRecording
     recorded_requests: Count

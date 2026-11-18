@@ -11,7 +11,7 @@ import {viewport} from './workbench-layout.js';
 const app=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
 for(const compare of [false,true])test(`audit originals show filenames and inline evidence${compare?' with comparison tabs':''}`,{timeout:60000},async()=>{
-  const items=Array.from({length:8},(_,index)=>({
+  const items=Array.from({length:compare?8:10},(_,index)=>({
     sample_id:`sample_${index}`,role:compare&&index>=4?'counter':'representative',caption:'原图',reason:`查看第${index+1}处边缘。`,
     image:{evidence_id:`evidence_${index}`,role:'overview',representation:'raw',crop_bbox:[0,0,160,100],original_size:[160,100],sent_size:[160,100]},
     source:{dataset_format:'labelme',sample:{sample_id:`sample_${index}`,relative_path:`internal/${index}.svg`,width:160,height:100},
@@ -55,7 +55,21 @@ for(const compare of [false,true])test(`audit originals show filenames and inlin
     await element('#audit-report img');
     assert.equal((await driver.findElements(By.css('#audit-report .iad-thumbnail-card'))).length,compare?4:8);
     assert.equal((await driver.findElements(By.css('#audit-report [role="tab"]'))).length,compare?2:0);
-    assert.equal((await driver.findElements(By.css('#audit-report nav'))).length,0);
+    assert.equal((await driver.findElements(By.css('#audit-report nav'))).length,compare?0:1);
+    if(!compare){
+      assert.match(await(await element('#audit-report nav')).getText(),/共 10 张/);
+      const layout=await driver.executeScript(`const grid=document.querySelector('#audit-report .iad-thumbnail-grid');
+        return {columns:getComputedStyle(grid).gridTemplateColumns.split(' ').length,
+          rows:new Set([...grid.children].map(e=>e.getBoundingClientRect().top)).size}`);
+      assert.deepEqual(layout,{columns:4,rows:2});
+      await click('#audit-report nav [data-page="2"]');
+      assert.deepEqual(await driver.executeScript('return [...document.querySelectorAll("#audit-report img")].map(i=>i.alt)'),['8.svg','9.svg']);
+      await click('#audit-report .iad-thumbnail-card');
+      assert.equal(await(await element('#full-file-name')).getText(),'8.svg');
+      await click('#full-close');
+      await click('#audit-report nav [data-page="1"]');
+      assert.equal((await driver.findElements(By.css('#audit-report .iad-thumbnail-card'))).length,8);
+    }
     await click('#audit-report .iad-thumbnail-card');
     assert.equal(await(await element('#full-file-name')).getText(),'0.svg');
     assert.equal(await(await element('.full-image-world img')).getAttribute('alt'),'0.svg');

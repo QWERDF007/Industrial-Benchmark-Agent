@@ -736,7 +736,7 @@ export const auditReportDraftParameters = {
                                 },
                                 "title": "AuditRepresentative"
                             },
-                            "description": "精选3至8张主Agent已实际观察、能共同解释本段分析的完整原图；对照图设为counter。",
+                            "description": "精选5至10张主Agent已实际观察、能共同解释本段分析的完整原图；对照图设为counter。",
                             "title": "Representatives"
                         },
                         "related_case_ids": {
@@ -846,7 +846,7 @@ export const auditReportDraftParameters = {
                                 },
                                 "title": "AuditRepresentative"
                             },
-                            "description": "精选3至8张主Agent已实际观察、能共同解释本段分析的完整原图；对照图设为counter。",
+                            "description": "精选5至10张主Agent已实际观察、能共同解释本段分析的完整原图；对照图设为counter。",
                             "title": "Representatives"
                         },
                         "related_case_ids": {
@@ -996,7 +996,7 @@ export const auditReportDraftParameters = {
                                 },
                                 "title": "AuditRepresentative"
                             },
-                            "description": "从该范围精选3至8张主Agent已实际查看的完整原图；用于比较的图指定counter。",
+                            "description": "从该范围精选5至10张主Agent已实际查看的完整原图；用于比较的图指定counter。",
                             "title": "Representatives"
                         }
                     },

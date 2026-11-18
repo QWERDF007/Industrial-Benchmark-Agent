@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AuditReportImage } from '../../shared/domain.generated.js';
+import type { AuditReportImage, AuditEvidencePair } from '../../shared/domain.generated.js';
 export declare function AuditEvidenceSection({ content, imageUrl, level }: {
     level?: 3 | 4 | 5;
     content: {
@@ -10,10 +10,13 @@ export declare function AuditEvidenceSection({ content, imageUrl, level }: {
             label: string;
             text: string;
         }[];
-        galleries: readonly {
+        galleries: readonly ({
             title: string;
             images: readonly AuditReportImage[];
-        }[];
+        } | {
+            title: string;
+            pairs: readonly AuditEvidencePair[];
+        })[];
         analysis: readonly {
             title: string;
             text: string;

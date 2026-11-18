@@ -30,6 +30,7 @@ export const reportStyles = `
 .iad-audit-definitions th:first-child{width:136px;white-space:nowrap;font-weight:600}
 .iad-audit-gallery{display:grid;gap:10px;min-width:0;padding:8px 0 4px}
 .iad-audit-gallery .iad-thumbnail-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.iad-audit-evidence-pair{display:grid;grid-column:span 2;grid-template-columns:repeat(2,minmax(0,1fr));gap:inherit;min-width:0}
 .iad-audit-gallery button.iad-thumbnail-card{max-width:none;height:174px;padding:5px}
 .iad-audit-document ul{margin:0;padding-left:22px}
 

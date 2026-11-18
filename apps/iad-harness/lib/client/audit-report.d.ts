@@ -9,6 +9,7 @@ type SectionMap = Record<typeof sections[number][0], SectionHeading> & {
 };
 export declare const auditReportSections: SectionMap;
 export declare const scoredAuditReportSections: SectionMap;
+export declare const consistencyAuditReportSections: SectionMap;
 export declare const AuditReportSectionsContext: import("react").Context<SectionMap>;
 export declare const useAuditReportSections: () => SectionMap;
 export declare const auditMetadataLabels: Record<string, string>;

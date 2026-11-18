@@ -28,6 +28,7 @@ export declare class JobSessionHost {
     private constructor();
     static open(root: string, locate: SessionLocator, evidenceOnDemand?: boolean): Promise<JobSessionHost>;
     create(id: string): Promise<void>;
+    withModel<T>(id: string, operation: (scope: Context) => Promise<T>): Promise<T>;
     withAgent<T>(id: string, options: {
         agentOptions?: AgentOptions;
         setup?: AgentSetup;

@@ -13,8 +13,11 @@ export function ModuleSettingsSection({module}:{module:Exclude<BusinessModule,'c
   return <section className="iad-module-settings" aria-label={`${businessModules[module]}设置`} data-module-settings={module}>
     <style>{moduleSettingsStyles}</style>
     {loading&&!settings ? <p role="status">正在读取设置…</p> : settings && <div>
+      {'audit_scope' in settings&&<ModuleSelectSetting label="审计范围" value={settings.audit_scope}
+        options={[{value:'full',label:'完整范围'},{value:'consistency',label:'数据一致性'}]}
+        onChange={audit_scope=>save({audit_scope})}/>}
       <ModuleModelFields settings={settings} save={save}/>
-      {'batch_size' in settings && <>
+      {'batch_size' in settings && !('audit_scope' in settings&&settings.audit_scope==='consistency') && <>
         <ModuleNumberSetting label={module==='audit'?'主 Agent 联合分析间隔':module==='exploration'?'后续每批图像数':'每批图像数'} value={settings.batch_size} min={1} max={module==='knowledge'?200:undefined} step={1}
           validationMessage={module==='knowledge'?'每批图像数需要为 1～200 的整数':'图像数量需要为正整数'} onSave={batch_size=>save({batch_size})}/>
       </>}
@@ -24,15 +27,15 @@ export function ModuleSettingsSection({module}:{module:Exclude<BusinessModule,'c
         <ModuleNumberSetting label="异常品抽取权重" value={settings.sampling_ratio.abnormal} min={1} step={1}
           validationMessage="异常品抽取权重需要为正整数" onSave={abnormal=>save({sampling_ratio:{...settings.sampling_ratio,abnormal}})}/>
       </>}
-      {'concurrency' in settings && <ModuleNumberSetting label={(module==='exploration'||module==='knowledge')?'并行观察批次数':'同时运行的子 Agent 数量'} value={settings.concurrency} min={1} step={1}
+      {'concurrency' in settings && !('audit_scope' in settings&&settings.audit_scope==='consistency') && <ModuleNumberSetting label={(module==='exploration'||module==='knowledge')?'并行观察批次数':'同时运行的子 Agent 数量'} value={settings.concurrency} min={1} step={1}
         validationMessage="并发数量需要为正整数" onSave={concurrency=>save({concurrency})}/>}
-      {module==='audit'&&'whole_image_max_side' in settings&&<ModelImageSizeSetting value={settings.whole_image_max_side}
+      {module==='audit'&&'audit_scope' in settings&&settings.audit_scope==='full'&&<ModelImageSizeSetting value={settings.whole_image_max_side}
         onSave={whole_image_max_side=>save({whole_image_max_side})}/>}
       {module!=='audit'&&'whole_image_max_side' in settings && <>
         <ModuleSelectSetting label="整图输入分辨率" value="original" disabled onChange={()=>{}}
           options={[{value:'original',label:'使用原图'}]}/>
       </>}
-      {'quality_score_weights' in settings&&<>
+      {'quality_score_weights' in settings&&settings.audit_scope==='full'&&<>
         <h3>综合得分</h3>
         {([['consistency','数据一致性'],['diversity','数据多样性'],['redundancy','数据冗余度']] as const).map(([key,label])=>
           <ModuleNumberSetting key={key} label={`${label}系数`} value={settings.quality_score_weights[key]} min={0} step={.01}

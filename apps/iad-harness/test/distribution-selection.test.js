@@ -10,16 +10,17 @@ function slice(id,images,boxes){return {dataset_id:id,category:null,image_count:
   histograms:{relative_area:{edges:[0,.05,.1],counts:[boxes,0],density:[[0,.1],[.05,.2]]}},
   summaries:{relative_area:summary},area_by_category:[{category:'edge',statistics:{...summary,count:boxes}}]};}
 
-test('multiple subsets combine counts while retaining each subset histogram and box statistics',()=>{
+test('multiple subsets combine histogram counts into one distribution while retaining box statistics',()=>{
   const data={dataset_format:'labelme',datasets:['a','b','c'],categories:['edge'],
     slices:[slice(null,14,17),slice('a',2,3),{...slice('a',2,3),category:'edge'},slice('b',4,5),slice('c',8,9)]};
+  data.slices.at(-1).histograms.relative_area.counts=[0,9];
   const before=JSON.stringify(data);
   const view=selectDistribution(data,['a','c'],{a:'甲',b:'乙',c:'丙'});
   assert.equal(view.image_count,10);assert.equal(view.annotation_count,12);assert.deepEqual(view.geometry_types,{bbox:12});
   assert.deepEqual(view.classes,[{category:'edge',image_count:10,annotation_count:12}]);
   assert.deepEqual(view.heatmaps.image_dimensions.cells,[[0,1,10]]);
-  assert.deepEqual(view.distributions.relative_area.map(item=>item.label),['甲','丙']);
-  assert.deepEqual(view.distributions.relative_area.map(item=>item.data.counts),[[3,0],[9,0]]);
+  assert.deepEqual(view.distributions.relative_area.map(item=>item.label),['所选子数据集']);
+  assert.deepEqual(view.distributions.relative_area.map(item=>item.data.counts),[[3,9]]);
   assert.deepEqual(view.distributions.relative_area[0].data.edges,[0,.05,.1]);
   assert.equal(JSON.stringify(view.distributions).includes('density'),false);
   assert.deepEqual(view.area_by_category.map(item=>[item.label,item.statistics.count]),[['edge / 甲',3],['edge / 丙',9]]);

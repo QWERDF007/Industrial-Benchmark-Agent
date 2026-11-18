@@ -31,35 +31,28 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
   dataset: Dataset; datasets: Dataset[]; groups: DatasetGroup[]; refreshRevision: number; onDatasetsChanged(): void;
 }) {
   const {workspace} = useWorkspace();
+  const view = workspace.view('industrial-audit');
   const hierarchy = useMemo(() => buildHierarchyGroups(datasets, groups), [datasets, groups]);
-  const [groupId, setGroupId] = useState(() => getDatasetGroupId(dataset));
-  const children = useMemo(() => datasets.filter(item => getDatasetGroupId(item) === groupId), [datasets, hierarchy, groupId]);
-  const [selectedIds, setSelectedIds] = useState([dataset.dataset_id]);
-  const ids = selectedIds.filter(id => children.some(child => child.dataset_id === id));
+  const groupId = hierarchy.find(group => group.group_id === view.datasetGroupId)?.group_id ?? getDatasetGroupId(dataset);
+  const children = useMemo(() => datasets.filter(item => getDatasetGroupId(item) === groupId), [datasets, groupId]);
+  const ids = (view.datasetIds ?? [dataset.dataset_id]).filter(id => children.some(child => child.dataset_id === id));
   const scope = JSON.stringify([...ids].sort());
   const [tab, setTab] = useState<'audit' | 'reports'>('audit');
   const [revision, setRevision] = useState(0);
   const [promptJob,setPromptJob]=useState('');
   const progress = useCallback(() => setRevision(value => value + 1), []);
-  const jobs = useJobs('audit', ids, progress, workspace.view('industrial-audit').job, refreshRevision);
-  const selection = useJobList(jobs.jobs,scope,workspace.view('industrial-audit').job,job=>workspace.updateView('industrial-audit',{job:job.root_run_id}));
+  const jobs = useJobs('audit', ids, progress, view.job, refreshRevision);
+  const selection = useJobList(jobs.jobs,scope,view.job,job=>workspace.updateView('industrial-audit',{job:job.root_run_id}));
   const [statisticsJob,setStatisticsJob]=useState<JobSnapshot|null>(null);
   const job = selection.selected;
   const [issueType,setIssueType]=useState(''),[sourceAssessment,setSourceAssessment]=useState('');
   const [search, setSearch] = useState(''), [status, setStatus] = useState('all'), [page, setPage] = useState(1);
-  const createOpen=workspace.view('industrial-audit').tab==='setup';
+  const createOpen=view.tab==='setup';
   const setCreateOpen=(open:boolean)=>workspace.updateView('industrial-audit',{tab:open?'setup':'results'});
   const [jobDetails, setJobDetails] = useState<JobSnapshot | null>(null);
   const [creatingBusy, setCreatingBusy] = useState(false);
   const [sample, setSample] = useState<AuditSampleItem | null>(null);
   useEffect(() => {setPage(1); setSearch(''); setStatus('all');setIssueType('');setSourceAssessment('');setSample(null);}, [job?.run_id]);
-  useEffect(() => {
-    if (!hierarchy.some(group => group.group_id === groupId)) {
-      const next = hierarchy[0]?.group_id || '';
-      setGroupId(next);
-      setSelectedIds(datasets.filter(item => getDatasetGroupId(item) === next).slice(0, 1).map(item => item.dataset_id));
-    }
-  }, [datasets, hierarchy, groupId]);
   const query = new URLSearchParams({page: String(page), page_size: '18', status, search,...(issueType?{issue_type:issueType}:{}),...(sourceAssessment?{consistency_assessment:sourceAssessment}:{})});
   const result = useResource<AuditSamplePage>(job && !createOpen && tab === 'audit'
     ? `/audit/jobs/${encodeURIComponent(job.run_id)}/samples?${query}` : null, revision);
@@ -70,15 +63,15 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
     <WorkbenchHeader pageId="industrial-audit" className="audit-heading" title={createOpen?'新建审计':undefined}>{createOpen
       ? <Button type="button" disabled={creatingBusy} onClick={() => setCreateOpen(false)}>返回作业与结果</Button>
       : <Button id="audit-new" variant="primary" type="button" disabled={!ids.length}
-        title="新建审计" onClick={() => {
-          workspace.selectDataset(ids[0]); setCreateOpen(true);
-        }}>新建审计</Button>}</WorkbenchHeader>
+        title="新建审计" onClick={() => setCreateOpen(true)}>新建审计</Button>}</WorkbenchHeader>
     <DatasetScopeSelector groups={hierarchy} selectedGroupId={groupId} onGroupChange={next => {
-      setGroupId(next); setSelectedIds(datasets.filter(item => getDatasetGroupId(item) === next).slice(0, 1).map(item => item.dataset_id));
-      workspace.updateView('industrial-audit',{job:''});
+      const first = datasets.find(item => getDatasetGroupId(item) === next);
+      workspace.openLocation({pageId:'industrial-audit',datasetId:first?.dataset_id || dataset.dataset_id,
+        datasetGroupId:next,datasetIds:first ? [first.dataset_id] : [],job:'',tab:'results'});
     }} childDatasets={children} selectedChildIds={ids} onChildToggle={id => {
-      setSelectedIds(previous => previous.includes(id)?previous.filter(value=>value!==id):[...previous,id]);
-      workspace.updateView('industrial-audit',{job:''});
+      const next = ids.includes(id) ? ids.filter(value => value !== id) : [...ids,id];
+      workspace.openLocation({pageId:'industrial-audit',datasetId:next[0] || dataset.dataset_id,
+        datasetGroupId:groupId,datasetIds:next,job:'',tab:'results'});
     }} disabled={createOpen} className="audit-scope"
       groupId="audit-dataset" childId="audit-child-trigger" childMenuId="audit-child-menu">
       <RefreshIconButton onClick={refresh} />
@@ -100,11 +93,11 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
           {hasResults&&<div className="audit-filters"><label className="audit-field"><span>文件名</span><input type="search" aria-label="搜索审计图像"
             value={search} onChange={event => {setSearch(event.target.value); setPage(1);}} /></label>
             <label className="audit-field"><span>问题类别</span><Select aria-label="审计问题类别" value={issueType} onChange={event=>{setIssueType(event.target.value);setPage(1);}}><option value="">全部类别</option>{Object.entries(auditIssueLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</Select></label>
-            <label className="audit-field"><span>一致性核对</span><Select aria-label="一致性差异处理" value={sourceAssessment} onChange={event=>{setSourceAssessment(event.target.value);setPage(1);}}><option value="">全部处理</option>{Object.entries(auditAssessmentLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</Select></label>
+            {result.data?.audit_scope!=='consistency'&&<label className="audit-field"><span>一致性核对</span><Select aria-label="一致性差异处理" value={sourceAssessment} onChange={event=>{setSourceAssessment(event.target.value);setPage(1);}}><option value="">全部处理</option>{Object.entries(auditAssessmentLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</Select></label>}
             <ClearFilterButton onClick={() => {setIssueType('');setSourceAssessment('');setSearch(''); setStatus('all');setPage(1);}} /></div>}</SectionHeading>
           {hasResults&&<TabBar label="审计图像状态" value={status} onChange={value => {setStatus(value); setPage(1);}}
             items={(['all', ...Object.keys(result.data?.distribution||{})] as Array<'all' | keyof typeof auditStateLabels>).map(value => ({id: value,
-              label: <>{value === 'all' ? '全部图像' : auditStateLabels[value]}{result.data && <span className="iad-tab-count">{value === 'all'
+              label: <>{value === 'all' ? '全部图像' : (result.data?.audit_scope==='consistency'&&value==='suspect'?'标注冲突':auditStateLabels[value])}{result.data && <span className="iad-tab-count">{value === 'all'
                 ? Object.values(result.data.distribution).reduce((sum, value) => sum + value, 0) : result.data.distribution[value]}</span>}</>}))} />}<div id="audit-images">
             {!job && <p className="iad-result-empty" role="status">当前没有结果</p>}
             {result.loading && <p className="audit-empty" role="status">正在读取作业图像…</p>}

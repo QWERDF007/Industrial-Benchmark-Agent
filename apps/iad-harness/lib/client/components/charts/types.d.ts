@@ -25,6 +25,7 @@ export type ChartSpec = {
         label: string;
         values: readonly (number | null)[];
         details?: string;
+        tooltip?: string;
     }[];
     series: readonly ChartSeries[];
     maximum?: number;

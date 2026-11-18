@@ -7,19 +7,21 @@ import { SVGRenderer } from 'echarts/renderers';
 import { chartOptions, chartReadings } from './options.js';
 use([BarChart, BoxplotChart, HeatmapChart, LineChart, PieChart, ScatterChart, AriaComponent,
     GraphicComponent, GridComponent, LegendComponent, TooltipComponent, VisualMapComponent, SVGRenderer]);
-export function Chart({ id, title, spec, onSelect, description, controls }) {
+export function Chart({ id, title, spec, panels, onSelect, description, controls }) {
+    const type = spec?.type ?? panels?.[0]?.spec.type;
+    const chartType = useRef(type);
+    if (type)
+        chartType.current = type;
+    return _jsxs("figure", { className: "iad-chart", "data-chart": id || chartType.current, "data-chart-type": chartType.current, children: [_jsxs("figcaption", { children: [title, controls && _jsx("div", { className: "iad-chart-controls", children: controls })] }), description && _jsx("p", { className: "iad-chart-description", children: description }), panels?.length ? _jsx("div", { className: "iad-chart-panels", children: panels.map(panel => _jsxs("section", { children: [_jsx("p", { className: "iad-chart-panel-label", children: panel.label }), _jsx(ChartPlot, { title: panel.label, spec: panel.spec, onSelect: onSelect })] }, panel.label)) }) : spec ? _jsx(ChartPlot, { title: title, spec: spec, onSelect: onSelect })
+                : _jsx("p", { className: "iad-chart-empty", role: "status", children: "\u8BF7\u9009\u62E9\u5B50\u6570\u636E\u96C6" })] });
+}
+function ChartPlot({ title, spec, onSelect }) {
     const host = useRef(null);
-    const chartType = useRef(spec?.type);
-    if (spec)
-        chartType.current = spec.type;
     const current = useRef({ spec, onSelect });
     current.current = { spec, onSelect };
     const draw = useRef(() => { });
-    const hasData = spec !== null;
-    const summary = [title, ...(spec ? chartReadings(spec) : [])].join('；').replaceAll('\n', '，');
+    const summary = [title, ...chartReadings(spec)].join('；').replaceAll('\n', '，');
     useEffect(() => {
-        if (!hasData)
-            return;
         const element = host.current;
         const chart = init(element, undefined, { renderer: 'svg' });
         const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -51,7 +53,7 @@ export function Chart({ id, title, spec, onSelect, description, controls }) {
             draw.current = () => { };
             chart.dispose();
         };
-    }, [hasData]);
+    }, []);
     useEffect(() => draw.current(), [spec]);
-    return _jsxs("figure", { className: "iad-chart", "data-chart": id || chartType.current, "data-chart-type": chartType.current, children: [_jsxs("figcaption", { children: [title, controls && _jsx("div", { className: "iad-chart-controls", children: controls })] }), description && _jsx("p", { className: "iad-chart-description", children: description }), spec ? _jsx("div", { className: "iad-chart-plot", ref: host, role: "img", "aria-label": summary }) : _jsx("p", { className: "iad-chart-empty", role: "status", children: "\u8BF7\u9009\u62E9\u5B50\u6570\u636E\u96C6" })] });
+    return _jsx("div", { className: "iad-chart-plot", ref: host, role: "img", "aria-label": summary });
 }

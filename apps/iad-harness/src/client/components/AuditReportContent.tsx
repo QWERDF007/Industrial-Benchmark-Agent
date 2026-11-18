@@ -1,5 +1,5 @@
 import React from 'react';
-import {auditReportSections,scoredAuditReportSections,AuditReportSectionsContext,useAuditReportSections,auditMetadataLabels} from '../audit-report.js';
+import {auditReportSections,scoredAuditReportSections,consistencyAuditReportSections,AuditReportSectionsContext,useAuditReportSections,auditMetadataLabels} from '../audit-report.js';
 import {AuditScoreSummary,AuditReportScore} from './AuditReportScore.js';
 import {AuditReportSection} from './AuditReportSection.js';
 import {AuditReportDistribution} from './AuditReportDistribution.js';
@@ -14,7 +14,7 @@ import {AuditReportKnowledge} from './AuditReportKnowledge.js';
 import {AuditReportHeading} from './AuditReportHeading.js';
 
 export function AuditReportContent({report,imageUrl}:{report:AuditRunReport;imageUrl(item:AuditReportImage):string}) {
-  return <AuditReportSectionsContext.Provider value={report.quality_score?scoredAuditReportSections:auditReportSections}>
+  return <AuditReportSectionsContext.Provider value={report.audit_scope==='consistency'?consistencyAuditReportSections:report.quality_score?scoredAuditReportSections:auditReportSections}>
     <AuditReportBody report={report} imageUrl={imageUrl}/>
   </AuditReportSectionsContext.Provider>;
 }
@@ -25,7 +25,8 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
   const {coverage_topics:topics=[],report_cases:cases=[],capability_topics:capabilityTopics=[]}=report;
   const kinds=profile?auditIssueTypesByFormat[profile.dataset_format]:Object.keys(stats?.issue_types||{}) as (keyof typeof auditIssueLabels)[];
   const sources=stats?Object.entries(auditConsistencyLabels).map(([key,label])=>({key,label,
-    value:Object.values(stats.consistency_cross[key]||{}).reduce((sum,count)=>sum+count,0)})):[];
+    value:Object.values(stats.consistency_cross[key]||{}).reduce((sum,count)=>sum+count,0),
+    tone:key.endsWith(':EQUIVALENT')?'success' as const:key.endsWith(':MATERIAL')?'warning' as const:'muted' as const})):[];
   const compared=sources.filter(item=>item.key.startsWith('MODEL_REVIEWED:')||item.key.startsWith('PROGRAM_REVIEWED:')).reduce((sum,item)=>sum+item.value,0);
   const showReadiness=report.capabilities.some(item=>item.readiness_status!=='not_evaluated');
   const qualityCases=cases.filter(item=>item.evidence_refs.some(reference=>reference.kind==='finding'));
@@ -45,14 +46,15 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
       <div className="iad-chart-pair">
         {report.quality_score&&<AuditScoreSummary score={report.quality_score}/>}
         <AuditReportChart kind="outcomes" title="本轮审计结果" unit="张" rows={[
-          {label:'审计正常',value:stats?.normal_images??report.distribution.normal??0},
-          {label:'发现疑点',value:report.suspect_samples},{label:'未完成',value:report.total_samples-report.audited_samples}]}/>
+          {label:'审计正常',value:stats?.normal_images??report.distribution.normal??0,tone:'success'},
+          {label:'发现疑点',value:report.suspect_samples,tone:'warning'},
+          ...(report.audit_scope==='consistency'?[]:[{label:'未完成',value:report.total_samples-report.audited_samples,tone:'muted' as const}])]}/>
       </div>
     </AuditReportSection>
     {report.quality_score&&<AuditReportScore report={report} imageUrl={imageUrl}/>}
     <AuditReportDistribution key={report.run_id} report={report}/>
     <AuditReportConsistency report={report} sources={sources} imageUrl={imageUrl}/>
-    <AuditReportSection section="quality">
+    {report.audit_scope!=='consistency'&&<><AuditReportSection section="quality">
       {stats?stats.suspect_images>0?<p>有 {stats.suspect_images} 张图像需要复核，共 {stats.issue_occurrences} 处。
         {stats.suspect_rate_among_completed!==null&&<>占已完成图像的 {(100*stats.suspect_rate_among_completed).toLocaleString('zh-CN',{maximumFractionDigits:2})}%。</>}</p>
         :<p>本次已完成的图像检查中，没有发现需要保留的标注疑点。</p>:<p>本作业尚无质量汇总统计。</p>}
@@ -116,6 +118,6 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
       </>}
       {!!report.limitations.length&&<><AuditReportHeading level={3} number={auditReportSections.usability.prefix+(report.usability.length+1+(profile?.benchmark?1:0))}>当前缺失条件</AuditReportHeading>{report.limitations.map((item,index)=><p key={index}>{item}</p>)}</>}
     </AuditReportSection>
-    <AuditReportKnowledge report={report} imageUrl={imageUrl}/>
+    <AuditReportKnowledge report={report} imageUrl={imageUrl}/></>}
   </article>;
 }

@@ -68,6 +68,8 @@ def audit_agent_model_call_start(args, db_path):
         raise ValueError('模型请求没有本作业的主或子 Session')
     sample_id = row[0] if row else None
     ModelCalls(jobs.db).start_native(args['run_id'],call,sample_id=sample_id,session_id=session_id,attempt=1)
+    if jobs.snapshot(args['run_id']).settings.audit_scope == 'consistency':
+        return {}
     if jobs.snapshot(args['run_id']).context_policy == 'evidence-on-demand-v1' and call.request.get('purpose'):
         return {}
     if sample_id:
@@ -205,6 +207,8 @@ def audit_job_prompts(args, db_path):
         return dict(sections=[dict(title=title,text=snapshot.get(key) or '') for key,title in (
             ('system_prompt','图级系统提示词'),('instruction','图级用户提示词'),('report_instruction','报告用户提示词'))])
     snapshot=state.snapshot(args['run_id'])
+    if snapshot.settings.audit_scope == 'consistency':
+        return dict(sections=[dict(title='一致性问题分析提示词',text=snapshot.consistency_summary_instruction)])
     return dict(sections=[dict(title=title,text=text or '') for title,text in (
         ('主 Agent 系统提示词',snapshot.master_prompt.system_prompt),('主 Agent 用户提示词',snapshot.master_prompt.user_prompt),
         ('子 Agent 系统提示词',snapshot.observer_prompt.system_prompt),('子 Agent 用户提示词',snapshot.observer_prompt.user_prompt),
@@ -255,7 +259,25 @@ def audit_agent_versions(args, db_path):
     return {'versions':[item.model_dump(mode='json') for item in AuditBatches(AuditState(Database(db_path))).history(args['run_id'],args['sample_id'])]}
 
 
-AUDIT_AGENT_OPERATIONS = (audit_agent_configuration,audit_agent_start,audit_agent_snapshot,audit_agent_samples,audit_agent_sample,
+def audit_agent_report_freeze(args, db_path):
+    AuditReports(workbench(db_path).db).finalize(args['run_id'])
+    return {}
+
+
+def audit_consistency_prepare(args, db_path):
+    from iad_core.audit.consistency_summary import ConsistencyAudit
+    runtime = workbench(db_path)
+    runtime.jobs.update(args['run_id'], phase='ANALYZING_CONSISTENCY_ISSUES')
+    return ConsistencyAudit(runtime.db).prepare(args['run_id'])
+
+
+def audit_consistency_commit(args, db_path):
+    from iad_core.audit.consistency_summary import ConsistencyAudit
+    runtime = workbench(db_path)
+    return ConsistencyAudit(runtime.db).commit(args['run_id'], args.get('narrative'), jobs=runtime.jobs).model_dump(mode='json')
+
+
+AUDIT_AGENT_OPERATIONS = (audit_agent_report_freeze,audit_consistency_prepare,audit_consistency_commit,audit_agent_configuration,audit_agent_start,audit_agent_snapshot,audit_agent_samples,audit_agent_sample,
     audit_agent_context,audit_agent_session_location,audit_agent_session_created,audit_agent_media,audit_agent_reference,audit_agent_crop,
     audit_agent_commit,audit_agent_model_call_start,audit_agent_model_call_end,audit_agent_failure,
     audit_agent_finish,audit_agent_cancel,audit_agent_resume,audit_agent_interrupt,

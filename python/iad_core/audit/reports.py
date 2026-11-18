@@ -14,6 +14,9 @@ class AuditReports:
         self.db, self.state = db, AuditState(db)
 
     def statistics(self, run_id: str) -> AuditStatistics:
+        if self.state.snapshot(run_id).settings.audit_scope == 'consistency':
+            from iad_core.audit.consistency_summary import ConsistencyAudit
+            return ConsistencyAudit(self.db).statistics(run_id)
         samples = self.state.samples(run_id)
         counts, occurrences, reviews = Counter(), Counter(), Counter()
         images = defaultdict(set)
@@ -239,9 +242,9 @@ class AuditReports:
             raise ValueError('知识分析须提供解释本次核对结果的完整原图')
         for scope in submission.consistency_scopes:
             eligible = {sample.sample_id for sample in samples if sample.source_status==scope.source_status and sample.state=='COMPLETED'}
-            minimum = min(3,len(eligible))
-            if not minimum<=len(scope.representatives)<=8:
-                raise ValueError(f'{scope.source_status}须精选{minimum}至8张对应范围的完整原图')
+            minimum = min(5,len(eligible))
+            if not minimum<=len(scope.representatives)<=10:
+                raise ValueError(f'{scope.source_status}须精选{minimum}至10张对应范围的完整原图')
             if {ref.sample_id for ref in scope.evidence_refs}-eligible:
                 raise ValueError('范围分析只能引用该范围已经完成的图像')
         for analysis in submission.consistency_analyses:
@@ -249,7 +252,8 @@ class AuditReports:
                 continue
             representatives = [*analysis.representatives,*[image for case in submission.report_cases
                 if case.case_id in analysis.related_case_ids for image in case.representatives]]
-            minimum = min(3,sum(sample.state=='COMPLETED' for sample in samples))
+            minimum = min(5, sum(sample.state=='COMPLETED' for sample in samples), max(statistics.program_issue_types.get(analysis.issue_type, 0),
+                statistics.upstream_issue_types[analysis.issue_type].image_count if analysis.issue_type in statistics.upstream_issue_types else 0))
             if len({image.sample_id for image in representatives}) < minimum:
                 raise ValueError(f'标注差异分析须关联至少{minimum}张完整原图')
         for section in [*submission.capabilities,*submission.coverage_topics,*submission.consistency_analyses,*submission.report_cases,*submission.knowledge_analyses,*submission.consistency_scopes]:
@@ -258,9 +262,9 @@ class AuditReports:
                 evidence_samples={ref.sample_id for ref in section.evidence_refs}
                 self.validate_gallery(run_id,section.representatives,
                     {'representative':evidence_samples,'counter':evidence_samples},required=True)
-                minimum=min(3,sum(sample.state=='COMPLETED' for sample in samples))
-                if not isinstance(section,AuditConsistencyScope) and not minimum<=len(section.representatives)<=8:
-                    raise ValueError(f'每处报告图证须精选{minimum}至8张完整原图')
+                minimum=min(5,len({ref.sample_id for ref in section.evidence_refs}))
+                if not isinstance(section,AuditConsistencyScope) and not minimum<=len(section.representatives)<=10:
+                    raise ValueError(f'每处报告图证须精选{minimum}至10张完整原图')
         source = snapshot.dataset_profile.benchmark
         for assessment in submission.usability:
             if assessment.status!='usable' or assessment.purpose in ('exploration','training_experiment','debug'):
@@ -274,6 +278,8 @@ class AuditReports:
         from iad_core.audit.quality_reports import AuditQualityReports
         from iad_core.audit.report_models import AuditStoredReport
         score = AuditQualityReports(self.db).finalize(run_id, submission.quality_assessment) if snapshot.quality_score_version else None
+        from iad_core.audit.report_evidence import AuditReportEvidence
+        AuditReportEvidence(self.db).groups(run_id)
         stored = AuditStoredReport(**submission.model_dump(), quality_score=score).model_dump_json(exclude_computed_fields=True)
         with self.db.connection() as connection:
             connection.execute('BEGIN IMMEDIATE')

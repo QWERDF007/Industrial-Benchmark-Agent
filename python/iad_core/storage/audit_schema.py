@@ -5,6 +5,10 @@ def initialize_audit_schema(connection: Connection):
     connection.execute('''CREATE TABLE IF NOT EXISTS audit_workflow_runs (
         job_id TEXT PRIMARY KEY REFERENCES job_runs(job_id) ON DELETE CASCADE,
         snapshot_json TEXT NOT NULL, summary_json TEXT, report_html TEXT)''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS audit_upstream_records (
+        job_id TEXT NOT NULL REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
+        sample_id TEXT NOT NULL, ordinal INTEGER NOT NULL, record_json TEXT NOT NULL,
+        PRIMARY KEY(job_id,sample_id), UNIQUE(job_id,ordinal))''')
     connection.execute('''CREATE TABLE IF NOT EXISTS audit_defect_profiles (
         job_id TEXT NOT NULL REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
         revision INTEGER NOT NULL, commit_key TEXT NOT NULL, request_json TEXT NOT NULL,
@@ -15,6 +19,10 @@ def initialize_audit_schema(connection: Connection):
         session_id TEXT NOT NULL UNIQUE, session_created INTEGER NOT NULL DEFAULT 0,
         state TEXT NOT NULL, consistency_json TEXT NOT NULL, result_json TEXT,
         commit_key TEXT, submission_json TEXT, PRIMARY KEY(job_id,sample_id), UNIQUE(job_id,ordinal))''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS audit_report_media (
+        job_id TEXT NOT NULL REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
+        target_id TEXT NOT NULL, sample_id TEXT NOT NULL, image_json TEXT NOT NULL,
+        PRIMARY KEY(job_id,target_id,sample_id))''')
     connection.execute('''CREATE TABLE IF NOT EXISTS audit_sample_media (
         job_id TEXT NOT NULL, target_id TEXT NOT NULL, media_key TEXT NOT NULL,
         sample_id TEXT NOT NULL REFERENCES samples(sample_id),

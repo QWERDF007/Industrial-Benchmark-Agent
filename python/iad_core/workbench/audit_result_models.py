@@ -5,9 +5,9 @@ from pydantic import Field
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.workbench.job_models import JobStatus
 from iad_core.audit.profile_models import AuditDatasetProfile
-from iad_core.audit.quality_models import QualityScore
+from iad_core.audit.quality_models import QualityScore, AuditScope
 from iad_core.audit.distribution_models import AuditDataDistribution
-from iad_core.audit.report_models import AuditStatistics, AuditReportImage, AuditDiscovery, AuditReportedCapability, AuditUsabilityAssessment, AuditCoverageTopic, AuditConsistencyAnalysis, AuditReportCase, AuditCapabilityTopic
+from iad_core.audit.report_models import AuditEvidencePair, AuditStatistics, AuditReportImage, AuditDiscovery, AuditReportedCapability, AuditUsabilityAssessment, AuditCoverageTopic, AuditConsistencyAnalysis, AuditReportCase, AuditCapabilityTopic
 from iad_core.audit.report_models import AuditKnowledgeAnalysis, AuditConsistencyScope
 from iad_core.audit.knowledge_models import AuditSelectedCheck
 
@@ -30,6 +30,7 @@ class AuditSampleQuery(AnalysisModel):
 
 
 class AuditSampleItem(AnalysisModel):
+    audit_scope: AuditScope = 'full'
     run_id: str
     sample_id: str
     dataset_id: str
@@ -46,6 +47,7 @@ class AuditSampleItem(AnalysisModel):
 
 
 class AuditSamplePage(AnalysisModel):
+    audit_scope: AuditScope = 'full'
     run_id: str
     total: int
     page: int
@@ -61,6 +63,8 @@ class AuditReportedKnowledge(AnalysisModel):
 
 
 class AuditRunReport(AnalysisModel):
+    audit_scope: AuditScope = 'full'
+    evidence_pairs: dict[str, list[AuditEvidencePair]] = Field(default_factory=dict)
     quality_score: QualityScore | None = None
     run_id: str
     dataset_id: str

@@ -5,7 +5,7 @@ from pydantic import Field, RootModel, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText, VisualEvidence
-from iad_core.consistency.agent_result_models import AnchorEvidenceReference, AnchorResultDetail, AnchorResultSummary
+from iad_core.consistency.agent_result_models import AnchorEvidenceReference, AnchorResultDetail, AnchorResultSummary, ConsistencyConclusionRecord
 from iad_core.consistency.agent_models import AnchorResult
 from iad_core.consistency.agent_review_models import AnchorAssessmentRecord, AnchorObservation
 from iad_core.consistency.identity_models import CandidateIdentityRecord
@@ -17,7 +17,7 @@ from iad_core.audit.consistency_models import AuditCandidateContext, AuditUpstre
 from iad_core.audit.stage_models import AuditDefectProfileView
 from iad_core.audit.quality_models import QualityObservation, QualityScoreVersion
 from iad_core.audit.knowledge_models import AuditKnowledge, AuditKnowledgeSelection
-from iad_core.audit.prompt_text import (DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDIT_SYSTEM_PROMPT,
+from iad_core.audit.prompt_text import (CONSISTENCY_SUMMARY_PROMPT,DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDIT_SYSTEM_PROMPT,
     MASTER_AUDIT_SYSTEM_PROMPT, DEFAULT_AUDIT_BATCH_PROMPT, DEFAULT_AUDIT_REPORT_PROMPT)
 from iad_core.analysis.prompt_models import AnalysisRolePrompts
 from iad_core.analysis.evidence_models import ContextPolicy, AnalysisEvidenceCandidate
@@ -50,6 +50,7 @@ class AuditWorkflowSnapshot(AuditAgentConfiguration):
     schema_version: Literal[4, 5, 6] = 6
     quality_score_version: QualityScoreVersion | None = None
     context_policy: ContextPolicy = 'legacy'
+    consistency_summary_instruction: NonBlankText = CONSISTENCY_SUMMARY_PROMPT
     manifest: AnalysisManifest
     agent: FrozenModelRole
     report_instruction: NonBlankText
@@ -221,7 +222,9 @@ class NativeAuditSampleDetail(AnalysisModel):
     sample: AuditSampleItem
     final: AuditFinal | None
     knowledge: AuditKnowledge | None
-    consistency: AnchorResultDetail
+    consistency: AnchorResultDetail | None
+    upstream_conclusion: ConsistencyConclusionRecord | None = None
+    registration: AnalysisRegistration | None = None
     evidence: list[AuditMediaView]
     errors: list[str]
 

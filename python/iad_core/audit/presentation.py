@@ -95,7 +95,7 @@ class AuditPresentation:
             check = entry.check
             counters = {item.image.evidence_id for item in display.images(check.counter_evidence_ids)}
             reasons = {item.evidence_id:item.reason for item in check.key_evidence or []}
-            selected = display.images([*(item.evidence_id for item in check.key_evidence or []),*entry.evidence_ids])[:8]
+            selected = display.images([*(item.evidence_id for item in check.key_evidence or []),*entry.evidence_ids])[:10]
             groups['knowledge-source:'+check.check_id] = [AuditReportImage(sample_id=item.sample_id,
                 role='counter' if item.image.evidence_id in counters else 'representative',caption='知识图像证据',
                 reason=reasons.get(item.image.evidence_id,check.criterion),image=item.image,source=records[item.sample_id])
@@ -107,6 +107,10 @@ class AuditPresentation:
         report = self.queries.report_data(run_id)
         if quality_score is not None:
             report = report.model_copy(update={'quality_score':quality_score})
+        from iad_core.audit.report_evidence import AuditReportEvidence
+        from iad_core.audit.reports import AuditReports
+        report = report.model_copy(update={'evidence_pairs': AuditReportEvidence(self.queries.db).groups(run_id)
+            if AuditReports(self.queries.db).session(run_id).result is not None else {}})
         narrative = AuditNarrative(self.queries.state,run_id)
         evidence = AuditEvidence(self.queries.state)
         groups = {}
@@ -125,8 +129,10 @@ class AuditPresentation:
             for score in [report.quality_score, *report.quality_score.dataset_scores]:
                 prefix = 'score:' + (score.dataset_id + ':' if score.dataset_id else '')
                 for item in score.items:
+                    if item.dimension == 'consistency':
+                        continue
                     representatives = [AuditRepresentative(sample_id=sample_id,role='representative',
-                        reason=item.scenario or item.label) for sample_id in item.sample_ids[:4]]
+                        reason=item.scenario or item.label) for sample_id in item.sample_ids[:10]]
                     evidence_sets.append((prefix+item.code,representatives))
         for group_id,representatives in evidence_sets:
             images, counts = [], Counter()

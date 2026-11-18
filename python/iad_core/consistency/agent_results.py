@@ -13,7 +13,7 @@ from iad_core.consistency.agent_models import AnchorResult, ConsistencyAnchorRun
 from iad_core.consistency.agent_assessments import AnchorAssessments
 from iad_core.consistency.agent_evidence_records import AnchorEvidenceRecords
 from iad_core.consistency.agent_result_models import (AnchorCandidatePage, AnchorCandidatePreview, AnchorImageItem, AnchorImagePage, AnchorImageQuery, AnchorResultDetail,
-    AnchorResultPage, AnchorResultSummary, ConsistencyCheckReport, AnchorDiagnostics, AnchorPhaseTiming, ModelRoleDiagnostics, ModelRolesDiagnostics)
+    AnchorResultPage, AnchorResultSummary, ConsistencyConclusionRecord, ConsistencyCheckReport, AnchorDiagnostics, AnchorPhaseTiming, ModelRoleDiagnostics, ModelRolesDiagnostics)
 from iad_core.consistency.agent_review_models import AnchorObservation, AnchorVisualRequest
 from iad_core.consistency.annotation_inventory import AnnotationObservation
 from iad_core.consistency.conflict_categories import ConflictCategory, primary_conflict_category
@@ -109,8 +109,8 @@ class ConsistencyAgentResults:
     def references(run_id: str, anchor_id: str) -> str:
         return '/api/iad/consistency/checks/' + quote(run_id, safe='') + '/anchors/' + quote(anchor_id, safe='')
 
-    def _summary(self, connection, row, status, payload, snapshot, *, sample_formats=None) -> AnchorResultSummary:
-        anchor = self._anchor(row, status, connection)
+    def _summary(self, connection, row, status, payload, snapshot, *, sample_formats=None, anchor=None) -> AnchorResultSummary:
+        anchor = anchor or self._anchor(row, status, connection)
         original = set()
         geometry_checks = []
         identity = None
@@ -184,6 +184,25 @@ class ConsistencyAgentResults:
                 (run_id, page_size, (page - 1) * page_size))
             return AnchorResultPage(job_id=run_id, total=total,
                 items=[self._summary(connection, row, status, payload, snapshot) for row in rows])
+
+    def conclusions(self, run_id: str, sample_ids: set[str]) -> list[ConsistencyConclusionRecord]:
+        with self._read(run_id) as (connection, status, payload, snapshot):
+            if status != 'COMPLETED':
+                raise ValueError('只能汇总已完成的一致性作业')
+            formats = {sample.sample_id: snapshot.dataset_formats.get(sample.dataset_id) for sample in snapshot.scopes.subjects.samples}
+            records = []
+            for row in connection.execute('SELECT * FROM consistency_anchor_runs WHERE job_id=? ORDER BY ordinal', (run_id,)):
+                if row['anchor_id'] not in sample_ids:
+                    continue
+                anchor = self._anchor(row, status, connection)
+                if anchor.state != 'COMPLETED' or anchor.result is None:
+                    raise ValueError('一致性图像尚未形成完整终稿')
+                records.append(ConsistencyConclusionRecord(summary=self._summary(connection,row,status,payload,snapshot,
+                    sample_formats=formats,anchor=anchor), result=anchor.result,
+                    evidence=AnchorEvidenceRecords.list(connection,run_id,anchor.anchor_id)))
+            if len(records) != len(sample_ids):
+                raise ValueError('所选图像不属于一致性作业')
+            return records
 
     def detail(self, run_id: str, anchor_id: str) -> AnchorResultDetail:
         with self._read(run_id) as (connection, status, payload, snapshot):
