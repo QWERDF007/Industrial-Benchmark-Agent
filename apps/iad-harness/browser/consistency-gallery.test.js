@@ -138,7 +138,7 @@ createRoot(document.getElementById('root')).render(<App/>);`,loader:'tsx',resolv
     await click('关闭查看提示词抽屉');
     assert.equal((await driver.findElements(By.css('dialog[aria-label="检查作业详情"]'))).length,0);
     const stats=await operations.findElement(By.css('button[aria-label="查看统计结果"]'));await stats.click();
-    const statistics=await element('.dc-stats-drawer');
+    const statistics=await element('dialog[aria-label="标注冲突统计"]');
     const statsLayout=await driver.executeScript('const r=arguments[0].getBoundingClientRect();return {modal:arguments[0].matches("dialog:modal"),width:r.width,right:r.right,top:r.top,height:r.height,view:document.documentElement.clientWidth,viewHeight:innerHeight}',statistics);
     assert.equal(statsLayout.modal,true,'统计窗口应复用公共原生Modal');assert.equal(statsLayout.width,560);assert.equal(statsLayout.right,statsLayout.view);assert.equal(statsLayout.top,0);assert.equal(statsLayout.height,statsLayout.viewHeight);
     assert.equal((await statistics.findElements(By.css('[data-chart-type=bar]'))).length,3);

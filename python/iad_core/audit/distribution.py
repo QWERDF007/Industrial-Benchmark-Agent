@@ -7,10 +7,11 @@ from scipy.stats import gaussian_kde
 
 from iad_core.audit.distribution_models import (
     AuditBoxSummary, AuditCategoryBox, AuditClassCount, AuditDataDistribution,
-    AuditDistributionQuery, AuditDistributionSlice, AuditHeatmap, AuditHistogram,
+    AuditDistributionQuery, AuditDistributionSlice, AuditHistogram,
 )
 from iad_core.audit.profile_models import AuditGeometryProfile, AuditQuantiles
 from iad_core.consistency.geometry import InstanceGeometry
+from iad_core.dataset.heatmap import DistributionHeatmap
 from iad_core.storage.models import Annotation
 from iad_core.workbench.analysis_manifest import AnalysisManifest, AnalysisRegistration
 
@@ -137,10 +138,8 @@ class AuditDistributions:
         for name, (x, y) in self.heatmap_measures.items():
             if self.dataset_format != 'labelme' and not name.startswith('image_'):
                 continue
-            counts, x_edges, y_edges = np.histogram2d(self.values(images, x, query.category),
+            heatmaps[name] = DistributionHeatmap.build(self.values(images, x, query.category),
                 self.values(images, y, query.category), bins=(self.edges[x], self.edges[y]))
-            cells = [(int(i), int(j), int(counts[i, j])) for i, j in zip(*np.nonzero(counts))]
-            heatmaps[name] = AuditHeatmap(x_edges=x_edges.tolist(), y_edges=y_edges.tolist(), cells=cells)
         metadata = {}
         for key in ('batch_id', 'station', 'camera', 'data_origin'):
             values = [getattr(image.registration.sample, key) for image in images]
@@ -173,9 +172,17 @@ class AuditDistributions:
             quality=dict(Counter(image.registration.sample.quality_status.value for image in images)),
             metadata=metadata, heatmaps=heatmaps, histograms=histograms, summaries=summaries, area_by_category=area_by_category)
 
+    def category_area_samples(self) -> dict[str, dict[str, list[float]]]:
+        samples = defaultdict(lambda: defaultdict(list))
+        for image in self.images:
+            for annotation, area in zip(image.valid_annotations, image.measures.get('relative_area', [])):
+                samples[image.registration.sample.dataset_id][annotation.raw_label].append(area)
+        return {dataset: dict(categories) for dataset, categories in samples.items()}
+
     def catalog(self) -> AuditDataDistribution:
         return AuditDataDistribution(dataset_format=self.dataset_format, datasets=self.datasets, categories=self.categories,
-            slices=[self.view(AuditDistributionQuery(dataset_id=dataset_id, category=category)) for dataset_id, category in self.scopes])
+            slices=[self.view(AuditDistributionQuery(dataset_id=dataset_id, category=category)) for dataset_id, category in self.scopes],
+            category_area_samples=self.category_area_samples())
 
     def geometry(self) -> AuditGeometryProfile | None:
         if self.dataset_format != 'labelme':

@@ -501,10 +501,270 @@ export const auditReportDraftParameters = {
         "type": "object",
         "additionalProperties": false,
         "properties": {
+            "distribution_analysis": {
+                "type": "string",
+                "description": "先说分布结论，再说明主要失衡及影响，正常的集中分布也应明确说明。",
+                "title": "Distribution Analysis"
+            },
             "quality_assessment": {
                 "type": "object",
                 "additionalProperties": false,
                 "properties": {
+                    "consistency_reviews": {
+                        "oneOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "scope_id": {
+                                            "type": "string",
+                                            "title": "Scope Id",
+                                            "required": true
+                                        },
+                                        "code": {
+                                            "type": "string",
+                                            "enum": [
+                                                "category_mismatch",
+                                                "instance_count_mismatch",
+                                                "coverage_mismatch"
+                                            ],
+                                            "title": "Code",
+                                            "required": true
+                                        },
+                                        "coefficient": {
+                                            "type": "number",
+                                            "title": "Coefficient",
+                                            "required": true
+                                        },
+                                        "analysis": {
+                                            "type": "string",
+                                            "title": "Analysis",
+                                            "required": true
+                                        },
+                                        "evidence_refs": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "title": "Evidence Refs",
+                                            "required": true
+                                        }
+                                    },
+                                    "title": "ConsistencyImpactReview"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Consistency Reviews"
+                    },
+                    "distribution_reviews": {
+                        "oneOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "properties": {
+                                        "scope_id": {
+                                            "type": "string",
+                                            "description": "统计范围的scope_id，整体为overall，子集为dataset_id。",
+                                            "title": "Scope Id",
+                                            "required": true
+                                        },
+                                        "axis": {
+                                            "type": "string",
+                                            "enum": [
+                                                "class_balance",
+                                                "image_geometry",
+                                                "instance_geometry",
+                                                "instance_count",
+                                                "instance_position",
+                                                "capture_source"
+                                            ],
+                                            "title": "Axis",
+                                            "required": true
+                                        },
+                                        "status": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "normal",
+                                                        "problem",
+                                                        "not_applicable"
+                                                    ]
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ],
+                                            "title": "Status"
+                                        },
+                                        "coefficient": {
+                                            "oneOf": [
+                                                {
+                                                    "type": "number"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ],
+                                            "title": "Coefficient"
+                                        },
+                                        "comparisons": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "additionalProperties": false,
+                                                "properties": {
+                                                    "metric": {
+                                                        "type": "string",
+                                                        "title": "Metric",
+                                                        "required": true
+                                                    },
+                                                    "groups": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "object",
+                                                            "additionalProperties": false,
+                                                            "properties": {
+                                                                "label": {
+                                                                    "type": "string",
+                                                                    "title": "Label",
+                                                                    "required": true
+                                                                },
+                                                                "members": {
+                                                                    "type": "array",
+                                                                    "items": {
+                                                                        "oneOf": [
+                                                                            {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "properties": {
+                                                                                    "kind": {
+                                                                                        "type": "string",
+                                                                                        "enum": [
+                                                                                            "group"
+                                                                                        ],
+                                                                                        "title": "Kind",
+                                                                                        "required": true
+                                                                                    },
+                                                                                    "metric": {
+                                                                                        "type": "string",
+                                                                                        "title": "Metric",
+                                                                                        "required": true
+                                                                                    },
+                                                                                    "bucket": {
+                                                                                        "type": "string",
+                                                                                        "title": "Bucket",
+                                                                                        "required": true
+                                                                                    }
+                                                                                },
+                                                                                "title": "DistributionGroupReference"
+                                                                            },
+                                                                            {
+                                                                                "type": "object",
+                                                                                "additionalProperties": false,
+                                                                                "properties": {
+                                                                                    "kind": {
+                                                                                        "type": "string",
+                                                                                        "enum": [
+                                                                                            "bins"
+                                                                                        ],
+                                                                                        "title": "Kind",
+                                                                                        "required": true
+                                                                                    },
+                                                                                    "metric": {
+                                                                                        "type": "string",
+                                                                                        "title": "Metric",
+                                                                                        "required": true
+                                                                                    },
+                                                                                    "x": {
+                                                                                        "type": "array",
+                                                                                        "items": {
+                                                                                            "type": "integer"
+                                                                                        },
+                                                                                        "description": "从 0 开始的首尾分箱下标，均包含在内。",
+                                                                                        "title": "X",
+                                                                                        "required": true
+                                                                                    },
+                                                                                    "y": {
+                                                                                        "oneOf": [
+                                                                                            {
+                                                                                                "type": "array",
+                                                                                                "items": {
+                                                                                                    "type": "integer"
+                                                                                                }
+                                                                                            },
+                                                                                            {
+                                                                                                "type": "null"
+                                                                                            }
+                                                                                        ],
+                                                                                        "description": "仅二维热图填写，同样包含首尾分箱。",
+                                                                                        "title": "Y"
+                                                                                    }
+                                                                                },
+                                                                                "title": "DistributionBinsReference"
+                                                                            }
+                                                                        ]
+                                                                    },
+                                                                    "title": "Members",
+                                                                    "required": true
+                                                                }
+                                                            },
+                                                            "title": "DistributionGroup"
+                                                        },
+                                                        "title": "Groups",
+                                                        "required": true
+                                                    }
+                                                },
+                                                "title": "DistributionMetricGrouping"
+                                            },
+                                            "title": "Comparisons"
+                                        },
+                                        "overlap_codes": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "description": "仅完整范围：与本项确属同一实际原因的视觉评分代码；无重复原因时为空。",
+                                            "title": "Overlap Codes"
+                                        },
+                                        "grouping": {
+                                            "type": "string",
+                                            "description": "合理范围或分组及其统计依据；单一合理范围和均衡多范围不扣分。",
+                                            "title": "Grouping",
+                                            "required": true
+                                        },
+                                        "evidence_refs": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            },
+                                            "description": "引用输入facts中真实的统计项ref，不编造数量或缺失类别。",
+                                            "title": "Evidence Refs",
+                                            "required": true
+                                        },
+                                        "analysis": {
+                                            "type": "string",
+                                            "description": "先说结论，再用日常中文说明实际质量影响，不写分类定义或内部流程。",
+                                            "title": "Analysis",
+                                            "required": true
+                                        }
+                                    },
+                                    "title": "QualityDistributionReview"
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Distribution Reviews"
+                    },
                     "aliases": {
                         "type": "array",
                         "items": {
@@ -632,7 +892,7 @@ export const auditReportDraftParameters = {
             },
             "conclusion": {
                 "type": "string",
-                "description": "概括当前用途及最重要的视觉发现；图像数、疑点数和来源状态由页面另行展示。",
+                "description": "总体结论用两三句日常中文说清这批数据的主要发现。有问题时说明实际影响和应优先处理的事项。不复述数量、占比或分数，统计留在图表和明细中。概括当前可开展的用途。",
                 "title": "Conclusion"
             },
             "consistency_analysis": {

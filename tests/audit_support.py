@@ -138,3 +138,20 @@ def save_qualified_images(jobs, run_id, *, texture=None):
             texture_reason='正常边缘形成平行纹理' if texture else None,
             qualification=dict(feature_id='scratch', reference=reference, similar_features=['局部均为细暗线'],
                 normal_reason='良品暗线沿完整结构连续，缺陷为局部中断', difficulty_reason='短段外观接近，需要结合边缘连续性区分'))))
+
+
+def distribution_reviews(jobs, run_id):
+    from iad_core.audit.distribution_scoring import AuditDistributionScoring
+    return [dict(scope_id=scope['scope_id'],axis=axis,
+        status='problem' if facts.get('base_deduction',0)>0 else 'normal' if facts['metrics'] else 'not_applicable',
+        coefficient=1 if facts.get('base_deduction',0)>0 else None,
+        grouping='当前测试范围采用已有统计。',evidence_refs=[facts['ref']],analysis='按实际类别覆盖评价影响。')
+        for scope in AuditDistributionScoring(jobs.snapshot(run_id).manifest).context()
+        for axis,facts in scope['axes'].items()]
+
+
+def consistency_reviews(jobs, run_id):
+    from iad_core.audit.quality_reports import AuditQualityReports
+    return [dict(scope_id=scope['scope_id'],code=item['code'],coefficient=1,
+        analysis='完整实例和类别的分歧会影响识别。',evidence_refs=[item['ref']])
+        for scope in AuditQualityReports(jobs.db).consistency_context(run_id) for item in scope['items']]

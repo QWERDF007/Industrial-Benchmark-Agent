@@ -236,3 +236,27 @@ def test_quality_weights_partial_updates_preserve_other_coefficients(dataset):
         store.save(dict(module='audit', expected_revision=second.revision,
             settings={'quality_score_weights': {'consistency': 0, 'diversity': 0, 'redundancy': 0}}))
     assert store.read('audit') == second
+
+
+def test_audit_scopes_keep_independent_weight_settings(dataset):
+    from iad_core.workbench.module_settings import ModuleSettings
+    db, _, _ = dataset
+    store = ModuleSettings(db)
+    full = store.save(dict(module='audit', expected_revision=0,
+        settings={'quality_score_weights': {'consistency': .7, 'diversity': .2, 'redundancy': .1}}))
+    consistency = store.save(dict(module='audit', expected_revision=full.revision,
+        settings={'audit_scope': 'consistency'}))
+    assert consistency.settings.consistency_score_weights.model_dump() == {'consistency': .9, 'diversity': .1}
+    edited = store.save(dict(module='audit', expected_revision=consistency.revision,
+        settings={'consistency_score_weights': {'diversity': .25}}))
+    assert edited.settings.consistency_score_weights.model_dump() == {'consistency': .9, 'diversity': .25}
+    assert edited.settings.quality_score_weights == full.settings.quality_score_weights
+    switched = store.save(dict(module='audit', expected_revision=edited.revision, settings={'audit_scope': 'full'}))
+    assert store.read('audit') == switched
+    assert switched.settings.quality_score_weights == full.settings.quality_score_weights
+    assert switched.settings.consistency_score_weights == edited.settings.consistency_score_weights
+    for weights in ({'diversity': float('inf')}, {'consistency': -1}, {'consistency': 0, 'diversity': 0}):
+        with pytest.raises(ValueError, match='系数|finite|greater than or equal'):
+            store.save(dict(module='audit', expected_revision=switched.revision,
+                settings={'consistency_score_weights': weights}))
+    assert store.read('audit') == switched

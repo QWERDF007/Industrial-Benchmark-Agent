@@ -4,6 +4,7 @@ from pydantic import AliasChoices, Field
 
 from iad_core.advisory.analysis import AnalysisModel
 from iad_core.audit.profile_models import AuditQuantiles
+from iad_core.dataset.heatmap import DistributionHeatmap
 
 
 class AuditDistributionQuery(AnalysisModel):
@@ -11,11 +12,8 @@ class AuditDistributionQuery(AnalysisModel):
     category: str | None = None
 
 
-class AuditHeatmap(AnalysisModel):
-    x_edges: list[float]
-    y_edges: list[float]
-    cells: list[tuple[int, int, int]]
-
+class AuditDistributionToolQuery(AuditDistributionQuery):
+    scoring: bool = False
 
 class AuditClassCount(AnalysisModel):
     category: str
@@ -52,7 +50,7 @@ class AuditDistributionSlice(AuditDistributionQuery):
     datasets: dict[str, int]
     quality: dict[str, int]
     metadata: dict[str, dict[str, int]]
-    heatmaps: dict[str, AuditHeatmap]
+    heatmaps: dict[str, DistributionHeatmap]
     histograms: dict[str, AuditHistogram]
     summaries: dict[str, AuditBoxSummary]
     area_by_category: list[AuditCategoryBox]
@@ -63,3 +61,4 @@ class AuditDataDistribution(AnalysisModel):
     datasets: list[str]
     categories: list[str]
     slices: list[AuditDistributionSlice] = Field(min_length=1)
+    category_area_samples: dict[str, dict[str, list[float]]] = Field(default_factory=dict)

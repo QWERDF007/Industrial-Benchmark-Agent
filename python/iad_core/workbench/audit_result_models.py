@@ -89,6 +89,7 @@ class AuditRunReport(AnalysisModel):
     report_state: JobStatus | None = None
     report_session_id: str | None = None
     consistency_analysis: str = ''
+    distribution_analysis: str = ''
     knowledge_analysis: str = ''
     dataset_names: dict[str,str] = Field(default_factory=dict)
     knowledge_titles: dict[str,str] = Field(default_factory=dict)

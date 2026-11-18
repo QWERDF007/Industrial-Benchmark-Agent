@@ -16,7 +16,7 @@ import {DatasetScopeSelector} from './DatasetScopeSelector.js';
 import {PageTabs} from './layout/PageTabs.js';
 import {RefreshIconButton, ClearFilterButton} from './CommonFilterControls.js';
 import {JobList} from './JobList.js';
-import {AuditStatisticsDialog} from './AuditStatisticsDialog.js';
+import {AuditStatisticsDrawer} from './AuditStatisticsDrawer.js';
 import {AuditReport} from './AuditReport.js';
 import {AuditSampleDialog} from './AuditSampleDialog.js';
 import {auditSampleImage} from './AuditSampleMedia.js';
@@ -110,7 +110,7 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
       </div>
       {tab === 'reports' && <AuditReport key={job?.run_id} job={job} revision={revision} />}
     </PageTabs>}
-    {statisticsJob&&<AuditStatisticsDialog job={jobs.jobs.find(job=>job.run_id===statisticsJob.run_id)||statisticsJob} revision={revision} onClose={()=>setStatisticsJob(null)}/>}
+    {statisticsJob&&<AuditStatisticsDrawer job={jobs.jobs.find(job=>job.run_id===statisticsJob.run_id)||statisticsJob} revision={revision} onClose={()=>setStatisticsJob(null)}/>}
     {promptJob&&<AuditPromptDrawer runId={promptJob} onClose={()=>setPromptJob('')}/>}
     {sample && <AuditSampleDialog key={`${sample.run_id}:${sample.sample_id}`} sample={sample}
       taskId={datasets.find(item=>item.dataset_id===sample.dataset_id)?.task_id || dataset.task_id} onClose={() => setSample(null)} />}

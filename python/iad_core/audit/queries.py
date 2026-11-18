@@ -129,8 +129,10 @@ class AuditQueries:
             return AuditRunReport.model_validate({**{key:value for key,value in summary.items() if key in AuditRunReport.model_fields},'archived':True})
         if row[0]:
             report = AuditRunReport.model_validate_json(row[0])
-            return report if report.data_distribution is not None else report.model_copy(update={
-                'data_distribution': AuditDistributions.for_run(self.db, run_id).catalog()})
+            distribution = AuditDistributions(self.state.snapshot(run_id).manifest)
+            catalog = report.data_distribution.model_copy(update={'category_area_samples': distribution.category_area_samples()}) \
+                if report.data_distribution is not None else distribution.catalog()
+            return report.model_copy(update={'data_distribution': catalog})
         if self.state.snapshot(run_id).settings.audit_scope == 'consistency':
             from iad_core.audit.consistency_summary import ConsistencyAudit
             return ConsistencyAudit(self.db).report(run_id)
@@ -172,7 +174,8 @@ class AuditQueries:
             statistics=statistics,export_ready=False,discoveries=discoveries,dataset_profile=snapshot.dataset_profile,
             data_distribution=AuditDistributions(snapshot.manifest).catalog(),
             consistency_job_id=snapshot.consistency_job_id,report_state=session.state,report_session_id=session.session_id if session.session_created else None,
-            consistency_analysis=final.consistency_analysis if final else '',knowledge_analysis=final.knowledge_analysis if final else '',
+            consistency_analysis=final.consistency_analysis if final else '',
+            distribution_analysis=final.distribution_analysis if final else '',knowledge_analysis=final.knowledge_analysis if final else '',
             coverage_analysis=final.coverage_analysis if final else '',independence_analysis=final.independence_analysis if final else '',
             coverage_topics=final.coverage_topics if final else [], consistency_analyses=final.consistency_analyses if final else [],
             report_cases=final.report_cases if final else [], capability_topics=final.capability_topics if final else [],

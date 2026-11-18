@@ -14,10 +14,6 @@ export class ConsistencySummary {
     async run(runId, snapshot, signal) {
         const identity = { run_id: runId };
         const input = await this.bridge.execute('audit_consistency_prepare', identity, signal);
-        if (!input.needs_analysis) {
-            await this.bridge.execute('audit_consistency_commit', { ...identity, narrative: null }, signal);
-            return;
-        }
         const { profile, native_profile } = snapshot.agent;
         if (!profile?.model_id || !native_profile)
             throw new Error('缺少冻结模型配置');

@@ -15,5 +15,10 @@ export declare const auditDistributionParameters: {
         }];
         readonly title: "Category";
     };
+    readonly scoring: {
+        readonly type: "boolean";
+        readonly title: "Scoring";
+        readonly default: false;
+    };
 };
 //# sourceMappingURL=distribution.parameters.generated.d.ts.map

@@ -73,7 +73,7 @@ export const datasetsStyles = `
 .dataset-table col.name-col { width: 42%; }
 .dataset-table col.format-col { width: 17%; }
 .dataset-table col.metric-col { width: 13%; }
-.dataset-table col.action-col { width: 100px; }
+.dataset-table col.action-col { width: 144px; }
 
 .dataset-table th {
   height: 43px;
@@ -181,7 +181,7 @@ export const datasetsStyles = `
 
 .drawer-root.open { display: block; }
 
-.drawer-backdrop { display: none; }
+.drawer-backdrop { position: absolute; inset: 0; pointer-events: auto; }
 
 .dataset-drawer {
   position: fixed;

@@ -31,7 +31,7 @@ from iad_core.consistency.agent_operations import (consistency_agent_start, cons
     consistency_agent_context, consistency_agent_observe, consistency_agent_assess, consistency_agent_submit, consistency_agent_configuration, consistency_agent_verify,
     consistency_agent_trace_event, consistency_agent_trace_status, consistency_agent_cancel, consistency_agent_resume,
     consistency_agent_interrupt, consistency_agent_detail, consistency_agent_results, consistency_agent_report,
-    consistency_agent_export, consistency_agent_gallery, consistency_agent_images, consistency_agent_statistics, consistency_agent_index, consistency_agent_members, consistency_agent_candidates,
+    consistency_agent_export, consistency_conflicts_export, consistency_agent_gallery, consistency_agent_images, consistency_agent_statistics, consistency_agent_index, consistency_agent_members, consistency_agent_candidates,
     consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis, consistency_agent_plan,
     consistency_agent_diagnostics, consistency_agent_prepare,
     consistency_agent_session_location, consistency_agent_media,
@@ -68,6 +68,10 @@ def tool_call(args, db_path):
 
 def dataset_list(args, db_path):
     return WorkbenchQuery(Database(db_path)).datasets()
+
+
+def dataset_image_dimensions(args, db_path):
+    return WorkbenchQuery(Database(db_path)).image_dimensions(**args).model_dump(mode='json')
 
 
 def dataset_get(args, db_path):
@@ -447,7 +451,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     consistency_agent_trace_event, consistency_agent_trace_status,
     consistency_agent_cancel, consistency_agent_resume,
     consistency_agent_interrupt,
-    consistency_agent_detail, consistency_agent_results, consistency_agent_report, consistency_agent_export,
+    consistency_agent_detail, consistency_agent_results, consistency_agent_report, consistency_agent_export, consistency_conflicts_export,
     consistency_agent_gallery, consistency_agent_images, consistency_agent_statistics, consistency_agent_index, consistency_agent_members, consistency_agent_candidates,
     consistency_agent_review, consistency_agent_review_submit, consistency_agent_analysis,
     consistency_agent_plan,
@@ -467,7 +471,7 @@ OPERATIONS = {handler.__name__: handler for handler in (
     direction_exploration_presets, direction_exploration_preset_save,
     direction_exploration_evidence, direction_exploration_remove_direction,
     tool_call, dataset_list, dataset_get, dataset_import, dataset_preview, dataset_archive_inspect, dataset_update, dataset_scan, dataset_delete,
-    dataset_group_list, dataset_group_create, dataset_group_update, dataset_group_delete,
+    dataset_group_list, dataset_group_create, dataset_group_update, dataset_group_delete, dataset_image_dimensions,
     sample_list, sample_get, sample_image_path, sample_thumbnail, sample_mask_path,
     review_queue, review_evidence, review_submit_decision, review_history,
     knowledge_review_context, knowledge_review_submit, knowledge_review_queue,
@@ -486,7 +490,7 @@ QUERY_OPERATIONS = frozenset({
     'analysis_evidence', 'analysis_current_evidence', 'analysis_current_sample_evidence', 'audit_agent_report_statistics', 'analysis_publication', 'analysis_sample_evidence', 'analysis_observations', 'analysis_direction_choices', 'analysis_sources', 'analysis_agent_catalog', 'analysis_agent_history',
     'analysis_agent_arguments', 'analysis_agent_claims',
     'consistency_agent_snapshot', 'consistency_agent_anchors', 'consistency_agent_anchor',
-    'consistency_agent_detail', 'consistency_agent_results', 'consistency_agent_report', 'consistency_agent_export',
+    'consistency_agent_detail', 'consistency_agent_results', 'consistency_agent_report', 'consistency_agent_export', 'consistency_conflicts_export',
     'consistency_agent_gallery', 'consistency_agent_images', 'consistency_agent_statistics', 'consistency_agent_members', 'consistency_agent_candidates', 'consistency_agent_review', 'consistency_agent_analysis',
     'consistency_agent_diagnostics',
     'consistency_agent_session_location',
@@ -497,7 +501,7 @@ QUERY_OPERATIONS = frozenset({
     'analysis_list', 'analysis_status', 'analysis_node', 'analysis_prompts', 'analysis_results',
     'consistency_model_status',
     'audit_sources', 'audit_status', 'audit_list', 'audit_job_samples', 'audit_job_sample', 'audit_job_report', 'audit_job_export',
-    'dataset_list', 'dataset_get', 'dataset_group_list', 'sample_list', 'sample_get',
+    'dataset_list', 'dataset_get', 'dataset_group_list', 'dataset_image_dimensions', 'sample_list', 'sample_get',
     'sample_image_path', 'sample_thumbnail', 'sample_mask_path', 'report_get',
     'review_history', 'review_stats',
     'consistency_query', 'consistency_report', 'consistency_report_saved',

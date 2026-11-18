@@ -38,6 +38,12 @@ def initialize_deletion_indexes(conn: Connection) -> None:
             'direct' AS kind FROM job_run_requests WHERE dataset_id IS NOT NULL
         UNION SELECT job_id,value,'workflow' FROM job_run_requests,json_each(request_json,'$.dataset_ids')
             WHERE job_type IN ('ANALYSIS_WORKFLOW','MODEL_AUDIT') AND value IS NOT NULL
+        UNION SELECT job_id,value,'consistency' FROM job_run_requests,
+            json_each(request_json,'$.consistency_check.scopes.subjects.dataset_ids')
+            WHERE job_type='ANALYSIS_WORKFLOW' AND value IS NOT NULL
+        UNION SELECT job_id,value,'consistency' FROM job_run_requests,
+            json_each(request_json,'$.consistency_check.scopes.corpus.dataset_ids')
+            WHERE job_type='ANALYSIS_WORKFLOW' AND value IS NOT NULL
         UNION SELECT job_id,value,'consistency' FROM job_run_requests,json_tree(request_json,'$.frozen_group')
             WHERE job_type='CONSISTENCY_ANALYSIS' AND key='dataset_id' AND value IS NOT NULL
         UNION SELECT job_id,value,'consistency' FROM job_run_requests,json_tree(request_json,'$.consistency_scopes')

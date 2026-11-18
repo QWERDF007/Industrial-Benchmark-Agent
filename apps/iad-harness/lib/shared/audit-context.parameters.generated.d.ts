@@ -445,10 +445,233 @@ export declare const auditReportDraftParameters: {
         readonly type: "object";
         readonly additionalProperties: false;
         readonly properties: {
+            readonly distribution_analysis: {
+                readonly type: "string";
+                readonly description: "先说分布结论，再说明主要失衡及影响，正常的集中分布也应明确说明。";
+                readonly title: "Distribution Analysis";
+            };
             readonly quality_assessment: {
                 readonly type: "object";
                 readonly additionalProperties: false;
                 readonly properties: {
+                    readonly consistency_reviews: {
+                        readonly oneOf: readonly [{
+                            readonly type: "array";
+                            readonly items: {
+                                readonly type: "object";
+                                readonly additionalProperties: false;
+                                readonly properties: {
+                                    readonly scope_id: {
+                                        readonly type: "string";
+                                        readonly title: "Scope Id";
+                                        readonly required: true;
+                                    };
+                                    readonly code: {
+                                        readonly type: "string";
+                                        readonly enum: readonly ["category_mismatch", "instance_count_mismatch", "coverage_mismatch"];
+                                        readonly title: "Code";
+                                        readonly required: true;
+                                    };
+                                    readonly coefficient: {
+                                        readonly type: "number";
+                                        readonly title: "Coefficient";
+                                        readonly required: true;
+                                    };
+                                    readonly analysis: {
+                                        readonly type: "string";
+                                        readonly title: "Analysis";
+                                        readonly required: true;
+                                    };
+                                    readonly evidence_refs: {
+                                        readonly type: "array";
+                                        readonly items: {
+                                            readonly type: "string";
+                                        };
+                                        readonly title: "Evidence Refs";
+                                        readonly required: true;
+                                    };
+                                };
+                                readonly title: "ConsistencyImpactReview";
+                            };
+                        }, {
+                            readonly type: "null";
+                        }];
+                        readonly title: "Consistency Reviews";
+                    };
+                    readonly distribution_reviews: {
+                        readonly oneOf: readonly [{
+                            readonly type: "array";
+                            readonly items: {
+                                readonly type: "object";
+                                readonly additionalProperties: false;
+                                readonly properties: {
+                                    readonly scope_id: {
+                                        readonly type: "string";
+                                        readonly description: "统计范围的scope_id，整体为overall，子集为dataset_id。";
+                                        readonly title: "Scope Id";
+                                        readonly required: true;
+                                    };
+                                    readonly axis: {
+                                        readonly type: "string";
+                                        readonly enum: readonly ["class_balance", "image_geometry", "instance_geometry", "instance_count", "instance_position", "capture_source"];
+                                        readonly title: "Axis";
+                                        readonly required: true;
+                                    };
+                                    readonly status: {
+                                        readonly oneOf: readonly [{
+                                            readonly type: "string";
+                                            readonly enum: readonly ["normal", "problem", "not_applicable"];
+                                        }, {
+                                            readonly type: "null";
+                                        }];
+                                        readonly title: "Status";
+                                    };
+                                    readonly coefficient: {
+                                        readonly oneOf: readonly [{
+                                            readonly type: "number";
+                                        }, {
+                                            readonly type: "null";
+                                        }];
+                                        readonly title: "Coefficient";
+                                    };
+                                    readonly comparisons: {
+                                        readonly type: "array";
+                                        readonly items: {
+                                            readonly type: "object";
+                                            readonly additionalProperties: false;
+                                            readonly properties: {
+                                                readonly metric: {
+                                                    readonly type: "string";
+                                                    readonly title: "Metric";
+                                                    readonly required: true;
+                                                };
+                                                readonly groups: {
+                                                    readonly type: "array";
+                                                    readonly items: {
+                                                        readonly type: "object";
+                                                        readonly additionalProperties: false;
+                                                        readonly properties: {
+                                                            readonly label: {
+                                                                readonly type: "string";
+                                                                readonly title: "Label";
+                                                                readonly required: true;
+                                                            };
+                                                            readonly members: {
+                                                                readonly type: "array";
+                                                                readonly items: {
+                                                                    readonly oneOf: readonly [{
+                                                                        readonly type: "object";
+                                                                        readonly additionalProperties: false;
+                                                                        readonly properties: {
+                                                                            readonly kind: {
+                                                                                readonly type: "string";
+                                                                                readonly enum: readonly ["group"];
+                                                                                readonly title: "Kind";
+                                                                                readonly required: true;
+                                                                            };
+                                                                            readonly metric: {
+                                                                                readonly type: "string";
+                                                                                readonly title: "Metric";
+                                                                                readonly required: true;
+                                                                            };
+                                                                            readonly bucket: {
+                                                                                readonly type: "string";
+                                                                                readonly title: "Bucket";
+                                                                                readonly required: true;
+                                                                            };
+                                                                        };
+                                                                        readonly title: "DistributionGroupReference";
+                                                                    }, {
+                                                                        readonly type: "object";
+                                                                        readonly additionalProperties: false;
+                                                                        readonly properties: {
+                                                                            readonly kind: {
+                                                                                readonly type: "string";
+                                                                                readonly enum: readonly ["bins"];
+                                                                                readonly title: "Kind";
+                                                                                readonly required: true;
+                                                                            };
+                                                                            readonly metric: {
+                                                                                readonly type: "string";
+                                                                                readonly title: "Metric";
+                                                                                readonly required: true;
+                                                                            };
+                                                                            readonly x: {
+                                                                                readonly type: "array";
+                                                                                readonly items: {
+                                                                                    readonly type: "integer";
+                                                                                };
+                                                                                readonly description: "从 0 开始的首尾分箱下标，均包含在内。";
+                                                                                readonly title: "X";
+                                                                                readonly required: true;
+                                                                            };
+                                                                            readonly y: {
+                                                                                readonly oneOf: readonly [{
+                                                                                    readonly type: "array";
+                                                                                    readonly items: {
+                                                                                        readonly type: "integer";
+                                                                                    };
+                                                                                }, {
+                                                                                    readonly type: "null";
+                                                                                }];
+                                                                                readonly description: "仅二维热图填写，同样包含首尾分箱。";
+                                                                                readonly title: "Y";
+                                                                            };
+                                                                        };
+                                                                        readonly title: "DistributionBinsReference";
+                                                                    }];
+                                                                };
+                                                                readonly title: "Members";
+                                                                readonly required: true;
+                                                            };
+                                                        };
+                                                        readonly title: "DistributionGroup";
+                                                    };
+                                                    readonly title: "Groups";
+                                                    readonly required: true;
+                                                };
+                                            };
+                                            readonly title: "DistributionMetricGrouping";
+                                        };
+                                        readonly title: "Comparisons";
+                                    };
+                                    readonly overlap_codes: {
+                                        readonly type: "array";
+                                        readonly items: {
+                                            readonly type: "string";
+                                        };
+                                        readonly description: "仅完整范围：与本项确属同一实际原因的视觉评分代码；无重复原因时为空。";
+                                        readonly title: "Overlap Codes";
+                                    };
+                                    readonly grouping: {
+                                        readonly type: "string";
+                                        readonly description: "合理范围或分组及其统计依据；单一合理范围和均衡多范围不扣分。";
+                                        readonly title: "Grouping";
+                                        readonly required: true;
+                                    };
+                                    readonly evidence_refs: {
+                                        readonly type: "array";
+                                        readonly items: {
+                                            readonly type: "string";
+                                        };
+                                        readonly description: "引用输入facts中真实的统计项ref，不编造数量或缺失类别。";
+                                        readonly title: "Evidence Refs";
+                                        readonly required: true;
+                                    };
+                                    readonly analysis: {
+                                        readonly type: "string";
+                                        readonly description: "先说结论，再用日常中文说明实际质量影响，不写分类定义或内部流程。";
+                                        readonly title: "Analysis";
+                                        readonly required: true;
+                                    };
+                                };
+                                readonly title: "QualityDistributionReview";
+                            };
+                        }, {
+                            readonly type: "null";
+                        }];
+                        readonly title: "Distribution Reviews";
+                    };
                     readonly aliases: {
                         readonly type: "array";
                         readonly items: {
@@ -557,7 +780,7 @@ export declare const auditReportDraftParameters: {
             };
             readonly conclusion: {
                 readonly type: "string";
-                readonly description: "概括当前用途及最重要的视觉发现；图像数、疑点数和来源状态由页面另行展示。";
+                readonly description: "总体结论用两三句日常中文说清这批数据的主要发现。有问题时说明实际影响和应优先处理的事项。不复述数量、占比或分数，统计留在图表和明细中。概括当前可开展的用途。";
                 readonly title: "Conclusion";
             };
             readonly consistency_analysis: {

@@ -5,6 +5,8 @@ from iad_core.audit.quality_models import (
     QUALITY_SCORE_VERSION, QualityAssessment, QualityDefect, QualityImage, QualityObservation, QualityScore, QualityScorePreview,
 )
 from iad_core.audit.quality_scoring import AuditQualityScorer
+from iad_core.audit.distribution_scoring import AuditDistributionScoring
+from iad_core.audit.pair_scoring import AuditPairScoring
 from iad_core.audit.state import AuditState
 from iad_core.workbench.analysis_sources import AnalysisSourceRoles
 
@@ -12,6 +14,11 @@ from iad_core.workbench.analysis_sources import AnalysisSourceRoles
 class AuditQualityReports:
     def __init__(self, db):
         self.db, self.state = db, AuditState(db)
+
+    def consistency_context(self, run_id: str) -> list[dict]:
+        manifest = self.state.snapshot(run_id).manifest
+        return AuditPairScoring.context([QualityImage(sample_id=r.sample.sample_id,dataset_id=r.sample.dataset_id)
+            for r in manifest.records],AuditPairScoring.comparisons(self.state.consistency_records(run_id)))
 
     @staticmethod
     def validate_observation(record, observation: QualityObservation):
@@ -38,9 +45,7 @@ class AuditQualityReports:
         from iad_core.audit.evidence import AuditEvidence
         from iad_core.audit.reports import AuditReports
         assessment = QualityAssessment.model_validate(request)
-        snapshot = self.state.snapshot(run_id)
-        if snapshot.quality_score_version != QUALITY_SCORE_VERSION:
-            raise ValueError('历史评分观察保持冻结，请新建审计作业使用当前规则')
+        snapshot = self.state.scoring_snapshot(run_id)
         samples = self.state.samples(run_id)
         records = {record.sample.sample_id: record for record in snapshot.manifest.records}
         from iad_core.audit.stages import AuditStages
@@ -63,7 +68,6 @@ class AuditQualityReports:
             labels = {item.annotation_id: item.raw_label for item in record.annotations}
             images.append(QualityImage(sample_id=sample.sample_id, dataset_id=record.sample.dataset_id,
                 completed=sample.state == 'COMPLETED' and final is not None and final.execution_status == 'completed',
-                consistency_categories=sample.consistency.categories,
                 observation_complete=usable,
                 is_normal=AnalysisSourceRoles.resolve(record.dataset_format, record.sample.quality_status,
                     record.sample.annotation_availability.status, len(record.annotations)) == 'normal',
@@ -88,7 +92,11 @@ class AuditQualityReports:
         for identity in sorted(required):
             if evidence.prepare(run_id, identity, identity).evidence_id not in observed:
                 raise ValueError('低信息增量判断须由主 Agent 实际观察相关完整原图')
+        reviews = (AuditDistributionScoring(snapshot.manifest).validate(assessment.distribution_reviews)
+            if assessment.distribution_reviews is not None else None)
         score = AuditQualityScorer().score(images, snapshot.settings.quality_score_weights,
+            comparisons=AuditPairScoring.comparisons(self.state.consistency_records(run_id)), distribution_reviews=reviews,
+            consistency_reviews=assessment.consistency_reviews,
             exact_groups=snapshot.dataset_profile.strict_duplicate_members,
             redundant_groups=[[item.sample_id for item in group.members] for group in assessment.redundant_groups]
                 if assessment.redundancy_reviewed else None, aliases=assessment.aliases)
@@ -99,9 +107,8 @@ class AuditQualityReports:
         return QualityScorePreview(assessment=assessment.model_copy(update={'preview_id': preview_id}), score=score)
 
     def finalize(self, run_id: str, assessment: QualityAssessment | None) -> QualityScore:
-        if self.state.snapshot(run_id).quality_score_version != QUALITY_SCORE_VERSION:
-            raise ValueError('评分规则已更新，请新建审计作业')
         preview = self.preview(run_id, assessment or QualityAssessment(redundancy_reviewed=False))
+        AuditPairScoring.validate(preview.assessment.consistency_reviews or [], self.consistency_context(run_id))
         if assessment is not None and assessment.preview_id != preview.assessment.preview_id:
             raise ValueError('评分预览已变化，请重新调用 audit_quality_score 并原样提交 assessment')
         return preview.score

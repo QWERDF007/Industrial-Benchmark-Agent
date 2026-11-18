@@ -11,6 +11,7 @@ from iad_core.consistency.identity_models import candidate_pair_key
 from iad_core.consistency.pair_locks import CandidatePairLocks
 from iad_core.duplicate.verification_models import Registration
 from iad_core.evidence.images import EvidenceImages
+from iad_core.evidence.views import minimum_crop_bbox
 from iad_core.evidence.retained import RetainedImages
 from iad_core.storage.models import sample_uuid
 
@@ -75,7 +76,7 @@ class IdentityInputs:
                         try:
                             projected = geometry.map_bounds(box, sizes[side], sizes[1 - side], to_main=side == 1)
                             if projected[0] < projected[2] and projected[1] < projected[3]:
-                                mapped = tuple(projected)
+                                mapped = tuple(minimum_crop_bbox(projected, sizes[1 - side]))
                         except ValueError:
                             mapped = None
                     main, candidate = (box, mapped) if side == 0 else (mapped, box)

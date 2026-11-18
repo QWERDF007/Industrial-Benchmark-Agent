@@ -1,4 +1,5 @@
 from typing import Annotated, Literal, Self
+from dataclasses import dataclass
 
 from pydantic import Field, model_validator
 
@@ -41,6 +42,24 @@ class CoverageEvidenceFields(AnalysisModel):
         description='指出明显漏盖或多盖了哪一大块实际内容；不能仅说坐标、面积或外接框不同。')
 
 
+@dataclass(frozen=True)
+class AnnotationObjectCounts:
+    main: tuple[int, int | None]
+    candidate: tuple[int, int | None]
+
+
+ANNOTATION_OBJECT_COUNTS = {
+    'category_mismatch': AnnotationObjectCounts((1, None), (1, None)),
+    'extra_annotation': AnnotationObjectCounts((1, None), (0, 0)),
+    'missing_annotation': AnnotationObjectCounts((0, 0), (1, None)),
+    'missing_content': AnnotationObjectCounts((1, None), (1, None)),
+    'extra_content': AnnotationObjectCounts((1, None), (1, None)),
+    'split': AnnotationObjectCounts((2, None), (1, 1)),
+    'merge': AnnotationObjectCounts((1, 1), (2, None)),
+    'position_difference': AnnotationObjectCounts((1, None), (1, None)),
+}
+
+
 class BboxAnnotationIssue(IssueEvidenceFields, CoverageEvidenceFields):
     type: Literal['category_mismatch', 'extra_annotation', 'missing_annotation', 'missing_content', 'extra_content', 'split', 'merge', 'position_difference'] = Field(json_schema_extra={'enum': [kind for kind, category in ISSUE_CATEGORIES.items() if category in CONFLICT_RULES and kind != 'image_label_mismatch']})
     main_annotation_ids: list[str] = Field(default_factory=list)
@@ -54,14 +73,9 @@ class BboxAnnotationIssue(IssueEvidenceFields, CoverageEvidenceFields):
         main, candidate = len(self.main_annotation_ids), len(self.candidate_annotation_ids)
         if main != len(set(self.main_annotation_ids)) or candidate != len(set(self.candidate_annotation_ids)):
             raise ValueError('问题中的标注ID不得重复')
-        valid = {'category_mismatch': main >= 1 and candidate >= 1,
-            'position_difference': main >= 1 and candidate >= 1,
-            'missing_content': main >= 1 and candidate >= 1,
-            'extra_content': main >= 1 and candidate >= 1,
-            'extra_annotation': main >= 1 and candidate == 0,
-            'missing_annotation': main == 0 and candidate >= 1,
-            'split': main >= 2 and candidate == 1,
-            'merge': main == 1 and candidate >= 2}[self.type]
+        counts = ANNOTATION_OBJECT_COUNTS[self.type]
+        valid = all(count >= minimum and (maximum is None or count <= maximum)
+            for count, (minimum, maximum) in zip((main, candidate), (counts.main, counts.candidate)))
         if not valid:
             raise ValueError('差异类型与两侧真实对象的标注ID数量不匹配')
         if self.same_main_object_as and (self.type != 'missing_annotation' or candidate != 1):

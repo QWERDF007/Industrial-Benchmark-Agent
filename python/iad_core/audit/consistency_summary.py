@@ -7,6 +7,8 @@ from typing import Literal
 from iad_core.audit.distribution import AuditDistributions
 from iad_core.audit.quality_models import QualityImage
 from iad_core.audit.quality_scoring import AuditQualityScorer
+from iad_core.audit.pair_scoring import AuditPairScoring
+from iad_core.audit.distribution_scoring import AuditDistributionScoring
 from iad_core.audit.report_models import (AuditConsistencyAnalysis, AuditCount, AuditStatistics,
     ConsistencyAuditText, ConsistencyStoredReport, AUDIT_ISSUE_LABELS)
 from iad_core.audit.reports import AuditReports
@@ -29,11 +31,10 @@ class ConsistencyAudit:
     def records(self, run_id: str) -> list[ConsistencyConclusionRecord]:
         if self.state.snapshot(run_id).settings.audit_scope != 'consistency':
             raise ValueError('本作业不是数据一致性范围')
-        with self.db.connection() as connection:
-            rows = connection.execute('SELECT record_json FROM audit_upstream_records WHERE job_id=? ORDER BY ordinal', (run_id,))
-            return [ConsistencyConclusionRecord.model_validate_json(row[0]) for row in rows]
+        return self.state.consistency_records(run_id)
 
     def prepare(self, run_id: str) -> dict:
+        snapshot = self.state.scoring_snapshot(run_id)
         records = self.records(run_id)
         groups = defaultdict(list)
         for record in records:
@@ -51,13 +52,17 @@ class ConsistencyAudit:
             problem_groups.append({'issue_type': kind, 'label': AUDIT_ISSUE_LABELS[kind], 'priority': rule.priority,
                 'image_count': len(unique), 'occurrences': len(issues), 'examples': examples})
         problem_groups.sort(key=lambda group:group['priority'])
-        context = {'problem_groups': problem_groups}
-        while len(json.dumps(context,ensure_ascii=False)) > 32000:
+        from iad_core.dataset.registry import DatasetRegistry
+        from iad_core.audit.quality_reports import AuditQualityReports
+        context = {'dataset_names': {sid: DatasetRegistry(self.db).get(sid).dataset.name for sid in snapshot.manifest.dataset_ids},
+            'problem_groups': problem_groups, 'distribution_facts': AuditDistributionScoring(snapshot.manifest).context(),
+            'consistency_scoring': AuditQualityReports(self.db).consistency_context(run_id)}
+        while problem_groups and any(g['examples'] for g in problem_groups) and len(json.dumps(context,ensure_ascii=False)) > 48000:
             largest = max(problem_groups,key=lambda group:len(json.dumps(group['examples'],ensure_ascii=False)))
             largest['examples'].pop()
         AuditReports(self.db).begin(run_id)
         return {'session_id': AuditReports(self.db).session(run_id).session_id,
-            'needs_analysis': bool(problem_groups), 'context': context,
+            'context': context,
             'response_schema': ConsistencyAuditText.model_json_schema()}
 
     def statistics(self, run_id: str) -> AuditStatistics:
@@ -84,26 +89,21 @@ class ConsistencyAudit:
             consistency_assessments={}, knowledge_assessments={})
 
     def commit(self, run_id: str, narrative: dict | None, *, jobs):
+        snapshot = self.state.scoring_snapshot(run_id)
         records = self.records(run_id)
-        snapshot = self.state.snapshot(run_id)
         expected = {issue.type for r in records for issue in r.result.issues}
-        if expected:
-            text = ConsistencyAuditText.model_validate(narrative)
-            if len(text.analyses) != len(expected) or {a.issue_type for a in text.analyses} != expected:
-                raise ValueError('分析须覆盖且仅覆盖上游实际问题类型')
-        else:
-            if narrative is not None:
-                raise ValueError('没有问题记录，无需模型分析')
-            statistics = self.statistics(run_id)
-            compared = sum(r.summary.reason in ('MODEL_REVIEWED', 'PROGRAM_REVIEWED') for r in records)
-            text = ConsistencyAuditText(
-                conclusion='本次审计未发现标注冲突。',
-                consistency_analysis=f'{compared} 张图像的标注一致，'
-                    f'{statistics.total_images-compared} 张图像没有可用的对照图。', analyses=[])
+        if narrative is None:
+            raise ValueError('评分需要模型完成分布判断')
+        text = ConsistencyAuditText.model_validate(narrative)
+        if len(text.analyses) != len(expected) or {a.issue_type for a in text.analyses} != expected:
+            raise ValueError('分析须覆盖且仅覆盖上游实际问题类型')
+        reviews = AuditDistributionScoring(snapshot.manifest).validate(text.distribution_reviews or [])
         datasets = {r.sample.sample_id: r.sample.dataset_id for r in snapshot.manifest.records}
         score = AuditQualityScorer().score([QualityImage(sample_id=r.summary.anchor_id,
-            dataset_id=datasets[r.summary.anchor_id], consistency_categories=r.summary.categories) for r in records],
-            snapshot.settings.quality_score_weights, scope='consistency')
+            dataset_id=datasets[r.summary.anchor_id]) for r in records],
+            snapshot.settings.consistency_score_weights, scope='consistency',
+            comparisons=AuditPairScoring.comparisons(records), distribution_reviews=reviews,
+            consistency_reviews=text.consistency_reviews if text.consistency_reviews is not None else [])
         from iad_core.audit.report_evidence import AuditReportEvidence
         AuditReportEvidence(self.db).groups(run_id)
         stored = ConsistencyStoredReport(**text.model_dump(), quality_score=score)
@@ -137,6 +137,7 @@ class ConsistencyAudit:
             statistics=statistics, consistency_job_id=snapshot.consistency_job_id, report_state=session.state,
             report_session_id=session.session_id if session.session_created else None,
             consistency_analysis=final.consistency_analysis if final else '',
+            distribution_analysis=final.distribution_analysis if final else '',
             consistency_analyses=[AuditConsistencyAnalysis(issue_type=a.issue_type, analysis=a.analysis, evidence_refs=[]) for a in final.analyses] if final else [],
             dataset_profile=snapshot.dataset_profile, data_distribution=AuditDistributions(snapshot.manifest).catalog(),
             evidence_pairs=pairs, dataset_names={identity:DatasetRegistry(self.db).get(identity).dataset.name for identity in snapshot.manifest.dataset_ids})

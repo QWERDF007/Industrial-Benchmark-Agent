@@ -43,7 +43,7 @@ def test_region_review_keeps_rectangle_and_polygon_source_coordinates(dataset, t
         assert source['annotations'][0]['bbox'] == [-5, 10, 330, 30]
         assert source['annotations'][0]['polygon'] == (points if shape_type == 'polygon' else None)
         crops = [view for view in source['visual_inputs'] if view['window_source'] == 'annotation']
-        assert crops[0]['crop_bbox'] == [0, 8, 320, 32]
+        assert crops[0]['crop_bbox'] == [0, 0, 320, 100]
         assert AnnotationRepository(database).list_by_sample(anchor) == [annotation]
         assert label.read_text() == original
     finally:
@@ -111,7 +111,6 @@ def test_annotation_matching_capacity_remains_a_resource_error(dataset, tmp_path
 def test_resume_reuses_captured_candidate_when_its_original_file_is_unavailable(dataset, tmp_path):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.consistency.agent_results import ConsistencyAgentResults
-    from iad_core.consistency.errors import ConsistencyError
 
     database, registry, config = dataset
     for name in ('A', 'Z'):
@@ -125,26 +124,20 @@ def test_resume_reuses_captured_candidate_when_its_original_file_is_unavailable(
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         checks.session_created(run, anchor)
         checks.retrieve(run, anchor)
-        image = tmp_path / 'images/Z.png'
-        original = image.read_bytes()
-        image.write_bytes(b'broken original')
         evidence = ConsistencyAgentEvidence(runtime)
-        with pytest.raises(ConsistencyError) as failure:
-            evidence.freeze(run, anchor, checkpoint=lambda: None)
-        assert failure.value.code == 'SOURCE_UNAVAILABLE'
-        checks.fail(run, anchor, str(failure.value), failure.value.code)
-        runtime.jobs.finish_external(run)
+        frozen = evidence.freeze(run, anchor, checkpoint=lambda: None)
+        checks.cancel(run)
         before = ConsistencyAgentResults(database).detail(run, anchor)
-        assert [item.candidate_id for item in before.captured_evidence] == [config.dataset.id + ':A.png']
+        assert len(before.captured_evidence) == 3
         assert before.result is None
-        image.write_bytes(original)
+        (tmp_path / 'images/Z.png').write_bytes(b'broken original')
         (tmp_path / 'images/A.png').unlink()
         checks.resume(run)
         group = evidence.freeze(run, anchor, checkpoint=lambda: None)
-        assert len(group.members) == 3
+        assert group == frozen and len(group.members) == 3
         after = ConsistencyAgentResults(database).detail(run, anchor)
         assert after.session_id == before.session_id and after.attempt == 2
-        assert len(after.captured_evidence) == 3 and after.captured_evidence[0] == before.captured_evidence[0]
+        assert after.captured_evidence == before.captured_evidence
         from iad_core.consistency.agent_review import ConsistencyAgentReview
         ConsistencyAgentReview(runtime).verify(run, anchor, attempt=checks.anchor(run, anchor).attempt)
         prepared = evidence.prepare(run, anchor, [config.dataset.id + ':A.png'])
@@ -215,10 +208,10 @@ def test_agent_evidence_uses_original_sources_without_historical_review_judgment
         assert len(mapped) == 1
         assert mapped[0]['window_from'] == anchor_id
         assert mapped[0]['annotation_origins'] == []
-        assert mapped[0]['crop_bbox'] == [8, 8, 32, 32]
+        assert mapped[0]['crop_bbox'] == [0, 0, 100, 100]
         image = next(item for item in prepared.images if item.evidence.evidence_id == mapped[0]['evidence_id'])
         with Image.open(image.path) as pixels:
-            assert pixels.size == (24, 24)
+            assert pixels.size == (100, 100)
             assert pixels.convert('RGB').getextrema() == ((0, 0), (0, 0), (255, 255))
         next_page = ConsistencyAgentEvidence(runtime).prepare(job['run_id'], anchor_id, [config.dataset.id + ':scratch.png'])
         assert {item['sample_id'] for item in next_page.facts['sources'].values()} == {anchor_id, config.dataset.id + ':scratch.png'}

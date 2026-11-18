@@ -37,6 +37,7 @@ def test_distribution_tool_counts_original_boxes_and_unique_images_from_frozen_i
     jobs, dataset_id, run_id = distribution_audit
     result = audit_agent_distribution(dict(run_id=run_id), jobs.db.db_path)
     assert result['image_count'] == 6
+    assert 'category_area_samples' not in result
     assert result['annotation_count'] == 4
     assert result['invalid_annotation_count'] == 0
     assert result['classes'] == [dict(category='edge', image_count=2, annotation_count=3),
@@ -87,6 +88,10 @@ def test_report_and_export_share_the_tools_precomputed_filter_results(distributi
     report = queries.report(run_id)
     assert report.data_distribution.datasets == [dataset_id]
     assert report.data_distribution.categories == ['edge', 'hole']
+    area_samples = report.data_distribution.category_area_samples[dataset_id]
+    assert sorted(area_samples['edge']) == pytest.approx([.01, .02, .04])
+    assert area_samples['hole'] == pytest.approx([.005])
+    assert sum(len(values) for values in area_samples.values()) == 4
     for view in report.data_distribution.slices:
         assert view.model_dump(mode='json') == audit_agent_distribution(dict(run_id=run_id,
             query=dict(dataset_id=view.dataset_id, category=view.category)), jobs.db.db_path)
@@ -95,6 +100,11 @@ def test_report_and_export_share_the_tools_precomputed_filter_results(distributi
     exported = queries.export(run_id)
     payload = json.loads(exported['html'].split('<script id="audit-report-data" type="application/json">')[1].split('</script>')[0])
     assert payload['report']['data_distribution'] == report.data_distribution.model_dump(mode='json')
+
+    with jobs.db.connection() as connection:
+        connection.execute("UPDATE audit_workflow_runs SET summary_json=json_remove(summary_json,'$.data_distribution.category_area_samples') WHERE job_id=?", (run_id,))
+    assert queries.report(run_id).data_distribution == report.data_distribution
+    assert queries.export(run_id)['html'] == exported['html']
 
     with jobs.db.connection() as connection:
         connection.execute("UPDATE audit_workflow_runs SET summary_json=json_remove(summary_json,'$.data_distribution') WHERE job_id=?", (run_id,))
@@ -195,6 +205,7 @@ def test_polygon_and_rectangle_instances_share_statistics_without_rasterizing(di
     assert view.geometry_types == {'bbox': 1, 'polygon': 2}
     assert view.invalid_annotation_count == 1
     assert view.unannotated_images == 1
+    assert source.category_area_samples() == {dataset_id: {'edge': pytest.approx([.02, .04])}}
     assert [(row.category, row.image_count, row.annotation_count) for row in view.classes] == [('edge', 1, 2), ('hole', 1, 1)]
     assert view.summaries['relative_area'].minimum == pytest.approx(.02)
     assert view.summaries['relative_area'].maximum == pytest.approx(.04)

@@ -16,8 +16,8 @@ from tests.consistency_responses import annotation_response
 @pytest.mark.parametrize('shape_type', ['rectangle','polygon'])
 @pytest.mark.parametrize('points,crop', [
     ([[100,100],[1100,1000]], (0,10,1200,1090)),
-    ([[100.4,100.4],[108.6,108.6]], (99,99,110,110)),
-    ([[-4.5,1190.5],[10.5,1202.5]], (0,1189,12,1200)),
+    ([[100.4,100.4],[108.6,108.6]], (54,54,154,154)),
+    ([[-4.5,1190.5],[10.5,1202.5]], (0,1100,100,1200)),
     (None,None)])
 def test_region_observation_sends_original_pixels_and_only_complete_annotation_crops(dataset, tmp_path, points, crop, shape_type):
     import base64
@@ -71,9 +71,15 @@ def test_region_observation_sends_original_pixels_and_only_complete_annotation_c
             'subjects':{'kind':'samples','sample_ids':[anchor]}})['run_id']
         checks.session_created(run, anchor)
         selected = checks.retrieve(run, anchor)
-        ConsistencyAgentReview(runtime, client).observe(run, anchor, {'request_id':'original-inputs',
-            'fingerprint':selected.fingerprint,'candidate_ids':[candidate],'question':'核对原始标注。'})
-        assert len(sent)==1
+        review = ConsistencyAgentReview(runtime, client)
+        if points is None:
+            assert review.verify(run, anchor).completed
+            assert review.finish_rules(run, anchor).result == 'passed'
+            assert sent == []
+        else:
+            review.observe(run, anchor, {'request_id':'original-inputs',
+                'fingerprint':selected.fingerprint,'candidate_ids':[candidate],'question':'核对原始标注。'})
+            assert len(sent) == 1
     finally:
         client.close()
         runtime.close()

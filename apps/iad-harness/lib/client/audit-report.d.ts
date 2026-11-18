@@ -12,6 +12,12 @@ export declare const scoredAuditReportSections: SectionMap;
 export declare const consistencyAuditReportSections: SectionMap;
 export declare const AuditReportSectionsContext: import("react").Context<SectionMap>;
 export declare const useAuditReportSections: () => SectionMap;
+export declare const auditDistributionMetricLabels: {
+    readonly image_aspect_ratio: '图像宽高比';
+    readonly box_aspect_ratio: '实例外接矩形宽高比';
+    readonly relative_area: '实例面积占图像比例';
+};
+export declare const auditDistributionClassLabel: (name: string, classification?: boolean) => string;
 export declare const auditMetadataLabels: Record<string, string>;
 export declare function auditMetadataValue(key: string, value: string): string;
 export {};

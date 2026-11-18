@@ -2,6 +2,7 @@ import json
 from pathlib import PurePosixPath
 
 from iad_core.audit.models import AuditAgentContext, AuditConsistencyContext, AuditSampleRun, AuditWorkflowSnapshot
+from iad_core.audit.quality_models import QUALITY_SCORE_VERSION
 from iad_core.consistency.repository import ConsistencyRepository
 from iad_core.evidence.sources import SampleContent
 from iad_core.workbench.analysis_manifest import AnalysisRegistration
@@ -37,6 +38,22 @@ class AuditState:
         snapshot = AuditWorkflowSnapshot.model_validate_json(row[0])
         self._snapshots[run_id] = snapshot
         return snapshot
+
+    def scoring_snapshot(self, run_id: str) -> AuditWorkflowSnapshot:
+        snapshot = self.snapshot(run_id)
+        if snapshot.quality_score_version != QUALITY_SCORE_VERSION:
+            raise ValueError('历史评分观察保持冻结，请新建审计作业使用当前规则')
+        return snapshot
+
+    def consistency_records(self, run_id: str):
+        from iad_core.consistency.agent_result_models import ConsistencyConclusionRecord, AnchorResultSummary
+        if self.snapshot(run_id).settings.audit_scope == 'consistency':
+            with self.db.connection() as connection:
+                rows = connection.execute('SELECT record_json FROM audit_upstream_records WHERE job_id=? ORDER BY ordinal', (run_id,))
+                return [ConsistencyConclusionRecord.model_validate_json(row[0]) for row in rows]
+        return [ConsistencyConclusionRecord(summary=AnchorResultSummary.model_validate(
+            sample.consistency.model_dump(include=set(AnchorResultSummary.model_fields))), result=sample.consistency.result)
+            for sample in self.samples(run_id) if sample.consistency.result]
 
     @staticmethod
     def _sample(row) -> AuditSampleRun:

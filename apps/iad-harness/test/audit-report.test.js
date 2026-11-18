@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test,{after} from 'node:test';
 import React from 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {AuditReportContent} from '../lib/client/components/AuditReportContent.js';
 import {AuditScoreSummary} from '../lib/client/components/AuditReportScore.js';
+import {queryClient} from '../lib/client/query-client.js';
+after(()=>queryClient.clear());
 
 const report = {
   total_samples:12,audited_samples:10,suspect_samples:2,distribution:{normal:8,suspect:2,incomplete:2},
@@ -61,27 +63,40 @@ test('audit distribution presents program aggregates as charts while retaining n
       image_aspect_ratio:{edges:[1,2,3],counts:[2,4],density:[[1,0],[2,.5],[3,0]]},
       box_aspect_ratio:{edges:[0,1,2],counts:[2,2],density:[[0,0],[1,.8],[2,0]]}},
     summaries:{relative_area:summary},area_by_category:[{category:'edge',statistics:summary}]};
-  const html=render({...report,total_samples:6,data_distribution:{dataset_format:'labelme',datasets:['scope'],categories:['edge','hole'],slices:[view,{...view,dataset_id:'scope'}]}});
+  const html=render({...report,total_samples:6,dataset_names:{scope:'验收子集'},data_distribution:{dataset_format:'labelme',datasets:['scope'],categories:['edge','hole'],slices:[view,{...view,dataset_id:'scope'}],
+    category_area_samples:{scope:{edge:[.01,.04,.02],hole:[.005]}}}});
   assert.match(html,/<h2[^>]*>二、数据分布<\/h2>/);
   assert.match(html,/data-report-section="distribution"/);
   assert.match(html,/类别/);
   const distribution=html.split('data-report-section="distribution"')[1].split('data-report-section="consistency"')[0];
   assert.doesNotMatch(distribution,/<table/,'数据分布不应为图表重复绘制数据表');
   assert.match(distribution,/edge[^"<]*图像（张）：2[^"<]*标注实例（个）：3/);
-  assert.match(distribution,/未登记：站点/);
   assert.match(html,/edge/);
   assert.match(html,/data-chart-type="heatmap"/);
   assert.match(html,/data-chart-type="boxplot"/);
   assert.doesNotMatch(distribution,/data-chart-type="histogram"|概率密度/);
   assert.match(html,/子数据集/);
   const figures=[...distribution.matchAll(/<figure\b[\s\S]*?<\/figure>/g)].map(match=>match[0]);
-  assert.ok(figures.length>=10);
-  for(const figure of figures)assert.match(figure,/aria-label="选择子数据集"/,'每张图复用子数据集勾选组件');
+  assert.doesNotMatch(distribution,/子数据集分布|data-chart="source-datasets"|未登记：|iad-distribution-summary/);
+  assert.match(distribution,/相机分布/);
+  assert.equal(figures.length,12);
+  assert.match(distribution,/<div class="iad-chart-pair"><figure[^>]*data-chart="image-counts"[\s\S]*?<\/figure><figure[^>]*data-chart="annotation-counts"[\s\S]*?<\/figure><\/div>/);
+  assert.match(figures[0],/data-chart="image-counts"[^>]*data-chart-type="donut"/);
+  assert.match(figures[0],/图像总数 6 张[^<]*有标注，数量（张）：2[^<]*无标注，数量（张）：4/);
+  assert.match(figures[1],/data-chart="annotation-counts"[^>]*data-chart-type="bar"/);
+  assert.match(figures[1],/验收子集，标注实例（个）：4/);
+  assert.doesNotMatch(figures[1],/选择子数据集/);
+  assert.match(figures[2],/data-chart="class-distribution"/);
+  const areas=figures.find(figure=>figure.includes('data-chart="category-area"'));
+  assert.match(areas,/edge[^"<]*中位数：2%[^"<]*样本数：3/);
+  assert.match(areas,/hole[^"<]*样本数：1/);
+  assert.doesNotMatch(areas,/验收子集[^"<]*下箱须/);
+  for(const figure of [figures[0],...figures.slice(2)])assert.match(figure,/aria-label="选择子数据集"/);
   for(const id of ['image-aspect-ratio','box-aspect-ratio','relative-area'])
     assert.match(figures.find(figure=>figure.includes(`data-chart="${id}"`)),/data-chart-type="distribution"/,'长宽比和框面积统一使用占比分布曲线');
   assert.match(figures.find(figure=>figure.includes('data-chart="relative-area"')),/数量（个）：2，占比：50%/);
   assert.doesNotMatch(distribution,/<select|数据分布类别|归一化比例|频数/,'移除类别、单位和密度视图切换');
-  assert.match(figures.find(figure=>figure.includes('data-chart="box-dimensions"')),/外接宽（像素）/);
+  assert.match(figures.find(figure=>figure.includes('data-chart="box-dimensions"')),/外接矩形宽（像素）/);
   const centers=figures.find(figure=>figure.includes('data-chart="box-centers"'));
   assert.match(centers,/水平位置 0\.5–1，垂直位置 0\.5–1，数量：4/);
   assert.doesNotMatch(centers,/%/,'框中心位置使用0–1坐标');
@@ -195,12 +210,12 @@ test('knowledge has its own chapter with a description original-image gallery an
   for(const text of ['沿外缘比较连续性','比较直线与转弯处的连续性','外缘清楚时适用','直线与平顺转弯可分开核对','帮助定位需要复看的边缘变化'])assert.ok(chapter.includes(text));
   assert.match(chapter,/class="iad-audit-gallery"/);
   assert.doesNotMatch(chapter,/<table/);
-  assert.match(chapter,/<h4>9\.1\.3 图像观察与对照<\/h4><p>/);
+  assert.match(chapter,/<h4>9\.1\.3 图像特征对比<\/h4><p>/);
   assert.match(chapter,/一致 2 张/);assert.match(chapter,/偏离 1 张/);assert.match(chapter,/不适用 2 张/);
   assert.doesNotMatch(html,/所选知识的实际作用/);
 });
 
-test('consistency shows source scopes and upstream conflicts even when the audit retains no issue',()=>{
+test('consistency keeps conflict analysis and charts without status subsections or repeated counts',()=>{
   const html=render({...report,suspect_samples:0,consistency_scopes:[
     {source_status:'NO_CANDIDATES',analysis:'没有找到内容对应的对照图。'},
     {source_status:'NO_ELIGIBLE_CANDIDATES',analysis:'相近图像的可见结构不同。'},
@@ -210,9 +225,12 @@ test('consistency shows source scopes and upstream conflicts even when the audit
     consistency_analyses:[{issue_type:'position_difference',title:'边缘转向对应位置变化',description:'两处边缘朝向不同。',
       analysis:'转向处的标注随实际轮廓变化。',audit_result:'本次未保留位置疑点。',representatives:[],evidence_refs:[]}]});
   const chapter=html.split('<h2>三、数据是否自洽</h2>')[1].split('<h2>四、标注质量与复核重点</h2>')[0];
-  for(const [index,label] of ['无候选','无有效候选','无标注一致','标注一致'].entries())assert.match(chapter,new RegExp('<h3[^>]*>3\\.'+(index+3)+' '+label+'</h3>'));
-  for(const text of ['没有找到内容对应的对照图','相近图像的可见结构不同','对应区域的分组与覆盖相符','边缘转向对应位置变化','本次未保留位置疑点'])assert.ok(chapter.includes(text));
-  assert.match(chapter,/data-chart="model-conflicts"/);assert.match(chapter,/2 张图像，3 项/);
+  assert.doesNotMatch(chapter,/data-consistency-scope=|<h3[^>]*>3\.\d+ (?:无候选|无有效候选|无标注一致|标注一致|标注冲突)<\/h3>/);
+  assert.doesNotMatch(chapter,/没有找到内容对应的对照图|相近图像的可见结构不同|对应区域的分组与覆盖相符/);
+  for(const text of ['边缘转向对应位置变化','本次未保留位置疑点'])assert.ok(chapter.includes(text));
+  assert.match(chapter,/<h3>3\.3 边缘转向对应位置变化<\/h3>/);
+  assert.match(chapter,/data-chart="model-conflicts"/);
+  assert.doesNotMatch(chapter,/上游记录问题|模型复核后保留|程序发现差异|2 张图像，3 项/);
   assert.equal((chapter.match(/data-consistency-definitions=/g)||[]).length,2);
 });
 
@@ -228,7 +246,7 @@ test('quality issues use a concrete title, description, nearby images and number
   const chapter=html.split('<h2>四、标注质量与复核重点</h2>')[1].split('<h2>五、覆盖了哪些视觉场景</h2>')[0];
   assert.match(chapter,/<h3>4\.1 转角旁的亮点没有被圈住<\/h3><p>亮点与旁边的长纹理分开。<\/p>/);
   assert.match(chapter,/<h4>4\.1\.1 图像证据<\/h4>/);
-  assert.match(chapter,/<h4>4\.1\.2 跨图对照<\/h4><p>已有框圈住纹理，旁边的亮点留在框外。<\/p>/);
+  assert.match(chapter,/<h4>4\.1\.2 图像对比分析<\/h4><p>已有框圈住纹理，旁边的亮点留在框外。<\/p>/);
   assert.match(chapter,/<h4>4\.1\.3 复核重点<\/h4><p>复看亮点是否需要单独标注。<\/p>/);
   assert.doesNotMatch(chapter,/href="#audit-|跨图标注相同|同内容图中的空标注对照/);
 });
@@ -237,7 +255,7 @@ test('consistency compares program and reviewed categories with plain definition
   const html=render({...report,statistics:{...report.statistics,program_issue_types:{missing_content:4},upstream_issue_types:{},
     issue_types:{split:{image_count:9,occurrences:9}}}});
   const chapter=html.split('<h2>三、数据是否自洽</h2>')[1].split('<h2>四、标注质量与复核重点</h2>')[0];
-  assert.match(chapter,/<h3>3\.1 各类结果是什么意思<\/h3>/);
+  assert.match(chapter,/<h3>3\.1 检查结果与冲突类型说明<\/h3>/);
   assert.match(chapter,/主图是当前被检查的图/);
   for(const label of ['无候选','无有效候选','标注一致','标注冲突','待核实','类别不一致','少标实例','多标实例','少标内容','多标内容','拆分','合并'])
     assert.match(chapter,new RegExp('<th scope="row">'+label+'</th><td>'));
@@ -246,8 +264,8 @@ test('consistency compares program and reviewed categories with plain definition
   const scopeTable=chapter.match(/<table[^>]*data-consistency-definitions="scope"[\s\S]*?<\/table>/)?.[0];
   const conflictTable=chapter.match(/<table[^>]*data-consistency-definitions="conflict"[\s\S]*?<\/table>/)?.[0];
   assert.ok(scopeTable);assert.ok(conflictTable);
-  assert.match(scopeTable,/<caption>对照图与比较结果<\/caption>/);
-  assert.match(conflictTable,/<caption>标注冲突类别<\/caption>/);
+  assert.match(scopeTable,/<caption>一致性检查结果说明<\/caption>/);
+  assert.match(conflictTable,/<caption>标注冲突类型说明<\/caption>/);
   assert.doesNotMatch(scopeTable,/<th scope="row">类别不一致<\/th>|<th scope="row">多标<\/th>/);
   assert.doesNotMatch(conflictTable,/<th scope="row">无候选<\/th>|<th scope="row">标注一致<\/th>/);
   assert.doesNotMatch(chapter,/<dl|<h4>3\.1\./,'两张分类说明表替代逐项定义小节');
@@ -257,10 +275,10 @@ test('consistency compares program and reviewed categories with plain definition
   const program=chapter.match(/<figure[^>]*data-chart="program-conflicts"[\s\S]*?<\/figure>/)?.[0];
   const model=chapter.match(/<figure[^>]*data-chart="model-conflicts"[\s\S]*?<\/figure>/)?.[0];
   assert.ok(program);assert.ok(model);
-  assert.match(program,/程序统计/);assert.match(model,/模型复核统计/);
+  assert.match(program,/程序判定的标注差异统计/);assert.match(model,/标注冲突统计/);
   assert.match(program,/类别不一致，数量（张）：0；少标实例，数量（张）：0；多标实例，数量（张）：0；少标内容，数量（张）：4；多标内容，数量（张）：0；拆分，数量（张）：0；合并，数量（张）：0/);
   assert.match(model,/类别不一致，数量（张）：0；少标实例，数量（张）：0；多标实例，数量（张）：0；少标内容，数量（张）：0；多标内容，数量（张）：0；拆分，数量（张）：0；合并，数量（张）：0/);
-  assert.ok(chapter.indexOf('data-chart="program-conflicts"')<chapter.indexOf('3.3 无候选'));
+  assert.ok(chapter.indexOf('data-chart="program-conflicts"')<chapter.indexOf('data-chart="consistency"'));
   assert.doesNotMatch(chapter,/拆分 9 张/,'一致性冲突不使用本次图像审计疑点数量');
   const classification=render({...report,dataset_profile:{...report.dataset_profile,dataset_format:'folder_classification'},
     statistics:{...report.statistics,program_issue_types:{image_label_mismatch:2},upstream_issue_types:{image_label_mismatch:{image_count:2,occurrences:4}}}})
@@ -288,7 +306,7 @@ test('scored reports put composite and dimension scores in conclusion and chart 
   assert.match(conclusion,/综合得分[^<]*89\.6/);
   for(const label of ['数据一致性','数据多样性','数据冗余度'])assert.match(conclusion,new RegExp(label));
   assert.match(conclusion,/93\.3/);
-  assert.match(html,/<h2[^>]*>二、得分细分<\/h2>/);
+  assert.match(html,/<h2[^>]*>二、得分明细<\/h2>/);
   assert.match(html,/<h2[^>]*>三、数据分布<\/h2>/);
   assert.match(html,/<h2[^>]*>十、引用知识及审计结果<\/h2>/);
   const details=html.split('data-report-section="score"')[1].split('data-report-section="distribution"')[0];
@@ -298,6 +316,8 @@ test('scored reports put composite and dimension scores in conclusion and chart 
   for(const figure of figures)assert.match(figure,/<figcaption>[\s\S]*class="iad-chart-controls"[\s\S]*class="iad-multiselect"[\s\S]*aria-label="选择子数据集"/);
   assert.doesNotMatch(details,/<option[^>]*>整体<\/option>|<select/);
   assert.match(details,/data-chart-type="bar"/);
+  assert.match(figures[2],/类内视觉变化覆盖不足，扣分：7\.6\/10\.0，数量：3\/203，百分比：1\.478%/);
+  assert.doesNotMatch(figures.slice(1).join(''),/该类别已归类缺陷实例共|同一原因已计入/);
   assert.match(details,/该类别已归类缺陷实例共 203 个，该场景有 3 个/);
   assert.match(details,/弯曲划痕/);
   assert.match(details,/统一检查同一缺陷类别内部的形态与外观变化/);
@@ -326,7 +346,7 @@ test('score details nest rule scene analysis and numbered image evidence with re
   assert.match(details,/全部已归类缺陷实例共 92 个/);
   assert.match(details,/该场景有 1 个，占比 1\.087%/);
   assert.doesNotMatch(details,/该场景样本覆盖不足|本项扣|这反映当前样本的覆盖情况|不表示原始标注错误/);
-  assert.match(details,/扣分上限 20\.0 分/);
+  assert.match(details,/扣分：20\.0\/20\.0/);
   assert.match(details,/<h6>2\.2\.1\.1\.1 图像证据<\/h6>/);
   assert.match(details,/<h6>2\.2\.1\.1\.1 图像证据<\/h6><div class="iad-thumbnail-grid"/);
   assert.doesNotMatch(details,/下方原图展示参与|样本覆盖程度由上述统计确定/);
@@ -379,7 +399,7 @@ test('adequate diversity coverage stays in score charts without scarcity details
     ]};
   const html=render({...report,quality_score:score});
   assert.doesNotMatch(html,/data-score-rule="D1"|<p>良品图像共 50 张，该场景有 33 张/);
-  assert.match(html,/困难良品稀缺，扣分（分）：0/);
+  assert.match(html,/困难良品稀缺，扣分：0\.0\/10\.0，数量：33\/50，百分比：66%/);
   assert.match(html,/<h4>2\.1\.1 困难良品内部类型稀缺<\/h4>/);
   assert.match(html,/data-score-rule="D3"/);
   assert.match(html,/本项不重复扣分/);
@@ -409,6 +429,7 @@ test('consistency-only reports keep four chapters and paginate actual pairs in t
     assert.doesNotMatch(html, /iad-thumbnail-caption|>主图<|>对比图</);
     assert.ok(html.includes('四、数据是否自洽'));
     const consistency=html.split('data-report-section="consistency"')[1];
+    assert.match(consistency,/<h3>4\.2 标注一致性<\/h3>/);
     const numbers=[...consistency.matchAll(/<h[3-6]>([0-9.]+) /g)].map(match=>match[1]);
     assert.equal(new Set(numbers).size,numbers.length,'问题分析与图证使用统一章节编号');
     assert.ok(consistency.indexOf('遗漏集中在转角邻接处')<consistency.indexOf('data-audit-evidence-pairs'),'分析先于图像证据');
@@ -430,4 +451,54 @@ test('consistency scope retains the audit outcome donut beside the score',()=>{
   assert.match(conclusion,/发现疑点，数量（张）：170/);
   assert.doesNotMatch(conclusion,/未比较|未完成/);
   assert.doesNotMatch(conclusion,/数据一致性结果|无有效候选/);
+});
+
+test('distribution score keeps overall tooltips and shows category analysis in numbered subsections',()=>{
+  const dimensions={consistency:{label:'数据一致性',score:96.4},diversity:{label:'数据多样性',score:60}};
+  const score={version:'1.8',dataset_id:null,total:92.76,total_images:100,completed_images:100,observed_images:0,
+    weights:{consistency:.9,diversity:.1},limitations:[],dataset_scores:[],dimensions,items:[
+      {code:'instance_count_mismatch',dimension:'consistency',direction:'标注一致性',label:'少标/多标实例',
+        maximum:100,count:2,denominator:100,ratio:.02,deduction:3.6,pair_count:1,compared_pairs:50,sample_ids:[]},
+      {code:'class_balance',dimension:'diversity',direction:'分布多样性',label:'类别长尾',maximum:40,
+        count:0,denominator:0,ratio:null,deduction:40,scenario:'少数类只有3个实例。',analysis:'类别长尾明显，少数类样本不足。',sample_ids:[],
+        distribution_evidence:[{metric:'category',bucket:'hole',image_count:3,annotation_count:3}]},
+      {code:'instance_geometry',dimension:'diversity',direction:'分布多样性',label:'实例尺寸、比例与面积失衡',maximum:20,deduction:0,
+        analysis:'实例尺寸变化正常，没有覆盖不足。',distribution_evidence:[]},
+      {code:'capture_source',dimension:'diversity',direction:'分布多样性',label:'采集来源失衡',maximum:5,deduction:0,
+        analysis:'本数据集没有登记采集来源。',distribution_evidence:[]},
+      {code:'image_geometry',dimension:'diversity',direction:'分布多样性',label:'图像尺寸与比例失衡',maximum:15,deduction:9,
+        distribution_evidence:[{metric:'image_dimensions',x_range:[120,135],y_range:[100,120],image_count:7}]}]};
+  const heatmap={x_edges:[0,1],y_edges:[0,1],cells:[]};
+  const slice={dataset_id:null,category:null,image_count:100,annotation_count:91,invalid_annotation_count:0,
+    geometry_types:{polygon:91},unannotated_images:9,classes:[{category:'edge',image_count:88,annotation_count:88},
+      {category:'hole',image_count:3,annotation_count:3}],instance_counts:{0:9,1:91},datasets:{scope:100},quality:{},metadata:{},
+    heatmaps:{image_dimensions:heatmap,box_dimensions:heatmap,relative_box_dimensions:heatmap,box_centers:heatmap},
+    histograms:{},summaries:{},area_by_category:[]};
+  const html=render({...report,audit_scope:'consistency',quality_score:score,
+    data_distribution:{dataset_format:'labelme',datasets:['scope'],categories:['edge','hole'],slices:[slice,{...slice,dataset_id:'scope'}],category_area_samples:{}},
+    distribution_analysis:'图像规格接近，主要问题是类别长尾。'});
+  const details=html.split('data-report-section="score"')[1].split('data-report-section="distribution"')[0];
+  assert.match(details,/综合得分系数：数据一致性 0\.9，数据多样性 0\.1/);
+  assert.match(details,/数量：2\/100，计分图对：1\/50/);
+  const plot=details.match(/aria-label="分布多样性扣分[^"]*"/)[0];
+  assert.match(plot,/类别长尾，扣分：40\.0\/40\.0/);
+  assert.doesNotMatch(plot,/hole|图像宽|图像 3 张|标注实例|长尾明显/);
+  const analysis=details.match(/<article[^>]*data-score-rule="class_balance"[^>]*>[\s\S]*?<\/article>/)?.[0];
+  assert.ok(analysis,'图表下方直接显示类别分析与统计明细');
+  assert.match(analysis,/<h4>2\.2\.1 类别长尾<\/h4>/);
+  assert.match(analysis,/<p>类别长尾明显，少数类样本不足。<\/p>/);
+  assert.match(analysis,/<li>hole：图像 3 张，标注实例 3 个<\/li>/);
+  assert.ok(details.indexOf(analysis)>details.indexOf('</figure>',details.indexOf('score-分布多样性')));
+  assert.match(details,/<h4>2\.2\.2 图像尺寸与比例失衡<\/h4>/);
+  assert.doesNotMatch(details,/<details|<summary/);
+  assert.doesNotMatch(details,/data-score-rule="instance_geometry"|data-score-rule="capture_source"|实例尺寸变化正常|没有登记采集来源/);
+  assert.match(plot,/实例尺寸、比例与面积失衡，扣分：0\.0\/20\.0/);
+  assert.match(details,/图像宽 120–135 像素，图像高 100–120 像素：图像 7 张/);
+  assert.doesNotMatch(details,/图像 100 张|标注实例 91 个|类别：2 类|edge：/);
+  const historical=render({...report,audit_scope:'consistency',quality_score:{...score,version:'1.7',items:[{
+    ...score.items[1],distribution_evidence:undefined}]}});
+  assert.match(historical,/类别长尾，扣分：40\.0\/40\.0/);
+  assert.doesNotMatch(historical,/hole：图像|标注实例 91 个/);
+  assert.doesNotMatch(details,/少数类只有3个实例|<img|data-audit-evidence-pairs|共 0/);
+  assert.match(html,/<p>图像规格接近，主要问题是类别长尾。<\/p>/);
 });

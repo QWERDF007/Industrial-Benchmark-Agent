@@ -6,7 +6,7 @@ import {AuditReportDistribution} from './AuditReportDistribution.js';
 import type {AuditRunReport,AuditReportImage} from '../../shared/domain.generated.js';
 import {auditCapabilityLabels,auditCoverageLabels,auditPurposeLabels,auditUsabilityLabels,auditReadinessLabels,auditIssueLabels,auditIssueTypesByFormat,auditConsistencyLabels} from '../../shared/audit.generated.js';
 import {AuditEvidenceGallery} from './AuditEvidenceGallery.js';
-import {AuditReportChart} from './AuditReportChart.js';
+import {AuditOutcomeChart,AuditReportChart} from './AuditReportChart.js';
 import {AuditCaseGallery,auditCaseImages} from './AuditReportCases.js';
 import {AuditEvidenceSection} from './AuditEvidenceSection.js';
 import {AuditReportConsistency} from './AuditReportConsistency.js';
@@ -45,10 +45,8 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
         {!!sources.length&&<>已有的一致性检查对 {compared} 张图像做过跨图比较。</>}</p>}
       <div className="iad-chart-pair">
         {report.quality_score&&<AuditScoreSummary score={report.quality_score}/>}
-        <AuditReportChart kind="outcomes" title="本轮审计结果" unit="张" rows={[
-          {label:'审计正常',value:stats?.normal_images??report.distribution.normal??0,tone:'success'},
-          {label:'发现疑点',value:report.suspect_samples,tone:'warning'},
-          ...(report.audit_scope==='consistency'?[]:[{label:'未完成',value:report.total_samples-report.audited_samples,tone:'muted' as const}])]}/>
+        <AuditOutcomeChart title="本轮审计结果" normal={stats?.normal_images??report.distribution.normal??0}
+          suspect={report.suspect_samples} incomplete={report.audit_scope==='consistency'?undefined:report.total_samples-report.audited_samples}/>
       </div>
     </AuditReportSection>
     {report.quality_score&&<AuditReportScore report={report} imageUrl={imageUrl}/>}
@@ -58,12 +56,12 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
       {stats?stats.suspect_images>0?<p>有 {stats.suspect_images} 张图像需要复核，共 {stats.issue_occurrences} 处。
         {stats.suspect_rate_among_completed!==null&&<>占已完成图像的 {(100*stats.suspect_rate_among_completed).toLocaleString('zh-CN',{maximumFractionDigits:2})}%。</>}</p>
         :<p>本次已完成的图像检查中，没有发现需要保留的标注疑点。</p>:<p>本作业尚无质量汇总统计。</p>}
-      {!!stats?.issue_occurrences&&<AuditReportChart kind="issues" title="需要复核的问题" unit="项"
+      {!!stats?.issue_occurrences&&<AuditReportChart kind="issues" title="待复核问题数量" unit="项"
         rows={kinds.map(kind=>({label:auditIssueLabels[kind],value:stats.issue_types[kind]?.occurrences??0}))}/>}
       {qualityCases.map((item,index)=><article className="iad-audit-discovery" key={item.case_id}>
         <AuditEvidenceSection content={{number:auditReportSections.quality.prefix+(index+1),title:item.title,description:item.observation,
           galleries:[{title:'图像证据',images:auditCaseImages(report,[item.case_id])}],
-          analysis:[{title:'跨图对照',text:item.comparison},{title:'复核重点',text:item.significance}]}} imageUrl={imageUrl}/>
+          analysis:[{title:'图像对比分析',text:item.comparison},{title:'复核重点',text:item.significance}]}} imageUrl={imageUrl}/>
       </article>)}
       {!!report.review_priorities.length&&<><AuditReportHeading level={3} number={auditReportSections.quality.prefix+(qualityCases.length+1)}>复核重点</AuditReportHeading><ul>{report.review_priorities.map((item,index)=><li key={index}>{item}</li>)}</ul></>}
     </AuditReportSection>
@@ -80,8 +78,8 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
     <AuditReportSection section="independence"><p>{report.independence_analysis}</p>
       {profile&&<dl className="iad-report-data">{Object.entries(profile.metadata).filter(([,item])=>item.covered_images>0).map(([key,item])=><div key={key}>
         <dt>{auditMetadataLabels[key]}</dt><dd>{item.distinct_count} 种登记值，覆盖 {item.covered_images} / {profile.total_images} 张图像</dd></div>)}
-        {profile.strict_duplicate_groups!==null&&<div><dt>严格重复</dt><dd>{profile.strict_duplicate_groups} 组，涉及 {profile.strict_duplicate_images} 张图像</dd></div>}
-        {profile.near_candidate_pairs>0&&<div><dt>相近候选</dt><dd>{profile.near_candidate_pairs} 对</dd></div>}
+        {profile.strict_duplicate_groups!==null&&<div><dt>完全一致图像</dt><dd>{profile.strict_duplicate_groups} 组，涉及 {profile.strict_duplicate_images} 张图像</dd></div>}
+        {profile.near_candidate_pairs>0&&<div><dt>相似图像候选</dt><dd>{profile.near_candidate_pairs} 对</dd></div>}
       </dl>}
     </AuditReportSection>
     <AuditReportSection section="capabilities">
@@ -94,7 +92,7 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
         {!!topic.missing_conditions.length&&<p>{topic.missing_conditions.join('；')}</p>}
       </article>)}
       {!!capabilityTopics.length&&report.capabilities.some(item=>item.coverage_status==='not_observed')&&<>
-        <AuditReportHeading level={3} number={auditReportSections.capabilities.prefix+(capabilityTopics.length+1)}>尚缺的能力场景或评测证据</AuditReportHeading><ul>{report.capabilities.filter(item=>item.coverage_status==='not_observed').map(item=>
+        <AuditReportHeading level={3} number={auditReportSections.capabilities.prefix+(capabilityTopics.length+1)}>尚未覆盖的能力场景</AuditReportHeading><ul>{report.capabilities.filter(item=>item.coverage_status==='not_observed').map(item=>
           <li key={item.tag}>{auditCapabilityLabels[item.tag]}：{item.reason}</li>)}</ul></>}
       {!capabilityTopics.length&&report.capabilities.map((item,index)=><article className="iad-audit-discovery" key={item.tag}>
         <AuditReportHeading level={3} number={auditReportSections.capabilities.prefix+(index+1)}>{auditCapabilityLabels[item.tag]}</AuditReportHeading>
@@ -109,14 +107,14 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
         <AuditReportHeading level={3} number={auditReportSections.usability.prefix+(index+1)}>{auditPurposeLabels[item.purpose]}</AuditReportHeading>
         <p><span className="iad-audit-status" data-status={item.status}>{auditUsabilityLabels[item.status]}</span></p><p>{item.reason}</p>
       </article>)}
-      {profile?.benchmark&&<><AuditReportHeading level={3} number={auditReportSections.usability.prefix+(report.usability.length+1)}>已有评测成果</AuditReportHeading>
+      {profile?.benchmark&&<><AuditReportHeading level={3} number={auditReportSections.usability.prefix+(report.usability.length+1)}>评测集准备情况</AuditReportHeading>
         <p>划分覆盖本次审计 {profile.benchmark.covered_images} / {profile.total_images} 张图像，
           {profile.benchmark.source_matches_scope?'与审计范围一致。':'成果范围与审计范围不同。'}</p>
         {Object.entries(profile.benchmark.readiness).map(([key,track],index)=><section key={key}>
           <AuditReportHeading level={4} number={auditReportSections.usability.prefix+(report.usability.length+1)+'.'+(index+1)}>{track.track_name}</AuditReportHeading><p>{auditReadinessLabels[track.status.toLowerCase() as keyof typeof auditReadinessLabels]}</p><p>{track.reason}</p>
         </section>)}
       </>}
-      {!!report.limitations.length&&<><AuditReportHeading level={3} number={auditReportSections.usability.prefix+(report.usability.length+1+(profile?.benchmark?1:0))}>当前缺失条件</AuditReportHeading>{report.limitations.map((item,index)=><p key={index}>{item}</p>)}</>}
+      {!!report.limitations.length&&<><AuditReportHeading level={3} number={auditReportSections.usability.prefix+(report.usability.length+1+(profile?.benchmark?1:0))}>仍需补齐的条件</AuditReportHeading>{report.limitations.map((item,index)=><p key={index}>{item}</p>)}</>}
     </AuditReportSection>
     <AuditReportKnowledge report={report} imageUrl={imageUrl}/></>}
   </article>;

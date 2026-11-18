@@ -137,7 +137,7 @@ class RegistrationImages:
                     regions = annotation_views(sample, record.annotations, deduplicate=not preserve_annotation_instances)
                     required = {item.annotation_id for item in record.annotations if not item.is_ignored}
                     if required != {origin.annotation_id for region in regions for origin in region.origins}:
-                        raise ValueError('原始标注无法生成全部必要的10%局部，不能跳过审核')
+                        raise ValueError('原始标注无法生成全部必要的局部裁图，不能跳过审核')
                 else:
                     regions = [region for region in self.images.plan(sample, record.annotations, [])
                         if any(origin.annotation_id is not None for origin in region.origins)]

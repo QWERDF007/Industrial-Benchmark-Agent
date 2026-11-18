@@ -19,8 +19,11 @@ def identity_response(context, relation, reason):
         'regions': {'same': 'S', 'different': 'D', 'unverified': 'U'}[finding] * len(context['windows']),
         'unmapped_regions': {
             window['ref']: {'observation': '实际局部无法可靠对应。'} for window in context['unmapped_regions']},
-        'details': [{'refs': [window['ref']], 'observation': '两图对应位置的纹理不同。' if finding == 'different' else '该处细节不足，无法确认两图相同。'}
-            for window in context['windows'] if finding != 'same'],
+        'details': [{'refs': [window['ref']], 'observation': {
+            'same': '两侧纹理块和相邻细线的形状、位置一一对应。',
+            'different': '两图对应位置的纹理不同。',
+            'unverified': '该处细节不足，无法确认两图相同。'}[finding]}
+            for window in context['windows']],
         'limitations': []}
 
 
@@ -87,7 +90,7 @@ def similar_job(dataset, tmp_path, request):
 
 
 @pytest.mark.parametrize('similar_job', ['original_resolution','limited_resolution'], indirect=True)
-def test_identity_sends_originals_and_only_ten_percent_annotation_crops(similar_job):
+def test_identity_preserves_originals_and_large_annotation_context(similar_job):
     import base64
     import io
 
@@ -148,7 +151,7 @@ def test_nonidentical_candidates_use_annotations_without_quality_labels_or_paths
     assert state.completed
     assert len(generated) >= 2
     if relation == 'unverified':
-        assert any(pair.main_window == (8,8,32,32) or pair.candidate_window == (8,8,32,32)
+        assert any(pair.main_window == (0,0,100,100) or pair.candidate_window == (0,0,100,100)
             for gate in state.gates for pair in gate.region_pairs)
         assert all(pair.mapping == 'unverified' for gate in state.gates if gate.source == 'vision' for pair in gate.region_pairs)
     assert sum(gate.gate_status == 'eligible' for gate in state.gates) == 1
@@ -305,7 +308,7 @@ def test_identity_rejects_one_different_local_window_despite_matching_overview(s
         sent.append(context)
         answer=identity_response(context,'transformed_same_content','整图轮廓和局部纹理对应。')
         for index, window in enumerate(context['windows']):
-            if window['main_window']==[8,8,32,32]:
+            if window['main_window']==[0,0,100,100]:
                 answer['regions'] = answer['regions'][:index] + 'D' + answer['regions'][index + 1:]
                 answer['details'].append({'refs': [window['ref']], 'observation': '一侧对应位置新增黑点，另一侧没有。'})
                 answer['summary'] = '局部新增黑点。'
@@ -395,7 +398,7 @@ def test_tiny_identity_regions_keep_original_pixels_and_are_delivered_as_adjacen
                 if 'window_index' in group:
                     metadata = json.loads(content[index + 1]['text'].removeprefix('图像视图：'))
                     image = Image.open(io.BytesIO(base64.b64decode(content[index + 2]['image_url']['url'].split(',', 1)[1])))
-                    assert image.size == (24,24)
+                    assert image.size == (100,100)
                     assert metadata['sent_size'] == list(image.size)
         paired = [(group['window_index'], group['side']) for group in groups if 'window_index' in group]
         assert paired == [(window['window_index'], side) for window in sorted([*context['windows'],*context['unmapped_regions']],key=lambda item:item['window_index']) for side in ('main', 'candidate') if window[side+'_media_id'] is not None]

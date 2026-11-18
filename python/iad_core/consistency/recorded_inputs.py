@@ -76,7 +76,7 @@ class RecordedModelInputs:
                 actual = context['annotations'][side]
                 expected = [
                     annotation.model_dump(
-                        mode='json', include={'annotation_type', 'raw_label', 'bbox', 'is_ignored'}
+                        mode='json', include={'annotation_type', 'raw_label', 'bbox', 'polygon', 'is_ignored'}
                     )
                     for annotation in annotations
                 ]

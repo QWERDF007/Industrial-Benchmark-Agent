@@ -9,6 +9,21 @@ import {randomUUID} from 'node:crypto';
 import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/index.js';
 import {createAuditAgentHost} from './fixtures/audit-agent-host.js';
 
+function sendSummary(res,input) {
+  const result={conclusion:input.context.problem_groups.length?'同内容图像具有不同整图标签。':'本次未发现标注冲突。',
+    consistency_analysis:input.context.problem_groups.length?'上游记录存在整图标签冲突。':'图像标注没有冲突。',
+    distribution_analysis:'图像尺寸一致。',
+    analyses:input.context.problem_groups.map(g=>({issue_type:g.issue_type,analysis:'正常与异常目录中的同内容图像标签冲突。'})),
+    consistency_reviews:input.context.consistency_scoring.flatMap(scope=>scope.items.map(item=>({
+      scope_id:scope.scope_id,code:item.code,coefficient:1,evidence_refs:[item.ref],analysis:'不同标签会直接影响识别。'}))),
+    distribution_reviews:input.context.distribution_facts.flatMap(scope=>Object.entries(scope.axes).map(([axis,facts])=>({
+      scope_id:scope.scope_id,axis,status:facts.base_deduction>0?'problem':facts.metrics.length?'normal':'not_applicable',
+      coefficient:facts.base_deduction>0?1:null,grouping:'当前范围按真实统计评价。',
+      evidence_refs:[facts.ref],analysis:'当前范围未见明显失衡。'})))};
+  res.writeHead(200,{'content-type':'text/event-stream'});
+  res.end('data: '+JSON.stringify({id:'summary',choices:[{index:0,delta:{role:'assistant',content:JSON.stringify(result)},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');
+}
+
 test('consistency scope makes one text-only request for problems and exports frozen paired report',{timeout:60000},async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-scope-'));
   const wire=[];
@@ -21,10 +36,7 @@ test('consistency scope makes one text-only request for problems and exports fro
     const input=JSON.parse(body.messages.at(-1).content);
     assert.deepEqual(input.context.problem_groups.map(g=>g.issue_type),['image_label_mismatch']);
     assert.ok(!JSON.stringify(input).includes('NO_CANDIDATES'));
-    const result={conclusion:'同内容图像具有不同整图标签。',consistency_analysis:'上游记录存在整图标签冲突。',
-      analyses:[{issue_type:'image_label_mismatch',analysis:'正常与异常目录中的同内容图像标签冲突。'}]};
-    res.writeHead(200,{'content-type':'text/event-stream'});
-    res.end('data: '+JSON.stringify({id:'summary',choices:[{index:0,delta:{role:'assistant',content:JSON.stringify(result)},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');
+    sendSummary(res,input);
   });
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   let runtime;
@@ -45,7 +57,10 @@ test('consistency scope makes one text-only request for problems and exports fro
     assert.equal(report.statistics.normal_images,1);
     assert.deepEqual(report.distribution,{suspect:2,normal:1});
     assert.equal(report.evidence_pairs['consistency:image_label_mismatch'].length,1);
-    assert.deepEqual(report.quality_score.weights,{consistency:1});
+    assert.ok(Math.abs(report.quality_score.weights.consistency-.9)<1e-12);
+    assert.ok(Math.abs(report.quality_score.weights.diversity-.1)<1e-12);
+    assert.equal(report.quality_score.dimensions.consistency.score,0);
+    assert.equal(report.quality_score.dimensions.diversity.score,100);
     const html=await runtime.bridge.execute('audit_job_export',{run_id:job.run_id});
     assert.ok(html.html.includes('data:image/png;base64,'));
     assert.ok(html.html.includes('上游记录存在整图标签冲突'));
@@ -54,13 +69,17 @@ test('consistency scope makes one text-only request for problems and exports fro
   }
 });
 
-test('consistency scope with no problems completes without creating a model session',{timeout:60000},async()=>{
+test('consistency scope with no annotation problems still obtains a model distribution assessment',{timeout:60000},async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-empty-scope-'));
+  let calls=0;
+  const server=http.createServer(async(req,res)=>{const chunks=[];for await(const chunk of req)chunks.push(chunk);
+    calls++;sendSummary(res,JSON.parse(JSON.parse(Buffer.concat(chunks).toString()).messages.at(-1).content));});
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
   let runtime;
   try{
     const source=JSON.parse(execFileSync(resolvePythonPath(),['apps/iad-harness/test/fixtures/audit_dataset.py',root,path.join(root,'audit.db'),'none','http://127.0.0.1:9/v1'],
       {cwd:findWorkspaceRoot(),env:{...process.env,PYTHONPATH:'python'},encoding:'utf8'}));
-    runtime=await createAuditAgentHost(root,'http://127.0.0.1:9/v1');
+    runtime=await createAuditAgentHost(root,`http://127.0.0.1:${server.address().port}/v1`);
     await runtime.bridge.execute('module_settings_save',{module:'audit',expected_revision:1,settings:{audit_scope:'consistency'}});
     const job=await runtime.scheduler.start({submission_id:randomUUID(),subset_ids:[source.dataset_id],consistency_job_id:source.consistency_job_id});
     await runtime.scheduler.whenIdle();
@@ -69,9 +88,9 @@ test('consistency scope with no problems completes without creating a model sess
     assert.equal(report.quality_score.total,100);
     assert.equal(report.statistics.normal_images,report.total_samples);
     assert.deepEqual(report.distribution,{suspect:0,normal:report.total_samples});
-    assert.equal(report.report_session_id,null);
-    assert.equal((await runtime.bridge.execute('audit_agent_report_state',{run_id:job.run_id})).session_created,false);
-  }finally{await runtime?.dispose();await fs.rm(root,{recursive:true,force:true});}
+    assert.ok(report.report_session_id);assert.equal(calls,1);
+    assert.equal((await runtime.bridge.execute('audit_agent_report_state',{run_id:job.run_id})).session_created,true);
+  }finally{await runtime?.dispose();await new Promise(resolve=>server.close(resolve));await fs.rm(root,{recursive:true,force:true});}
 });
 
 test('cancelling a text analysis retains the job and its cancelled report',{timeout:60000},async()=>{

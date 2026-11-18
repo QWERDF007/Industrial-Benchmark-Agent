@@ -220,13 +220,13 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     await driver.wait(async () => (await cards()).length === 3, 5000);
     await (await element('.iad-jobs-table button[title="统计"]')).click();
     phase = 'statistics';
-    await element('.dc-stats-drawer');
+    await element('dialog[aria-label="标注冲突统计"]');
     const categoryDescription=await(await element('[data-chart="stat-category"] .iad-chart-plot')).getAttribute('aria-label');
     assert.match(categoryDescription,/多标，图组（组）：1/);
     assert.match(categoryDescription,/少标，图组（组）：1/);
     assert.match(await(await element('[data-chart="stat-agreement"] .iad-chart-plot')).getAttribute('aria-label'),/一致，图组（组）：2/);
     assert.equal((await driver.findElements(By.css('select[aria-label="按统计结果筛选"]'))).length,0);
-    assert.equal((await driver.findElements(By.css('.dc-stats-drawer [data-chart-type="bar"]'))).length,3);
+    assert.equal((await driver.findElements(By.css('dialog[aria-label="标注冲突统计"] [data-chart-type="bar"]'))).length,3);
     await (await element('button[aria-label="关闭标注冲突统计"]')).click();
     await driver.wait(async()=>(await cards()).length===3,5000);
     await (await element('[data-dc="raw-tab"][data-id="images"]')).click();

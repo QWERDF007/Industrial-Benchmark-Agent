@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
 
-from iad_core.audit.quality_models import AuditScoreWeights, AuditScope
+from iad_core.audit.quality_models import AuditScoreWeights, AuditScope, ConsistencyScoreWeights
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.consistency.models import ConsistencyRetrievalSettings
 from iad_core.consistency.position import PositionTolerancePolicy
@@ -44,6 +44,7 @@ class KnowledgeSettingsValues(AnalysisSamplingSettingsValues):
 class AuditSettingsValues(ModuleSettingsValues):
     audit_scope: AuditScope = 'full'
     quality_score_weights: AuditScoreWeights = Field(default_factory=AuditScoreWeights)
+    consistency_score_weights: ConsistencyScoreWeights = Field(default_factory=ConsistencyScoreWeights)
     whole_image_max_side: ModelImageMaxSide = None
     batch_size: int = Field(default=8, ge=1, strict=True)
     concurrency: JobConcurrency = 2

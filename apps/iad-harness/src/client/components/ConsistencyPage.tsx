@@ -269,7 +269,9 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
 
         {/* Results Section */}
         <section className="dc-section dc-results-section">
-          <SectionHeading title="标注冲突" />
+          <SectionHeading title="标注冲突">{selectedJob?.consistency_check_version===1&&<Button disabled={selectedJob.status!=='COMPLETED'||!Object.entries(images.counts)
+            .some(([key,count])=>count>0&&!['images',...Object.keys(consistencyImageGroups)].includes(key))}
+            onClick={()=>window.location.assign(`/api/iad/consistency/checks/${encodeURIComponent(selectedJob.run_id)}/conflicts.zip`)}>导出</Button>}</SectionHeading>
           <div className="dc-results-body">
 
           {!selectedJob ? (

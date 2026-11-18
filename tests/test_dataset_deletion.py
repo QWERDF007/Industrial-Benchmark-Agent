@@ -349,3 +349,109 @@ def test_deleted_corpus_cannot_be_reintroduced_by_a_stale_batch_plan(dataset):
     with pytest.raises(ConsistencyError, match='数据集'):
         BatchRepository(db).save(plan)
     assert BatchRepository(db).recent() == []
+
+
+def test_delete_removes_cancelled_consistency_workflow_with_frozen_anchor_evidence(indexed_dataset):
+    from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+    from iad_core.workbench.runtime import WorkbenchRuntime
+
+    db, registry, config = indexed_dataset
+    sources = {path: path.read_bytes() for root in (config.root, config.annotations.root)
+        for path in Path(root).rglob('*') if path.is_file()}
+    runtime = WorkbenchRuntime(db)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact'})
+        for anchor in checks.anchors(job['run_id']):
+            candidates = checks.retrieve(job['run_id'], anchor.anchor_id)
+            if candidates.candidates:
+                ConsistencyAgentEvidence(runtime).freeze(job['run_id'], anchor.anchor_id, checkpoint=lambda: None)
+        checks.cancel(job['run_id'])
+        with db.connection() as conn:
+            assert conn.execute('SELECT count(*) FROM consistency_anchor_evidence').fetchone()[0] > 0
+            conn.execute('''INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json)
+                VALUES('owned-child','child-task','IMAGE_INDEX','COMPLETED',?)''',
+                (json.dumps({'parent_run_id': job['run_id']}),))
+        assert dataset_delete({'dataset_id': config.dataset.id}, db.db_path) == {'deleted_dataset_id': config.dataset.id}
+        assert dataset_list({}, db.db_path)['datasets'] == []
+        with db.connection() as conn:
+            for table in ('job_runs', 'consistency_anchor_runs', 'consistency_anchor_evidence', 'consistency_results'):
+                assert conn.execute(f'SELECT count(*) FROM {table}').fetchone()[0] == 0, table
+            assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+        assert all(path.read_bytes() == content for path, content in sources.items())
+    finally:
+        runtime.close()
+
+
+def test_delete_corpus_removes_consistency_workflow_and_preserves_subject_dataset(indexed_dataset, tmp_path):
+    from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+    from iad_core.duplicate.index import PixelIndex
+    from iad_core.workbench.runtime import WorkbenchRuntime
+
+    db, registry, config = indexed_dataset
+    directory = tmp_path / 'subjects'
+    directory.mkdir()
+    Image.open(Path(config.root) / 'dent.png').save(directory / 'subject.png')
+    subject = registry.import_dataset({'format': 'labelme', 'name': '检查集',
+        'image_dir': str(directory), 'annotation_dir': str(directory)})
+    sample_id = subject.dataset.id + ':subject.png'
+    PixelIndex(db).prepare([sample_id])
+    runtime = WorkbenchRuntime(db)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [subject.dataset.id], 'mode': 'exact',
+            'corpus_scope': {'kind': 'datasets', 'dataset_ids': [config.dataset.id]}})
+        assert checks.retrieve(job['run_id'], sample_id).candidates
+        ConsistencyAgentEvidence(runtime).freeze(job['run_id'], sample_id, checkpoint=lambda: None)
+        with pytest.raises(ValueError, match='作业'):
+            dataset_delete({'dataset_id': config.dataset.id}, db.db_path)
+        assert registry.get(config.dataset.id).dataset.id == config.dataset.id
+        checks.cancel(job['run_id'])
+        dataset_delete({'dataset_id': config.dataset.id}, db.db_path)
+        assert registry.get(subject.dataset.id).dataset.name == '检查集'
+        with db.connection() as conn:
+            assert conn.execute('SELECT count(*) FROM job_runs WHERE job_id=?', (job['run_id'],)).fetchone()[0] == 0
+            assert conn.execute('SELECT count(*) FROM samples WHERE dataset_id=?', (subject.dataset.id,)).fetchone()[0] == 1
+            assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+        assert (directory / 'subject.png').is_file()
+    finally:
+        runtime.close()
+
+
+def test_existing_consistency_workflow_scopes_are_reindexed_before_dataset_deletion(indexed_dataset):
+    from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+    from iad_core.storage.database import Database
+    from iad_core.workbench.runtime import WorkbenchRuntime
+
+    db, _, config = indexed_dataset
+    runtime = WorkbenchRuntime(db)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact'})
+        for anchor in checks.anchors(job['run_id']):
+            if checks.retrieve(job['run_id'], anchor.anchor_id).candidates:
+                ConsistencyAgentEvidence(runtime).freeze(job['run_id'], anchor.anchor_id, checkpoint=lambda: None)
+        checks.cancel(job['run_id'])
+    finally:
+        runtime.close()
+    with db.connection() as conn:
+        conn.execute('DROP VIEW job_dataset_scopes_source')
+        conn.execute('''CREATE VIEW job_dataset_scopes_source AS SELECT job_id source_id,
+            json_extract(request_json,'$.dataset_id') dataset_id,'direct' kind
+            FROM job_run_requests WHERE json_extract(request_json,'$.dataset_id') IS NOT NULL''')
+        conn.execute("DELETE FROM job_dataset_scopes WHERE kind='consistency'")
+        conn.execute("UPDATE schema_revision SET source_digest='previous-schema'")
+    upgraded = Database(db.db_path)
+    try:
+        with upgraded.connection() as conn:
+            assert conn.execute("SELECT 1 FROM job_dataset_scopes WHERE source_id=? AND dataset_id=? AND kind='consistency'",
+                (job['run_id'], config.dataset.id)).fetchone()
+        dataset_delete({'dataset_id': config.dataset.id}, db.db_path)
+        assert dataset_list({}, db.db_path)['datasets'] == []
+        with upgraded.connection() as conn:
+            assert conn.execute('PRAGMA foreign_key_check').fetchall() == []
+    finally:
+        upgraded.close()

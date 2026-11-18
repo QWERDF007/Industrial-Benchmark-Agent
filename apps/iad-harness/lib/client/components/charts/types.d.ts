@@ -1,4 +1,4 @@
-import type { AuditBoxSummary, AuditHeatmap, AuditHistogram } from '../../../shared/domain.generated.js';
+import type { AuditBoxSummary, AuditHistogram, DistributionHeatmap } from '../../../shared/domain.generated.js';
 export type ChartFormat = 'count' | 'decimal' | 'percent' | 'score';
 export type ChartTone = 'primary' | 'success' | 'warning' | 'danger' | 'muted';
 export interface ChartDatum {
@@ -18,6 +18,15 @@ export interface HistogramSeries {
     label: string;
     data: Pick<AuditHistogram, 'edges' | 'counts'>;
 }
+export interface BoxplotSeries {
+    id: string;
+    label: string;
+    rows: readonly {
+        id: string;
+        label: string;
+        statistics: AuditBoxSummary;
+    }[];
+}
 export type ChartSpec = {
     type: 'bar';
     rows: readonly {
@@ -31,6 +40,7 @@ export type ChartSpec = {
     maximum?: number;
     legendSelectable?: boolean;
     format?: ChartFormat;
+    labelRotation?: number;
 } | {
     type: 'donut';
     rows: readonly ChartDatum[];
@@ -48,18 +58,14 @@ export type ChartSpec = {
     format?: ChartFormat;
 } | {
     type: 'heatmap';
-    data: AuditHeatmap;
+    data: DistributionHeatmap;
     xLabel: string;
     yLabel: string;
     format?: ChartFormat;
     reverseY?: boolean;
 } | {
     type: 'boxplot';
-    rows: readonly {
-        id: string;
-        label: string;
-        statistics: AuditBoxSummary;
-    }[];
+    series: readonly BoxplotSeries[];
     format?: ChartFormat;
 };
 export interface ChartTheme {

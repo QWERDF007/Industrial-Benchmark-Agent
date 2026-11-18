@@ -132,6 +132,11 @@ def consistency_agent_analysis(args, db_path):
     return ConsistencyAgentResults(Database(db_path)).analysis(args['run_id'], args['anchor_id']).model_dump(mode='json')
 
 
+def consistency_conflicts_export(args, db_path):
+    from iad_core.consistency.conflict_export import ConsistencyConflictExport
+    return ConsistencyConflictExport(Database(db_path)).build(args['run_id'])
+
+
 def consistency_agent_export(args, db_path):
     with NamedTemporaryFile(mode='w', encoding='utf-8', prefix='iad-consistency-', suffix='.jsonl', delete=False) as output:
         try:

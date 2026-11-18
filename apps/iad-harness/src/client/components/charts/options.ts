@@ -1,10 +1,23 @@
 import type {EChartsOption} from 'echarts';
-import type {ChartFormat,ChartSpec,ChartTheme} from './types.js';
+import type {BoxplotSeries,ChartFormat,ChartSeries,ChartSpec,ChartTheme} from './types.js';
 
 export function chartNumber(value:number|null,format:ChartFormat='count'):string {
   if(value===null)return '证据不足';
   return value.toLocaleString('zh-CN',format==='percent'?{style:'percent',maximumSignificantDigits:4}
     :format==='score'?{minimumFractionDigits:1,maximumFractionDigits:1}:format==='count'?{maximumFractionDigits:0}:{maximumSignificantDigits:5});
+}
+
+const seriesLabel=({label,unit}:ChartSeries)=>unit?`${label}（${unit}）`:label;
+
+function boxValues({statistics:s}:BoxplotSeries['rows'][number]) {
+  return [s.lower_whisker,s.q25,s.median,s.q75,s.upper_whisker];
+}
+
+function boxReading(row:BoxplotSeries['rows'][number],label:string,format:ChartFormat) {
+  return [row.label,...(label?[label]:[]),...boxValues(row)
+    .map((value,index)=>`${['下箱须','下四分位数','中位数','上四分位数','上箱须'][index]}：${chartNumber(value,format)}`),
+    `离群数量：${chartNumber(row.statistics.outliers.reduce((sum,[,count])=>sum+count,0))}`,
+    `样本数：${chartNumber(row.statistics.count)}`].join('\n');
 }
 
 function distributionSeries(spec:Extract<ChartSpec,{type:'distribution'}>) {
@@ -23,7 +36,7 @@ function distributionSeries(spec:Extract<ChartSpec,{type:'distribution'}>) {
 export function chartReadings(spec:ChartSpec):string[] {
   switch(spec.type){
     case 'bar':return spec.rows.map(row=>row.tooltip??[row.label,...spec.series.map((series,index)=>
-      `${series.label}（${series.unit}）：${chartNumber(row.values[index],spec.format)}`),row.details].filter(Boolean).join('\n'));
+      `${seriesLabel(series)}：${chartNumber(row.values[index],spec.format)}`),row.details].filter(Boolean).join('\n'));
     case 'donut':return [...(spec.center?[`${spec.center.label} ${chartNumber(spec.center.value,spec.format)} ${spec.unit}`]:[]),
       ...spec.rows.map(row=>[row.label,`${spec.format==='score'?'得分':'数量'}（${spec.unit}）：${chartNumber(row.value,spec.format)}`,row.details].filter(Boolean).join('\n'))];
     case 'distribution':{
@@ -32,10 +45,8 @@ export function chartReadings(spec:ChartSpec):string[] {
     }
     case 'heatmap':return spec.data.cells.map(([x,y,value])=>
       `${spec.xLabel} ${chartNumber(spec.data.x_edges[x],spec.format||'decimal')}–${chartNumber(spec.data.x_edges[x+1],spec.format||'decimal')}\n${spec.yLabel} ${chartNumber(spec.data.y_edges[y],spec.format||'decimal')}–${chartNumber(spec.data.y_edges[y+1],spec.format||'decimal')}\n数量：${chartNumber(value)}`);
-    case 'boxplot':return spec.rows.map(row=>[row.label,
-      ...[row.statistics.lower_whisker,row.statistics.q25,row.statistics.median,row.statistics.q75,row.statistics.upper_whisker]
-        .map((value,index)=>`${['下箱须','下四分位数','中位数','上四分位数','上箱须'][index]}：${chartNumber(value,spec.format||'decimal')}`),
-      `离群数量：${chartNumber(row.statistics.outliers.reduce((sum,[,count])=>sum+count,0))}`,`样本数：${chartNumber(row.statistics.count)}`].join('\n'));
+    case 'boxplot':return spec.series.flatMap(series=>series.rows.map(row=>boxReading(row,
+      spec.series.length>1?series.label:'',spec.format||'decimal')));
   }
 }
 
@@ -50,16 +61,17 @@ export function chartOptions(spec:ChartSpec,theme:ChartTheme):EChartsOption {
     tooltip:{renderMode:'richText',confine:true,backgroundColor:theme.surface,borderColor:theme.grid,
       textStyle:{color:theme.ink,fontFamily:theme.font}},
     legend:{textStyle:{color:theme.muted},top:0,type:'scroll'}};
-  if((spec.type==='bar'||spec.type==='boxplot')&&!spec.rows.length)return {...common,legend:{show:false},
+  if((spec.type==='bar'&&!spec.rows.length)||(spec.type==='boxplot'&&!spec.series.some(series=>series.rows.length)))return {...common,legend:{show:false},
     graphic:{type:'text',left:'center',top:'middle',style:{text:'暂无统计数据',fill:theme.muted,fontSize:14,fontFamily:theme.font}},series:[]};
   switch(spec.type){
     case 'bar':return {...common,
       legend:{...common.legend,selectedMode:spec.legendSelectable},
       xAxis:{...axis,type:'category',data:spec.rows.map(row=>row.label),splitLine:{show:false},
-        axisLabel:{...axis.axisLabel,width:110,overflow:'truncate'}},
+        axisLabel:spec.labelRotation===undefined?{...axis.axisLabel,width:110,overflow:'truncate'}
+          :{...axis.axisLabel,interval:0,rotate:spec.labelRotation,hideOverlap:false}},
       yAxis:{...axis,type:'value',min:0,max:spec.maximum,minInterval:spec.format==='score'?.1:1},
       tooltip:{...common.tooltip,trigger:'axis',formatter:params=>chartReadings(spec)[(Array.isArray(params)?params[0]:params).dataIndex]},
-      series:spec.series.map((series,index)=>({type:'bar',name:`${series.label}（${series.unit}）`,barMaxWidth:32,
+      series:spec.series.map((series,index)=>({type:'bar',name:seriesLabel(series),barMaxWidth:32,
         itemStyle:{color:series.tone?theme.tones[series.tone]:theme.palette[index%theme.palette.length],borderRadius:[3,3,0,0]},
         label:{show:true,position:'top',color:theme.ink,formatter:params=>chartNumber(params.value===null?null:Number(params.value),spec.format)},
         data:spec.rows.map(row=>({id:row.id,value:row.values[index]}))}))};
@@ -113,19 +125,25 @@ export function chartOptions(spec:ChartSpec,theme:ChartTheme):EChartsOption {
           emphasis:{itemStyle:{borderColor:theme.ink,borderWidth:1}}}]};
     }
     case 'boxplot':{
-      const readings=chartReadings(spec);
-      return {...common,legend:{show:false},xAxis:{...axis,type:'category',data:spec.rows.map(row=>row.label)},
-        yAxis:{...axis,type:'value',axisLabel:{...axis.axisLabel,formatter:(value:number)=>chartNumber(value,spec.format||'decimal')}},
+      const format=spec.format||'decimal',multiple=spec.series.length>1;
+      const labels=new Map(spec.series.flatMap(series=>series.rows.map(row=>[row.id,row.label] as const)));
+      const categories=[...labels.keys()].sort((a,b)=>labels.get(a)!.localeCompare(labels.get(b)!,'zh-CN',{numeric:true}));
+      const positions=new Map(categories.map((id,index)=>[id,index]));
+      const color=(index:number)=>theme.palette[index%theme.palette.length];
+      return {...common,legend:{show:false},xAxis:{...axis,type:'category',data:categories,
+          axisLabel:{...axis.axisLabel,formatter:(id:string)=>labels.get(id)??id}},
+        yAxis:{...axis,type:'value',axisLabel:{...axis.axisLabel,formatter:(value:number)=>chartNumber(value,format)}},
         tooltip:{...common.tooltip,formatter:params=>{
           const item=Array.isArray(params)?params[0]:params;
-          if(item.seriesIndex===1)return item.name;
-          return readings[item.dataIndex];
+          const series=spec.series[item.seriesIndex!];
+          return series?boxReading(series.rows[item.dataIndex],multiple?series.label:'',format):item.name;
         }},
-        series:[{type:'boxplot',data:spec.rows.map(row=>({id:row.id,value:[row.statistics.lower_whisker,row.statistics.q25,
-          row.statistics.median,row.statistics.q75,row.statistics.upper_whisker]})),
-          itemStyle:{color:theme.surface,borderColor:theme.tones.primary,borderWidth:2}},
-          {type:'scatter',symbolSize:7,data:spec.rows.flatMap((row,index)=>row.statistics.outliers.map(([value,count])=>({
-            value:[index,value],name:`${row.label}\n${chartNumber(value,spec.format||'decimal')}，${count} 个`}))),itemStyle:{color:theme.tones.warning}}]};
+        series:[...spec.series.map((series,index)=>({type:'boxplot' as const,id:series.id,encode:{x:0,y:[1,2,3,4,5]},
+          data:series.rows.map(row=>({id:row.id,value:[positions.get(row.id)!,...boxValues(row)]})),
+          itemStyle:{color:theme.surface,borderColor:color(index),borderWidth:2}})),
+          {type:'scatter',symbolSize:7,data:spec.series.flatMap((series,index)=>series.rows.flatMap(row=>row.statistics.outliers.map(([value,count])=>({
+            value:[positions.get(row.id)!,value],name:[row.label,...(multiple?[series.label]:[]),`${chartNumber(value,format)}，${chartNumber(count)} 个`].join('\n'),
+            itemStyle:{color:multiple?color(index):theme.tones.warning}}))))}]};
     }
   }
 }

@@ -151,7 +151,12 @@ def audit_agent_report_session_created(args, db_path):
 
 
 def audit_agent_report_statistics(args, db_path):
-    return AuditReports(Database(db_path)).statistics(args['run_id']).model_dump(mode='json')
+    from iad_core.audit.quality_reports import AuditQualityReports
+    db = Database(db_path)
+    result = AuditReports(db).statistics(args['run_id']).model_dump(mode='json')
+    if args.get('scoring'):
+        result['consistency_scoring'] = AuditQualityReports(db).consistency_context(args['run_id'])
+    return result
 
 
 def audit_agent_quality_score(args, db_path):
@@ -162,9 +167,16 @@ def audit_agent_quality_score(args, db_path):
 
 def audit_agent_distribution(args, db_path):
     from iad_core.audit.distribution import AuditDistributions
-    from iad_core.audit.distribution_models import AuditDistributionQuery
-    return AuditDistributions.for_run(Database(db_path), args['run_id']).view(
-        AuditDistributionQuery.model_validate(args.get('query', {}))).model_dump(mode='json')
+    from iad_core.audit.distribution_models import AuditDistributionQuery, AuditDistributionToolQuery
+    query = AuditDistributionToolQuery.model_validate(args.get('query', {}))
+    if query.scoring:
+        from iad_core.audit.distribution_scoring import AuditDistributionScoring
+        facts = AuditDistributionScoring(AuditState(Database(db_path)).snapshot(args['run_id']).manifest).context()
+        from iad_core.dataset.registry import DatasetRegistry
+        return {'dataset_names': {sid: DatasetRegistry(Database(db_path)).get(sid).dataset.name
+            for sid in AuditState(Database(db_path)).snapshot(args['run_id']).manifest.dataset_ids},
+            'scopes': [scope for scope in facts if query.dataset_id is None or scope['scope_id'] == query.dataset_id]}
+    return AuditDistributions.for_run(Database(db_path), args['run_id']).view(AuditDistributionQuery.model_validate(query.model_dump(exclude={'scoring'}))).model_dump(mode='json')
 
 
 def audit_agent_report_records(args, db_path):

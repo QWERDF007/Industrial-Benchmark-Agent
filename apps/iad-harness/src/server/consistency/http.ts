@@ -7,11 +7,11 @@ import type {PythonBridge} from '../python-bridge/index.js';
 export class ConsistencyHttpQueries {
   constructor(private readonly bridge: PythonBridge) {}
 
-  async export(res: ServerResponse, runId: string): Promise<void> {
-    const artifact = await this.bridge.execute<{path: string; filename: string}>('consistency_agent_export', {run_id: runId});
+  async export(res: ServerResponse, runId: string, conflicts=false): Promise<void> {
+    const artifact = await this.bridge.execute<{path: string; filename: string}>(conflicts?'consistency_conflicts_export':'consistency_agent_export', {run_id: runId});
     try {
       const stat = await fsp.stat(artifact.path);
-      res.writeHead(200, {'Content-Type': 'application/x-ndjson; charset=utf-8', 'Content-Length': stat.size,
+      res.writeHead(200, {'Content-Type': conflicts?'application/zip':'application/x-ndjson; charset=utf-8', 'Content-Length': stat.size,
         'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(artifact.filename)}`, 'Cache-Control': 'no-store'});
       await pipeline(fs.createReadStream(artifact.path), res);
     } finally {

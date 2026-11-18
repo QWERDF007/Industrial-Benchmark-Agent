@@ -9,6 +9,7 @@ import {AuditEvidenceGallery} from './AuditEvidenceGallery.js';
 import {AuditEvidenceSection} from './AuditEvidenceSection.js';
 import {auditScoreItemDetails} from '../audit-score-item.js';
 import {useAuditReportSections} from '../audit-report.js';
+import {consistencyScoreReading,distributionScoreReading,distributionScoreDetails} from '../distribution-score-reading.js';
 import {MultiSelect} from './Select.js';
 
 function scoreDonut(score:QualityScore):ChartSpec {
@@ -60,31 +61,30 @@ function ScoreSummaryScope({report,overall}:{report:AuditRunReport;overall:Quali
   return <>
     <AuditScoreSummary score={score} controls={controls} panels={scores.length>1?scores.map(({label,score})=>({label,spec:scoreDonut(score)})):undefined}/>
     {score&&<p>评分覆盖 {score.completed_images} / {score.total_images} 张{report.audit_scope!=='consistency'&&<>，场景归类 {score.observed_images} 张</>}。
-      综合得分系数：{Object.entries(score.weights).map(([key,weight])=>`${score.dimensions[key].label} ${chartNumber(weight,'percent')}`).join('，')}。</p>}
+      综合得分系数：{Object.entries(score.weights).map(([key,weight])=>`${score.dimensions[key].label} ${chartNumber(weight,'decimal')}`).join('，')}。</p>}
   </>;
 }
 
 function ScoreDirection({report,overall,direction,number,imageUrl}:{report:AuditRunReport;overall:QualityScore;
   direction:string;number:string;imageUrl(item:AuditReportImage):string}) {
   const {scores,controls}=useScoreScope(overall,report.dataset_names);
+  const statistical=direction==='分布多样性';
   const views=scores.map(({label,score})=>{
     const items=score.items.filter(item=>item.direction===direction);
     const spec:ChartSpec={type:'bar',format:'score',series:[{label:'扣分',unit:'分',tone:'warning'}],rows:items.map(item=>{
       const row={id:item.code,label:item.label,values:[item.deduction]};
-      if(item.dimension==='consistency')return {...row,tooltip:[item.label,
-        `扣分：${chartNumber(item.deduction,'score')}/100`,`数量：${item.count}/${item.denominator}`,
-        `百分比：${chartNumber(item.ratio,'percent')}`].join('\n')};
-      const details=auditScoreItemDetails(item,score.items);
-      return {...row,details:[details.scenarioTitle,details.analysis,
-        `扣分上限 ${chartNumber(item.maximum,'score')} 分`].filter(Boolean).join('\n')};
+      if(statistical)return {...row,tooltip:distributionScoreReading(item)};
+      return {...row,tooltip:consistencyScoreReading(item)};
     })};
     return {label,score,items,spec};
   });
-  const details=views.flatMap(view=>view.items.filter(item=>item.dimension!=='consistency'&&(item.dimension!=='diversity'||item.deduction!==0||item.suppressed_by))
+  const details=views.flatMap(view=>view.items.filter(item=>statistical
+    ?(item.deduction??0)>0&&Boolean(item.analysis||item.distribution_evidence?.length)
+    :item.dimension!=='consistency'&&(item.dimension!=='diversity'||item.deduction!==0||item.suppressed_by))
     .map(item=>({item,view})));
   return <section>
     <AuditReportHeading level={3} number={number}>{direction}</AuditReportHeading>
-    {views.some(view=>view.items.some(item=>item.dimension!=='consistency'))&&<p>{details.length?'下图展示各评分项的扣分，具体统计与说明见下方分项。':'本组未发现需要扣分的覆盖问题。'}</p>}
+    {!statistical&&views.some(view=>view.items.some(item=>item.dimension!=='consistency'))&&<p>{details.length?'下图展示各评分项的扣分，具体统计与说明见下方分项。':'本组未发现需要扣分的覆盖问题。'}</p>}
     <Chart id={`score-${direction}`} title={`${direction}扣分`} controls={controls}
       spec={views.length===1?views[0].spec:null} panels={views.length>1?views:undefined}/>
     {views.map(({label,score,items})=>{
@@ -93,7 +93,16 @@ function ScoreDirection({report,overall,direction,number,imageUrl}:{report:Audit
         ?<p key={score.dataset_id??''}>{views.length>1?label+'，':''}{dimension.label}得分 {dimension.score===null?'证据不足':chartNumber(dimension.score,'score')+' 分'}。</p>:null;
     })}
     {details.map(({item,view},itemIndex)=>{
-      const details=auditScoreItemDetails(item,view.score.items),itemNumber=number+'.'+(itemIndex+1);
+      const itemNumber=number+'.'+(itemIndex+1);
+      if(statistical){
+        const statistics=distributionScoreDetails(item,report);
+        return <article className="iad-audit-discovery" data-score-rule={item.code} key={`${view.score.dataset_id}:${item.code}`}>
+          <AuditReportHeading level={4} number={itemNumber}>{views.length>1?view.label+' / ':''}{item.label}</AuditReportHeading>
+          {item.analysis&&<p>{item.analysis}</p>}
+          {!!statistics.length&&<ul>{statistics.map((reading,index)=><li key={index}>{reading}</li>)}</ul>}
+        </article>;
+      }
+      const details=auditScoreItemDetails(item,view.score.items);
       const images=report.evidence_groups['score:'+(view.score.dataset_id?view.score.dataset_id+':':'')+item.code]??[];
       return <article className="iad-audit-discovery" data-score-rule={item.code} key={`${view.score.dataset_id}:${item.code}`}>
         <AuditReportHeading level={4} number={itemNumber}>{views.length>1?view.label+' / ':''}{item.label}</AuditReportHeading>

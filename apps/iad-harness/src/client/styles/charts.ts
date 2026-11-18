@@ -6,22 +6,24 @@ export const chartStyles=`
 }
 .iad-audit-document{--iad-chart-ink:#172338;--iad-chart-muted:#536174;--iad-chart-grid:#E2E8F0;
  --iad-chart-surface:#fff;--iad-chart-primary:#285ED6;--iad-chart-success:#166344;--iad-chart-warning:#8A4B06;--iad-chart-danger:#B42318}
-.iad-chart{--iba-unified-ink:var(--iad-chart-ink);margin:8px 0 18px;min-width:0;display:grid;align-content:start;gap:10px;break-inside:avoid;color:var(--iad-chart-ink)}
+.iad-chart{--iba-unified-ink:var(--iad-chart-ink);margin:8px 0 18px;min-width:0;display:grid;grid-template-columns:minmax(0,1fr);align-content:start;gap:10px;break-inside:avoid;color:var(--iad-chart-ink)}
 .iad-chart figcaption{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;font-size:16px;font-weight:650;color:var(--iad-chart-ink);line-height:1.6}
 .iad-chart-controls{display:flex;min-width:0;font-size:14px;font-weight:400}
 .iad-chart-controls .iad-multiselect{width:220px;max-width:100%}
 .iad-chart-description{--iba-unified-ink:var(--iad-chart-muted);color:var(--iad-chart-muted);font-size:13px;margin:0}
 .iad-chart-plot,.iad-chart-empty{--iad-chart-height:480px;height:var(--iad-chart-height)}
 .iad-chart-plot{width:100%;min-width:0;margin-inline:auto;font-family:var(--iad-font-family)}
-.iad-chart:is([data-chart-type="heatmap"],[data-chart-type="donut"]) .iad-chart-plot{width:640px}
+.iad-chart:is([data-chart-type="heatmap"],[data-chart-type="donut"]) .iad-chart-plot{width:640px;max-width:100%}
 .iad-chart-empty{display:grid;place-items:center;margin:0;color:var(--iad-chart-muted);font-size:14px}
 .iad-chart-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;min-width:0}
-.iad-distribution-summary{display:flex;flex-wrap:wrap;gap:12px 28px;font-variant-numeric:tabular-nums}
-.iad-distribution-summary span{white-space:nowrap}
 .iad-chart-panels{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;min-width:0}
 .iad-chart-panel-label{margin:0;text-align:center;color:var(--iad-chart-muted)}
 .iad-chart-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;gap:24px}
 .iad-chart-pair>:only-child{grid-column:1/-1}
+.iad-dialog-body.iad-statistics-content{min-height:0;padding:22px 25px 25px;overflow-y:auto;overflow-x:hidden}
+.iad-statistics-charts{display:grid;grid-template-columns:minmax(0,1fr);gap:13px}
+dialog.iad-detail-dialog.iad-dataset-statistics-drawer{width:840px}
 .iad-score-summary .iad-chart-plot,.iad-chart[data-chart="outcomes"] .iad-chart-plot{width:100%;max-width:640px;--iad-chart-height:320px}
+.iad-chart-pair .iad-chart:is([data-chart="image-counts"],[data-chart="annotation-counts"]) :is(.iad-chart-plot,.iad-chart-empty){--iad-chart-height:320px}
 @media print{.iad-chart-plot{break-inside:avoid}}
 `;

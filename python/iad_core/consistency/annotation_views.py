@@ -2,6 +2,7 @@ import math
 
 from iad_core.advisory.analysis import RegionOrigin
 from iad_core.evidence.images import RegionView
+from iad_core.evidence.views import minimum_crop_bbox
 from iad_core.storage.models import Annotation, Sample
 
 
@@ -17,6 +18,7 @@ def annotation_views(sample: Sample, annotations: list[Annotation], *, deduplica
             min(sample.width, math.ceil(x2 + pad_x)), min(sample.height, math.ceil(y2 + pad_y))]
         if crop[0] >= crop[2] or crop[1] >= crop[3]:
             continue
+        crop = minimum_crop_bbox(crop, (sample.width, sample.height))
         origin = RegionOrigin(source='annotation', annotation_id=annotation.annotation_id,
             label=annotation.raw_label, bbox=bounds)
         key = tuple(crop) if deduplicate else (len(regions),)

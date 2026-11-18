@@ -78,11 +78,11 @@ export function createIadHttpHandler(bridge) {
                 return await call('consistency_agent_review_submit', { run_id: decodeURIComponent(anchorResult[1]),
                     anchor_id: decodeURIComponent(anchorResult[2]), request: body });
             }
-            const check = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/(config|anchors|report|gallery|images|statistics|export\.jsonl)$/);
+            const check = pathname.match(/^\/api\/iad\/consistency\/checks\/([^/]+)\/(config|anchors|report|gallery|images|statistics|export\.jsonl|conflicts\.zip)$/);
             if (check && method === 'GET') {
                 const run_id = decodeURIComponent(check[1]);
-                if (check[2] === 'export.jsonl')
-                    return await consistency.export(res, run_id);
+                if (check[2] === 'export.jsonl' || check[2] === 'conflicts.zip')
+                    return await consistency.export(res, run_id, check[2] === 'conflicts.zip');
                 return await call('consistency_agent_' + (check[2] === 'config' ? 'snapshot' : check[2] === 'anchors' ? 'results' : check[2]), { ...query, run_id });
             }
             if (pathname === "/api/iad/images/settings" && method === "GET")
@@ -228,6 +228,11 @@ export function createIadHttpHandler(bridge) {
                 return await call("dataset_group_list");
             if (pathname === "/api/iad/datasets/groups" && method === "POST")
                 return await call("dataset_group_create", body);
+            const datasetDimensions = pathname.match(/^\/api\/iad\/datasets\/(groups\/)?([^/]+)\/image-dimensions$/);
+            if (datasetDimensions && method === 'GET')
+                return await call('dataset_image_dimensions', {
+                    [datasetDimensions[1] ? 'group_id' : 'dataset_id']: decodeURIComponent(datasetDimensions[2]),
+                });
             const groupRoute = pathname.match(/^\/api\/iad\/datasets\/groups\/([^/]+)$/);
             if (groupRoute) {
                 const group_id = decodeURIComponent(groupRoute[1]);

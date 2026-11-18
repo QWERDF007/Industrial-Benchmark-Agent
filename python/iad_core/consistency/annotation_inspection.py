@@ -1,11 +1,12 @@
-from typing import Literal
+from typing import Literal, Union
 
-from pydantic import Field, create_model, model_validator
+from pydantic import Field, ValidationError, create_model, model_validator
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.advisory.output_validation import repairable_output_error
 from iad_core.consistency.agent_review_models import AnchorAssessmentDecision, AnchorObservation, AnchorVisualRequest, AnchorVisualResult, CandidateVisualObservation, GateDispute
-from iad_core.consistency.annotation_issues import BboxAnnotationIssue
+from iad_core.consistency.annotation_issues import (ANNOTATION_OBJECT_COUNTS, ACTIVE_ISSUE_TYPES,
+    BboxAnnotationIssue, CandidateObjectReference)
 from iad_core.consistency.annotation_evaluation import AnnotationEvaluation
 from iad_core.consistency.group_models import VisualWindow, ModelVisualWindow
 from iad_core.consistency.references import ReferenceAliases
@@ -14,6 +15,18 @@ from iad_core.evidence.images import PreparedImageBundle
 
 ReviewIssue = create_model('ReviewIssue', __base__=AnalysisModel, **{
     name: (field.annotation, field) for name, field in BboxAnnotationIssue.model_fields.items() if name != 'media_ids'})
+
+REVIEW_ISSUES = {kind: create_model('ReviewIssue_' + kind, __base__=ReviewIssue,
+    type=(Literal[kind], ...),
+    main_annotation_ids=(list[str], Field(default_factory=list, min_length=counts.main[0], max_length=counts.main[1])),
+    candidate_annotation_ids=(list[str], Field(default_factory=list, min_length=counts.candidate[0], max_length=counts.candidate[1])),
+    same_main_object_as=(list[CandidateObjectReference], Field(default_factory=list,
+        max_length=None if kind == 'missing_annotation' else 0,
+        description=BboxAnnotationIssue.model_fields['same_main_object_as'].description)))
+    for kind, counts in ANNOTATION_OBJECT_COUNTS.items() if kind in ACTIVE_ISSUE_TYPES}
+SINGLE_CANDIDATE_MISSING_ISSUE = create_model('SingleCandidateMissingIssue',
+    __base__=REVIEW_ISSUES['missing_annotation'],
+    same_main_object_as=(list[CandidateObjectReference], Field(default_factory=list, max_length=0)))
 
 
 class AnnotationDecision(AnalysisModel):
@@ -25,6 +38,14 @@ class AnnotationDecision(AnalysisModel):
         description='仅 verdict 为 GATE_DISPUTE 时填写内容争议对应的本候选局部编号；其他判断必须为空列表。差别在完整原图其他位置时也填空列表，在 explanation 写具体位置及差别。')
     disputed_windows: list[ModelVisualWindow] = Field(default_factory=list,
         description='仅GATE_DISPUTE填写。用原图像素给出争议处的小范围窗口，sample_id引用main或当前候选，bbox为[x0,y0,x1,y1]。')
+
+    @model_validator(mode='wrap')
+    @classmethod
+    def validate_structure(cls, value, handler):
+        try:
+            return handler(value)
+        except ValidationError as error:
+            raise repairable_output_error('annotation_structure', str(error)) from error
 
 
 class AnnotationModelContext:
@@ -101,7 +122,15 @@ class AnnotationInspection:
             return value
 
         candidates = {}
+        source_counts = {source['sample_id']: len(source['annotations'])
+            for source in self.inputs.request.facts['sources'].values()}
         for identity in self.inputs.request.candidate_ids:
+            issue_models = [model for kind, model in REVIEW_ISSUES.items()
+                if ANNOTATION_OBJECT_COUNTS[kind].main[0] <= source_counts[self.inputs.request.anchor_id]
+                and ANNOTATION_OBJECT_COUNTS[kind].candidate[0] <= source_counts[identity]]
+            if not any(source_counts[other] for other in self.inputs.request.candidate_ids if other != identity):
+                issue_models = [SINGLE_CANDIDATE_MISSING_ISSUE if model is REVIEW_ISSUES['missing_annotation']
+                    else model for model in issue_models]
             window_type = create_model('DisputedWindow', __base__=ModelVisualWindow,
                 sample_id=(Literal['main', self.references.public[identity]], ...))
             regions = tuple(self.references.public[ref] for ref in
@@ -110,6 +139,8 @@ class AnnotationInspection:
                 ('GATE_DISPUTE',) if self.inputs.gates[identity].relation != 'pixel_identical' else ())
             decision = create_model('AnnotationDecision', __base__=AnnotationDecision,
                 verdict=(Literal[verdicts], ...),
+                issues=(list[Union[tuple(issue_models)]] if issue_models else list[ReviewIssue],
+                    Field(default_factory=list, max_length=None if issue_models else 0)),
                 disputed_regions=(list[Literal[regions]] if regions else list[str], Field(default_factory=list,
                     max_length=len(regions), description=AnnotationDecision.model_fields['disputed_regions'].description)),
                 disputed_windows=(list[window_type], Field(default_factory=list,

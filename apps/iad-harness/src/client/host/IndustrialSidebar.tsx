@@ -5,7 +5,7 @@ import {themeStyles} from '../theme.js';
 import {navigation, type PageId} from '../../shared/navigation.js';
 
 export function IndustrialSidebar({wide, panels, renderPanel, renderWorkspaces}: PropsRuntime<'sidebar.content'>) {
-  const [sessionsOpen, setSessionsOpen] = useState(true);
+  const [sessionsOpen, setSessionsOpen] = useState(false);
   const workspacesId = useId();
   const business = panels.filter(panel => panel.id in navigation && navigation[panel.id as PageId].chapter !== '工具');
   const auxiliary = panels.filter(panel => !business.includes(panel));

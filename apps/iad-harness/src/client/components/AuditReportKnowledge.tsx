@@ -17,11 +17,11 @@ export function AuditReportKnowledge({report,imageUrl}:{report:AuditRunReport;im
         .map(([key,label])=>`${label} ${counts[key]||0} 张`).join('；');
       return <article className="iad-audit-discovery" key={check.check_id} data-audit-knowledge={check.check_id}>
         <AuditEvidenceSection content={{number:auditReportSections.knowledge.prefix+(index+1),title:check.title,description:analysis?.description||check.criterion,
-          facts:[{label:'知识状态',text:knowledgeStatuses[check.status]},{label:'逐图核对',text:totals}],
-          galleries:[{title:'知识图像证据',images:report.evidence_groups['knowledge-source:'+check.check_id]||[]},
-            {title:'本次审计对照图',images:report.evidence_groups['knowledge:'+check.check_id]||[]}],analysis:[
-            ...(analysis?[{title:'适用情况',text:analysis.applicability},{title:'图像观察与对照',text:analysis.analysis},
-              {title:'审计作用',text:analysis.audit_impact}]:[])]}} imageUrl={imageUrl}/>
+          facts:[{label:'知识状态',text:knowledgeStatuses[check.status]},{label:'图像核对结果统计',text:totals}],
+          galleries:[{title:'知识参考图像',images:report.evidence_groups['knowledge-source:'+check.check_id]||[]},
+            {title:'本次审计图像',images:report.evidence_groups['knowledge:'+check.check_id]||[]}],analysis:[
+            ...(analysis?[{title:'知识适用情况',text:analysis.applicability},{title:'图像特征对比',text:analysis.analysis},
+              {title:'对审计结论的影响',text:analysis.audit_impact}]:[])]}} imageUrl={imageUrl}/>
       </article>;
     })}
   </AuditReportSection>;

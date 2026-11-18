@@ -1,15 +1,16 @@
 from collections import Counter, defaultdict
 
+from iad_core.audit.pair_scoring import AuditPairScoring
+from iad_core.audit.distribution_scoring import AuditDistributionScoring
+
 from scipy.cluster.hierarchy import DisjointSet
 
-from iad_core.consistency.conflict_categories import CONFLICT_RULES, primary_conflict_category
-
 from iad_core.audit.quality_models import (
-    AuditScope, AuditScoreWeights, QualityDimension, QualityImage, QualityScore, QualityScoreItem, QualitySceneAlias,
+    AuditScope, AuditScoreWeights, ConsistencyImpactReview, ConsistencyScoreWeights, QualityComparison, QualityDistributionReview, QualityDimension,
+    QualityImage, QualityScore, QualityScoreItem, QualitySceneAlias,
 )
 
 DIVERSITY_RULES = (
-    ('A1', '缺陷类别与形态', '缺陷类别覆盖不足', 20),
     ('A2', '缺陷类别与形态', '类内视觉变化覆盖不足', 10),
     ('B1', '缺陷尺寸与位置', '微小缺陷样本稀缺', 8),
     ('B2', '缺陷尺寸与位置', '其他尺寸层次失衡', 7),
@@ -25,28 +26,56 @@ DIVERSITY_RULES = (
 )
 
 
+FULL_DISTRIBUTION_WEIGHT = .5
+
+
 class AuditQualityScorer:
-    def score(self, images: list[QualityImage], weights: AuditScoreWeights | None = None, *,
+    def score(self, images: list[QualityImage], weights: ConsistencyScoreWeights | None = None, *,
             exact_groups: list[list[str]] | None = None, redundant_groups: list[list[str]] | None = None,
-            aliases: list[QualitySceneAlias] = (), scope: AuditScope = 'full') -> QualityScore:
-        weights = weights or AuditScoreWeights()
+            aliases: list[QualitySceneAlias] = (), scope: AuditScope = 'full',
+            comparisons: list[QualityComparison] = (), distribution_reviews: list[QualityDistributionReview] | None = None,
+            dataset_id: str | None = None, consistency_reviews: list[ConsistencyImpactReview] | None = None) -> QualityScore:
+        weights = weights if weights is not None else (AuditScoreWeights() if scope == 'full' else ConsistencyScoreWeights())
+        if isinstance(weights, AuditScoreWeights) != (scope == 'full'):
+            raise ValueError('综合得分系数与审计范围不符')
         completed = [image for image in images if image.completed]
-        items = self.consistency(completed)
+        comparisons = [QualityComparison.model_validate(c) for c in comparisons]
+        reviews = [QualityDistributionReview.model_validate(r) for r in distribution_reviews] if distribution_reviews is not None else None
+        if consistency_reviews is not None:
+            facts = AuditPairScoring.context(images, comparisons) if dataset_id is None else [dict(scope_id=dataset_id,
+                items=[dict(code=item.code,ref=f'{dataset_id}:{item.code}')
+                    for item in AuditPairScoring.base_items(images,comparisons) if item.base_deduction])]
+            consistency_reviews = AuditPairScoring.validate(consistency_reviews, facts)
+        items = AuditPairScoring.score(images, comparisons, consistency_reviews, dataset_id or 'overall')
+        items.extend(AuditDistributionScoring.items(reviews or [], dataset_id or 'overall', factor=FULL_DISTRIBUTION_WEIGHT if scope == 'full' else 1))
         diversity_ready = bool(completed) and all(image.observation_complete for image in completed)
         if scope == 'full':
-            items.extend(self.diversity(completed, aliases, diversity_ready))
+            visual = self.diversity(completed, aliases, diversity_ready)
+            factor = 100*(1-FULL_DISTRIBUTION_WEIGHT)/sum(rule[3] for rule in DIVERSITY_RULES)
+            for item in visual:
+                item.maximum *= factor
+                if item.deduction is not None:
+                    item.deduction *= factor
+            items.extend(visual)
+            AuditDistributionScoring.suppress_overlaps(items)
         redundancy_ready = bool(completed) and exact_groups is not None and redundant_groups is not None
         if scope == 'full':
             items.extend(self.redundancy(completed, exact_groups or [], redundant_groups or [], redundancy_ready))
         dimensions = {}
         for key, label in (('consistency', '数据一致性'), ('diversity', '数据多样性'), ('redundancy', '数据冗余度')):
-            if scope == 'consistency' and key != 'consistency':
+            if scope == 'consistency' and key == 'redundancy':
                 continue
             selected = [item for item in items if item.dimension == key]
             deduction = sum(item.deduction for item in selected) if all(item.deduction is not None for item in selected) else None
+            if key == 'diversity' and reviews is None:
+                deduction = None
             dimensions[key] = QualityDimension(label=label, deduction=deduction,
                 score=max(0, 100-deduction) if deduction is not None else None)
         limitations = []
+        if dimensions['consistency'].score is None:
+            limitations.append('一致性影响系数尚未完成模型判断')
+        if reviews is None:
+            limitations.append('分布评分尚未完成模型判断')
         if len(completed) != len(images) or not images:
             limitations.append('审计图像尚未全部完成')
         if scope == 'full' and not diversity_ready:
@@ -55,7 +84,7 @@ class AuditQualityScorer:
             limitations.append('严格重复关系未完成冻结')
         if scope == 'full' and redundant_groups is None:
             limitations.append('低信息增量相似图尚未完成图证确认')
-        effective_weights = {'consistency': 1.0} if scope == 'consistency' else weights.normalized()
+        effective_weights = weights.normalized()
         result = QualityScore(status='insufficient' if limitations else 'complete',
             total=None if limitations else sum(effective_weights[key] * value.score for key, value in dimensions.items()),
             weights=effective_weights, total_images=len(images), completed_images=len(completed),
@@ -67,21 +96,11 @@ class AuditQualityScorer:
                 child = result
             else:
                 child = self.score([image for image in images if image.dataset_id == dataset_id], weights,
-                    exact_groups=exact_groups, redundant_groups=redundant_groups, aliases=aliases, scope=scope)
+                    exact_groups=exact_groups, redundant_groups=redundant_groups, aliases=aliases, scope=scope,
+                    comparisons=comparisons, distribution_reviews=reviews, dataset_id=dataset_id,
+                    consistency_reviews=[r for r in consistency_reviews if r.scope_id == dataset_id] if consistency_reviews is not None else None)
             result.dataset_scores.append(child.model_copy(update={'dataset_id': dataset_id, 'dataset_scores': []}))
         return result
-
-    def consistency(self, images: list[QualityImage]) -> list[QualityScoreItem]:
-        buckets = {category: [] for category in CONFLICT_RULES}
-        for image in images:
-            category = primary_conflict_category(image.consistency_categories)
-            if category is not None:
-                buckets[category].append(image.sample_id)
-        return [QualityScoreItem(code=rule.issue_type, dimension='consistency', direction='标注一致性',
-            label=rule.label, maximum=100 * rule.severity, count=len(buckets[category]), denominator=len(images),
-            ratio=len(buckets[category]) / len(images) if images else None,
-            deduction=100 * rule.severity * len(buckets[category]) / len(images) if images else None,
-            sample_ids=buckets[category]) for category, rule in CONFLICT_RULES.items()]
 
     def diversity(self, images: list[QualityImage], aliases: list[QualitySceneAlias], ready: bool) -> list[QualityScoreItem]:
         names = {(item.axis, item.source): item.canonical for item in aliases}
@@ -104,8 +123,6 @@ class AuditQualityScorer:
                 cause = (cause_axis, category, scenario, tuple(sorted(member[0] for member in members)))
                 candidates[code].append((scarcity, count, denominator, f'{category}：{scenario}' if category else scenario, sorted({member[1] for member in members}), cause))
 
-        add('A1', [(defect.category, identity, image.sample_id) for image, defect, identity in defects], len(defects),
-            distribution=True, cause_axis='category')
         categories = sorted({defect.category for _, defect, _ in defects})
         for category in categories:
             group = [(image, defect, identity) for image, defect, identity in defects if defect.category == category]

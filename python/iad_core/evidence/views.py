@@ -1,13 +1,15 @@
 import os
 import json
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Sequence
 from PIL import Image
 
 from iad_core.storage.models import Sample, Annotation
 from iad_core.evidence.masks import annotation_overlay
 
 logger = logging.getLogger("iad_core.evidence.views")
+
+MINIMUM_CROP_SIDE = 100
 
 
 def generate_sample_view(
@@ -57,6 +59,18 @@ def generate_sample_view(
         "view_type": "raw",
         "annotations": ann_summaries,
     }
+
+
+def minimum_crop_bbox(bbox: Sequence[int], image_size: tuple[int, int]) -> list[int]:
+    crop = [max(0, bbox[0]), max(0, bbox[1]), min(image_size[0], bbox[2]), min(image_size[1], bbox[3])]
+    if crop[0] >= crop[2] or crop[1] >= crop[3]:
+        return crop
+    for axis, limit in enumerate(image_size):
+        size = min(MINIMUM_CROP_SIDE, limit)
+        if crop[axis + 2] - crop[axis] < size:
+            start = min(max(0, (crop[axis] + crop[axis + 2] - size) // 2), limit - size)
+            crop[axis], crop[axis + 2] = start, start + size
+    return crop
 
 
 def padded_bbox(sample: Sample, bbox_xyxy: List[int], padding_ratio: float, *, padding_pixels: int = 0) -> List[int]:

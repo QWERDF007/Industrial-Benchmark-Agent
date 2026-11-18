@@ -21,5 +21,10 @@ export const auditDistributionParameters = {
             }
         ],
         "title": "Category"
+    },
+    "scoring": {
+        "type": "boolean",
+        "title": "Scoring",
+        "default": false
     }
 };

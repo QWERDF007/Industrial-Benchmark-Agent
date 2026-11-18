@@ -12,8 +12,6 @@ export const jobsStyles = `
 .iad-job-col-id{width:27%}.iad-job-col-status{width:10%}.iad-job-col-dataset{width:17%}.iad-job-col-progress{width:9%}
 .iad-job-col-submitted{width:16%}.iad-job-col-elapsed{width:8%}.iad-job-col-actions{width:156px}
 .iad-job-actions{display:flex;gap:4px;align-items:center;justify-content:flex-end}
-.iad-audit-statistics{padding:20px 24px}.iad-audit-statistics dl{display:flex;gap:24px;flex-wrap:wrap;margin:0 0 20px}.iad-audit-statistics dt{color:var(--iad-muted)}.iad-audit-statistics dd{margin:8px 0;font-size:24px;font-variant-numeric:tabular-nums}
-.iad-audit-statistics table{width:100%;border-collapse:collapse}.iad-audit-statistics :is(th,td){padding:10px 16px;text-align:left}
 .iad-job-badge{display:inline-block;border-radius:4px;padding:3px 8px;color:#8e6d24;background:#fff5df;font-size:12px;font-weight:500}
 .iad-job-badge:is([data-status=COMPLETED],[data-status=PARTIAL]){background:#e8f5ee;color:#177b53}
 .iad-job-badge[data-status=RUNNING]{background:#e9f0ff;color:#285ed6}

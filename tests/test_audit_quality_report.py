@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from tests.audit_support import save_image, save_qualified_images
+from tests.audit_support import save_image, save_qualified_images, distribution_reviews
 from tests.test_audit_stages import mixed_audit
 
 
@@ -12,7 +12,7 @@ def test_new_jobs_freeze_scoring_and_preview_tracks_effective_versions(native_au
     jobs, dataset_id, upstream, role = native_audit
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream), agent=role)['run_id']
     snapshot = jobs.snapshot(run_id)
-    assert snapshot.quality_score_version == '1.5'
+    assert snapshot.quality_score_version == '1.9'
     ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1, settings={'quality_score_weights': {'consistency': 9}}))
     assert jobs.snapshot(run_id).settings.quality_score_weights.consistency == .8
     for sample in jobs.samples(run_id):
@@ -66,7 +66,7 @@ def test_final_report_stores_program_score_and_legacy_preview_is_rejected(mixed_
     from iad_core.audit.evidence import AuditEvidence
     master_observed(jobs, run_id, reports.records(run_id, {}),
         [AuditEvidence(jobs).prepare(run_id, sample.sample_id, sample.sample_id).evidence_id for sample in jobs.samples(run_id)])
-    preview = AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True))
+    preview = AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True, distribution_reviews=distribution_reviews(jobs, run_id)))
     assert preview.score.total is not None
     assert preview.score.dimensions['diversity'].score < 100
     reports.commit(run_id, report_submission(quality_assessment=preview.assessment.model_dump()))
@@ -77,7 +77,7 @@ def test_final_report_stores_program_score_and_legacy_preview_is_rejected(mixed_
     with jobs.db.connection() as connection:
         connection.execute("UPDATE audit_workflow_runs SET snapshot_json=json_remove(snapshot_json,'$.quality_score_version') WHERE job_id=?", (run_id,))
     with pytest.raises(ValueError, match='历史'):
-        AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True))
+        AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True, distribution_reviews=distribution_reviews(jobs, run_id)))
 
 
 def test_score_galleries_use_frozen_observations_without_master_image_reloads(mixed_audit):
@@ -96,7 +96,7 @@ def test_score_galleries_use_frozen_observations_without_master_image_reloads(mi
     master_observed(jobs, run_id, reports.records(run_id, {}))
     assert reports.observed(run_id) == {AuditEvidence(jobs).prepare(run_id, samples[0].sample_id, samples[0].sample_id).evidence_id}
     assert all(AuditEvidence(jobs).observed(run_id, sample.sample_id) for sample in samples)
-    preview = AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True))
+    preview = AuditQualityReports(jobs.db).preview(run_id, dict(redundancy_reviewed=True, distribution_reviews=distribution_reviews(jobs, run_id)))
     assert next(item for item in preview.score.items if item.code == 'D2').deduction == 0
     reports.commit(run_id, report_submission(quality_assessment=preview.assessment.model_dump()))
     view = AuditQueries(jobs.db).report(run_id)
@@ -130,16 +130,16 @@ def test_recalculate_updates_completed_report_and_export_from_frozen_observation
     reports.begin(run_id)
     master_observed(jobs, run_id, reports.records(run_id, {}),
         [AuditEvidence(jobs).prepare(run_id, sample.sample_id, sample.sample_id).evidence_id for sample in jobs.samples(run_id)])
-    preview = service.preview(run_id, dict(redundancy_reviewed=True))
+    preview = service.preview(run_id, dict(redundancy_reviewed=True, distribution_reviews=distribution_reviews(jobs, run_id)))
     reports.commit(run_id, report_submission(quality_assessment=preview.assessment.model_dump()))
     assert jobs.finish(run_id)['status'] == 'COMPLETED'
     originals = [sample.model_dump_json() for sample in jobs.samples(run_id)]
     original_report = AuditQueries(jobs.db).report(run_id)
     ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1, settings={'quality_score_weights': {'consistency': 9}}))
     score = service.recalculate(run_id)
-    assert score.version == '1.5'
+    assert score.version == '1.9'
     assert score.weights == pytest.approx({'consistency': .8, 'diversity': .15, 'redundancy': .05})
-    assert jobs.snapshot(run_id).quality_score_version == '1.5'
+    assert jobs.snapshot(run_id).quality_score_version == '1.9'
     assert reports.session(run_id).result.quality_score == score
     view = AuditQueries(jobs.db).report(run_id)
     assert view.quality_score == score
@@ -154,7 +154,7 @@ def test_recalculate_updates_completed_report_and_export_from_frozen_observation
     assert service.recalculate(run_id) == score
 
     with jobs.db.connection() as connection:
-        connection.execute("UPDATE audit_workflow_runs SET snapshot_json=json_set(snapshot_json,'$.quality_score_version','1.3') WHERE job_id=?", (run_id,))
+        connection.execute("UPDATE audit_workflow_runs SET snapshot_json=json_set(snapshot_json,'$.quality_score_version','1.6') WHERE job_id=?", (run_id,))
     with pytest.raises(ValueError, match='历史'):
         AuditQualityReports(jobs.db).recalculate(run_id)
     assert AuditQueries(jobs.db).report(run_id).quality_score == score
@@ -189,3 +189,16 @@ def test_master_score_tool_pages_rules_and_references_without_repeating_subset_s
     page = AuditToolPages.quality(reports, run_id,
         dict(redundancy_reviewed=False, dataset_id=subset.dataset_id, page_size=1))
     assert page['score'] == subset.model_dump(mode='json', exclude={'items', 'dataset_scores'})
+
+
+def test_scoring_facts_are_available_to_the_agent_without_expanding_public_statistics(mixed_audit):
+    from iad_core.audit.operations import audit_agent_report_statistics
+    jobs,run_id=mixed_audit
+    query={'run_id':run_id}
+    statistics=audit_agent_report_statistics(query,jobs.db.db_path)
+    with_facts=audit_agent_report_statistics(dict(query,scoring=True),jobs.db.db_path)
+    facts=with_facts.pop('consistency_scoring')
+    assert with_facts==statistics
+    assert facts[0]['scope_id']=='overall'
+    assert facts[0]['image_count']==len(jobs.snapshot(run_id).manifest.records)
+    assert all('sample_ids' not in item for scope in facts for item in scope['items'])

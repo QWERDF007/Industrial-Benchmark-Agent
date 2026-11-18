@@ -15,7 +15,8 @@ from iad_core.consistency.identity_regions import IdentityRegionCheck, UnmappedR
 from iad_core.consistency.identity_disputes import IdentityDispute, IdentityDisputes
 from iad_core.consistency.identity_geometry import ImageCorrespondence
 import numpy as np
-from iad_core.consistency.identity_models import PAIR_REVIEW_BATCH_SIZE, PAIR_REVIEW_MEDIA_BYTES, PAIR_REVIEW_REGION_BUDGET, candidate_pair_key
+from iad_core.consistency.identity_models import (PAIR_REVIEW_BATCH_SIZE, PAIR_REVIEW_MEDIA_BYTES,
+    PAIR_REVIEW_REGION_BUDGET, IDENTITY_VISUAL_PAIR_LIMIT, IDENTITY_VISUAL_IMAGE_LIMIT, candidate_pair_key)
 from iad_core.consistency.references import ReferenceAliases
 from iad_core.evidence.images import EvidenceImages, PreparedImage, PreparedImageBundle
 from iad_core.evidence.retained import RetainedImages
@@ -51,7 +52,7 @@ class IdentityDecision(AnalysisModel):
     regions: str = Field(description='按输入 windows 顺序逐区填写：S为相同，D为不同，U为无法确认；每区一个字符，不加分隔符。')
     unmapped_regions: AnalysisModel
     details: list[IdentityRegionDetail] = Field(default_factory=list,
-        description='只写 windows 中 D 或 U 区域的具体事实；相同事实写一次，refs 列出适用的已配准区域。没有 windows 时填空列表；无法配准的区域仅填 unmapped_regions。')
+        description='先记录全部windows中实际可见的形状、线条或纹理，再判断是否相同；S也须有具体对应细节。同一事实只写一次，refs列出适用区域；没有windows时填空列表。')
     limitations: list[NonBlankText] = Field(default_factory=list,
         description='两侧共用的具体限制，不使用主图、候选或左右图称呼。')
     disputes: list[DisputeDecision] = Field(default_factory=list,
@@ -85,9 +86,10 @@ class IdentityDecision(AnalysisModel):
             raise repairable_output_error('identity_unknown_region',
                 'details.refs 只能使用 windows 中已配准区域的编号；无法配准的区域仅填 unmapped_regions。'
                 + ('当前没有 windows，details 必须为空列表。' if not regions else '允许的编号：' + '、'.join(self.region_refs)))
-        missing = [name for name, value in self.region_relations.items() if value != 'same' and name not in details]
+        missing = [name for name in self.region_refs if name not in details]
         if missing:
-            raise repairable_output_error('identity_region_detail', '不同或无法确认的区域须写清位置和实际细节：' + '、'.join(missing))
+            raise repairable_output_error('identity_region_detail',
+                '每个局部都须记录实际可见细节，判断相同也要说明哪些形状、线条或纹理对应；不能只重复“相同”：' + '、'.join(missing))
         self.shared_perspective(list(details.values()))
         return self
 
@@ -355,7 +357,9 @@ class IdentityInspection:
                 request_id=request_id, sample_id=prepared[0].anchor_id, pair_keys=[item.pair_key for item in prepared]):
             try:
                 if len(prepared) > 1 and (
-                        sum(len(item.frozen.region_pairs) for item in prepared) > PAIR_REVIEW_REGION_BUDGET
+                        len(prepared) > IDENTITY_VISUAL_PAIR_LIMIT
+                        or len(bundles) > IDENTITY_VISUAL_IMAGE_LIMIT
+                        or sum(len(item.frozen.region_pairs) for item in prepared) > PAIR_REVIEW_REGION_BUDGET
                         or sum(Path(view.model_input.path if view.model_input else view.path).stat().st_size for bundle in bundles
                             for view in bundle.images) > PAIR_REVIEW_MEDIA_BYTES):
                     raise ModelCapacityError('批次超过媒体或局部数量预算，需要拆分完整图像对')

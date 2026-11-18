@@ -98,7 +98,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         assert [item.sha256 for item in observed.request.media] == [hashlib.sha256(
             base64.b64decode(item['image_url']['url'].split(',', 1)[1])).hexdigest()
             for item in image_parts if item['type'] == 'image_url']
-        assert any(item['source'] == 'annotation' and item['crop_bbox'] == [8, 8, 32, 32] and item['sent_size'] == [24, 24] for item in actual)
+        assert any(item['source'] == 'annotation' and item['crop_bbox'] == [0, 0, 100, 100] and item['sent_size'] == [100, 100] for item in actual)
         assert all(item['representation'] == 'raw' for item in actual)
         assert review.observe(job_id, anchor_id, request) == observed
         assert len(sent) == 1

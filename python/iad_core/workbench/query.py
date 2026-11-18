@@ -5,6 +5,7 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from iad_core.dataset.registry import DatasetRegistry
+from iad_core.dataset.heatmap import DistributionHeatmap
 from iad_core.storage.database import Database
 from iad_core.storage.models import sample_uuid
 from iad_core.workbench.report import DatasetReport, QualityAssessment
@@ -249,6 +250,23 @@ class WorkbenchQuery:
     def datasets(self) -> dict:
         registry = DatasetRegistry(self.db)
         return {"datasets": [self.dataset(config.dataset.id) for config in registry.list()], "groups": registry.list_groups()}
+
+    def image_dimensions(self, *, dataset_id: str | None = None, group_id: str | None = None) -> DistributionHeatmap:
+        if (dataset_id is None) == (group_id is None):
+            raise ValueError('请选择一个数据集或数据集分组')
+        registry = DatasetRegistry(self.db)
+        with self.db.connection() as conn:
+            conn.execute('BEGIN')
+            if dataset_id is not None:
+                registry.get(dataset_id, connection=conn)
+                scope, identity = 'dataset_id=?', dataset_id
+            else:
+                registry.get_group(group_id, connection=conn)
+                scope, identity = 'dataset_id IN (SELECT dataset_id FROM datasets WHERE group_id=?)', group_id
+            rows = conn.execute(f'''SELECT width,height,count(*) FROM samples WHERE {scope}
+                AND is_excluded=0 AND width>0 AND height>0 GROUP BY width,height''', (identity,)).fetchall()
+        widths, heights, counts = zip(*rows) if rows else ((), (), ())
+        return DistributionHeatmap.build(widths, heights, weights=counts)
 
     def dataset(self, dataset_id: str) -> dict:
         registry = DatasetRegistry(self.db)

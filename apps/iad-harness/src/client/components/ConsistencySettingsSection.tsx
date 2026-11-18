@@ -27,10 +27,9 @@ export function ConsistencySettingsSection() {
         <ModuleNumberSetting label="完全一致图上限" value={settings.max_exact_candidates} min={1} step={1}
           validationMessage="完全一致图上限需要为正整数" onSave={max_exact_candidates=>business.save({max_exact_candidates})}/>
       </fieldset>
-      <fieldset className="iad-settings-group" data-settings-group="similar" disabled={settings.mode==='exact'}><legend>相似图检索</legend>
-        {settings.mode==='exact'&&<p className="iad-setting-hint">选择“一致+相似”后启用</p>}
+      {settings.mode==='combined'&&<fieldset className="iad-settings-group" data-settings-group="similar"><legend>相似图检索</legend>
         {!images?<p role="status">正在读取模型设置…</p>:<>
-          <ModuleSelectSetting label="模型" controlLabel="相似图模型" value={images.model_id??''} disabled={settings.mode==='exact'}
+          <ModuleSelectSetting label="模型" controlLabel="相似图模型" value={images.model_id??''}
             onChange={value=>{const model=encoder.models.find(model=>model.model_id===value);if(model)encoder.save({model_id:model.model_id});}}
             options={[{value:'',label:'请选择模型',disabled:true},...encoder.models.map(model=>({value:model.model_id,
               label:model.label+(model.available?'':'（权重未准备）'),disabled:!model.available}))]}/>
@@ -44,9 +43,9 @@ export function ConsistencySettingsSection() {
         <ModuleNumberSetting label="相似图上限" value={settings.max_similar_candidates} min={1} max={200} step={1}
           hint="先取前 K 张，再按阈值过滤，结果可能少于 K 张。" validationMessage="相似图上限需要为 1～200 的整数"
           onSave={max_similar_candidates=>business.save({max_similar_candidates})}/>
-        <ModuleNumberSetting label="相似度阈值" value={settings.min_similarity} min={0} max={1} step={.01}
+        <ModuleNumberSetting label="相似度阈值" value={settings.min_similarity} min={0} max={1} step={.001}
           validationMessage="相似度阈值需要在 0～1 之间" onSave={min_similarity=>business.save({min_similarity})}/>
-      </fieldset>
+      </fieldset>}
     </>}
     <p className="iad-module-status" role="status" aria-live="polite">{business.saving||encoder.saving?'正在保存…':!error&&(business.saved||encoder.saved)?'已保存':''}</p>
     {error&&<div className="iad-module-error" role="alert"><span>{error}</span><Button variant="outline" onClick={()=>{if(business.error)business.retry();if(encoder.error)encoder.retry();}}>重试保存</Button></div>}

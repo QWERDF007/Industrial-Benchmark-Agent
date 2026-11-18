@@ -1,8 +1,35 @@
 import pytest
 from iad_core.storage.database import Database
+from iad_core.storage.models import Sample
+from iad_core.storage.repositories import SampleRepository
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.workbench.query import WorkbenchQuery
 from iad_core.task.config import DatasetConfig, DatasetInfo, TaskConfig
+
+
+def test_registered_image_heatmap_counts_only_the_requested_dataset_or_group(tmp_path):
+    db = Database(str(tmp_path / 'datasets.db'))
+    registry = DatasetRegistry(db)
+    registry.create_group('父数据集', group_id='parent')
+    registry.create_group('空数据集', group_id='empty')
+    for dataset, group in [('first', 'parent'), ('second', 'parent'), ('other', None)]:
+        registry.save(DatasetConfig(dataset=DatasetInfo(id=dataset, name=dataset, format='labelme'),
+            root=str(tmp_path / dataset), task=TaskConfig(task_id=dataset, inspection_target='surface')), group_id=group)
+    samples = [('first', 120, 80), ('first', 120, 80), ('second', 240, 180), ('first', 900, 800), ('other', 600, 500)]
+    SampleRepository(db).upsert_batch([Sample(sample_id=str(i), task_id=dataset, dataset_id=dataset,
+        image_path=f'/images/{i}.png', relative_path=f'{i}.png', width=w, height=h, quality_status='UNCERTAIN')
+        for i, (dataset, w, h) in enumerate(samples)])
+    with db.connection() as conn:
+        conn.execute("UPDATE samples SET is_excluded=1 WHERE sample_id='3'")
+    query = WorkbenchQuery(db)
+    parent = query.image_dimensions(group_id='parent')
+    assert parent.cells == [(0, 0, 2), (31, 31, 1)]
+    assert (parent.x_edges[0], parent.x_edges[-1], parent.y_edges[-1]) == (120, 240, 180)
+    child = query.image_dimensions(dataset_id='first')
+    assert child.cells == [(16, 16, 2)]
+    assert query.image_dimensions(group_id='empty').cells == []
+    with pytest.raises(LookupError):
+        query.image_dimensions(dataset_id='missing')
 
 
 def test_dataset_group_lifecycle(tmp_path):

@@ -78,10 +78,10 @@ createRoot(document.getElementById('root')).render(<WorkspaceContext.Provider va
     assert.doesNotMatch(await(await element('.dc-model-panel')).getText(),/位置差异|拆分|合并|多标|少标/);
     await(await element('.dc-dialog-head [aria-label="关闭"]')).click();
     await(await element('.iad-jobs-table button[title="统计"]')).click();
-    await element('.dc-stats-drawer');
+    await element('dialog[aria-label="标注冲突统计"]');
     assert.match(await(await element('[data-chart="stat-category"] .iad-chart-plot')).getAttribute('aria-label'),/图组（组）：1/);
     assert.equal((await driver.findElements(By.css('select[aria-label="按统计结果筛选"]'))).length,0);
-    assert.equal((await driver.findElements(By.css('.dc-stats-drawer [data-chart-type="bar"]'))).length,3);
+    assert.equal((await driver.findElements(By.css('dialog[aria-label="标注冲突统计"] [data-chart-type="bar"]'))).length,3);
     await(await element('button[aria-label="关闭标注冲突统计"]')).click();
     await(await element('[data-dc="raw-tab"][data-id="images"]')).click();
     await(await element(`[data-dc="job-image"][data-id="${fixture.sampleIds.C}"]`)).click();

@@ -8,8 +8,13 @@ import {ModuleSelectSetting} from './ModuleSelectSetting.js';
 import {ModelImageSizeSetting} from './ModelImageSizeSetting.js';
 import {moduleSettingsStyles} from '../styles/module-settings.js';
 
+const scoreWeightLabels={consistency:'数据一致性',diversity:'数据多样性',redundancy:'数据冗余度'} as const;
+
 export function ModuleSettingsSection({module}:{module:Exclude<BusinessModule,'consistency'>}) {
   const {settings,save,retry,loading,saving,saved,error}=useModuleSettings(module);
+  const auditSettings=settings&&'audit_scope' in settings?settings:undefined;
+  const weightField=auditSettings?.audit_scope==='consistency'?'consistency_score_weights':'quality_score_weights';
+  const weights=auditSettings?.[weightField];
   return <section className="iad-module-settings" aria-label={`${businessModules[module]}设置`} data-module-settings={module}>
     <style>{moduleSettingsStyles}</style>
     {loading&&!settings ? <p role="status">正在读取设置…</p> : settings && <div>
@@ -35,13 +40,15 @@ export function ModuleSettingsSection({module}:{module:Exclude<BusinessModule,'c
         <ModuleSelectSetting label="整图输入分辨率" value="original" disabled onChange={()=>{}}
           options={[{value:'original',label:'使用原图'}]}/>
       </>}
-      {'quality_score_weights' in settings&&settings.audit_scope==='full'&&<>
+      {weights&&<>
         <h3>综合得分</h3>
-        {([['consistency','数据一致性'],['diversity','数据多样性'],['redundancy','数据冗余度']] as const).map(([key,label])=>
-          <ModuleNumberSetting key={key} label={`${label}系数`} value={settings.quality_score_weights[key]} min={0} step={.01}
+        {(Object.keys(scoreWeightLabels) as (keyof typeof scoreWeightLabels)[]).flatMap(key=>{
+          const value=key==='redundancy'?('redundancy' in weights?weights.redundancy:undefined):weights[key];
+          return value===undefined?[]:[<ModuleNumberSetting key={`${weightField}:${key}`} label={`${scoreWeightLabels[key]}系数`} value={value} min={0} step={.01}
             validationMessage="系数需为非负数，且不能全部为零"
-            validate={value=>value+Object.entries(settings.quality_score_weights).reduce((total,[name,weight])=>total+(name===key?0:weight),0)>0}
-            onSave={value=>save({quality_score_weights:{[key]:value}})}/>)}
+            validate={value=>value>0||Object.entries(weights).some(([name,weight])=>name!==key&&weight>0)}
+            onSave={value=>save({[weightField]:{[key]:value}})}/>];
+        })}
       </>}
       <p className="iad-module-status" role="status" aria-live="polite">{saving?'正在保存…':!error&&saved?'已保存':''}</p>
     </div>}

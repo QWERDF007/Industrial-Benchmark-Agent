@@ -4,7 +4,8 @@ from pydantic import Field, computed_field, model_validator
 from pydantic.json_schema import SkipJsonSchema
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
-from iad_core.audit.quality_models import QualityAssessment, QualityScore
+from iad_core.audit.prompt_text import OVERALL_CONCLUSION_GUIDANCE
+from iad_core.audit.quality_models import ConsistencyImpactReview, QualityAssessment, QualityScore, QualityDistributionReview
 from iad_core.workbench.job_models import JobStatus
 from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES, IssueType, ISSUE_TYPES_BY_FORMAT as AUDIT_ISSUE_TYPES_BY_FORMAT
 from iad_core.consistency.conflict_categories import CONFLICT_CATEGORY_LABELS, CONFLICT_CATEGORY_DESCRIPTIONS
@@ -299,10 +300,11 @@ class AuditCapabilityTopic(AnalysisModel):
 
 
 class AuditReportCommit(AnalysisModel):
+    distribution_analysis: str = Field(default='', description='先说分布结论，再说明主要失衡及影响，正常的集中分布也应明确说明。')
     quality_assessment: QualityAssessment | None = None
     commit_key: NonBlankText
     discovery_ids: list[NonBlankText]
-    conclusion: NonBlankText = Field(description='概括当前用途及最重要的视觉发现；图像数、疑点数和来源状态由页面另行展示。')
+    conclusion: NonBlankText = Field(description=OVERALL_CONCLUSION_GUIDANCE + '概括当前可开展的用途。')
     consistency_analysis: NonBlankText = Field(description='用一两句直白的话回答可对照图像的标注是否一致，结合程序统计与模型复核统计解释差别。具体图像细节放在对应的小节。')
     knowledge_analysis: str = Field(default='', description='简述知识帮助看到了什么，可留空；各条具体应用在knowledge_analyses展开。')
     coverage_analysis: NonBlankText = Field(description='概括实际可见形态、背景、结构关系及尚缺场景。')
@@ -357,7 +359,10 @@ class ConsistencyAnalysisText(AnalysisModel):
 
 
 class ConsistencyAuditText(AnalysisModel):
-    conclusion: NonBlankText = Field(description='用两三句自然中文概括本次标注情况、主要问题及其多少，直接说明审计发现。')
+    consistency_reviews: list[ConsistencyImpactReview] | None = None
+    distribution_reviews: list[QualityDistributionReview] | None = None
+    distribution_analysis: str = ''
+    conclusion: NonBlankText = Field(description=OVERALL_CONCLUSION_GUIDANCE)
     consistency_analysis: NonBlankText = Field(description='用两三句自然中文总结本章节的主要问题、共性及影响，不逐张举例，不写图像名称、内部流程或免责说明。')
     analyses: list[ConsistencyAnalysisText]
 

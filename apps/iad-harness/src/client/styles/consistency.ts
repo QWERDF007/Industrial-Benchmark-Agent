@@ -82,19 +82,6 @@ export const consistencyStyles=`
 
 
 
-.dc-stats-content {
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  min-height: 0 !important;
-  padding: 22px 25px 25px !important;
-}
-.dc-stats-charts {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) !important;
-  gap: 13px !important;
-  align-items: stretch !important;
-}
-
 .dc-images-panel,
 .dc-fact-panel,
 .dc-model-panel,

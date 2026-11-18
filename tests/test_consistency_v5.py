@@ -11,6 +11,7 @@ from iad_core.workbench.runtime import WorkbenchRuntime
 from iad_core.workbench.vision import VlmClient
 from tests.test_consistency_identity import similar_job, identity_response
 from tests.consistency_responses import annotation_response
+from tests.consistency_support import start_prepared
 
 
 def test_task_and_complete_prompts_are_frozen_without_rewriting_user_text(dataset):
@@ -23,7 +24,7 @@ def test_task_and_complete_prompts_are_frozen_without_rewriting_user_text(datase
         frozen = checks.snapshot(run_id)
         assert frozen.task_type == 'bbox_defect'
         assert frozen.review_pipeline == 'identity-v8'
-        assert '候选' in frozen.system_prompt and '六类' in frozen.system_prompt
+        assert all(term in frozen.system_prompt for term in ('候选', '少标内容', '多标内容', 'split', 'merge'))
         assert '当前候选已通过' not in frozen.system_prompt
         assert 'OK/NG' not in frozen.system_prompt + frozen.instruction
         custom = {'system_prompt': '自定义系统原文\n保留完整内容。', 'instruction': '自定义用户原文。'}
@@ -187,7 +188,7 @@ def test_missing_object_merges_only_with_observed_correspondence(dataset, confir
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':normal.png'
-        run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+        run_id = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
             'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
         checks.session_created(run_id, anchor)
         selected = checks.retrieve(run_id, anchor)
@@ -218,31 +219,31 @@ def test_missing_object_merges_only_with_observed_correspondence(dataset, confir
         runtime.close()
 
 
-def test_frozen_checks_using_previous_visual_inputs_remain_readable_but_cannot_resume(dataset):
+def test_frozen_checks_using_previous_visual_inputs_remain_readable_but_cannot_resume(dataset, monkeypatch):
+    import iad_core.consistency.agent_jobs as agent_jobs
     database, _, config = dataset
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':normal.png'
-        run = checks.start({'submission_id':str(uuid4()),'dataset_ids':[config.dataset.id],'mode':'exact',
-            'subjects':{'kind':'samples','sample_ids':[anchor]}})['run_id']
-        checks.session_created(run, anchor)
-        checks.retrieve(run, anchor)
-        checks.interrupt(run)
+        with monkeypatch.context() as legacy:
+            legacy.setattr(agent_jobs, 'IDENTITY_PROMPT_VERSION', 'consistency-unified-v5')
+            run = start_prepared(checks, {'submission_id':str(uuid4()),'dataset_ids':[config.dataset.id],'mode':'exact',
+                'subjects':{'kind':'samples','sample_ids':[anchor]}})['run_id']
+            checks.session_created(run, anchor)
+            checks.retrieve(run, anchor)
+            checks.interrupt(run)
         before = ConsistencyAgentResults(database).detail(run, anchor)
-        with database.connection() as connection:
-            payload = json.loads(connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?',(run,)).fetchone()[0])
-            payload['request']['consistency_check']['prompt_version'] = 'consistency-unified-v5'
-            connection.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?',(json.dumps(payload),run))
-        assert ConsistencyAgentResults(database).detail(run, anchor) == before
         with pytest.raises(ValueError, match='历史一致性作业只读'):
             checks.resume(run)
+        assert ConsistencyAgentResults(database).detail(run, anchor) == before
     finally:
         runtime.close()
 
 
-def test_historical_v4_results_reviews_and_export_stay_readable_and_cannot_resume(dataset):
+def test_historical_v4_results_reviews_and_export_stay_readable_and_cannot_resume(dataset, monkeypatch):
     import io
+    import iad_core.consistency.agent_jobs as agent_jobs
     from iad_core.consistency.group_review import ConsistencyGroupReview
 
     database, _, config = dataset
@@ -250,20 +251,17 @@ def test_historical_v4_results_reviews_and_export_stay_readable_and_cannot_resum
     try:
         checks = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':normal.png'
-        run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
-            'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
-        checks.session_created(run_id, anchor)
-        checks.retrieve(run_id, anchor)
-        checks.submit_empty(run_id, anchor)
-        runtime.jobs.finish_external(run_id)
+        with monkeypatch.context() as legacy:
+            legacy.setattr(agent_jobs, 'IDENTITY_PIPELINE', 'identity-v4')
+            legacy.setattr(agent_jobs, 'IDENTITY_PROMPT_VERSION', 'consistency-anchor-v8')
+            run_id = start_prepared(checks, {'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'exact',
+                'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
+            checks.session_created(run_id, anchor)
+            checks.retrieve(run_id, anchor)
+            checks.submit_empty(run_id, anchor)
+            runtime.jobs.finish_external(run_id)
         # Arrange an immutable pre-v5 storage fixture, then exercise public readers only.
         with database.connection() as connection:
-            row = connection.execute('SELECT payload_json FROM job_runs WHERE job_id=?', (run_id,)).fetchone()
-            payload = json.loads(row[0])
-            frozen = payload['request']['consistency_check']
-            frozen.update(review_pipeline='identity-v4', prompt_version='consistency-anchor-v8')
-            frozen.pop('task_type')
-            connection.execute('UPDATE job_runs SET payload_json=? WHERE job_id=?', (json.dumps(payload), run_id))
             raw = json.loads(connection.execute('SELECT result_json FROM consistency_anchor_runs WHERE job_id=?', (run_id,)).fetchone()[0])
             raw['schema_version'] = '4.0'
             raw.pop('task_type');raw.pop('candidate_record_ids')

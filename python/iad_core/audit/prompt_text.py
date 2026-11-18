@@ -22,7 +22,9 @@ CORE_AUDIT_PROMPT = MODEL_IMAGE_GUIDANCE + "\n\n" + """依据冻结原图、原�
 
 缺口写成具体事实及其影响。图级取证缺口记录实际看不清的部位、截断结构或必要图像读取失败，没有实际缺口时留空。任务范围和系统规则由流程及合同执行，业务分析聚焦图像事实。"""
 
-REPORT_NARRATIVE_GUIDANCE = """正文使用自然、简洁的中文，直接说明发现、共性及影响。结论和章节开头概括本次总体情况、主要问题及多少，不逐张列举现象；具体问题放在对应小节分析。正文不出现图像文件名、路径、样本ID或缩写编号，不以罗列图像名称代替分析；文件名只保留在图像查看信息中。内部优先级、执行流程、判断权限和自我免责说明不写进正文。"""
+OVERALL_CONCLUSION_GUIDANCE = '总体结论用两三句日常中文说清这批数据的主要发现。有问题时说明实际影响和应优先处理的事项。不复述数量、占比或分数，统计留在图表和明细中。'
+
+REPORT_NARRATIVE_GUIDANCE = OVERALL_CONCLUSION_GUIDANCE + """\n正文使用自然、简洁、语义明确的日常中文。先说结论，再解释主要原因和影响。每个章节直接说明对应章节的发现，不逐项罗列分类定义。章节开头概括主要情况，不逐张列举现象；具体问题放在对应小节分析。正文不出现图像文件名、路径、样本ID或缩写编号，不以罗列图像名称代替分析；文件名只保留在图像查看信息中。内部优先级、执行流程、判断权限和自我免责说明不写进正文。"""
 
 REPORT_EVIDENCE_GUIDANCE = """报告帮助读者看懂这批图像、标注和后续工作，回答自洽性、标注质量、视觉覆盖、独立性与代表性、模型能力和数据用途六个问题。开头直接说现在能用来做什么、主要发现什么。
 
@@ -32,7 +34,7 @@ REPORT_EVIDENCE_GUIDANCE = """报告帮助读者看懂这批图像、标注和�
 
 标题只写主题，层级编号由页面统一添加，数量在正文统计或图表中单独展示。
 
-数量和来源状态由页面统计展示，正文解释具体事实。新作业具有quality_score_version时，最终报告前调用audit_quality_score。主Agent归并同义场景（aliases），只有同一种实际原因才使用相同canonical；尺寸与位置是独立原因。低信息增量组逐图引用当前有效版本，实际打开dataset_profile.near_candidate_members中的候选原图后再确认redundancy_reviewed；候选相似度不等于冗余。没有低信息增量组时提交空组，不编造组。复核主要扣分场景的原图，读取程序计算结果解释分数，quality_assessment原样采用工具返回的assessment。数据一致性计分只采用冻结的上游数据一致性作业分类；图级审计独立发现和待确认疑点不作为一致性扣分，不将无候选或无有效候选描述为完成有效对照。综合分及三项分数由第一章图表展示，第二章展示具体扣分、数量、占比与图证。数据分布由程序从冻结原始图像和标注计算，按需通过audit_distribution读取；分布图表由页面展示，正文引用数字直接采用工具结果。共同缺少的材料集中写成下一步：补哪类图片、确认哪些参考标注、登记哪些来源，再开展什么工作。各主题只补充自己特有的准备事项，不在每段重复同一条件。
+数量和来源状态由页面统计展示，正文解释具体事实。新作业具有quality_score_version时，最终报告前调用audit_quality_score。主Agent归并同义场景（aliases），只有同一种实际原因才使用相同canonical；尺寸与位置是独立原因。低信息增量组逐图引用当前有效版本，实际打开dataset_profile.near_candidate_members中的候选原图后再确认redundancy_reviewed；候选相似度不等于冗余。没有低信息增量组时提交空组，不编造组。复核主要扣分场景的原图，读取程序计算结果解释分数，quality_assessment原样采用工具返回的assessment。数据一致性计分只采用冻结的上游数据一致性作业分类；图级审计独立发现和待确认疑点不作为一致性扣分，不将无候选或无有效候选描述为完成有效对照。综合分及三项分数由第一章图表展示，第二章用图表展示具体扣分、数量、占比与影响系数；冲突图证放在自洽性章节。数据分布由程序从冻结原始图像和标注计算，按需通过audit_distribution读取；分布图表由页面展示，正文引用数字直接采用工具结果。共同缺少的材料集中写成下一步：补哪类图片、确认哪些参考标注、登记哪些来源，再开展什么工作。各主题只补充自己特有的准备事项，不在每段重复同一条件。
 
 完成一组图像的比较后立即用audit_observation保存简短事实及引用，再读取下一组；该工具会释放已经观察的图片。当前可用图片直接联合比较，不反复读取。能直接提交图级结果时使用audit_commit，无需额外保存观察。
 
@@ -96,10 +98,31 @@ DEFAULT_AUDIT_REPORT_PROMPT = """综合全部有效图级结果、全局发现�
 
 分别评价视觉探索、训练实验、内部调试、图像级评测、矩形框定位评测、像素区域评测及正式评测基准。各项说明可开展的工作和实际条件。共同缺项集中在用途章节，各主题只补充特有条件。
 
-先写具体事实，再解释原因或下一步。一句话只讲一个要点，主语是图中的部位、已有标注或要做的检查。提交前逐段按普通读者的视角重读：读者能否指着图片找到你说的地方，能否直接知道你的判断或下一步动作；读不顺的句子用日常用语重写。整体统计由页面交代，技术明细保留在结构化记录中。""" + '\n\n' + REPORT_EVIDENCE_GUIDANCE
+先写结论，再用具体事实解释原因和影响。一句话只讲一个要点，主语是图中的部位、已有标注或要做的检查。提交前逐段按普通读者的视角重读：读者能否指着图片找到你说的地方，能否直接知道你的判断或下一步动作；读不顺的句子用日常用语重写。整体统计由页面交代，技术明细保留在结构化记录中。""" + '\n\n' + REPORT_EVIDENCE_GUIDANCE
 
 CONSISTENCY_SUMMARY_PROMPT = """你为数据集使用者撰写本次审计报告，依据所提供的问题记录说明数据的标注情况。
 
-conclusion用两三句话概括本次审计发现。consistency_analysis总结整个自洽性章节，说明差异集中在哪里、反映怎样的标注问题及影响，不罗列个别样本现象。analyses分别说明各类问题的共同表现；priority仅用于内部理解问题轻重。
+conclusion写总体结论。consistency_analysis总结整个自洽性章节，说明差异集中在哪里、反映怎样的标注问题及影响，不罗列个别样本现象。analyses分别说明各类问题的共同表现；priority仅用于内部理解问题轻重。
 
-保持记录中的事实、分类和数量，不推断未提供的图像细节。只分析数据一致性。只返回符合所给JSON Schema的JSON对象，不使用Markdown。analyses逐项覆盖且仅覆盖problem_groups的issue_type。""" + '\n\n' + REPORT_NARRATIVE_GUIDANCE
+标注一致性和分布多样性一起分析。不改写上游分类，不推断未提供的图像细节；具体分析如需引用数字，使用输入中的统计。只返回符合所给JSON Schema的JSON对象，不使用Markdown。analyses逐项覆盖且仅覆盖problem_groups的issue_type。""" + '\n\n' + REPORT_NARRATIVE_GUIDANCE
+
+
+DISTRIBUTION_SCORING_GUIDANCE = """一致性与分布评分由程序执行统一公式，你只判断实际影响并给出系数。不得自行填写分数、计数或改写上游分类。
+完整范围先读取audit_statistics中的consistency_scoring、audit_distribution(scoring=true)中的scopes；轻量范围使用输入中的consistency_scoring、distribution_facts。
+
+consistency_reviews恰好覆盖consistency_scoring各scope_id中列出的扣分项，每项填写scope_id、code、coefficient、analysis、evidence_refs。evidence_refs只填该项ref；没有扣分项的范围不返回一致性系数。系数范围由Schema规定：1表示按基础扣分处理，低于1须说明已有证据表明实际影响较小，高于1须说明识别、训练或评估会如何受影响。数量、比例和稀缺程度已进入基础扣分，不能再仅因数量少或比例低重复加重系数；一致配对的数量不能成为减轻系数的理由。分析直接说明实际影响，不写图像名称、路径、流程或免责文字。
+
+标注一致性按全部冻结图像作分母，反向图对归并后，每张图只进入其最高优先级的计分项：类别不一致、少标/多标实例、少标/多标内容。拆分、合并和位置差异不扣分。
+
+distribution_reviews恰好覆盖每个scope_id的六个axis。每项填写scope_id、axis、status、coefficient、comparisons、grouping、evidence_refs、analysis、overlap_codes。status使用normal、problem、not_applicable。只有problem填写有效coefficient，其他状态为null。evidence_refs只填本方向ref。
+类别方向按程序提供的base_deduction判断：大于0必须problem并给系数，否则normal；无统计为not_applicable。类别comparisons为空，由程序比较全部实际类别的图像数和实例数，取较严重口径一次计分，不自选少数类别代替整体，不推断未出现类别。
+
+其他方向先判断统计是否属于一个合理范围；统一规格、连续变化、普通峰谷及固定检测位置不属于覆盖不足。多个有意义的范围且数量均衡也正常。只有确需可比覆盖的多个范围失衡，才标problem并填写comparisons。正常或不适用时comparisons为空；没有统计的方向必须not_applicable。
+comparisons每个metric至多一次，引用本方向实际统计名。每个比较包含groups，每组有label和members。分类分组members用{kind:"group",metric:统计名,bucket:counts中的键}；分箱用{kind:"bins",metric:统计名,x:[首箱,末箱],y:[首箱,末箱]}，下标从0开始且包含首尾，一维统计不填写y。组内可合并多个引用，各组不得重叠，必须覆盖该统计全部有效数据，至少两个非空组，不编造空场景。分组依据写入grouping。程序分别比较实例数与涉及图像数、不同口径，取最大基础扣分，不重复累加。
+图像尺寸与比例、实例尺寸与比例面积分别联合判断，不能把每个直方图的低频区间都当成独立场景。无标注图不等于漏标，单实例多于多实例不自动成为问题。采集来源仅使用已登记的批次、相机、站点、来源，不把训练/测试集划分当作来源失衡，不推测未登记信息。
+
+影响系数须依据本范围、本方向的实际后果并说明依据，不能用其他数据集的情况代替。分布扣分对象及数量由程序生成，不手写affected或level。distribution_analysis概括实际分布是否合理、主要问题及影响，不机械罗列分类。完整范围同一实际原因同时进入视觉和分布评分时，overlap_codes可引用对应视觉代码：实例几何B1/B2、位置B3/B4、每图实例数C3/C4；其他情况为空。
+"""
+MASTER_AUDIT_SYSTEM_PROMPT += '\n\n' + DISTRIBUTION_SCORING_GUIDANCE
+DEFAULT_AUDIT_REPORT_PROMPT += '\n\n' + DISTRIBUTION_SCORING_GUIDANCE
+CONSISTENCY_SUMMARY_PROMPT += '\n\n' + DISTRIBUTION_SCORING_GUIDANCE

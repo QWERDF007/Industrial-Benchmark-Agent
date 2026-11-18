@@ -1,51 +1,50 @@
 from uuid import uuid4
+from tests.audit_support import distribution_reviews, consistency_reviews
 
 import pytest
 
-from iad_core.audit.quality_models import QualityImage, AuditScoreWeights
+from iad_core.audit.quality_models import QualityImage, ConsistencyScoreWeights
 from iad_core.audit.quality_scoring import AuditQualityScorer
 from iad_core.workbench.module_settings import ModuleSettings, AuditSettingsValues
 
 
-def test_consistency_scope_uses_only_frozen_categories_and_full_hundred_points():
-    settings = AuditSettingsValues(audit_scope='consistency')
-    assert settings.audit_scope == 'consistency'
-    assert AuditSettingsValues().audit_scope == 'full'
-    score = AuditQualityScorer().score([
-        QualityImage(sample_id='a', dataset_id='one', consistency_categories=['少类别']),
-        QualityImage(sample_id='b', dataset_id='one', consistency_categories=['多标内容', '位置差异']),
-    ], AuditScoreWeights(consistency=0, diversity=1, redundancy=0), scope=settings.audit_scope)
+def test_consistency_scope_normalizes_the_two_selected_dimensions():
+    score = AuditQualityScorer().score([QualityImage(sample_id='a', dataset_id='one')],
+        ConsistencyScoreWeights(consistency=8, diversity=2), scope='consistency', distribution_reviews=[])
     assert score.status == 'complete'
-    assert score.total == pytest.approx(35)
-    assert score.weights == {'consistency': 1}
-    assert set(score.dimensions) == {'consistency'}
-    assert {item.dimension for item in score.items} == {'consistency'}
-    assert not score.limitations
+    assert score.total == 100
+    assert score.weights == {'consistency': .8, 'diversity': .2}
+    assert set(score.dimensions) == {'consistency', 'diversity'}
     assert score.observed_images == 0
-    assert score.dataset_scores[0].total == score.total
 
 
 def test_consistency_job_imports_upstream_without_independent_image_sessions(native_audit):
     from iad_core.audit.consistency_summary import ConsistencyAudit
     from iad_core.audit.queries import AuditQueries
     jobs, dataset_id, upstream_id, role = native_audit
-    ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1,
+    settings = ModuleSettings(jobs.db)
+    selected = settings.save(dict(module='audit', expected_revision=1,
         settings={'audit_scope': 'consistency'}))
     request = dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream_id)
     created = jobs.start(request, agent=role)
     run_id = created['run_id']
     assert jobs.snapshot(run_id).settings.audit_scope == 'consistency'
     assert jobs.samples(run_id) == []
+    settings.save(dict(module='audit', expected_revision=selected.revision,
+        settings={'consistency_score_weights': {'diversity': .25}}))
     summary = ConsistencyAudit(jobs.db)
     prepared = summary.prepare(run_id)
-    assert prepared['needs_analysis'] is False
     assert prepared['context']['problem_groups'] == []
+    assert '不复述数量、占比或分数' in prepared['response_schema']['properties']['conclusion']['description']
     assert len(summary.records(run_id)) == 6
-    summary.commit(run_id, None, jobs=jobs.jobs)
+    summary.commit(run_id, dict(conclusion='本次未发现标注冲突。', consistency_analysis='图像标注没有冲突。', analyses=[],
+        distribution_reviews=distribution_reviews(jobs, run_id),consistency_reviews=consistency_reviews(jobs,run_id)), jobs=jobs.jobs)
     finished = jobs.finish(run_id)
     assert finished['status'] == 'COMPLETED'
     report = AuditQueries(jobs.db).report(run_id)
     assert report.audit_scope == 'consistency'
+    assert report.quality_score.version == '1.9'
+    assert report.quality_score.weights == pytest.approx({'consistency': .9, 'diversity': .1})
     assert report.audited_samples == report.total_samples == 6
     assert report.statistics.normal_images == 6
     assert report.distribution == {'normal': 6, 'suspect': 0}
@@ -76,6 +75,20 @@ def test_consistency_scope_keeps_imported_samples_and_source_status_visible(nati
     assert detail.consistency is None
     assert detail.registration is not None
     assert detail.registration == next(r for r in jobs.snapshot(run_id).manifest.records if r.sample.sample_id == page.items[0].sample_id)
+
+
+def test_consistency_scope_cannot_recompute_under_a_different_frozen_rule(native_audit):
+    from iad_core.audit.consistency_summary import ConsistencyAudit
+    jobs, dataset_id, upstream_id, role = native_audit
+    ModuleSettings(jobs.db).save(dict(module='audit', expected_revision=1, settings={'audit_scope': 'consistency'}))
+    run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[dataset_id], consistency_job_id=upstream_id), agent=role)['run_id']
+    with jobs.db.connection() as connection:
+        connection.execute("UPDATE audit_workflow_runs SET snapshot_json=json_set(snapshot_json,'$.quality_score_version','1.6') WHERE job_id=?", (run_id,))
+    summary = ConsistencyAudit(jobs.db)
+    with pytest.raises(ValueError, match='历史评分'):
+        summary.prepare(run_id)
+    with pytest.raises(ValueError, match='历史评分'):
+        summary.commit(run_id, None, jobs=jobs.jobs)
 
 
 @pytest.mark.parametrize('count', [2, 6, 10, 12])
@@ -116,7 +129,7 @@ def test_summary_uses_problem_records_only_and_preserves_actual_pairs(native_aud
     run_id = jobs.start(dict(submission_id=str(uuid4()), subset_ids=[config.dataset.id], consistency_job_id=source), agent=role)['run_id']
     summary = ConsistencyAudit(jobs.db)
     prepared = summary.prepare(run_id)
-    assert prepared['needs_analysis'], [(r.summary.reason, r.summary.categories, r.result.model_dump()) for r in summary.records(run_id)]
+    assert prepared['context']['distribution_facts']
     assert [g['issue_type'] for g in prepared['context']['problem_groups']] == ['image_label_mismatch']
     assert prepared['context']['problem_groups'][0]['priority'] == 0
     assert len(json.dumps(prepared['context'])) < 16000
@@ -124,7 +137,8 @@ def test_summary_uses_problem_records_only_and_preserves_actual_pairs(native_aud
     with pytest.raises(ValueError, match='覆盖'):
         summary.commit(run_id, dict(conclusion='差异', consistency_analysis='存在标签冲突', analyses=[]), jobs=jobs.jobs)
     summary.commit(run_id, dict(conclusion='相同内容被标为不同整图标签。', consistency_analysis='上游存在整图标签冲突。',
-        analyses=[dict(issue_type='image_label_mismatch', analysis='同一内容在正常和异常目录间标签不一致。')]), jobs=jobs.jobs)
+        analyses=[dict(issue_type='image_label_mismatch', analysis='同一内容在正常和异常目录间标签不一致。')],
+        distribution_reviews=distribution_reviews(jobs, run_id),consistency_reviews=consistency_reviews(jobs,run_id)), jobs=jobs.jobs)
     pairs = AuditReportEvidence(jobs.db).groups(run_id)['consistency:image_label_mismatch']
     assert len(pairs) == min(count, 10)
     assert len({p.pair_id for p in pairs}) == len(pairs)
@@ -134,8 +148,8 @@ def test_summary_uses_problem_records_only_and_preserves_actual_pairs(native_aud
         assert AuditQueries(jobs.db).evidence(run_id, pair.main.sample_id, pair.candidate.image.evidence_id)['path']
     assert jobs.finish(run_id)['status'] == 'COMPLETED'
     report = AuditQueries(jobs.db).report(run_id)
-    assert report.quality_score.total == 0
-    assert report.quality_score.weights == {'consistency': 1}
+    assert report.quality_score.dimensions['consistency'].score == 0
+    assert report.quality_score.weights == pytest.approx({'consistency': .9, 'diversity': .1})
     assert len(report.evidence_pairs['consistency:image_label_mismatch']) == min(count, 10)
     assert set(report.evidence_pairs) == {'consistency:image_label_mismatch'}
     html = AuditQueries(jobs.db).export(run_id)['html']

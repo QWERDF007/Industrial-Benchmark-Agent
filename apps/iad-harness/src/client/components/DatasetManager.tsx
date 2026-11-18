@@ -9,11 +9,15 @@ import { useFolderPreview } from "../useFolderPreview.js";
 import { WorkbenchHeader } from "./layout/WorkbenchHeader.js";
 import {DirectoryPickerDialog} from "./DirectoryPickerDialog.js";
 import {DatasetCreateDialog} from "./DatasetCreateDialog.js";
+import {DatasetStatisticsDrawer,type DatasetStatisticsTarget} from './DatasetStatisticsDrawer.js';
 import {DeleteAction} from "./DeleteAction.js";
+import {Pagination} from './Pagination.js';
 
 import { ClearFilterButton } from "./CommonFilterControls.js";
 import { useWorkspace } from "../workspace.js";
 import {buildHierarchyGroups,getDatasetGroupId} from "../dataset-hierarchy.js";
+
+const DATASET_PAGE_SIZE = 5;
 
 export function DatasetManager({
   datasets: propDatasets,
@@ -31,6 +35,7 @@ export function DatasetManager({
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
   const [selectedId, setSelectedId] = useState<string | null>(() => selected?.dataset_id || null);
   const [drawerOpen, setDrawerOpen] = useState(() => Boolean(selected?.dataset_id));
+  const [statisticsTarget,setStatisticsTarget]=useState<DatasetStatisticsTarget|null>(null);
 
   // Local datasets and groups for optimistic updates
   const [localDatasets, setLocalDatasets] = useState<Dataset[]>(propDatasets);
@@ -43,6 +48,10 @@ export function DatasetManager({
   useEffect(() => {setLocalGroups(propGroups);}, [propGroups]);
   const groups = localGroups;
   const hierarchyGroups=useMemo(()=>buildHierarchyGroups(datasets,groups),[datasets,groups]);
+  const [page,setPage]=useState(()=>{
+    const index=selected?hierarchyGroups.findIndex(group=>group.group_id===getDatasetGroupId(selected)):0;
+    return Math.floor(Math.max(0,index)/DATASET_PAGE_SIZE)+1;
+  });
 
   // Initial group expansion
   useEffect(() => {
@@ -242,6 +251,10 @@ export function DatasetManager({
 
   // Filter logic
   const q = search.trim().toLocaleLowerCase();
+  const matchingGroups=hierarchyGroups.filter(group=>group.name.toLocaleLowerCase().includes(q)
+    ||datasets.some(child=>getDatasetGroupId(child)===group.group_id&&child.name.toLocaleLowerCase().includes(q)));
+  const currentPage=Math.min(page,Math.max(1,Math.ceil(matchingGroups.length/DATASET_PAGE_SIZE)));
+  const visibleGroups=matchingGroups.slice((currentPage-1)*DATASET_PAGE_SIZE,currentPage*DATASET_PAGE_SIZE);
 
   return (
     <div className={`iad-dataset-page-wrap ${drawerOpen && (activeDataset || activeGroup) ? "has-drawer" : ""}`}>
@@ -259,14 +272,14 @@ export function DatasetManager({
               placeholder="搜索数据集"
               aria-label="搜索数据集"
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => {setSearch(e.target.value);setPage(1);}}
             />
             <ClearFilterButton
               id="manager-clear-search"
               title="清除筛选条件"
               ariaLabel="清除筛选条件"
               disabled={!search}
-              onClick={() => setSearch("")}
+              onClick={() => {setSearch("");setPage(1);}}
             />
         </div>
 
@@ -289,12 +302,10 @@ export function DatasetManager({
               </tr>
             </thead>
             <tbody id="tableBody">
-              {hierarchyGroups.map(group => {
+              {visibleGroups.map(group => {
                 const children = datasets.filter(child=>getDatasetGroupId(child)===group.group_id);
                 const matchGroup = group.name.toLocaleLowerCase().includes(q);
                 const matchedChildren = children.filter(c => matchGroup || c.name.toLocaleLowerCase().includes(q));
-
-                if (q && !matchGroup && !matchedChildren.length) return null;
 
                 const isOpen = q ? true : (expandedGroups[group.group_id] ?? true);
                 const sumImages = children.reduce((s, c) => s + (c.total_samples || 0), 0);
@@ -353,6 +364,9 @@ export function DatasetManager({
                       <td className="num">{sumLabels}</td>
                       <td>
                         {group.kind==='group'&&<div className="actions">
+                          <IconButton icon="stats" type="button" label={`统计 ${group.name}`} title="统计" onClick={e=>{
+                            e.stopPropagation();setStatisticsTarget({kind:'group',id:group.group_id,name:group.name});
+                          }}/>
                           <IconButton icon="add" type="button" data-add-parent={group.group_id} label={`为 ${group.name} 添加子数据集`} title="添加子数据集" onClick={e => { e.stopPropagation(); openAddModal(group.group_id); }} />
                           <DeleteAction title="删除大数据集" name={group.name} confirmDisabled={children.length>0} description={children.length?`该数据集包含 ${children.length} 个子数据集，请先处理其中的子数据集，再删除父级。`:'该大数据集没有子数据集。'}
                             restoreFocus={()=>document.getElementById('search')} onDelete={()=>deleteDataset({kind:'group',group})}/>
@@ -411,6 +425,9 @@ export function DatasetManager({
                           <td className="num">{childLabels}</td>
                           <td>
                             <div className="actions">
+                              <IconButton icon="stats" type="button" label={`统计 ${child.name}`} title="统计" onClick={e=>{
+                                e.stopPropagation();setStatisticsTarget({kind:'dataset',id:child.dataset_id,name:child.name});
+                              }}/>
                               <DeleteAction title="删除数据集" name={child.name} description="保留源文件。"
                                 restoreFocus={()=>document.getElementById('search')} onDelete={()=>deleteDataset({kind:'child',dataset:child})}/>
                             </div>
@@ -422,7 +439,7 @@ export function DatasetManager({
                 );
               })}
 
-              {!hierarchyGroups.length && (
+              {!matchingGroups.length && (
                 <tr>
                   <td colSpan={5}><div className="blank">没有匹配的数据集</div></td>
                 </tr>
@@ -430,6 +447,8 @@ export function DatasetManager({
             </tbody>
           </table>
         </div>
+        <Pagination total={matchingGroups.length} page={currentPage} size={DATASET_PAGE_SIZE} hideSinglePage
+          label="数据集列表" unit="个数据集" onPage={setPage}/>
       </section>
 
       {/* Right Drawer */}
@@ -600,15 +619,21 @@ export function DatasetManager({
 
       {addTarget&&<DatasetCreateDialog groups={groups} parentId={addTarget.parentId} onClose={()=>setAddTarget(null)}
         onCreated={value=>{
+          setSearch('');
           if(value.kind==='group'){
+            setPage(Math.floor(groups.length/DATASET_PAGE_SIZE)+1);
             setLocalGroups(previous=>[...previous,value.group]);selectRow(value.group.group_id);onChanged();
           }else{
+            const index=hierarchyGroups.findIndex(group=>group.group_id===value.groupId);
+            setPage(Math.floor(Math.max(0,index)/DATASET_PAGE_SIZE)+1);
             setLocalDatasets(previous=>[...previous,value.dataset]);
             setExpandedGroups(previous=>({...previous,[value.groupId]:true}));
             selectRow(value.dataset.dataset_id);onChanged(value.dataset.dataset_id);
           }
           setAddTarget(null);announce(value.kind==='group'?'已创建数据集':'已添加子数据集');
         }}/>}
+
+      {statisticsTarget&&<DatasetStatisticsDrawer target={statisticsTarget} onClose={()=>setStatisticsTarget(null)}/>}
 
       {/* Toast Notification */}
       <div id="toast" className={`toast ${toastText ? "" : "hidden"}`} role="status">

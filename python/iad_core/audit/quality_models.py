@@ -1,6 +1,8 @@
-from typing import Literal
+from math import isfinite
+from typing import Annotated, Literal
 
 from pydantic import Field, model_validator
+from pydantic.json_schema import SkipJsonSchema
 
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
 from iad_core.audit.delegation_models import AuditResultReference
@@ -11,14 +13,100 @@ from iad_core.consistency.conflict_categories import ConflictCategory
 AuditScope = Literal['full', 'consistency']
 
 
-QualityScoreVersion = Literal['1.1', '1.2', '1.3', '1.4', '1.5']
-QUALITY_SCORE_VERSION: QualityScoreVersion = '1.5'
+QualityScoreVersion = Literal['1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '1.9']
+QUALITY_SCORE_VERSION: QualityScoreVersion = '1.9'
+
+ImpactCoefficient = Annotated[float, Field(ge=.5, le=2, allow_inf_nan=False)]
+ConsistencyScoreCode = Literal['category_mismatch', 'instance_count_mismatch', 'coverage_mismatch']
 
 
-class AuditScoreWeights(AnalysisModel):
-    consistency: float = Field(default=.8, ge=0, allow_inf_nan=False)
-    diversity: float = Field(default=.15, ge=0, allow_inf_nan=False)
-    redundancy: float = Field(default=.05, ge=0, allow_inf_nan=False)
+class ConsistencyImpactReview(AnalysisModel):
+    scope_id: NonBlankText
+    code: ConsistencyScoreCode
+    coefficient: ImpactCoefficient
+    analysis: NonBlankText
+    evidence_refs: list[NonBlankText] = Field(min_length=1)
+
+
+class QualityComparison(AnalysisModel):
+    main_id: NonBlankText
+    candidate_id: NonBlankText
+    categories: list[ConflictCategory]
+
+
+DistributionAxis = Literal['class_balance', 'image_geometry', 'instance_geometry',
+    'instance_count', 'instance_position', 'capture_source']
+
+
+class DistributionCategoryReference(AnalysisModel):
+    kind: Literal['category']
+    category: str
+
+
+class DistributionGroupReference(AnalysisModel):
+    kind: Literal['group']
+    metric: NonBlankText
+    bucket: str
+
+
+BinSpan = tuple[Annotated[int, Field(ge=0, strict=True)], Annotated[int, Field(ge=0, strict=True)]]
+
+
+class DistributionBinsReference(AnalysisModel):
+    kind: Literal['bins']
+    metric: NonBlankText
+    x: BinSpan = Field(description='从 0 开始的首尾分箱下标，均包含在内。')
+    y: BinSpan | None = Field(default=None, description='仅二维热图填写，同样包含首尾分箱。')
+
+
+DistributionReference = Annotated[DistributionCategoryReference | DistributionGroupReference | DistributionBinsReference,
+    Field(discriminator='kind')]
+
+
+class DistributionGroup(AnalysisModel):
+    label: NonBlankText
+    members: list[DistributionGroupReference | DistributionBinsReference] = Field(min_length=1)
+
+
+class DistributionMetricGrouping(AnalysisModel):
+    metric: NonBlankText
+    groups: list[DistributionGroup] = Field(min_length=2)
+
+
+class QualityDistributionReview(AnalysisModel):
+    scope_id: str = Field(description='统计范围的scope_id，整体为overall，子集为dataset_id。')
+    axis: DistributionAxis
+    status: Literal['normal', 'problem', 'not_applicable'] | None = None
+    coefficient: ImpactCoefficient | None = None
+    comparisons: list[DistributionMetricGrouping] = Field(default_factory=list)
+    level: SkipJsonSchema[Literal['none', 'light', 'moderate', 'severe', 'not_applicable'] | None] = None
+    overlap_codes: list[str] = Field(default_factory=list, description='仅完整范围：与本项确属同一实际原因的视觉评分代码；无重复原因时为空。')
+    grouping: NonBlankText = Field(description='合理范围或分组及其统计依据；单一合理范围和均衡多范围不扣分。')
+    evidence_refs: list[NonBlankText] = Field(description='引用输入facts中真实的统计项ref，不编造数量或缺失类别。')
+    affected: SkipJsonSchema[list[DistributionReference]] = Field(default_factory=list)
+    analysis: NonBlankText = Field(description='先说结论，再用日常中文说明实际质量影响，不写分类定义或内部流程。')
+
+
+class QualityDistributionEvidence(AnalysisModel):
+    metric: str
+    bucket: str | None = None
+    x_range: tuple[float, float] | None = None
+    y_range: tuple[float, float] | None = None
+    image_count: int | None = None
+    annotation_count: int | None = None
+    image_denominator: int | None = None
+    annotation_denominator: int | None = None
+    basis: str | None = None
+    base_deduction: float | None = None
+    deduction: float | None = None
+
+
+ScoreWeight = Annotated[float, Field(ge=0, allow_inf_nan=False)]
+
+
+class ConsistencyScoreWeights(AnalysisModel):
+    consistency: ScoreWeight = .9
+    diversity: ScoreWeight = .1
 
     @model_validator(mode='after')
     def positive_total(self):
@@ -28,10 +116,18 @@ class AuditScoreWeights(AnalysisModel):
 
     def normalized(self) -> dict[str, float]:
         values = self.model_dump()
-        scale = max(values.values())
-        scaled = {name: value / scale for name, value in values.items()}
-        total = sum(scaled.values())
-        return {name: value / total for name, value in scaled.items()}
+        total = sum(values.values())
+        if not isfinite(total):
+            scale = max(values.values())
+            values = {name: value / scale for name, value in values.items()}
+            total = sum(values.values())
+        return {name: value / total for name, value in values.items()}
+
+
+class AuditScoreWeights(ConsistencyScoreWeights):
+    consistency: ScoreWeight = .8
+    diversity: ScoreWeight = .15
+    redundancy: ScoreWeight = .05
 
 
 class QualityDefectScene(AnalysisModel):
@@ -83,7 +179,6 @@ class QualityImage(AnalysisModel):
     sample_id: str
     dataset_id: str
     completed: bool = True
-    consistency_categories: list[ConflictCategory] = Field(default_factory=list)
     observation_complete: bool = False
     is_normal: bool = False
     defects: list[QualityDefect] = Field(default_factory=list)
@@ -103,6 +198,16 @@ class QualityScoreItem(AnalysisModel):
     scenario: str = ''
     sample_ids: list[str] = Field(default_factory=list)
     suppressed_by: str | None = None
+    pair_count: int | None = None
+    compared_pairs: int | None = None
+    charged_count: int | None = None
+    base_deduction: float | None = None
+    impact_coefficient: ImpactCoefficient | None = None
+    scoring_basis: str | None = None
+    analysis: str = ''
+    overlap_codes: list[str] = Field(default_factory=list)
+    cause: DistributionAxis | Literal[''] = ''
+    distribution_evidence: list[QualityDistributionEvidence] = Field(default_factory=list)
 
 
 class QualityDimension(AnalysisModel):
@@ -138,6 +243,8 @@ class QualityRedundantGroup(AnalysisModel):
 
 
 class QualityAssessment(AnalysisModel):
+    consistency_reviews: list[ConsistencyImpactReview] | None = None
+    distribution_reviews: list[QualityDistributionReview] | None = None
     aliases: list[QualitySceneAlias] = Field(default_factory=list)
     redundancy_reviewed: bool = Field(description='已实际对照冻结相似候选及已识别相似组的原图，完成低信息增量判断。')
     redundant_groups: list[QualityRedundantGroup] = Field(default_factory=list)

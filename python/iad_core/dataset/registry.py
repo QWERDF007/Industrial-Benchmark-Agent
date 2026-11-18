@@ -217,15 +217,15 @@ class DatasetRegistry:
                 (task_id,dataset_id,task_id,dataset_id)).fetchone()
             if exclusive_task and conn.execute("SELECT 1 FROM agent_runs WHERE task_id=? AND status IN ('PENDING','RUNNING')", (task_id,)).fetchone():
                 raise ValueError("数据集仍有执行中的 Agent 作业，请等待作业结束后删除")
-            from iad_core.consistency.deletion import ConsistencyDeletion
-            ConsistencyDeletion(conn).delete_dataset(dataset_id)
             related = [row[0] for row in conn.execute("""WITH RECURSIVE owned(job_id) AS (
-                SELECT source_id FROM job_dataset_scopes WHERE dataset_id=? AND kind IN ('direct','workflow')
+                SELECT source_id FROM job_dataset_scopes WHERE dataset_id=?
                 UNION SELECT job_id FROM job_runs WHERE task_id=? AND ?
                 UNION SELECT child_id FROM job_ownership_edges JOIN owned ON parent_id=owned.job_id)
                 SELECT job_id FROM owned""", (dataset_id,task_id,exclusive_task))]
             jobs = 'SELECT value FROM json_each(?)'
             job_scope = (json.dumps(related),)
+            from iad_core.consistency.deletion import ConsistencyDeletion
+            ConsistencyDeletion(conn).delete_dataset(dataset_id)
             conn.execute(f"DELETE FROM model_calls WHERE run_id IN ({jobs})", job_scope)
             conn.execute(f"DELETE FROM job_runs WHERE job_id IN ({jobs})", job_scope)
             for table in ('annotations','gold_records','split_assignments','review_decisions','audit_suggestions'):

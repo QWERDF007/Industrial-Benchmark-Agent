@@ -92,12 +92,12 @@ export class AuditMasterAgent {
                     } }));
                 scope.tools.register(defineTool({ name: 'audit_dataset', description: '分页读取冻结的完全重复组、相似候选及评测基准、泄漏明细。候选仅提供复看线索，不能直接作为低信息增量结论。', parameters: auditDatasetParameters, output: workbenchJsonOutput,
                     execute: async (query, execution) => this.bridge.execute('audit_agent_dataset', { ...identity, query: { ...query, max_chars: Math.min(query.max_chars ?? 24000, await this.host.pageChars(execution.agent)) } }, execution.signal) }));
-                scope.tools.register(defineTool({ name: 'audit_statistics', description: '读取按有效图级版本计算的覆盖、疑点、观察、一致性交叉和知识作用统计。', parameters: {}, output: workbenchJsonOutput,
-                    execute: (_args, execution) => this.bridge.execute('audit_agent_report_statistics', identity, execution.signal) }));
-                scope.tools.register(defineTool({ name: 'audit_quality_score', description: '由程序按冻结系数和当前有效图级记录计算综合分、三维分和分页扣分明细。归并同义场景，实际观察相似候选后确认低信息增量组；不得填入分数或推测数量。使用next_cursor读取后续条目，item_code读取某项的样本引用，dataset_id读取指定子数据集得分。正式报告的quality_assessment原样采用返回的assessment，图级复审变化后重新预览。',
+                scope.tools.register(defineTool({ name: 'audit_statistics', description: '读取按有效图级版本计算的覆盖、疑点、观察、一致性交叉和知识作用统计，以及整体和子集的consistency_scoring事实。依据各实际扣分项的ref给出consistency_reviews影响系数。', parameters: {}, output: workbenchJsonOutput,
+                    execute: (_args, execution) => this.bridge.execute('audit_agent_report_statistics', { ...identity, scoring: true }, execution.signal) }));
+                scope.tools.register(defineTool({ name: 'audit_quality_score', description: '由程序按统一基础扣分、已提交的consistency_reviews及distribution_reviews影响系数、冻结综合系数计算综合分、三维分和分页扣分明细。归并同义场景，实际观察相似候选后确认低信息增量组；不得填入分数或推测数量。使用next_cursor读取后续条目，item_code读取某项的样本引用，dataset_id读取指定子数据集得分。正式报告的quality_assessment原样采用返回的assessment，图级复审变化后重新预览。',
                     parameters: auditQualityScoreParameters, output: workbenchJsonOutput,
                     execute: async (assessment, execution) => this.bridge.execute('audit_agent_quality_score', { ...identity, assessment: { ...assessment, max_chars: Math.min(assessment.max_chars ?? 24000, await this.host.pageChars(execution.agent)) } }, execution.signal) }));
-                scope.tools.register(defineTool({ name: 'audit_distribution', description: '读取程序从冻结原图尺寸和原始标注计算的类别图数、标注实例数、几何分布、分位数、密度和来源分布。可按子数据集和类别筛选，数字直接采用工具结果。',
+                scope.tools.register(defineTool({ name: 'audit_distribution', description: '读取程序从冻结原图尺寸和原始标注计算的类别图数、标注实例数、几何分布、分位数、密度和来源分布。可按子数据集和类别筛选。scoring=true读取整体与子集六方向评分依据，模型完成distribution_reviews后交给audit_quality_score计算，数字直接采用工具结果。',
                     parameters: auditDistributionParameters, output: workbenchJsonOutput,
                     execute: (query, execution) => this.bridge.execute('audit_agent_distribution', { ...identity, query }, execution.signal) }));
                 scope.tools.register(defineTool({ name: 'audit_records', description: '分页读取冻结范围的有效图级结果及上游记录，压缩后可重读。', parameters: auditRecordParameters, output: workbenchJsonOutput,
