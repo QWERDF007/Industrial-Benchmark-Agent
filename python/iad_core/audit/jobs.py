@@ -113,6 +113,7 @@ class AuditAgentJobs(AuditState):
             dict(audit_workflow_version=6, audit_scope=configuration.settings.audit_scope, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
                 sample_ids=[record.sample.sample_id for record in manifest.records], instruction=request.master_prompt.user_prompt,
                 model_name=role.profile.model_id, model_profile=role.profile.model_dump(),
+                image_max_side=configuration.settings.whole_image_max_side,
                 knowledge_version_id=snapshot.knowledge.selection.version_id if snapshot.knowledge else None),
             None, '准备一致性结论汇总' if lightweight else '准备逐图原生审计', persist=persist)
         self.jobs.update(job['run_id'],phase='PREPARING_CONSISTENCY_SUMMARY' if lightweight else 'PREPARING_AUDIT_INPUT',completion_pending=True)

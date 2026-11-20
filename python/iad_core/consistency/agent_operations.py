@@ -134,7 +134,7 @@ def consistency_agent_analysis(args, db_path):
 
 def consistency_conflicts_export(args, db_path):
     from iad_core.consistency.conflict_export import ConsistencyConflictExport
-    return ConsistencyConflictExport(Database(db_path)).build(args['run_id'])
+    return ConsistencyConflictExport(Database(db_path)).build(args['run_id'], format=args.get('format', 'zip'))
 
 
 def consistency_agent_export(args, db_path):
@@ -144,7 +144,7 @@ def consistency_agent_export(args, db_path):
         except BaseException:
             Path(output.name).unlink()
             raise
-    return {'path': output.name, 'filename': args['run_id'] + '.jsonl'}
+    return {'path': output.name, 'filename': args['run_id'] + '.jsonl', 'media_type': 'application/x-ndjson; charset=utf-8'}
 
 
 def consistency_agent_session_created(args, db_path):

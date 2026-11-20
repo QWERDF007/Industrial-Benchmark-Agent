@@ -47,18 +47,19 @@ class DisputeDecision(AnalysisModel):
 class IdentityDecision(AnalysisModel):
     region_refs: ClassVar[tuple[str, ...]] = ()
     dispute_refs: ClassVar[tuple[str, ...]] = ()
-    overview: IdentityRelation
-    summary: NonBlankText = Field(description='用一句直白中文给判断及决定性依据；有差异写清位置和变化；两侧共用，用“两图”或“一侧、另一侧”。')
-    regions: str = Field(description='按输入 windows 顺序逐区填写：S为相同，D为不同，U为无法确认；每区一个字符，不加分隔符。')
-    unmapped_regions: AnalysisModel
+    overview_observation: NonBlankText = Field(description='先独立对照两张完整原图的全部可见内容，包括标注局部以外的位置；依据当前图像的实际内容，记录具体对应或不同之处，不能只复述局部相同。用一两句对称表述可见事实。')
     details: list[IdentityRegionDetail] = Field(default_factory=list,
         description='先记录全部windows中实际可见的形状、线条或纹理，再判断是否相同；S也须有具体对应细节。同一事实只写一次，refs列出适用区域；没有windows时填空列表。')
+    unmapped_regions: AnalysisModel
     limitations: list[NonBlankText] = Field(default_factory=list,
         description='两侧共用的具体限制，不使用主图、候选或左右图称呼。')
     disputes: list[DisputeDecision] = Field(default_factory=list,
         description='逐条核对输入disputes中的具体争议，恰好覆盖全部ref。依据实际图像独立判断，不直接采纳争议描述。')
+    regions: str = Field(description='根据已记录的局部事实，按输入 windows 顺序逐区填写：S为相同，D为不同，U为无法确认；每区一个字符，不加分隔符。')
+    overview: IdentityRelation
+    summary: NonBlankText = Field(description='根据全部观察用一句直白中文给判断及决定性依据；有差异写清位置和变化；两侧共用，用“两图”或“一侧、另一侧”。')
 
-    @field_validator('summary', 'limitations')
+    @field_validator('overview_observation', 'summary', 'limitations')
     @classmethod
     def shared_perspective(cls, value):
         texts = [value] if isinstance(value, str) else value
@@ -143,6 +144,7 @@ class PreparedIdentityObservation:
                 for bundle in self.bundles for view in bundle.images}.values()), 'source': 'vision',
             'region_pairs': self.frozen.region_pairs,
             'required_region_pair_ids': [pair.region_pair_id for pair in self.frozen.region_pairs],
+            'overview_observation': decision.overview_observation,
             'overview_relation': decision.overview,
             'dispute_checks': [IdentityDisputeCheck(observation_id=dispute.observation_id,
                 visual_relation=dispute_decisions['d'+str(index)].visual_relation,

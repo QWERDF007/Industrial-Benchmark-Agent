@@ -12,6 +12,59 @@ from tests.test_consistency_program_workflow import pair_job
 
 
 @pytest.mark.parametrize('similar_job', ['registered'], indirect=True)
+@pytest.mark.parametrize('protocol', ['openai-completions', 'openai-responses'])
+def test_whole_image_observation_is_required_and_can_reject_matching_annotation_regions(pair_job, protocol):
+    from iad_core.consistency.identity import CandidateIdentity
+    from iad_core.consistency.pair_reviews import ConsistencyPairReviews
+
+    runtime, _, run_id = pair_job
+    requests = []
+    whole_image_fact = '两图未标注的内部表面，一侧多出边界清晰的暗斑，另一侧对应位置平整。'
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        body = json.loads(request.content)
+        messages = body['input'] if protocol == 'openai-responses' else body['messages']
+        content = next(message['content'] for message in messages
+            if message['role'] == 'user' and isinstance(message['content'], list))
+        context = json.loads(content[1]['text'])
+        requests.append(body)
+        answer = identity_response(context, 'transformed_same_content', '两图标注局部的纹理能够对应。')
+        if len(requests) == 1:
+            answer.pop('overview_observation', None)
+        else:
+            answer.update(overview_observation=whole_image_fact, overview='different',
+                summary='两图内容不同，一侧内部表面多出暗斑，另一侧没有。')
+        if protocol == 'openai-responses':
+            return httpx.Response(200, json={'object': 'response', 'status': 'completed', 'output': [
+                {'type': 'message', 'role': 'assistant', 'content': [{'type': 'output_text',
+                    'text': json.dumps(answer), 'annotations': []}]}]})
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
+            'message': {'content': json.dumps(answer)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)), profile=ModelProfile(
+        endpoint='http://model.invalid/v1', api=protocol, model_id='vision',
+        capacity_mode='provider_managed' if protocol == 'openai-responses' else 'vllm_tokenize',
+        context_tokens=32768))
+    try:
+        reviews = ConsistencyPairReviews(runtime, client)
+        task = reviews.plan(run_id)[0]
+        receipts = reviews.review_many(run_id, [task.pair_key])
+        assert len(receipts) == 1
+        assert len(requests) == 2, '只核对标注局部的相同判断不能直接作为整图相同通过'
+        for link in task.links:
+            state = CandidateIdentity(runtime).read(run_id, link.anchor_id)
+            gate = next(item for item in state.gates if item.candidate_id == link.candidate_id)
+            assert gate.overview_observation == whole_image_fact
+            assert gate.overview_relation == 'different' and gate.relation == 'content_different'
+            assert gate.region_checks and all(check.visual_relation == 'same' for check in gate.region_checks)
+            assert gate.gate_status == 'rejected' and link.candidate_id not in state.eligible_ids
+    finally:
+        client.close()
+
+
+@pytest.mark.parametrize('similar_job', ['registered'], indirect=True)
 def test_same_content_requires_visible_features_for_every_region(similar_job):
     runtime, _, run_id, anchor = similar_job
     sent = []
@@ -102,6 +155,10 @@ def test_pair_batch_declares_each_region_contract_once(pair_job, record_property
             for pair in context['pairs'].values()
         }
         definitions = [value for value in schema['$defs'].values() if value.get('title') == 'IdentityDecision']
+        for definition in definitions:
+            fields = list(definition['properties'])
+            assert fields.index('overview_observation') < fields.index('details') < fields.index('regions') < fields.index('overview') < fields.index('summary'), (
+                '模型应先观察完整原图和局部，再判断局部关系，最后汇总整图')
         record_property('schema_bytes', len(json.dumps(schema, ensure_ascii=False).encode()))
         record_property('pairs', len(context['pairs']))
         record_property('distinct_region_layouts', len(layouts))
@@ -215,6 +272,7 @@ def test_compact_identity_records_every_region_and_shares_visible_features(simil
         context = json.loads(content[1]['text'])
         contexts.append(context)
         answer = {'overview': 'same', 'summary': '两图纹理相同，所有标注区域均已核对。',
+            'overview_observation': '两图完整视野中的纹理块及其连接位置一致，局部以外的表面纹理也能对应。',
             'regions': 'S' * len(context['windows']), 'unmapped_regions': {},
             'details': [{'refs': [window['ref'] for window in context['windows']],
                 'observation': '两侧纹理块和相邻细线的形状、位置一一对应。'}], 'limitations': []}

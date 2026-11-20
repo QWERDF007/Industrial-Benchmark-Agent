@@ -56,6 +56,40 @@ def test_distribution_tool_counts_original_boxes_and_unique_images_from_frozen_i
     assert audit_agent_distribution(dict(run_id=run_id), jobs.db.db_path) == result
 
 
+def test_box_dimension_heatmaps_expand_small_instances_without_dropping_extremes(distribution_audit):
+    from iad_core.audit.distribution import AuditDistributions
+    from iad_core.audit.distribution_models import AuditDistributionQuery
+    from iad_core.storage.models import Annotation
+
+    jobs, dataset_id, run_id = distribution_audit
+    manifest = jobs.snapshot(run_id).manifest
+    record = manifest.records[0]
+    annotations = [Annotation(annotation_id=f'box-{index}', sample_id=record.sample.sample_id,
+        raw_label='edge', annotation_type='bbox', bbox=[0, 0, width, width / 2])
+        for index, width in enumerate([.5, 1, 2, 4, 16, 2048])]
+    record = record.model_copy(update={'sample': record.sample.model_copy(update={'width': 4096, 'height': 4096}),
+        'annotations': annotations})
+    source = AuditDistributions(manifest.model_copy(update={'records': [record]}))
+    heatmap = source.view().heatmaps['box_dimensions']
+    assert [heatmap.x_edges[index] for index in [0, 8, 16, 24, 32]] == pytest.approx([.5, 4, 32, 256, 2048])
+    assert [heatmap.y_edges[index] for index in [0, 8, 16, 24, 32]] == pytest.approx([.25, 2, 16, 128, 1024])
+    assert sum(count for _, _, count in heatmap.cells) == 6
+    assert len(heatmap.cells) == 6
+    assert (31, 31, 1) in heatmap.cells
+    filtered = source.view(AuditDistributionQuery(dataset_id=dataset_id, category='edge')).heatmaps['box_dimensions']
+    assert filtered == heatmap
+    assert source.geometry().annotation_count == 6
+    assert source.geometry().relative_width.maximum == .5
+
+    for selected, expected in [([annotations[0]], 1), ([], 0)]:
+        uniform = AuditDistributions(manifest.model_copy(update={'records': [record.model_copy(update={'annotations': selected})]}))
+        view = uniform.view().heatmaps['box_dimensions']
+        assert sum(count for _, _, count in view.cells) == expected
+        assert all(right > left for left, right in zip(view.x_edges, view.x_edges[1:]))
+        if expected:
+            assert view.x_edges[0] > 0 and view.y_edges[0] > 0
+
+
 def test_distribution_tool_computes_quantiles_density_and_full_frequency_counts(distribution_audit):
     from iad_core.audit.operations import audit_agent_distribution
 
@@ -110,6 +144,34 @@ def test_report_and_export_share_the_tools_precomputed_filter_results(distributi
         connection.execute("UPDATE audit_workflow_runs SET summary_json=json_remove(summary_json,'$.data_distribution') WHERE job_id=?", (run_id,))
     assert queries.report(run_id).data_distribution == report.data_distribution
     assert queries.export(run_id)['html'] == exported['html']
+
+
+def test_saved_reports_refresh_dimension_bins_from_frozen_instances(distribution_audit):
+    from iad_core.audit.queries import AuditQueries
+    from iad_core.audit.reports import AuditReports
+
+    jobs, _, run_id = distribution_audit
+    queries = AuditQueries(jobs.db)
+    jobs.cancel(run_id)
+    AuditReports(jobs.db).finalize(run_id)
+    expected = queries.report(run_id)
+    original_html = queries.export(run_id)['html']
+    prefix, _, content = original_html.partition('<script id="audit-report-data" type="application/json">')
+    original_payload, _, runtime = content.partition('</script>')
+    retained_images = json.loads(original_payload)['images']
+    with jobs.db.connection() as connection:
+        saved = json.loads(connection.execute('SELECT summary_json FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()[0])
+        for view in saved['data_distribution']['slices']:
+            view['heatmaps']['box_dimensions'] = {'x_edges': [0, 100], 'y_edges': [0, 100], 'cells': [[0, 0, 999]]}
+        stale_html = prefix + '<script id="audit-report-data" type="application/json">' + json.dumps({'report': saved, 'images': retained_images}) + '</script>' + runtime
+        connection.execute('UPDATE audit_workflow_runs SET summary_json=?,report_html=? WHERE job_id=?', (json.dumps(saved), stale_html, run_id))
+    refreshed = queries.report(run_id)
+    assert refreshed.data_distribution == expected.data_distribution
+    assert refreshed.quality_score == expected.quality_score
+    exported = queries.export(run_id)['html']
+    payload = json.loads(exported.split('<script id="audit-report-data" type="application/json">')[1].split('</script>')[0])
+    assert payload['report']['data_distribution'] == expected.data_distribution.model_dump(mode='json')
+    assert payload['images'] == retained_images
 
 
 def test_distribution_service_handles_empty_cross_filters_and_invalid_geometry(distribution_audit):

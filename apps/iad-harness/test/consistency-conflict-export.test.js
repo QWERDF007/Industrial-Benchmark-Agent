@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import http from 'node:http';
+import os from 'node:os';
+import path from 'node:path';
+import {execFileSync} from 'node:child_process';
+import {PythonBridge,findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/index.js';
+import {createIadHttpHandler} from '../lib/server/routes/index.js';
+
+test('conflict downloads serve one Markdown file and retain ZIP and JSONL exports',{timeout:30000},async t=>{
+  const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-conflict-download-'));
+  const database=path.join(root,'checks.db'),cwd=findWorkspaceRoot();
+  const source=JSON.parse(execFileSync(resolvePythonPath(),['apps/iad-harness/test/fixtures/audit_summary_dataset.py',root,database],
+    {cwd,env:{...process.env,PYTHONPATH:path.join(cwd,'python')},encoding:'utf8'}));
+  const bridge=new PythonBridge({cwd,dbPath:database});
+  const server=http.createServer(createIadHttpHandler(bridge));
+  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+  t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));
+    await bridge.destroy();await fs.rm(root,{recursive:true,force:true});});
+  const base=`http://127.0.0.1:${server.address().port}/api/iad/consistency/checks/${source.consistency_job_id}`;
+  const response=await fetch(base+'/conflicts.md');
+  assert.equal(response.status,200,await response.clone().text());
+  assert.equal(response.headers.get('content-type'),'text/markdown; charset=utf-8');
+  assert.match(response.headers.get('content-disposition'),/attachment; filename\*=UTF-8''.*\.md$/);
+  const text=await response.text();
+  assert.equal(Number(response.headers.get('content-length')),Buffer.byteLength(text));
+  assert.match(text,/## 类别不一致\n/);
+  assert.equal(text.split('\n').filter(line=>line.startsWith('| 纯文本审计验收 |')).length,1);
+  assert.match(text,/\| defect\/part\.png \| 纯文本审计验收 \| normal\/part\.png \|/);
+  assert.doesNotMatch(text,/uncompared|无候选|data:image|!\[/);
+  const zip=await fetch(base+'/conflicts.zip');
+  assert.equal(zip.status,200);assert.equal(zip.headers.get('content-type'),'application/zip');
+  assert.equal(Buffer.from(await zip.arrayBuffer()).subarray(0,2).toString(),'PK');
+  const jsonl=await fetch(base+'/export.jsonl');
+  assert.equal(jsonl.status,200);assert.match(jsonl.headers.get('content-type'),/application\/x-ndjson/);
+  assert.equal((await jsonl.text()).trim().split('\n').length,3);
+  await fs.unlink(path.join(root,'images/normal/part.png'));
+  const missing=await fetch(base+'/conflicts.md');
+  assert.equal(missing.status,200);assert.equal(await missing.text(),text);
+  const invalidZip=await fetch(base+'/conflicts.zip');
+  assert.equal(invalidZip.status,422);assert.match((await invalidZip.json()).error.message,/原图缺失/);
+});

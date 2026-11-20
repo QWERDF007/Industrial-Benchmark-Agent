@@ -61,13 +61,42 @@ export async function verifyConsistencyCandidateTabs(driver,{base,runId,datasetI
         await driver.findElement(By.css('[data-dc=zoom-candidate]')).click();
         await driver.wait(until.elementLocated(By.css('[aria-label="大图查看区域"]')),15000);
         assert.equal(await driver.findElement(By.id('full-file-name')).getText(),selected);
+        assert.equal((await driver.findElements(By.id('prev-img'))).length,1,'一致性大图提供左右切换');
+        assert.equal(await driver.findElement(By.id('next-img')).isEnabled(),false,'末尾候选不能继续向右');
+        await driver.findElement(By.id('prev-img')).click();
+        const previous=last?expected[last-1].sample.relative_path.split('/').pop():filename;
+        await driver.wait(async()=>await driver.findElement(By.id('full-file-name')).getText()===previous,10000);
+        await driver.actions().sendKeys(Key.ARROW_RIGHT).perform();
+        await driver.wait(async()=>await driver.findElement(By.id('full-file-name')).getText()===selected,10000);
+        await driver.findElement(By.id('full-close')).click();
+        await driver.findElement(By.css('[data-dc=zoom-anchor]')).click();
+        await driver.wait(async()=>await driver.findElement(By.id('full-file-name')).getText()===filename,10000);
+        assert.equal(await driver.findElement(By.id('prev-img')).isEnabled(),false,'主图位于图集开头');
+        await driver.findElement(By.id('next-img')).click();
+        await driver.wait(async()=>await driver.findElement(By.id('full-file-name')).getText()===expected[0].sample.relative_path.split('/').pop(),10000);
+        await fs.writeFile(path.join(output,tab+'-fullscreen-navigation.png'),await driver.takeScreenshot(),'base64');
         await driver.findElement(By.id('full-close')).click();
       }else{
         assert.equal((await driver.findElements(By.css('[data-dc=zoom-candidate] img'))).length,0);
         assert.equal(await driver.findElement(By.css('[data-dc=zoom-candidate]')).getAttribute('aria-disabled'),'true');
       }
+      await driver.wait(async()=>(await driver.findElements(By.css('#dc-candidate-panel .iad-annotation-layer'))).length>0,10000);
+      const visibleLayers=(await driver.findElements(By.css('#dc-candidate-panel .iad-annotation-layer'))).length;
+      const imageUrls=await Promise.all((await driver.findElements(By.css('.dc-compare-photo img'))).map(image=>image.getAttribute('src')));
+      const annotationToggle=await driver.findElement(By.xpath('//*[@id="dc-compare-mask"]//header//button[normalize-space()="隐藏标注"]'));
+      assert.equal(await annotationToggle.getAttribute('aria-pressed'),'true');
+      assert.equal(await driver.executeScript('return arguments[0].previousElementSibling.textContent.trim()',annotationToggle),'下一组');
+      await annotationToggle.click();
+      await driver.wait(async()=>(await driver.findElements(By.css('#dc-candidate-panel .iad-annotation-layer'))).length===0,5000);
+      assert.equal(await annotationToggle.getText(),'显示标注');
+      assert.equal(await annotationToggle.getAttribute('aria-pressed'),'false');
+      assert.deepEqual(await Promise.all((await driver.findElements(By.css('.dc-compare-photo img'))).map(image=>image.getAttribute('src'))),imageUrls);
+      await annotationToggle.sendKeys(Key.ENTER);
+      await driver.wait(async()=>(await driver.findElements(By.css('#dc-candidate-panel .iad-annotation-layer'))).length===visibleLayers,5000);
+      assert.equal(await annotationToggle.getText(),'隐藏标注');
+      assert.equal(await annotationToggle.getAttribute('aria-pressed'),'true');
       await fs.writeFile(path.join(output,filename+'-'+tab+'.png'),await driver.takeScreenshot(),'base64');
-      inspected.push({tab,images:expected.length});
+      inspected.push({tab,images:expected.length,annotation_layers:visibleLayers,annotation_toggle_verified:true});
     }
     await driver.findElement(By.css('#dc-compare-mask [role=tab][aria-selected=true]')).sendKeys(Key.HOME);
     assert.equal(await driver.findElement(By.id('dc-candidate-tab-compared')).getAttribute('aria-selected'),'true');

@@ -3,7 +3,7 @@ import {WorkbenchHeader} from './layout/WorkbenchHeader.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
 import {ThumbnailCard} from "./ThumbnailCard.js";
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import type {Dataset, DatasetGroup, JobSnapshot} from '../../shared/contracts.js';
 import type {AuditSampleItem, AuditSamplePage} from '../../shared/domain.generated.js';
 import {auditStateLabels,auditIssueLabels,auditAssessmentLabels} from '../../shared/audit.generated.js';
@@ -52,10 +52,27 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
   const [jobDetails, setJobDetails] = useState<JobSnapshot | null>(null);
   const [creatingBusy, setCreatingBusy] = useState(false);
   const [sample, setSample] = useState<AuditSampleItem | null>(null);
-  useEffect(() => {setPage(1); setSearch(''); setStatus('all');setIssueType('');setSourceAssessment('');setSample(null);}, [job?.run_id]);
+  const [imageIndex,setImageIndex]=useState<number|null>(null);
+  const pendingMove=useRef<-1|1|null>(null);
+  useEffect(() => {setPage(1); setSearch(''); setStatus('all');setIssueType('');setSourceAssessment('');setSample(null);setImageIndex(null);pendingMove.current=null;}, [job?.run_id]);
   const query = new URLSearchParams({page: String(page), page_size: '18', status, search,...(issueType?{issue_type:issueType}:{}),...(sourceAssessment?{consistency_assessment:sourceAssessment}:{})});
   const result = useResource<AuditSamplePage>(job && !createOpen && tab === 'audit'
     ? `/audit/jobs/${encodeURIComponent(job.run_id)}/samples?${query}` : null, revision);
+  useEffect(()=>{
+    if(!result.loading&&pendingMove.current){
+      if(result.data&&!result.error)setSample(pendingMove.current===1?result.data.items[0]||null:result.data.items.at(-1)||null);
+      pendingMove.current=null;
+    }
+  },[result.data,result.loading,result.error]);
+  const position=result.data?.items.findIndex(item=>item.sample_id===sample?.sample_id)??-1;
+  function moveSample(offset:-1|1) {
+    if(position<0||result.loading||pendingMove.current||!result.data)return;
+    const next=result.data.items[position+offset];
+    if(next){setSample(next);setImageIndex(0);}
+    else if((offset<0&&page>1)||(offset>0&&page*18<result.data.total)){
+      pendingMove.current=offset;setImageIndex(0);setPage(page+offset);
+    }
+  }
   const hasResults=!!job&&job.total_samples>0&&!result.data?.archived;
   const setupDatasets = datasets.filter(item => ids.includes(item.dataset_id));
   const refresh = () => {jobs.refresh(); progress(); onDatasetsChanged();};
@@ -104,7 +121,7 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
             {result.error && <p role="alert">{result.error}</p>}
             {result.data?.archived&&<p>历史审计已归档，可在报告页下载冻结报告。</p>}
             {job && result.data && !result.data.archived && <><div className="iad-thumbnail-grid">{result.data.items.map(item=><ThumbnailCard key={item.sample_id} src={auditSampleImage(item,job.task_id)} label={item.filename.split('/').pop()!}
-              onClick={()=>setSample(item)} data-sample-id={item.sample_id} />)}</div>
+              onClick={()=>{setImageIndex(null);setSample(item);}} data-sample-id={item.sample_id} />)}</div>
               <Pagination total={result.data.total} page={page} size={18} unit="张图像" onPage={setPage} /></>}
           </div></section>
       </div>
@@ -113,7 +130,11 @@ export function AuditPage({dataset, datasets, groups, refreshRevision, onDataset
     {statisticsJob&&<AuditStatisticsDrawer job={jobs.jobs.find(job=>job.run_id===statisticsJob.run_id)||statisticsJob} revision={revision} onClose={()=>setStatisticsJob(null)}/>}
     {promptJob&&<AuditPromptDrawer runId={promptJob} onClose={()=>setPromptJob('')}/>}
     {sample && <AuditSampleDialog key={`${sample.run_id}:${sample.sample_id}`} sample={sample}
-      taskId={datasets.find(item=>item.dataset_id===sample.dataset_id)?.task_id || dataset.task_id} onClose={() => setSample(null)} />}
+      taskId={datasets.find(item=>item.dataset_id===sample.dataset_id)?.task_id || dataset.task_id} imageIndex={imageIndex} onImageIndexChange={setImageIndex}
+      navigation={{previous:position>=0&&(position>0||page>1),
+        next:position>=0&&(position<(result.data?.items.length||0)-1||page*18<(result.data?.total||0)),
+        busy:result.loading||pendingMove.current!==null,error:result.error,move:moveSample}}
+      onClose={()=>{pendingMove.current=null;setSample(null);setImageIndex(null);}} />}
     {jobDetails && <JobStatusDrawer job={jobs.jobs.find(job => job.root_run_id === jobDetails.root_run_id) || jobDetails}
       onClose={()=>setJobDetails(null)} stale={jobs.syncState === 'stale'} />}
 

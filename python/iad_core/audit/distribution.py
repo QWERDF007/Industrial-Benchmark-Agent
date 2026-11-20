@@ -87,7 +87,11 @@ class AuditDistributions:
         self.edges = {}
         for measure in {key for pair in self.heatmap_measures.values() for key in pair} | set(self.histogram_measures):
             values = self.values(self.images, measure)
-            if measure in ('relative_width', 'relative_height', 'center_x', 'center_y'):
+            if measure in ('box_width', 'box_height') and values:
+                minimum, maximum = min(values), max(values)
+                self.edges[measure] = np.geomspace(minimum, maximum, 33) if minimum < maximum \
+                    else np.array([minimum / 2, maximum * 2])
+            elif measure in ('relative_width', 'relative_height', 'center_x', 'center_y'):
                 self.edges[measure] = np.linspace(min(0, min(values, default=0)), max(1, max(values, default=1)), 33)
             else:
                 self.edges[measure] = np.histogram_bin_edges(values, bins=32)
@@ -134,12 +138,6 @@ class AuditDistributions:
             instance_counts[str(len(boxes))] += 1
             invalid += len(boxes) - len(valid)
             unannotated += not boxes
-        heatmaps = {}
-        for name, (x, y) in self.heatmap_measures.items():
-            if self.dataset_format != 'labelme' and not name.startswith('image_'):
-                continue
-            heatmaps[name] = DistributionHeatmap.build(self.values(images, x, query.category),
-                self.values(images, y, query.category), bins=(self.edges[x], self.edges[y]))
         metadata = {}
         for key in ('batch_id', 'station', 'camera', 'data_origin'):
             values = [getattr(image.registration.sample, key) for image in images]
@@ -170,7 +168,16 @@ class AuditDistributions:
                 for category, count in sorted(image_counts.items())],
             datasets=dict(Counter(image.registration.sample.dataset_id for image in images)),
             quality=dict(Counter(image.registration.sample.quality_status.value for image in images)),
-            metadata=metadata, heatmaps=heatmaps, histograms=histograms, summaries=summaries, area_by_category=area_by_category)
+            metadata=metadata, heatmaps=self.heatmaps(images, query.category), histograms=histograms, summaries=summaries, area_by_category=area_by_category)
+
+    def heatmaps(self, images: list[DistributionImage], category: str | None = None) -> dict[str, DistributionHeatmap]:
+        heatmaps = {}
+        for name, (x, y) in self.heatmap_measures.items():
+            if self.dataset_format != 'labelme' and not name.startswith('image_'):
+                continue
+            heatmaps[name] = DistributionHeatmap.build(self.values(images, x, category),
+                self.values(images, y, category), bins=(self.edges[x], self.edges[y]))
+        return heatmaps
 
     def category_area_samples(self) -> dict[str, dict[str, list[float]]]:
         samples = defaultdict(lambda: defaultdict(list))
@@ -179,7 +186,11 @@ class AuditDistributions:
                 samples[image.registration.sample.dataset_id][annotation.raw_label].append(area)
         return {dataset: dict(categories) for dataset, categories in samples.items()}
 
-    def catalog(self) -> AuditDataDistribution:
+    def catalog(self, saved: AuditDataDistribution | None = None) -> AuditDataDistribution:
+        if saved is not None:
+            return saved.model_copy(update={'slices': [view.model_copy(update={'heatmaps':
+                self.heatmaps(self.scopes[view.dataset_id, view.category], view.category)}) for view in saved.slices],
+                'category_area_samples': self.category_area_samples()})
         return AuditDataDistribution(dataset_format=self.dataset_format, datasets=self.datasets, categories=self.categories,
             slices=[self.view(AuditDistributionQuery(dataset_id=dataset_id, category=category)) for dataset_id, category in self.scopes],
             category_area_samples=self.category_area_samples())

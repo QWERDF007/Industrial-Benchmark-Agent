@@ -40,7 +40,10 @@ export function ConsistencyImages({jobId,images,filters,group,onReviewed,page,on
         {!images.items.length&&<p className="iad-result-empty">当前筛选条件下没有匹配的图像。</p>}
         <Pagination total={images.total} page={page} size={18} unit="张" onPage={onPage}/>
       </>}
-    {selected&&<ConsistencyConflictDialog key={`${jobId}:${selected.id}`} conflict={selected} items={images.items}
+    {selected&&<ConsistencyConflictDialog key={jobId} conflict={selected} items={images.items}
+      navigation={{previous:!!selected&&(images.items.findIndex(item=>item.id===selected.id)>0||page>1),
+        next:!!selected&&(images.items.findIndex(item=>item.id===selected.id)<images.items.length-1||page*18<images.total),
+        busy:images.pending,error:images.error||'',move}}
       onSelect={id=>setSelected(images.items.find(item=>item.id===id)||null)} onMove={move}
       onClose={()=>{pendingMove.current=null;setSelected(null);}} onReviewed={onReviewed}/>}
   </>;

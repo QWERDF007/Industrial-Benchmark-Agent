@@ -11,7 +11,7 @@ export type ChartSpec=
   | {type:'bar';rows:readonly {id:string;label:string;values:readonly (number|null)[];details?:string;tooltip?:string}[];series:readonly ChartSeries[];maximum?:number;legendSelectable?:boolean;format?:ChartFormat;labelRotation?:number}
   | {type:'donut';rows:readonly ChartDatum[];unit:string;format?:ChartFormat;center?:{label:string;value:number|null}}
   | {type:'distribution';series:readonly HistogramSeries[];xLabel:string;unit:string;format?:ChartFormat}
-  | {type:'heatmap';data:DistributionHeatmap;xLabel:string;yLabel:string;format?:ChartFormat;reverseY?:boolean}
+  | {type:'heatmap';data:DistributionHeatmap;xLabel:string;yLabel:string;format?:ChartFormat;reverseY?:boolean;showPercent?:boolean}
   | {type:'boxplot';series:readonly BoxplotSeries[];format?:ChartFormat};
 
 export interface ChartTheme {

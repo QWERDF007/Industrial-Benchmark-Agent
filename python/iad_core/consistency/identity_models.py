@@ -46,6 +46,7 @@ class CandidateIdentityRecord(AnalysisModel):
     required_region_pair_ids: list[str] = Field(default_factory=list)
     region_checks: list[IdentityRegionCheck] = Field(default_factory=list)
     unmapped_region_checks: list[UnmappedRegionCheck] = Field(default_factory=list)
+    overview_observation: NonBlankText | None = None
     overview_relation: Literal['same', 'different', 'unverified'] | None = None
     dispute_checks: list[IdentityDisputeCheck] = Field(default_factory=list)
 

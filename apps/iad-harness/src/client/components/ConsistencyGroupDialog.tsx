@@ -11,7 +11,8 @@ import {useConsistencyEvidence} from '../useConsistencyEvidence.js';
 import {useWorkspace} from '../workspace.js';
 import {Modal} from './Modal.js';
 import {IconButton} from './IconButton.js';
-import {ImageViewer,type ImageSource} from './ImageViewer.js';
+import type {ImageSource} from './ImageViewer.js';
+import {ImageGalleryViewer} from './ImageGalleryViewer.js';
 import {MediaImage,MediaLoad} from './MediaLoad.js';
 import {PageTabs} from './layout/PageTabs.js';
 import {ConsistencyCanvasPair} from './ConsistencyCanvasPair.js';
@@ -27,7 +28,7 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
 }) {
   const {state,workspace}=useWorkspace(),location=state.consistency;
   const [members,setMembers]=useState<GalleryMemberPage|null>(null),[error,setError]=useState(''),[asking,setAsking]=useState(false);
-  const [lightbox,setLightbox]=useState<ImageSource|null>(null);
+  const [lightbox,setLightbox]=useState<number|null>(null);
   const memberPage=location.memberPage||1,tab=location.detailTab||'summary';
   useEffect(()=>{
     const controller=new AbortController();setMembers(null);setError('');
@@ -43,6 +44,7 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
   const anchor=useConsistencyEvidence(members?.anchor.evidence_id),candidate=useConsistencyEvidence(selected?.image.evidence_id);
   const comparison=selected?.comparison&&candidate.bundle?.result.evidence_id===selected.comparison.evidence_id ? candidate.bundle : null;
   const sources:[ImageSource|null,ImageSource|null]=[anchor.bundle&&members ? frozenConsistencyImage(anchor.bundle,members.anchor.side) : null,candidate.bundle&&selected ? frozenConsistencyImage(candidate.bundle,selected.image.side) : null];
+  const images=sources.filter((image):image is ImageSource=>image!==null);
   const difference=comparison?.result.annotation.differences.find(row=>row.difference_id===location.differenceId);
   return <Modal title="图组详情" header={false} className="iad-consistency-group-dialog" onClose={onClose} restoreFocus={restoreFocus} onKeyDown={event=>{
     if(event.defaultPrevented || (event.target as HTMLElement).closest('input,textarea,select,[role=tablist],.iad-image-canvas'))return;
@@ -56,7 +58,7 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
       {!members&&!error && <p role="status">正在读取候选图像…</p>}
       {members && <>
         <div className="iad-group-visuals">
-        <ConsistencyCanvasPair sources={sources} labels={[kind==='groups' ? '组代表图像（固定）' : '查询图像（固定）',kind==='groups' ? '组内成员' : '当前候选']} selected={difference} anchorSide={selected?.comparison?.anchor_side} onExpand={setLightbox} />
+        <ConsistencyCanvasPair sources={sources} labels={[kind==='groups' ? '组代表图像（固定）' : '查询图像（固定）',kind==='groups' ? '组内成员' : '当前候选']} selected={difference} anchorSide={selected?.comparison?.anchor_side} onExpand={image=>setLightbox(images.findIndex(item=>item.src===image.src))} />
         <div className="iad-group-image-names">{sources.map((source,index)=><span key={index} title={source?.title}>{source?.title}</span>)}</div>
         <section className="iad-group-candidates" aria-label="候选图像"><div className="iad-row"><h3>{kind==='groups' ? '同图组成员' : '相似候选'}（{members.total} 张{kind==='groups' ? '，不含固定代表图' : ''}）</h3>
           </div><Pagination total={members.total} page={memberPage} size={20} unit="张图像" onPage={page=>workspace.updateConsistency({memberPage:page,memberId:undefined,differenceId:undefined},true)} />
@@ -74,6 +76,6 @@ export function ConsistencyGroupDialog({queryId,kind,item,position,total,onMove,
       </>}
     </div>
     <footer className="iad-group-footer"><div className="iad-row"><button disabled={!comparison||asking} onClick={async()=>{if(!comparison)return;setAsking(true);try{await workspace.explainConsistency(comparison.result);}catch(failure){setError(message(failure));}finally{setAsking(false);}}}>{asking ? '正在打开会话…' : '在 DSH 中解释'}</button></div><Button variant="primary" disabled={!comparison} onClick={()=>workspace.updateConsistency({detailTab:'review'},true)}>人工复核</Button></footer>
-    {lightbox && <ImageViewer image={lightbox} onClose={()=>setLightbox(null)} />}
+    <ImageGalleryViewer images={images} current={lightbox} onChange={setLightbox}/>
   </Modal>;
 }

@@ -9,7 +9,7 @@ from iad_core.audit.evidence import AuditEvidence
 from iad_core.workbench.calls import ModelCalls, NativeModelCallStart, NativeModelCallEnd
 
 
-from tests.audit_support import save_image, master_observed, publish_batch, batch_submission, report_submission
+from tests.audit_support import save_image, master_observed, publish_batch, batch_submission, report_submission, consistency_reviews
 
 
 def test_consistency_statistics_keep_program_matches_separate_from_visual_review(native_audit, tmp_path):
@@ -417,7 +417,10 @@ def test_each_frozen_upstream_difference_gets_an_independent_quality_assessment(
     master_observed(jobs, run_id, reports.records(run_id, {}), [page.evidence_id])
     with pytest.raises(ValueError,match='全部适用差异类型'):
         reports.commit(run_id,report_submission(consistency_analyses=[dict(analysis,issue_type='missing_annotation')]))
-    result=reports.commit(run_id,report_submission(consistency_analyses=[analysis]))
+    from iad_core.audit.quality_reports import AuditQualityReports
+    preview=AuditQualityReports(jobs.db).preview(run_id,dict(redundancy_reviewed=False,
+        consistency_reviews=consistency_reviews(jobs,run_id)))
+    result=reports.commit(run_id,report_submission(consistency_analyses=[analysis],quality_assessment=preview.assessment.model_dump()))
     assert [item.issue_type for item in result.result.consistency_analyses]==['image_label_mismatch']
 
 

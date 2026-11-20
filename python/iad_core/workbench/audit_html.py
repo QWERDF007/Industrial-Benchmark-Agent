@@ -9,14 +9,16 @@ from iad_core.audit.queries import AuditQueries
 
 
 class AuditHtmlReport:
+    data_tag = '<script id="audit-report-data" type="application/json">'
+
     def __init__(self, results: AuditQueries):
         self.results = results
 
-    def render(self, run_id: str, *, report: AuditRunReport | None = None) -> dict[str, str]:
+    def render(self, run_id: str, *, report: AuditRunReport | None = None, saved_html: str | None = None) -> dict[str, str]:
         report = report or self.results.report(run_id)
         if report.status in ('PENDING','RUNNING'):
             raise ValueError('请等待作业结束后导出冻结报告')
-        images = {}
+        images = json.loads(saved_html.split(self.data_tag, 1)[1].split('</script>', 1)[0])['images'] if saved_html is not None else {}
         retained = EvidenceImages(self.results.db.db_path)
         groups = [*report.evidence_groups.values(),
             *[[image for pair in pairs for image in (pair.main, pair.candidate)] for pairs in report.evidence_pairs.values()]]
@@ -34,6 +36,6 @@ class AuditHtmlReport:
         runtime = runtime.replace('</script','<\\/script')
         html = ('<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1"><title>模型审计报告</title></head>'
-            '<body><div id="audit-offline-root"></div><script id="audit-report-data" type="application/json">'
+            '<body><div id="audit-offline-root"></div>'+self.data_tag
             +payload+'</script><script>'+runtime+'</script></body></html>')
         return dict(filename=f'audit-{run_id}.html',html=html)

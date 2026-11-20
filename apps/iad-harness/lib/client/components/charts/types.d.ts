@@ -63,6 +63,7 @@ export type ChartSpec = {
     yLabel: string;
     format?: ChartFormat;
     reverseY?: boolean;
+    showPercent?: boolean;
 } | {
     type: 'boxplot';
     series: readonly BoxplotSeries[];

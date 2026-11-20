@@ -107,6 +107,21 @@ class JobSnapshots:
                 values['model_profile'] = profile
                 model = profile if profile is not None else check['model']
                 values['model_name'] = model['model_id'] if model else None
+                retrieval = check.get('retrieval') or {}
+                values.update(image_max_side=check.get('whole_image_max_side'),
+                    retrieval_mode=retrieval.get('mode'), similarity_threshold=retrieval.get('min_similarity'))
+        if row['job_type'] == 'MODEL_AUDIT':
+            values['audit_scope'] = payload.get('audit_scope')
+            values['image_max_side'] = payload.get('image_max_side')
+            if values['audit_scope'] is None or 'image_max_side' not in payload:
+                with nullcontext(connection) if connection is not None else self.db.connection() as frozen_connection:
+                    frozen_row = frozen_connection.execute('SELECT snapshot_json FROM audit_workflow_runs WHERE job_id=?', (run_id,)).fetchone()
+                if frozen_row is not None:
+                    frozen = json.loads(frozen_row['snapshot_json'])
+                    settings = frozen.get('settings') or {}
+                    values['audit_scope'] = values['audit_scope'] or settings.get('audit_scope')
+                    if 'image_max_side' not in payload:
+                        values['image_max_side'] = settings.get('whole_image_max_side')
         if request.get('analysis_workflow_version'):
             from iad_core.analysis.models import AnalysisWorkflowSnapshot
             with nullcontext(connection) if connection is not None else self.db.connection() as conn:

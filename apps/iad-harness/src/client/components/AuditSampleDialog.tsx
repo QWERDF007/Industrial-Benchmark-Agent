@@ -4,18 +4,20 @@ import {Button} from './Button.js';
 import {ThumbnailCard} from './ThumbnailCard.js';
 import {AnnotatedImageStage} from './AnnotatedImageStage.js';
 import {IconButton} from './IconButton.js';
-import React, {useMemo, useState} from 'react';
+import React, {useMemo} from 'react';
 import type {AuditSampleItem, NativeAuditSampleDetail} from '../../shared/domain.generated.js';
 import {useResource} from '../useResource.js';
 import {nativeAuditEvidenceUrl} from '../api.js';
 import {Modal} from './Modal.js';
-import {ImageViewer, type ImageSource} from './ImageViewer.js';
+import type {ImageNavigation,ImageSource} from './ImageViewer.js';
+import {ImageGalleryViewer} from './ImageGalleryViewer.js';
 import {datasetImageAnnotations} from '../dataset-image-annotations.js';
 import {auditSampleImage} from './AuditSampleMedia.js';
 
-export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampleItem; taskId: string; onClose(): void}) {
+export function AuditSampleDialog({sample,taskId,imageIndex,onImageIndexChange,navigation,onClose}:{
+  sample:AuditSampleItem;taskId:string;imageIndex:number|null;onImageIndexChange(index:number|null):void;navigation:ImageNavigation;onClose():void;
+}) {
   const resource = useResource<NativeAuditSampleDetail>(`/audit/jobs/${encodeURIComponent(sample.run_id)}/samples/${encodeURIComponent(sample.sample_id)}`);
-  const [lightbox, setLightbox] = useState<ImageSource | null>(null);
   const detail = resource.data;
   const upstream=detail?.upstream_conclusion?.summary;
   const modelConclusion=upstream?.model_conclusion;
@@ -34,6 +36,7 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
   const mainImage = pictures[0]?.view || {src:auditSampleImage(sample, taskId),
     title:sample.filename, width:sample.width, height:sample.height,sampleId:sample.sample_id,
     ...(detail?.registration?datasetImageAnnotations(detail.registration.dataset_format,detail.registration.sample,detail.registration.annotations):{})};
+  const images=pictures.length?pictures.map(picture=>picture.view):[mainImage];
   return <><Modal title="图像审计详情" className="audit-dialog" header={false} onClose={onClose}>
     <header className="audit-dialog-head"><h2>图像审计详情</h2><IconButton icon="close" label="关闭图像审计详情" onClick={onClose} /></header>
     <div className="audit-dialog-body audit-analysis-sections">
@@ -42,8 +45,8 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
       <div className="dc-compare" data-audit-section="images" style={{gridTemplateColumns:'minmax(0,1fr)'}}>
         <div className="dc-compare-cell">
           <div className="dc-compare-photo" role="button" tabIndex={0} aria-label="放大主图" title={mainImage.title}
-            onClick={()=>setLightbox(mainImage)} onKeyDown={event=>{
-              if(event.key==='Enter'||event.key===' '){event.preventDefault();setLightbox(mainImage);}
+            onClick={()=>onImageIndexChange(0)} onKeyDown={event=>{
+              if(event.key==='Enter'||event.key===' '){event.preventDefault();onImageIndexChange(0);}
             }}>
             <AnnotatedImageStage sampleId={mainImage.sampleId} src={mainImage.src} alt={mainImage.title} width={mainImage.width} height={mainImage.height}
               annotationLayer={'annotationLayer' in mainImage?mainImage.annotationLayer:undefined} qualityLabel={'qualityLabel' in mainImage?mainImage.qualityLabel:undefined}/>
@@ -55,7 +58,7 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
         <div className="iad-thumbnail-grid" aria-label="参考图像证据">
           {pictures.slice(1).map((picture,index)=><ThumbnailCard key={picture.evidence.evidence_id} image={picture.view}
             label={`参考证据 ${index+1}`} title={`参考证据 ${index+1}`} aria-label={`放大参考证据 ${index+1}`}
-            onClick={()=>setLightbox(picture.view)}/>)}
+            onClick={()=>onImageIndexChange(index+1)}/>)}
         </div>
       </section>}
       <section className="dc-fact-panel" data-audit-section="conclusion"><h3>判定结论</h3>
@@ -80,5 +83,6 @@ export function AuditSampleDialog({sample, taskId, onClose}: {sample: AuditSampl
       </section>}
 
     </div><footer className="audit-dialog-foot"><Button onClick={onClose}>关闭</Button></footer>
-  </Modal>{lightbox && <ImageViewer image={lightbox} onClose={() => setLightbox(null)} />}</>;
+  </Modal><ImageGalleryViewer images={images} current={imageIndex} onChange={onImageIndexChange}
+    navigation={images.length===1?navigation:undefined}/></>;
 }

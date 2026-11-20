@@ -58,7 +58,8 @@ export async function createConsistencyAgentHost({multiCandidate=false,withSimil
       const context=JSON.parse(content[1].text);
       let answer;
       if(!context.facts) {
-        const describe=pair=>({overview:'different',summary:'两图主体颜色不同。',regions:'D'.repeat(pair.windows.length),
+        const describe=pair=>({overview_observation:'一侧完整原图的主体为蓝色，另一侧为绿色。',
+          overview:'different',summary:'两图主体颜色不同。',regions:'D'.repeat(pair.windows.length),
           unmapped_regions:Object.fromEntries(pair.unmapped_regions.map(region=>[region.ref,{observation:'局部没有可靠的对侧对应位置。'}])),
           details:pair.windows.length?[{refs:pair.windows.map(region=>region.ref),observation:'一侧主体为蓝色，另一侧为绿色。'}]:[],limitations:[]});
         answer=context.scope==='pairs'?Object.fromEntries(Object.entries(context.pairs).map(([key,pair])=>[key,describe(pair)])):describe(context);

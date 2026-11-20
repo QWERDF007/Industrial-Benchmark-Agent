@@ -49,8 +49,8 @@ function AuditReportBody({report,imageUrl}:{report:AuditRunReport;imageUrl(item:
           suspect={report.suspect_samples} incomplete={report.audit_scope==='consistency'?undefined:report.total_samples-report.audited_samples}/>
       </div>
     </AuditReportSection>
-    {report.quality_score&&<AuditReportScore report={report} imageUrl={imageUrl}/>}
     <AuditReportDistribution key={report.run_id} report={report}/>
+    {report.quality_score&&<AuditReportScore report={report} imageUrl={imageUrl}/>}
     <AuditReportConsistency report={report} sources={sources} imageUrl={imageUrl}/>
     {report.audit_scope!=='consistency'&&<><AuditReportSection section="quality">
       {stats?stats.suspect_images>0?<p>有 {stats.suspect_images} 张图像需要复核，共 {stats.issue_occurrences} 处。

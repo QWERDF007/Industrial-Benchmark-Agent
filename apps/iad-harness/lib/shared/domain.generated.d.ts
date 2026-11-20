@@ -1010,6 +1010,10 @@ export type ReasoningEffort2 = ("off" | "minimal" | "low" | "medium" | "high" | 
 export type ReasoningParameters2 = {
     [k: string]: unknown;
 } | null;
+export type ImageMaxSide = number | null;
+export type RetrievalMode = ("exact" | "combined") | null;
+export type SimilarityThreshold = number | null;
+export type AuditScope = ("full" | "consistency") | null;
 export type ProfileId = string;
 export type Backend = "torch_hub" | "torchscript" | "transformers";
 export type ModelId5 = ("dinov2_vitb14_reg" | "sscd_disc_mixup") | DinoModelId;
@@ -1315,6 +1319,10 @@ export type StartedAt7 = string | null;
 export type FinishedAt4 = string | null;
 export type DeletedAt1 = string | null;
 export type ModelName4 = string | null;
+export type ImageMaxSide1 = number | null;
+export type RetrievalMode1 = ("exact" | "combined") | null;
+export type SimilarityThreshold1 = number | null;
+export type AuditScope1 = ("full" | "consistency") | null;
 export type Phase4 = string | null;
 export type PhaseStartedAt1 = string | null;
 export type PhaseTimings1 = JobPhaseTiming[];
@@ -1366,6 +1374,10 @@ export type StartedAt8 = string | null;
 export type FinishedAt5 = string | null;
 export type DeletedAt2 = string | null;
 export type ModelName5 = string | null;
+export type ImageMaxSide2 = number | null;
+export type RetrievalMode2 = ("exact" | "combined") | null;
+export type SimilarityThreshold2 = number | null;
+export type AuditScope2 = ("full" | "consistency") | null;
 export type Phase5 = string | null;
 export type PhaseStartedAt2 = string | null;
 export type PhaseTimings2 = JobPhaseTiming[];
@@ -2887,12 +2899,12 @@ export type IssueType1 = string | null;
 export type GroupId12 = string | null;
 export type ConsistencyAssessment = string | null;
 export type KnowledgeId = string | null;
-export type AuditScope = "full" | "consistency";
+export type AuditScope3 = "full" | "consistency";
 export type RunId13 = string;
 export type Total10 = number;
 export type Page12 = number;
 export type PageSize16 = number;
-export type AuditScope1 = "full" | "consistency";
+export type AuditScope4 = "full" | "consistency";
 export type RunId14 = string;
 export type SampleId36 = string;
 export type DatasetId39 = string;
@@ -2908,7 +2920,7 @@ export type SessionId2 = string | null;
 export type ExecutionStatus3 = ("PENDING" | "RUNNING" | "COMPLETED" | "PARTIAL" | "FAILED" | "CANCELLED" | "INTERRUPTED") | null;
 export type Items9 = AuditSampleItem[];
 export type Archived = boolean;
-export type AuditScope2 = "full" | "consistency";
+export type AuditScope5 = "full" | "consistency";
 export type PairId = string;
 export type SourceJobId = string;
 export type IssueIds = string[];
@@ -3286,7 +3298,7 @@ export type IssueType4 = "image_label_mismatch" | "category_mismatch" | "extra_a
  */
 export type Analysis14 = string;
 export type Analyses = ConsistencyAnalysisText[];
-export type AuditScope3 = "consistency";
+export type AuditScope6 = "consistency";
 export type Error2 = string | null;
 export type Revision7 = number;
 export type Discoveries4 = AuditDiscovery[];
@@ -5288,7 +5300,7 @@ export type MinCoverageConsistency = number | null;
 export type ConsiderRegistrationUncertainty = true;
 export type TinyDefectCoverageOverride = true;
 export type ReasoningEffort7 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
-export type AuditScope4 = "full" | "consistency";
+export type AuditScope7 = "full" | "consistency";
 export type Consistency = number;
 export type Diversity = number;
 export type Redundancy = number;
@@ -5335,7 +5347,7 @@ export type MinCoverageConsistency1 = number | null;
 export type ConsiderRegistrationUncertainty1 = true;
 export type TinyDefectCoverageOverride1 = true;
 export type ReasoningEffort12 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
-export type AuditScope5 = "full" | "consistency";
+export type AuditScope8 = "full" | "consistency";
 export type Consistency2 = number;
 export type Diversity2 = number;
 export type Redundancy1 = number;
@@ -5796,6 +5808,7 @@ export type RegionPairId2 = string;
 export type MediaIds5 = [string, ...string[]];
 export type Observation5 = string;
 export type UnmappedRegionChecks = UnmappedRegionCheck[];
+export type OverviewObservation = string | null;
 export type OverviewRelation = ("same" | "different" | "unverified") | null;
 export type ObservationId4 = string;
 export type VisualRelation1 = "same" | "different" | "unverified";
@@ -7350,6 +7363,10 @@ export interface JobSnapshot {
     deleted_at: DeletedAt;
     model_name: ModelName3;
     model_profile: ModelProfileSnapshot | null;
+    image_max_side: ImageMaxSide;
+    retrieval_mode: RetrievalMode;
+    similarity_threshold: SimilarityThreshold;
+    audit_scope: AuditScope;
     embedding_profile: EmbeddingProfile | null;
     current_sample: JobSample | null;
     phase: Phase1;
@@ -7765,6 +7782,10 @@ export interface JobView {
     deleted_at: DeletedAt1;
     model_name: ModelName4;
     model_profile: ModelProfileSnapshot | null;
+    image_max_side: ImageMaxSide1;
+    retrieval_mode: RetrievalMode1;
+    similarity_threshold: SimilarityThreshold1;
+    audit_scope: AuditScope1;
     embedding_profile: EmbeddingProfile | null;
     current_sample: JobSample | null;
     phase: Phase4;
@@ -7826,6 +7847,10 @@ export interface JobSummary {
     deleted_at: DeletedAt2;
     model_name: ModelName5;
     model_profile: ModelProfileSnapshot | null;
+    image_max_side: ImageMaxSide2;
+    retrieval_mode: RetrievalMode2;
+    similarity_threshold: SimilarityThreshold2;
+    audit_scope: AuditScope2;
     embedding_profile: EmbeddingProfile | null;
     current_sample: JobSample | null;
     phase: Phase5;
@@ -9260,7 +9285,7 @@ export interface AuditSampleQuery {
     knowledge_id: KnowledgeId;
 }
 export interface AuditSamplePage {
-    audit_scope: AuditScope;
+    audit_scope: AuditScope3;
     run_id: RunId13;
     total: Total10;
     page: Page12;
@@ -9273,7 +9298,7 @@ export interface Distribution1 {
     [k: string]: number;
 }
 export interface AuditSampleItem {
-    audit_scope: AuditScope1;
+    audit_scope: AuditScope4;
     run_id: RunId14;
     sample_id: SampleId36;
     dataset_id: DatasetId39;
@@ -9289,7 +9314,7 @@ export interface AuditSampleItem {
     execution_status: ExecutionStatus3;
 }
 export interface AuditRunReport {
-    audit_scope: AuditScope2;
+    audit_scope: AuditScope5;
     evidence_pairs: EvidencePairs;
     quality_score: QualityScore | null;
     run_id: RunId15;
@@ -9568,7 +9593,7 @@ export interface ConsistencyStoredReport {
     conclusion: Conclusion7;
     consistency_analysis: ConsistencyAnalysis4;
     analyses: Analyses;
-    audit_scope: AuditScope3;
+    audit_scope: AuditScope6;
     quality_score: QualityScore;
 }
 export interface ConsistencyAnalysisText {
@@ -11630,7 +11655,7 @@ export interface PositionTolerancePolicy {
 export interface AuditSettingsValues {
     model: ModuleModelReference | null;
     reasoning_effort: ReasoningEffort7;
-    audit_scope: AuditScope4;
+    audit_scope: AuditScope7;
     quality_score_weights: AuditScoreWeights;
     consistency_score_weights: ConsistencyScoreWeights;
     whole_image_max_side: WholeImageMaxSide3;
@@ -11730,7 +11755,7 @@ export interface PositionTolerancePolicy1 {
 export interface AuditSettingsValues1 {
     model?: ModuleModelReference | null;
     reasoning_effort?: ReasoningEffort12;
-    audit_scope?: AuditScope5;
+    audit_scope?: AuditScope8;
     quality_score_weights?: AuditScoreWeights1;
     consistency_score_weights?: ConsistencyScoreWeights1;
     whole_image_max_side?: WholeImageMaxSide7;
@@ -12164,6 +12189,7 @@ export interface CandidateIdentityRecord {
     required_region_pair_ids: RequiredRegionPairIds;
     region_checks: RegionChecks;
     unmapped_region_checks: UnmappedRegionChecks;
+    overview_observation: OverviewObservation;
     overview_relation: OverviewRelation;
     dispute_checks: DisputeChecks;
 }

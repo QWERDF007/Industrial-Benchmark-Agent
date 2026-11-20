@@ -8,8 +8,15 @@ export function JobDetail({ job, stale = false }) {
     const failed = ['FAILED', 'PARTIAL', 'INTERRUPTED'].includes(job.status), pending = job.status === 'PENDING';
     const phase = jobPhases[job.phase || ''] || job.phase || '未记录具体执行阶段';
     const elapsed = formatJobElapsed(job, now);
+    const imageSize = job.image_max_side == null ? '原图尺寸' : `最大边 ${job.image_max_side} 像素`;
     const meta = [['作业 ID', job.run_id], ['提交时间', job.submitted_at ? formatJobTime(job.submitted_at) : '未记录'],
-        ...(job.model_name ? [['模型', job.model_name]] : []), ['开始时间', job.started_at ? formatJobTime(job.started_at) : '未开始'], ['耗时', elapsed],
+        ...(job.model_name ? [['模型', job.model_name]] : []),
+        ...(job.analysis_kind === 'consistency' ? [['图像大小', imageSize],
+            ['检索方式', job.retrieval_mode === 'exact' ? '完全一致' : job.retrieval_mode === 'combined' ? '一致+相似' : ''],
+            ['相似度阈值', job.retrieval_mode === 'combined' && job.similarity_threshold != null ? String(job.similarity_threshold) : '']] : []),
+        ...(job.job_type === 'MODEL_AUDIT' ? [['图像大小', imageSize],
+            ['审计范围', job.audit_scope === 'consistency' ? '数据一致性' : job.audit_scope === 'full' ? '完整范围' : '']] : []),
+        ['开始时间', job.started_at ? formatJobTime(job.started_at) : '未开始'], ['耗时', elapsed],
         ['样本进度', `${job.completed} / ${job.total_samples}${job.failed ? `，失败 ${job.failed}` : ''}`],
         ...(job.queue_position != null ? [['排队位置', String(job.queue_position)]] : []),
         ...(job.total_gallery_groups != null ? [['图组进度', `${job.completed_gallery_groups ?? 0} / ${job.total_gallery_groups}`]] : [])];

@@ -17,8 +17,9 @@ import {JobList} from './JobList.js';
 import {useJobList} from '../useJobList.js';
 import {TabBar} from './layout/TabBar.js';
 import {Button} from './Button.js';
+import {FloatingMenu} from './FloatingMenu.js';
 import {ConsistencyResultCard} from './ConsistencyResultCard.js';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   JobSnapshot,
   DatasetCatalog
@@ -82,6 +83,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   const selectedJobId=state.consistency.batchId || '';
   const setSelectedJobId=useCallback((batchId:string)=>workspace.updateConsistency({batchId:batchId||undefined},true),[workspace]);
   const [revision, setRevision] = useState(0);
+  const exportMenu=useRef<HTMLDetailsElement>(null);
 
   // Conflicts list and filter state
   const [kind, setKind] = useState<string>('images');
@@ -213,6 +215,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
   },[conflictTabs,taskType,kind,modelFilter]);
 
   const surface=usePagePosition(createOpen?'consistency:create':`consistency:results:${selectedParentId}:${selectedJobId}`,createOpen||!conflictsLoading);
+  const canExport=selectedJob?.status==='COMPLETED'&&Object.keys(conflictCategoryLabels).some(category=>images.counts[category]>0);
 
   return (
     <div ref={surface} className="iad-workbench iad-business-page iad-consistency" data-page="industrial-consistency">
@@ -269,9 +272,13 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
 
         {/* Results Section */}
         <section className="dc-section dc-results-section">
-          <SectionHeading title="标注冲突">{selectedJob?.consistency_check_version===1&&<Button disabled={selectedJob.status!=='COMPLETED'||!Object.entries(images.counts)
-            .some(([key,count])=>count>0&&!['images',...Object.keys(consistencyImageGroups)].includes(key))}
-            onClick={()=>window.location.assign(`/api/iad/consistency/checks/${encodeURIComponent(selectedJob.run_id)}/conflicts.zip`)}>导出</Button>}</SectionHeading>
+          <SectionHeading title="标注冲突">{selectedJob?.consistency_check_version===1&&(canExport
+            ?<FloatingMenu key={selectedJob.run_id} detailsRef={exportMenu} className="iad-action-menu" label="导出标注冲突" summary="导出">
+              {[{extension:'zip',label:'完整 ZIP'},{extension:'md',label:'仅 Markdown'}].map(option=><Button key={option.extension}
+                onClick={()=>{exportMenu.current!.open=false;
+                  window.location.assign(`/api/iad/consistency/checks/${encodeURIComponent(selectedJob.run_id)}/conflicts.${option.extension}`);}}>
+                {option.label}</Button>)}
+            </FloatingMenu>:<Button disabled aria-label="导出标注冲突">导出</Button>)}</SectionHeading>
           <div className="dc-results-body">
 
           {!selectedJob ? (
@@ -313,7 +320,7 @@ function ConsistencyIntegratedWorkspace({datasets,groups}:DatasetCatalog) {
         </section>
       </div>}
 
-      {modal==='compare' && currentConflict && <ConsistencyConflictDialog key={`${currentConflict.checkId}:${currentConflict.id}`} conflict={currentConflict} items={visibleConflicts}
+      {modal==='compare' && currentConflict && <ConsistencyConflictDialog key={currentConflict.checkId} conflict={currentConflict} items={visibleConflicts}
         onSelect={setCurrentConflictId} onClose={()=>setModal('')}
         onReviewed={()=>setRevision(value=>value+1)} />}
 

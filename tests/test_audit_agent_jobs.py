@@ -12,6 +12,9 @@ def test_zero_knowledge_freezes_all_registrations_and_an_independent_session_per
         knowledge=None, observer_prompt=dict(system_prompt='使用审计工具提交完整终稿。', user_prompt='读取原图和全部局部，独立审计本张图像。'))
     created = jobs.start(request, agent=role)
     snapshot = jobs.snapshot(created['run_id'])
+    from iad_core.workbench.job_snapshots import JobSnapshots
+    job_view = JobSnapshots(jobs.db).snapshot(created['run_id'], ('MODEL_AUDIT',), include_request=False)
+    assert (job_view.image_max_side, job_view.audit_scope) == (None, 'full')
     assert snapshot.observer_prompt.model_dump() == request['observer_prompt']
     assert created['created'] is True
     assert created['total_samples'] == 6

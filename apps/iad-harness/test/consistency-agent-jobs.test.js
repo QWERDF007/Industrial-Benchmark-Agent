@@ -117,7 +117,7 @@ print(json.dumps({'dataset_id':config.dataset.id}))
     assert.equal(failed.errors.every(error => error.code === 'PROFILE_NOT_CONFIGURED'), true);
     assert.deepEqual(failed.model_calls, []);
     assert.deepEqual(unexpected, []);
-    assert.deepEqual(errors, []);
+    assert.deepEqual(errors.map(error=>error.code), ['PROFILE_NOT_CONFIGURED']);
     const failedAnchors = await bridge.execute('consistency_agent_anchors', {run_id: combined.run_id});
     assert.equal(failedAnchors.anchors.every(anchor => anchor.state === 'FAILED' && anchor.result === null), true);
     for (const failedAnchor of failedAnchors.anchors) {
@@ -201,6 +201,7 @@ from iad_core.storage.models import FeatureRecord
 root=Path(sys.argv[1]);db=Database(sys.argv[2]);identity=sys.argv[3]
 Image.new('RGB',(40,40),(0,0,254)).save(root/'images/B.png')
 DatasetRegistry(db).rescan(identity)
+PixelIndex(db).prepare([identity+':'+name+'.png' for name in ('A','B')])
 profile=ImageEncoders(db).profile()
 for name,values in [('A',(1,0)),('B',(.943,np.sqrt(1-.943**2)))]:
     group=PixelIndex(db).get(identity+':'+name+'.png').content_group_id
@@ -225,18 +226,17 @@ for name,values in [('A',(1,0)),('B',(.943,np.sqrt(1-.943**2)))]:
       assert.equal(snapshot.retrieval.min_similarity, mode === 'exact' ? null : minimum);
       snapshots.push({run_id: run.run_id, snapshot});
       const page = await read('/consistency/checks/' + run.run_id + '/anchors');assert.equal(page.total, 2);
-      let requests=0;
       for (const row of page.items) {
         const detail = await read(row.result_ref.replace('/api/iad', ''));
         assert.equal(detail.result.reason, admitted ? 'NO_ELIGIBLE_CANDIDATES' : 'NO_CANDIDATES');
         assert.equal(detail.candidates.exact.selected, 0);
         assert.equal(detail.candidates.similar.selected, admitted ? 1 : 0);
         const diagnostics = await read(detail.diagnostics_ref.replace('/api/iad', ''));
-        requests+=diagnostics.roles.vision.generation_requests;
+        assert.equal(diagnostics.roles.vision.generation_requests,admitted?1:0);
         assert.equal(diagnostics.roles.agent.generation_requests, 0);
         if (admitted) assert.ok(detail.candidates.candidates[0].score > .942 && detail.candidates.candidates[0].score < .944);
       }
-      assert.equal(requests,admitted?1:0,'A shared comparison has one actual provider request across both anchors');
+      assert.equal(fixture.wires.length,admitted?1:0,'A shared comparison has one actual provider request across both anchors');
       if (!admitted) {assert.deepEqual(fixture.wires, []);assert.deepEqual(fixture.tokenizations, []);}
     }
     for (const run of snapshots) assert.deepEqual(await read('/consistency/checks/' + run.run_id + '/config'), run.snapshot);

@@ -95,6 +95,10 @@ class JobView(AnalysisModel):
     deleted_at: Optional[str] = None
     model_name: Optional[str] = None
     model_profile: Optional[ModelProfileSnapshot] = None
+    image_max_side: int | None = Field(default=None, ge=1)
+    retrieval_mode: Literal['exact', 'combined'] | None = None
+    similarity_threshold: float | None = Field(default=None, ge=0, le=1)
+    audit_scope: Literal['full', 'consistency'] | None = None
     embedding_profile: Optional[EmbeddingProfile] = None
     current_sample: Optional[JobSample] = None
     phase: Optional[str] = None

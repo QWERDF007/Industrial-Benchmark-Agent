@@ -1,15 +1,21 @@
 """Export actual problem records and the original files used by their comparisons."""
 from collections import Counter, defaultdict
+from dataclasses import dataclass
 import hashlib
+from html import escape
 import json
 from pathlib import Path, PurePosixPath
 import re
 from tempfile import NamedTemporaryFile
+from typing import Literal, TypedDict
 import zipfile
 
 from iad_core.consistency.agent_results import ConsistencyAgentResults
-from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES
-from iad_core.consistency.conflict_categories import CONFLICT_RULES
+from iad_core.consistency.agent_result_models import AnchorEvidenceReference
+from iad_core.consistency.annotation_issues import ISSUE_CATEGORIES, MainAnnotationIssue
+from iad_core.consistency.conflict_categories import CONFLICT_RULES, ConflictCategory, primary_conflict_category
+from iad_core.consistency.evidence_models import FrozenEvidence, FrozenEvidenceSource
+from iad_core.consistency.identity_models import candidate_pair_key
 from iad_core.consistency.repository import ConsistencyRepository
 from iad_core.dataset.adapters import get_adapter
 from iad_core.dataset.adapters.base import RawImage, RawAnnotation
@@ -17,11 +23,27 @@ from iad_core.dataset.registry import DatasetRegistry
 from iad_core.evidence.files import file_sha256
 
 
+class ConflictExportArtifact(TypedDict):
+    path: str
+    filename: str
+    media_type: str
+    problem_images: int
+
+
+@dataclass(frozen=True)
+class ConflictComparison:
+    issue: MainAnnotationIssue
+    main: FrozenEvidenceSource
+    candidate: FrozenEvidenceSource
+
+
 class ConsistencyConflictExport:
     def __init__(self, db):
         self.db = db
 
-    def build(self, run_id: str) -> dict:
+    def build(self, run_id: str, *, format: Literal['zip', 'markdown'] = 'zip') -> ConflictExportArtifact:
+        if format not in ('zip', 'markdown'):
+            raise ValueError('不支持的标注冲突导出格式')
         results = ConsistencyAgentResults(self.db)
         with self.db.connection() as connection:
             ids = {row[0] for row in connection.execute(
@@ -29,15 +51,22 @@ class ConsistencyConflictExport:
         if not ids:
             raise ValueError('该作业没有可导出的标注问题')
         records = results.conclusions(run_id, ids)
-        configs, sources, documents = {}, {}, defaultdict(list)
+        configs, sources = {}, {}
+        evidences: dict[str, FrozenEvidence] = {}
+        documents: dict[tuple[ConflictCategory, str], list[ConflictComparison]] = defaultdict(list)
         for record in records:
+            references: dict[str, AnchorEvidenceReference] = {}
+            for reference in record.evidence:
+                references.setdefault(reference.candidate_id, reference)
             for issue in record.result.issues:
-                label = CONFLICT_RULES[ISSUE_CATEGORIES[issue.type]].label
+                category = ISSUE_CATEGORIES[issue.type]
                 for reference in issue.evidence:
-                    evidence_ref = next((ref for ref in record.evidence if ref.candidate_id == reference.candidate_id), None)
+                    evidence_ref = references.get(reference.candidate_id)
                     if evidence_ref is None:
                         raise ValueError('标注问题缺少实际比较引用：' + record.summary.anchor_id)
-                    frozen = ConsistencyRepository(self.db).get(evidence_ref.evidence_id)
+                    if evidence_ref.evidence_id not in evidences:
+                        evidences[evidence_ref.evidence_id] = ConsistencyRepository(self.db).get(evidence_ref.evidence_id)
+                    frozen = evidences[evidence_ref.evidence_id]
                     pair = {s.sample.sample_id: s for s in (frozen.sources.left, frozen.sources.right)}
                     main, candidate = pair[record.summary.anchor_id], pair[reference.candidate_id]
                     for source in (main, candidate):
@@ -48,7 +77,36 @@ class ConsistencyConflictExport:
                         dataset = source.sample.dataset_id
                         if dataset not in configs:
                             configs[dataset] = DatasetRegistry(self.db).get(dataset)
-                    documents[label, main.sample.sample_id].append((issue, main, candidate))
+                    documents[category, main.sample.sample_id].append(ConflictComparison(issue, main, candidate))
+        if format == 'markdown':
+            pairs: dict[str, list[ConflictComparison]] = defaultdict(list)
+            for entries in documents.values():
+                for entry in entries:
+                    pairs[candidate_pair_key(entry.main.sample.sample_id, entry.candidate.sample.sample_id)].append(entry)
+            chapters: dict[ConflictCategory, list[ConflictComparison]] = defaultdict(list)
+            for entries in pairs.values():
+                category = primary_conflict_category(ISSUE_CATEGORIES[entry.issue.type] for entry in entries)
+                assert category is not None
+                selected = min((entry for entry in entries if ISSUE_CATEGORIES[entry.issue.type] == category),
+                    key=lambda entry: (entry.main.sample.sample_id, entry.candidate.sample.sample_id))
+                chapters[category].append(selected)
+            lines = ['# 标注冲突', '', f'作业 ID：{run_id}', '']
+            for category, rule in CONFLICT_RULES.items():
+                if not chapters[category]:
+                    continue
+                lines.extend([f'## {rule.label}', '', '| 主图数据集 | 主图文件名 | 对比图数据集 | 对比图文件名 |',
+                    '| --- | --- | --- | --- |'])
+                for entry in sorted(chapters[category], key=lambda entry: (entry.main.sample.sample_id, entry.candidate.sample.sample_id)):
+                    values = [value for source in (entry.main, entry.candidate)
+                        for value in (configs[source.sample.dataset_id].dataset.name, source.sample.relative_path)]
+                    cells = [re.sub(r'([\\|`*_\[\]])', r'\\\1', escape(value, quote=False)).replace('\r\n', '\n')
+                        .replace('\r', '\n').replace('\n', '<br>') for value in values]
+                    lines.append('| ' + ' | '.join(cells) + ' |')
+                lines.append('')
+            with NamedTemporaryFile(mode='w', encoding='utf-8', prefix='iad-conflicts-', suffix='.md', delete=False) as output:
+                output.write('\n'.join(lines))
+            return {'path': output.name, 'filename': run_id+'-标注冲突.md',
+                'media_type': 'text/markdown; charset=utf-8', 'problem_images': len(ids)}
         directories = {sid: re.sub(r'[\\/:*?"<>|\x00-\x1f]', '_', config.dataset.name or sid)
             for sid, config in configs.items()}
         names = Counter(directories.values())
@@ -89,11 +147,13 @@ class ConsistencyConflictExport:
             path = Path(output.name)
         try:
             with zipfile.ZipFile(path, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=1) as archive:
-                for (label, sid), entries in documents.items():
+                for (category, sid), entries in documents.items():
+                    label = CONFLICT_RULES[category].label
                     sample = sources[sid].sample
                     target = PurePosixPath(label, directories[sample.dataset_id], sample.relative_path+'.md')
                     lines = [f'# {label}', '', f'主图：`{sample.image_path}`', '']
-                    for issue, main, candidate in entries:
+                    for entry in entries:
+                        issue, main, candidate = entry.issue, entry.main, entry.candidate
                         references = defaultdict(set)
                         for source in (main, candidate):
                             references[Path(source.sample.image_path).name].add(source.sample.image_path)
@@ -119,4 +179,5 @@ class ConsistencyConflictExport:
         except BaseException:
             path.unlink(missing_ok=True)
             raise
-        return {'path': str(path), 'filename': run_id+'-标注冲突.zip', 'problem_images': len(ids)}
+        return {'path': str(path), 'filename': run_id+'-标注冲突.zip',
+            'media_type': 'application/zip', 'problem_images': len(ids)}

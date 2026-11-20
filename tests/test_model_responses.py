@@ -28,6 +28,57 @@ class CompleteObservation(Observation):
     overview: str | None = None
 
 
+@pytest.mark.parametrize('outcome', ['recovers', 'fails', 'cancelled', 'reasoning_used', 'partial', 'bounded'])
+def test_responses_empty_unbounded_token_limit_failure_is_retried_without_accepting_partial_output(dataset, outcome):
+    db, _, config = dataset
+    run_id = 'responses-empty-limit'
+    with db.connection() as connection:
+        connection.execute("INSERT INTO job_runs(job_id,task_id,job_type,status,payload_json) VALUES(?,?,'ANALYSIS_WORKFLOW','RUNNING','{}')",
+            (run_id, config.task.task_id))
+    image = EvidenceImages(db.db_path).capture(SampleRepository(db).get(config.dataset.id + ':dent.png'),
+        'overview', 'coverage', full_resolution=True)
+    requests = []
+
+    def respond(request):
+        requests.append(json.loads(request.content))
+        completed = outcome == 'recovers' and len(requests) == 2
+        output = ([{'type': 'message', 'role': 'assistant', 'content': [{'type': 'output_text',
+            'text': '{"description":"已完整核对原图。"}' if completed else '{"description":"未完成',
+            'annotations': []}]}] if completed or outcome == 'partial' else [])
+        return httpx.Response(200, json={'object': 'response', 'status': 'completed' if completed else 'incomplete', 'output': output,
+            'incomplete_details': None if completed else {'reason': 'max_output_tokens'},
+            'max_output_tokens': 4096 if outcome == 'bounded' else None,
+            'usage': {'input_tokens': 100 if completed else 0, 'output_tokens': 4096 if outcome == 'reasoning_used' else 0,
+                'total_tokens': 100 if completed else 4096 if outcome == 'reasoning_used' else 0}})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)), profile=ModelProfile(
+        endpoint='http://model.invalid/v1', api='openai-responses', model_id='vision',
+        capacity_mode='provider_managed', max_output_tokens=4096 if outcome == 'bounded' else None))
+    try:
+        def checkpoint():
+            if outcome == 'cancelled' and requests:
+                raise InterruptedError('用户取消')
+
+        with ModelCalls(db).bind(run_id, checkpoint, role='vision'):
+            plan = client.plan(Observation, '核对原图。', [image], client.resolve_model())
+            if outcome == 'recovers':
+                assert client.generate(plan).description == '已完整核对原图。'
+            else:
+                with pytest.raises(InterruptedError if outcome == 'cancelled' else ValueError,
+                        match='用户取消' if outcome == 'cancelled' else 'max_output_tokens'):
+                    client.generate(plan)
+        assert len(requests) == {'recovers': 2, 'fails': 3}.get(outcome, 1)
+        assert all(body == requests[0] for body in requests), '重试保留完整图证及冻结预算'
+        calls = ModelCalls(db).list(run_id)
+        assert len(calls) == len(requests)
+        assert all(call.error and call.finish_reason == 'incomplete'
+            for call in (calls[:-1] if outcome == 'recovers' else calls))
+        if outcome == 'recovers':
+            assert calls[-1].error is None and calls[-1].finish_reason == 'completed'
+    finally:
+        client.close()
+
+
 @pytest.mark.parametrize('error_type', [httpx.RemoteProtocolError, httpx.ReadTimeout, httpx.ConnectError])
 @pytest.mark.parametrize('outcome', ['recovers', 'fails', 'cancelled'])
 def test_responses_connection_loss_retries_the_same_plan(dataset, error_type, outcome):

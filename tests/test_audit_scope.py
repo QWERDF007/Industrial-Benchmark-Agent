@@ -69,6 +69,9 @@ def test_consistency_scope_keeps_imported_samples_and_source_status_visible(nati
     assert all(item.audit_state == 'normal' for item in page.items)
     assert AuditQueries(jobs.db).samples(AuditSampleQuery(run_id=run_id, status='normal')).total == 6
     assert all(item.session_id is None and item.audit_scope == 'consistency' for item in page.items)
+    assert AuditQueries(jobs.db).projection(run_id, sample_id=page.items[0].sample_id) == [page.items[0]]
+    assert AuditQueries(jobs.db).projection(run_id, sample_id=page.items[-1].sample_id) == [page.items[-1]]
+    assert AuditQueries(jobs.db).projection(run_id, sample_id='not-in-this-audit') == []
     detail = AuditQueries(jobs.db).sample(run_id, page.items[0].sample_id)
     assert detail.final is None
     assert detail.upstream_conclusion.summary.reason == 'NO_CANDIDATES'

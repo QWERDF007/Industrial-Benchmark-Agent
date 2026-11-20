@@ -45,15 +45,17 @@ class AuditState:
             raise ValueError('历史评分观察保持冻结，请新建审计作业使用当前规则')
         return snapshot
 
-    def consistency_records(self, run_id: str):
+    def consistency_records(self, run_id: str, sample_id: str | None = None):
         from iad_core.consistency.agent_result_models import ConsistencyConclusionRecord, AnchorResultSummary
         if self.snapshot(run_id).settings.audit_scope == 'consistency':
             with self.db.connection() as connection:
-                rows = connection.execute('SELECT record_json FROM audit_upstream_records WHERE job_id=? ORDER BY ordinal', (run_id,))
+                rows = connection.execute('SELECT record_json FROM audit_upstream_records WHERE job_id=?'
+                    + (' AND sample_id=?' if sample_id is not None else '') + ' ORDER BY ordinal',
+                    (run_id, sample_id) if sample_id is not None else (run_id,))
                 return [ConsistencyConclusionRecord.model_validate_json(row[0]) for row in rows]
         return [ConsistencyConclusionRecord(summary=AnchorResultSummary.model_validate(
             sample.consistency.model_dump(include=set(AnchorResultSummary.model_fields))), result=sample.consistency.result)
-            for sample in self.samples(run_id) if sample.consistency.result]
+            for sample in ([self.sample(run_id, sample_id)] if sample_id is not None else self.samples(run_id)) if sample.consistency.result]
 
     @staticmethod
     def _sample(row) -> AuditSampleRun:

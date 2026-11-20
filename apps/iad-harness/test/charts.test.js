@@ -147,3 +147,17 @@ test('bar tooltip uses the supplied lines for both hover and accessible readings
   const html=renderToStaticMarkup(React.createElement(Chart,{title:'标注一致性扣分',spec}));
   assert.match(html,/类别不一致，扣分：0\.1\/100，数量：2\/2176，百分比：0\.09191%/);
 });
+
+test('dimension heatmaps show original nonuniform ranges, counts and percentages',()=>{
+  const theme={ink:'#172338',muted:'#536174',grid:'#e2e8f0',surface:'#fff',font:'sans-serif',
+    palette:['#285ed6'],tones:{primary:'#285ed6'},reducedMotion:true};
+  const spec={type:'heatmap',showPercent:true,xLabel:'外接矩形宽（像素，等比区间）',yLabel:'外接矩形高（像素，等比区间）',
+    data:{x_edges:[.5,2,8,2048],y_edges:[.25,1,4,1024],cells:[[0,0,3],[2,2,1]]}};
+  const options=chartOptions(spec,theme);
+  const last=options.series[0].data.find(item=>item.value[0]===2&&item.value[1]===2);
+  assert.equal(options.tooltip.formatter({value:last.value}),
+    '外接矩形宽（像素，等比区间） 8–2,048\n外接矩形高（像素，等比区间） 4–1,024\n数量：1/4\n占比：25%');
+  assert.match(options.aria.label.description,/数量：3\/4，占比：75%/);
+  const empty=chartOptions({...spec,data:{...spec.data,cells:[]}},theme);
+  assert.match(empty.tooltip.formatter({value:[0,0,0]}),/数量：0\/0\n占比：0%$/);
+});

@@ -8,9 +8,10 @@ const sections = [
 export const auditReportSections = Object.fromEntries(sections.map(([key, title], index) => [key, {
         title: `${['一', '二', '三', '四', '五', '六', '七', '八', '九'][index]}、${title}`, prefix: `${index + 1}.`,
     }]));
-export const scoredAuditReportSections = Object.fromEntries([...sections.slice(0, 1), ['score', '得分明细'], ...sections.slice(1)]
+export const scoredAuditReportSections = Object.fromEntries([...sections.slice(0, 2), ['score', '得分明细'], ...sections.slice(2)]
     .map(([key, title], index) => [key, { title: `${['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'][index]}、${title}`, prefix: `${index + 1}.` }]));
-export const consistencyAuditReportSections = Object.fromEntries([['conclusion', '总体结论'], ['score', '得分明细'], ['distribution', '数据分布'], ['consistency', '数据是否自洽']].map(([key, title], index) => [key, { title: `${['一', '二', '三', '四'][index]}、${title}`, prefix: `${index + 1}.` }]));
+export const consistencyAuditReportSections = Object.fromEntries(Object.entries(scoredAuditReportSections)
+    .filter(([key]) => ['conclusion', 'distribution', 'score', 'consistency'].includes(key)));
 export const AuditReportSectionsContext = createContext(auditReportSections);
 export const useAuditReportSections = () => useContext(AuditReportSectionsContext);
 export const auditDistributionMetricLabels = { image_aspect_ratio: '图像宽高比',

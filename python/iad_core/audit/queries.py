@@ -15,17 +15,17 @@ class AuditQueries:
     def __init__(self, db):
         self.db, self.state = db, AuditState(db)
 
-    def projection(self, run_id: str) -> list[AuditSampleItem]:
+    def projection(self, run_id: str, sample_id: str | None = None) -> list[AuditSampleItem]:
         snapshot = self.state.snapshot(run_id)
         if snapshot.settings.audit_scope == 'consistency':
             from iad_core.audit.consistency_summary import ConsistencyAudit
-            audit = ConsistencyAudit(self.db)
-            imported = {r.summary.anchor_id:r for r in audit.records(run_id)}
+            imported = {r.summary.anchor_id:r for r in self.state.consistency_records(run_id, sample_id)}
             return [AuditSampleItem(audit_scope='consistency', run_id=run_id, sample_id=r.sample.sample_id,
                 dataset_id=r.sample.dataset_id, filename=r.sample.relative_path, width=r.sample.width, height=r.sample.height,
-                audit_state=audit.sample_state(imported[r.sample.sample_id]),
+                audit_state=ConsistencyAudit.sample_state(imported[r.sample.sample_id]),
                 overview_evidence_id=None, has_findings=bool(imported[r.sample.sample_id].result.issues),
-                insufficient_evidence=False, consistency_pending=False) for r in snapshot.manifest.records]
+                insufficient_evidence=False, consistency_pending=False) for r in snapshot.manifest.records
+                if sample_id is None or r.sample.sample_id == sample_id]
         with self.db.connection() as connection:
             rows = connection.execute('''SELECT a.sample_id,a.state execution_status,
                 COALESCE(json_extract(a.result_json,'$.state'),'unprocessed') audit_state,
@@ -36,7 +36,9 @@ class AuditQueries:
                 (SELECT json_extract(image.value,'$.image.evidence_id') FROM json_each(m.media_json,'$.images') image
                     WHERE json_extract(image.value,'$.image.role')='overview' LIMIT 1) overview_evidence_id
                 FROM audit_sample_runs a LEFT JOIN audit_sample_media m ON m.job_id=a.job_id AND m.target_id=a.sample_id
-                    AND m.media_key='sample:'||a.sample_id WHERE a.job_id=? ORDER BY a.ordinal''', (run_id,)).fetchall()
+                    AND m.media_key='sample:'||a.sample_id WHERE a.job_id=?'''
+                + (' AND a.sample_id=?' if sample_id is not None else '') + ' ORDER BY a.ordinal',
+                (run_id, sample_id) if sample_id is not None else (run_id,)).fetchall()
         records = {record.sample.sample_id:record for record in snapshot.manifest.records}
         rows = [{**dict(row),'audit_state':row['audit_state'] if row['execution_status']=='COMPLETED' else 'incomplete'} for row in rows]
         return [AuditSampleItem(run_id=run_id, dataset_id=record.sample.dataset_id,
@@ -75,17 +77,16 @@ class AuditQueries:
 
     def sample(self, run_id: str, sample_id: str) -> NativeAuditSampleDetail:
         if self.state.snapshot(run_id).settings.audit_scope == 'consistency':
-            from iad_core.audit.consistency_summary import ConsistencyAudit
-            conclusion = next((r for r in ConsistencyAudit(self.db).records(run_id) if r.summary.anchor_id == sample_id), None)
+            conclusion = next(iter(self.state.consistency_records(run_id, sample_id)), None)
             if conclusion is None:
                 raise LookupError('图像不属于当前作业')
-            return NativeAuditSampleDetail(sample=next(i for i in self.projection(run_id) if i.sample_id == sample_id),
+            return NativeAuditSampleDetail(sample=next(i for i in self.projection(run_id, sample_id) if i.sample_id == sample_id),
                 final=None, knowledge=None, consistency=None, upstream_conclusion=conclusion,
                 registration=next(r for r in self.state.snapshot(run_id).manifest.records if r.sample.sample_id == sample_id),
                 evidence=[], errors=[])
         context = self.state.context(run_id, sample_id)
         sample = self.state.sample(run_id, sample_id)
-        item = next(item for item in self.projection(run_id) if item.sample_id == sample_id)
+        item = next(item for item in self.projection(run_id, sample_id) if item.sample_id == sample_id)
         job = JobFamilies(self.db).snapshot(run_id, ('MODEL_AUDIT',))
         with self.db.connection() as connection:
             rows = connection.execute('SELECT media_key,media_json FROM audit_sample_media WHERE job_id=? AND target_id=? ORDER BY rowid', (run_id,sample_id)).fetchall()
@@ -130,8 +131,7 @@ class AuditQueries:
         if row[0]:
             report = AuditRunReport.model_validate_json(row[0])
             distribution = AuditDistributions(self.state.snapshot(run_id).manifest)
-            catalog = report.data_distribution.model_copy(update={'category_area_samples': distribution.category_area_samples()}) \
-                if report.data_distribution is not None else distribution.catalog()
+            catalog = distribution.catalog(report.data_distribution)
             return report.model_copy(update={'data_distribution': catalog})
         if self.state.snapshot(run_id).settings.audit_scope == 'consistency':
             from iad_core.audit.consistency_summary import ConsistencyAudit
@@ -186,7 +186,10 @@ class AuditQueries:
 
     def export(self, run_id: str) -> dict[str, str]:
         with self.db.connection() as connection:
-            row = connection.execute("SELECT report_html,json_extract(snapshot_json,'$.schema_version') schema_version FROM audit_workflow_runs WHERE job_id=?", (run_id,)).fetchone()
+            row = connection.execute("SELECT report_html FROM audit_workflow_runs WHERE job_id=?", (run_id,)).fetchone()
         if row is None or row[0] is None:
             raise ValueError('本作业报告尚未生成')
-        return dict(filename=f'audit-{run_id}.html',html=row[0])
+        if self.state.is_archived(run_id):
+            return dict(filename=f'audit-{run_id}.html',html=row[0])
+        from iad_core.workbench.audit_html import AuditHtmlReport
+        return AuditHtmlReport(self).render(run_id, saved_html=row[0])

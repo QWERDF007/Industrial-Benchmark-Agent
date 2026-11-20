@@ -27,6 +27,12 @@ function distributionSeries(spec) {
                 }) }];
     });
 }
+function heatmapReading(spec, x, y, count, total) {
+    return [`${spec.xLabel} ${chartNumber(spec.data.x_edges[x], spec.format || 'decimal')}–${chartNumber(spec.data.x_edges[x + 1], spec.format || 'decimal')}`,
+        `${spec.yLabel} ${chartNumber(spec.data.y_edges[y], spec.format || 'decimal')}–${chartNumber(spec.data.y_edges[y + 1], spec.format || 'decimal')}`,
+        `数量：${chartNumber(count)}${spec.showPercent ? '/' + chartNumber(total) : ''}`,
+        ...(spec.showPercent ? [`占比：${chartNumber(total ? count / total : 0, 'percent')}`] : [])].join('\n');
+}
 export function chartReadings(spec) {
     switch (spec.type) {
         case 'bar': return spec.rows.map(row => row.tooltip ?? [row.label, ...spec.series.map((series, index) => `${seriesLabel(series)}：${chartNumber(row.values[index], spec.format)}`), row.details].filter(Boolean).join('\n'));
@@ -36,7 +42,10 @@ export function chartReadings(spec) {
             const curves = distributionSeries(spec);
             return curves.length ? curves.flatMap(curve => curve.points.map(point => point.description)) : ['暂无统计数据'];
         }
-        case 'heatmap': return spec.data.cells.map(([x, y, value]) => `${spec.xLabel} ${chartNumber(spec.data.x_edges[x], spec.format || 'decimal')}–${chartNumber(spec.data.x_edges[x + 1], spec.format || 'decimal')}\n${spec.yLabel} ${chartNumber(spec.data.y_edges[y], spec.format || 'decimal')}–${chartNumber(spec.data.y_edges[y + 1], spec.format || 'decimal')}\n数量：${chartNumber(value)}`);
+        case 'heatmap': {
+            const total = spec.data.cells.reduce((sum, cell) => sum + cell[2], 0);
+            return spec.data.cells.map(([x, y, value]) => heatmapReading(spec, x, y, value, total));
+        }
         case 'boxplot': return spec.series.flatMap(series => series.rows.map(row => boxReading(row, spec.series.length > 1 ? series.label : '', spec.format || 'decimal')));
     }
 }
@@ -100,9 +109,14 @@ export function chartOptions(spec, theme) {
         }
         case 'heatmap': {
             const { x_edges: x, y_edges: y, cells } = spec.data;
-            const peak = Math.max(0, ...cells.map(cell => cell[2]));
+            const peak = Math.max(0, ...cells.map(cell => cell[2])), total = cells.reduce((sum, cell) => sum + cell[2], 0);
             const counts = new Map(cells.map(([i, j, value]) => [`${i},${j}`, value]));
             return { ...common, animation: false, legend: { show: false },
+                tooltip: { ...common.tooltip, formatter: params => {
+                        const item = Array.isArray(params) ? params[0] : params;
+                        const [i, j, count] = item.value;
+                        return heatmapReading(spec, i, j, count, total);
+                    } },
                 grid: { left: 12, right: 84, top: 18, bottom: 36, outerBoundsMode: 'same', outerBoundsContain: 'all' },
                 xAxis: { ...axis, type: 'category', name: spec.xLabel, nameLocation: 'middle', nameGap: 26,
                     data: x.slice(0, -1).map((value, index) => chartNumber((value + x[index + 1]) / 2, spec.format || 'decimal')), splitLine: { show: false } },

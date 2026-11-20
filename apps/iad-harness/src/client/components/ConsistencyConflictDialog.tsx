@@ -11,7 +11,8 @@ import {Button} from './Button.js';
 import {IconButton} from './IconButton.js';
 import {ThumbnailCard} from './ThumbnailCard.js';
 import {AnnotatedImageStage} from './AnnotatedImageStage.js';
-import {FullscreenViewer,type FullscreenViewerItem} from './FullscreenViewer.js';
+import type {ImageNavigation,ImageSource} from './ImageViewer.js';
+import {ImageGalleryViewer} from './ImageGalleryViewer.js';
 import {ConsistencyGroupReviewForm} from './ConsistencyGroupReviewForm.js';
 import {ConsistencyModelAnalysis} from './ConsistencyModelAnalysis.js';
 import {TabBar} from './layout/TabBar.js';
@@ -24,19 +25,28 @@ interface ConsistencyConflictDialogProps {
   items:ConsistencyComparisonItem[];
   onSelect(id:string):void;
   onMove?(offset:-1|1):void;
+  navigation?:ImageNavigation;
   onClose():void;
   onReviewed():void;
 }
 
-export function ConsistencyConflictDialog({conflict:currentConflict,items:visibleConflicts,
-  onSelect,onMove,onClose,onReviewed}:ConsistencyConflictDialogProps) {
+export function ConsistencyConflictDialog(props:ConsistencyConflictDialogProps) {
+  const [showAnnotations,setShowAnnotations]=useState(true);
+  const [zoomIndex,setZoomIndex]=useState<number|null>(null);
+  return <ConsistencyConflictContent key={props.conflict.id} {...props}
+    showAnnotations={showAnnotations} onShowAnnotationsChange={setShowAnnotations} zoomIndex={zoomIndex} onZoomChange={setZoomIndex}/>;
+}
+
+function ConsistencyConflictContent({conflict:currentConflict,items:visibleConflicts,
+  showAnnotations,onShowAnnotationsChange,zoomIndex,onZoomChange,navigation,onSelect,onMove,onClose,onReviewed}:ConsistencyConflictDialogProps & {
+    showAnnotations:boolean;onShowAnnotationsChange(value:boolean):void;zoomIndex:number|null;onZoomChange(index:number|null):void;
+  }) {
   const currentConflictId=currentConflict.id;
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
   const [candidateTab,setCandidateTab]=useState<CandidateTab>('compared');
   const [conflictMembers, setConflictMembers] = useState<GalleryMember[]>([]);
   const [membersError,setMembersError]=useState('');
   const [membersLoading,setMembersLoading]=useState(false);
-  const [zoomItem, setZoomItem] = useState<FullscreenViewerItem | null>(null);
   const groupReference=currentConflict.reference;
   const jobId='job_id' in groupReference?groupReference.job_id:undefined;
   const groupAnalysis=useGroupAnalysis(currentConflict.candidateCount?groupReference:null);
@@ -77,6 +87,14 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
   const candidateSource=selectedImage?compared.data?.sources[selectedImage.side]:null;
   const anchorAnnotations=anchorSource?datasetImageAnnotations(anchorSource.annotations.dataset_format??undefined,anchorSource.sample,anchorSource.annotations.annotations):{};
   const candidateAnnotations=candidateSource?datasetImageAnnotations(candidateSource.annotations.dataset_format??undefined,candidateSource.sample,candidateSource.annotations.annotations):{};
+  const images:ImageSource[]=[{src:currentConflict.fullUrl||currentConflict.url,title:currentConflict.filename,
+    sampleId:currentConflict.sampleId,width:currentConflict.sourceWidth,height:currentConflict.sourceHeight,...anchorAnnotations},
+    ...candidateImages.map((image,index)=>({src:ConsistencyView.media(image),title:image.sample.relative_path.split('/').pop()!,
+      sampleId:image.sample.sample_id,width:image.sample.width,height:image.sample.height,...(index===candidateIndex?candidateAnnotations:{})}))];
+  function changeZoom(index:number|null) {
+    onZoomChange(index);
+    if(index!==null&&index>0)setCandidateIndex(index-1);
+  }
   const handlePrevConflict = useCallback(() => {
     if(onMove){onMove(-1);return;}
     const list = visibleConflicts;
@@ -110,6 +128,9 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                 <Button type="button" onClick={handleNextConflict}>
                   下一组
                 </Button>
+                <Button type="button" aria-pressed={showAnnotations} onClick={()=>onShowAnnotationsChange(!showAnnotations)}>
+                  {showAnnotations?'隐藏标注':'显示标注'}
+                </Button>
                 <IconButton icon="close" type="button" title="关闭" label="关闭" onClick={onClose} />
               </div>
             </header>
@@ -128,29 +149,9 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                     data-dc="zoom-anchor"
                     aria-label="查看主图大图"
                     title={currentConflict.filename}
-                    onClick={() =>
-                      setZoomItem({
-                        id: currentConflict.id + '_anchor',
-                        sampleId: currentConflict.sampleId,
-                        title: currentConflict.filename,
-                        imageUrl: currentConflict.fullUrl || currentConflict.url,
-                        width: currentConflict.sourceWidth,
-                        height: currentConflict.sourceHeight,
-                        ...anchorAnnotations,
-                      })
-                    }
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        setZoomItem({
-                          id: currentConflict.id + '_anchor',
-                          sampleId: currentConflict.sampleId,
-                          title: currentConflict.filename,
-                          imageUrl: currentConflict.fullUrl || currentConflict.url,
-                          width: currentConflict.sourceWidth,
-                          height: currentConflict.sourceHeight,
-                          ...anchorAnnotations,
-                        });
-                      }
+                    onClick={()=>onZoomChange(0)}
+                    onKeyDown={event=>{
+                      if(event.key==='Enter'||event.key===' '){event.preventDefault();onZoomChange(0);}
                     }}
                   >
                     <AnnotatedImageStage
@@ -159,6 +160,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       alt="主图"
                       width={currentConflict.sourceWidth}
                       height={currentConflict.sourceHeight}
+                      showAnnotations={showAnnotations}
                       {...anchorAnnotations}
                     />
                   </div>
@@ -176,29 +178,9 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                     aria-disabled={!selectedImage}
                     aria-label="查看候选图大图"
                     title={currentCandidate.filename}
-                    onClick={() => selectedImage &&
-                      setZoomItem({
-                        id: currentConflict.id + '_candidate_' + candidateIndex,
-                        sampleId: currentCandidate.sampleId,
-                        title: currentCandidate.filename,
-                        imageUrl: currentCandidate.fullUrl,
-                        width: currentCandidate.width,
-                        height: currentCandidate.height,
-                        ...candidateAnnotations,
-                      })
-                    }
-                    onKeyDown={e => {
-                      if (selectedImage && (e.key === 'Enter' || e.key === ' ')) {
-                        setZoomItem({
-                          id: currentConflict.id + '_candidate_' + candidateIndex,
-                          sampleId: currentCandidate.sampleId,
-                          title: currentCandidate.filename,
-                          imageUrl: currentCandidate.fullUrl,
-                          width: currentCandidate.width,
-                          height: currentCandidate.height,
-                          ...candidateAnnotations,
-                        });
-                      }
+                    onClick={()=>selectedImage&&onZoomChange(candidateIndex+1)}
+                    onKeyDown={event=>{
+                      if(selectedImage&&(event.key==='Enter'||event.key===' ')){event.preventDefault();onZoomChange(candidateIndex+1);}
                     }}
                   >
                     {selectedImage && <AnnotatedImageStage
@@ -207,6 +189,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
                       alt="候选图"
                       width={currentCandidate.width}
                       height={currentCandidate.height}
+                      showAnnotations={showAnnotations}
                       {...candidateAnnotations}
                     />}
                     {!selectedImage&&<span role="status" className="iad-result-empty">{imagesLoading?'正在读取…':imagesError?'读取失败':
@@ -250,6 +233,7 @@ export function ConsistencyConflictDialog({conflict:currentConflict,items:visibl
 
             </ConsistencyGroupReviewForm>
         </Modal>
-    <FullscreenViewer open={!!zoomItem} item={zoomItem} onClose={()=>setZoomItem(null)} />
+    <ImageGalleryViewer images={images} current={zoomIndex} onChange={changeZoom}
+      navigation={images.length===1?navigation:undefined}/>
   </>;
 }

@@ -25,6 +25,10 @@ class ResponsesProtocol:
         result = Response.model_construct(**body)
         if result.status != 'completed':
             reason = result.incomplete_details.reason if result.incomplete_details else result.error.message if result.error else result.status
+            if (result.status == 'incomplete' and reason == 'max_output_tokens'
+                    and result.max_output_tokens is None and not result.output
+                    and result.usage is not None and result.usage.total_tokens == 0):
+                raise RetryableModelError('Responses 模型服务未生成输出却报告 max_output_tokens')
             if result.status == 'failed' and result.error and result.error.code in (
                     'upstream_error', 'upstream_stream_read_error', 'server_error', 'rate_limit_exceeded'):
                 raise RetryableModelError('Responses 模型服务临时失败：' + str(reason))

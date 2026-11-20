@@ -46,7 +46,7 @@ export function AuditReportDistribution({report}:{report:AuditRunReport}) {
           rows:view.classes.map(row=>({id:row.category,label:className(row.category),values:row.annotation_count===null?[row.image_count]:[row.image_count,row.annotation_count]}))}}/>
         <DistributionPlot {...scope} id="image-dimensions" title="图像宽高分布" spec={view=>imageDimensionsChart(view.heatmaps.image_dimensions)}/>
         {overall.annotation_count!==null&&<DistributionPlot {...scope} id="box-dimensions" title="实例外接矩形宽高分布" spec={view=>({
-          type:'heatmap',data:view.heatmaps.box_dimensions,xLabel:'外接矩形宽（像素）',yLabel:'外接矩形高（像素）'})}/>}
+          type:'heatmap',data:view.heatmaps.box_dimensions,showPercent:true,xLabel:'外接矩形宽（像素，等比区间）',yLabel:'外接矩形高（像素，等比区间）'})}/>}
         {(['image_aspect_ratio','box_aspect_ratio','relative_area'] as const).filter(key=>overall.histograms[key]).map(key=>{
           const label=auditDistributionMetricLabels[key];
           return <DistributionPlot {...scope} key={key} id={key.replaceAll('_','-')} title={`${label}分布`} spec={view=>({

@@ -242,7 +242,7 @@ def test_input_comparison_checks_actual_annotation_review_requests(
             mapped_window = next(
                 view['crop_bbox']
                 for view in context['facts']['sources']['main']['visual_inputs']
-                if view['window_source'] == 'mapped_window' and view['crop_bbox'] == [97, 97, 133, 133]
+                if view['window_source'] == 'mapped_window' and view['crop_bbox'] == [65, 65, 165, 165]
             )
         index = next(
             index

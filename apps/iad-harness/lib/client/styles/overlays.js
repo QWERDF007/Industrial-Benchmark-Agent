@@ -37,5 +37,9 @@ export const overlaysStyles = `.iad-viewer-hint{margin:0;padding:8px 20px;flex:n
 .iad-floating-menu-panel select {width:100%;max-width:none;}
 .iad-layer-menu {color:var(--iad-text);}
 .iad-layer-menu summary {cursor:pointer;padding:8px 12px;border-radius:8px;background:var(--iad-surface);min-height:40px;}
+.iad-action-menu>summary {list-style:none;cursor:pointer;min-height:var(--iad-control-height);padding:0 14px;border:1px solid var(--iad-control-border);border-radius:var(--iad-radius);background:var(--iad-surface);color:var(--iad-text);font-size:var(--iad-font-size);}
+.iad-action-menu .iad-floating-menu-panel {padding:5px;border-radius:var(--iad-radius);}
+.iad-action-menu .iad-floating-menu-panel>button {display:flex;justify-content:flex-start;width:100%;border:0;background:transparent;}
+.iad-action-menu .iad-floating-menu-panel>button:hover {background:var(--iad-hover);}
 
 `;

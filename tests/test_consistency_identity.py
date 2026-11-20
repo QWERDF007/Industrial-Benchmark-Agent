@@ -16,6 +16,10 @@ from iad_core.workbench.vision import VlmClient
 def identity_response(context, relation, reason):
     finding = {'transformed_same_content': 'same', 'content_different': 'different', 'unverified': 'unverified'}[relation]
     return {'overview': finding, 'summary': reason,
+        'overview_observation': {
+            'same': '两图完整视野中的纹理块及边缘位置一一对应，局部裁图以外的表面也能对应。',
+            'different': '两图完整视野中对应位置的纹理形状不同。',
+            'unverified': '完整原图中部分区域的纹理不清，无法可靠对应。'}[finding],
         'regions': {'same': 'S', 'different': 'D', 'unverified': 'U'}[finding] * len(context['windows']),
         'unmapped_regions': {
             window['ref']: {'observation': '实际局部无法可靠对应。'} for window in context['unmapped_regions']},

@@ -101,6 +101,9 @@ def test_new_check_freezes_five_exact_and_ten_similar_at_ninety_eight_percent(in
         assert frozen.retrieval.min_similarity == .98
         assert frozen.retrieval.max_exact_candidates == 5
         assert frozen.retrieval.max_similar_candidates == 10
+        from iad_core.workbench.job_snapshots import JobSnapshots
+        view = JobSnapshots(database).snapshot(job['run_id'], ('ANALYSIS_WORKFLOW',), include_request=False)
+        assert (view.image_max_side, view.retrieval_mode, view.similarity_threshold) == (None, 'combined', .98)
     finally:
         runtime.close()
 

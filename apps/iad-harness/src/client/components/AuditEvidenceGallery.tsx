@@ -4,7 +4,8 @@ import type {AuditReportImage} from '../../shared/domain.generated.js';
 import {ThumbnailCard} from './ThumbnailCard.js';
 import {Pagination} from './Pagination.js';
 import {datasetImageAnnotations} from '../dataset-image-annotations.js';
-import {ImageViewer,type ImageSource} from './ImageViewer.js';
+import type {ImageSource} from './ImageViewer.js';
+import {ImageGalleryViewer} from './ImageGalleryViewer.js';
 import {TabBar} from './layout/TabBar.js';
 import {AuditReportHeading,type AuditReportHeadingSpec} from './AuditReportHeading.js';
 
@@ -30,7 +31,6 @@ export function AuditEvidenceGallery({items,imageUrl,title='图像证据',headin
     })}</div>
     <Pagination total={selected.length} page={page} size={size} unit="张" label={title} hideSinglePage
       onPage={setPage}/>
-    {current!==null&&<ImageViewer image={images[current]} onClose={()=>setCurrent(null)}
-      navigation={selected.length>1?{previous:current>0,next:current<selected.length-1,busy:false,error:'',move:offset=>setCurrent(current+offset)}:undefined}/>}
+    <ImageGalleryViewer images={images} current={current} onChange={setCurrent}/>
   </section>;
 }
