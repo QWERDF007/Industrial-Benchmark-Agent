@@ -63,7 +63,7 @@ class GroupAnalysisStates:
                 json_extract(payload_json,'$.group_analysis.overall.verdict') verdict,
                 json_extract(payload_json,'$.group_analysis.overall.text') conclusion,
                 json_extract(payload_json,'$.group_analysis.assessments') assessments
-                FROM json_each(?) wanted CROSS JOIN job_runs WHERE job_type='CONSISTENCY_ANALYSIS' AND deleted_at IS NULL AND '''+clause+' ORDER BY job_runs.id DESC',args).fetchall()
+                FROM json_each(?) wanted CROSS JOIN job_runs WHERE job_type='CONSISTENCY_ANALYSIS' AND '''+clause+' ORDER BY job_runs.id DESC',args).fetchall()
         selected = {}
         for row in rows:
             for identity in grouped.get((row['kind'],row['group_id']),[]):

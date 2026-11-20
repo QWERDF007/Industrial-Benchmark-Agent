@@ -2503,6 +2503,27 @@ export declare const auditStartParameters: {
         };
         readonly title: "AnalysisRolePrompts";
     };
+    readonly consistency_prompt: {
+        readonly type: "object";
+        readonly additionalProperties: false;
+        readonly properties: {
+            readonly system_prompt: {
+                readonly oneOf: readonly [{
+                    readonly type: "string";
+                }, {
+                    readonly type: "null";
+                }];
+                readonly title: "System Prompt";
+                readonly required: true;
+            };
+            readonly user_prompt: {
+                readonly type: "string";
+                readonly title: "User Prompt";
+                readonly required: true;
+            };
+        };
+        readonly title: "AnalysisRolePrompts";
+    };
     readonly benchmark_build_id: {
         readonly oneOf: readonly [{
             readonly type: "string";

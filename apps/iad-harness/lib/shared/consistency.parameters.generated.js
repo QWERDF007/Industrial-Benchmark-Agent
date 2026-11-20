@@ -1,6 +1,4 @@
 /* Generated from Python consistency models by scripts/generate-contracts.js. */
-export const pairReviewBatchSize = 4;
-export const pairReviewMinBatchSize = 2;
 export const conflictCategoryDefaults = {
     "labelme": [
         "类别不一致",

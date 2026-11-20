@@ -989,7 +989,6 @@ export type Message1 = string;
 export type SubmittedAt1 = string;
 export type StartedAt2 = string | null;
 export type FinishedAt1 = string | null;
-export type DeletedAt = string | null;
 export type ModelName3 = string | null;
 export type ContextTokens5 = number | null;
 export type MaxOutputTokens5 = number | null;
@@ -1317,7 +1316,6 @@ export type Message3 = string;
 export type SubmittedAt3 = string;
 export type StartedAt7 = string | null;
 export type FinishedAt4 = string | null;
-export type DeletedAt1 = string | null;
 export type ModelName4 = string | null;
 export type ImageMaxSide1 = number | null;
 export type RetrievalMode1 = ("exact" | "combined") | null;
@@ -1372,7 +1370,6 @@ export type Message4 = string;
 export type SubmittedAt4 = string;
 export type StartedAt8 = string | null;
 export type FinishedAt5 = string | null;
-export type DeletedAt2 = string | null;
 export type ModelName5 = string | null;
 export type ImageMaxSide2 = number | null;
 export type RetrievalMode2 = ("exact" | "combined") | null;
@@ -5287,11 +5284,9 @@ export type Module9 = "exploration" | "knowledge" | "consistency" | "audit";
 export type Settings2 = ModuleSettingsValues | ExplorationSettingsValues | KnowledgeSettingsValues | ConsistencySettingsValues | AuditSettingsValues;
 export type ReasoningEffort5 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
 export type Mode7 = "exact" | "combined";
-export type MinSimilarity6 = number;
 export type MaxExactCandidates1 = number;
 export type MaxSimilarCandidates1 = number;
 export type ReasoningEffort6 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
-export type WholeImageMaxSide2 = number | null;
 export type Concurrency2 = number;
 export type PolicyVersion = string;
 export type AbsoluteBoundaryPx = number | null;
@@ -5306,7 +5301,7 @@ export type Diversity = number;
 export type Redundancy = number;
 export type Consistency1 = number;
 export type Diversity1 = number;
-export type WholeImageMaxSide3 = number | null;
+export type WholeImageMaxSide2 = number | null;
 export type BatchSize8 = number;
 export type Concurrency3 = number;
 export type Revision29 = number;
@@ -5315,21 +5310,19 @@ export type Settings3 = ModuleSettingsValues1 | ExplorationSettingsValues1 | Kno
 export type ReasoningEffort8 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
 export type ReasoningEffort9 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
 export type BatchSize9 = number;
-export type WholeImageMaxSide4 = number | null;
+export type WholeImageMaxSide3 = number | null;
 export type ContextTokens7 = number | null;
 export type MaxOutputTokens7 = number | null;
 export type GenerationTimeoutSeconds5 = number | null;
 export type Concurrency4 = number;
 export type ReasoningEffort10 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
 export type BatchSize10 = number;
-export type WholeImageMaxSide5 = number | null;
+export type WholeImageMaxSide4 = number | null;
 export type Concurrency5 = number;
 export type Mode8 = "exact" | "combined";
-export type MinSimilarity7 = number;
 export type MaxExactCandidates2 = number;
 export type MaxSimilarCandidates2 = number;
 export type ReasoningEffort11 = ("off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max") | null;
-export type WholeImageMaxSide6 = number | null;
 export type Concurrency6 = number;
 export type ContextTokens8 = number | null;
 export type MaxOutputTokens8 = number | null;
@@ -5353,14 +5346,14 @@ export type Diversity2 = number;
 export type Redundancy1 = number;
 export type Consistency3 = number;
 export type Diversity3 = number;
-export type WholeImageMaxSide7 = number | null;
+export type WholeImageMaxSide5 = number | null;
 export type BatchSize11 = number;
 export type Concurrency7 = number;
 export type ExpectedRevision6 = number;
 export type Mode9 = "exact" | "combined";
-export type MinSimilarity8 = number;
 export type MaxExactCandidates3 = number;
 export type MaxSimilarCandidates3 = number;
+export type MinSimilarity6 = number;
 /**
  * 本次新建检查的稳定提交ID；重传使用同一ID，主动新建使用新ID
  */
@@ -5372,21 +5365,22 @@ export type DatasetIds30 = [string, ...string[]];
 export type AnalysisKind7 = "consistency";
 export type Instruction22 = string | null;
 export type SystemPrompt9 = string | null;
+export type WholeImageMaxSide6 = number | null;
 export type Subjects3 = (AllRegisteredScope | DatasetScope | SampleScope | FilteredScope) | null;
 export type CorpusScope4 = (AllRegisteredScope | DatasetScope) | null;
 export type SchemaVersion2 = 1;
 export type SettingsRevision2 = number;
 export type Concurrency8 = number;
-export type WholeImageMaxSide8 = number | null;
+export type WholeImageMaxSide7 = number | null;
 export type Retrieval = ExactCandidatePolicy | CombinedCandidatePolicy;
 export type Mode10 = "exact";
-export type MinSimilarity9 = null;
+export type MinSimilarity7 = null;
 export type MaxExactCandidates4 = number;
 export type MaxSimilarCandidates4 = null;
 export type Mode11 = "combined";
-export type MinSimilarity10 = number;
 export type MaxExactCandidates5 = number;
 export type MaxSimilarCandidates5 = number;
+export type MinSimilarity8 = number;
 export type AnnotationClassification = "content-coverage-v1" | null;
 export type Instruction23 = string;
 export type SystemPrompt10 = string | null;
@@ -5409,7 +5403,7 @@ export type TraceError = string | null;
 export type AnchorId5 = string;
 export type ScopeId7 = string;
 export type Mode12 = "exact" | "combined";
-export type MinSimilarity11 = number | null;
+export type MinSimilarity9 = number | null;
 export type State17 = "done" | "disabled";
 export type Limit5 = number;
 export type Matched = number | null;
@@ -5435,7 +5429,7 @@ export type RequestId5 = string;
  */
 export type Fingerprint1 = string;
 /**
- * 完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。
+ * 本次图像对中的唯一候选；每对图像独立审核。
  *
  * @minItems 1
  */
@@ -5549,7 +5543,7 @@ export type RequestId6 = string;
  */
 export type Fingerprint3 = string;
 /**
- * 完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。
+ * 本次图像对中的唯一候选；每对图像独立审核。
  *
  * @minItems 1
  */
@@ -5579,7 +5573,7 @@ export type RequestId7 = string;
  */
 export type Fingerprint4 = string;
 /**
- * 完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。
+ * 本次图像对中的唯一候选；每对图像独立审核。
  *
  * @minItems 1
  */
@@ -5653,7 +5647,13 @@ export type Reason54 = string;
  * 争议位置的原图像素窗口，供身份复核观察；引用本次主图或当前候选。
  */
 export type Windows1 = VisualWindow1[];
-export type CandidateId16 = string | null;
+export type PairKey2 = string;
+export type ObservationId4 = string;
+export type AnchorId11 = string;
+export type CandidateId16 = string;
+export type Reversed = boolean;
+export type CallIds = string[];
+export type CandidateId17 = string | null;
 /**
  * 当前冻结清单指纹。
  */
@@ -5664,7 +5664,7 @@ export type Fingerprint5 = string;
  * @minItems 1
  */
 export type ObservationIds2 = [string, ...string[]];
-export type CandidateId17 = string;
+export type CandidateId18 = string;
 /**
  * MATERIAL存在差异；EQUIVALENT一致；UNCERTAIN为合格候选的标注审核证据不足。
  */
@@ -5730,13 +5730,13 @@ export type AssessmentIds = number[];
 export type DatasetFormat7 = ("labelme" | "folder_classification") | null;
 export type SchemaVersion7 = 1;
 export type JobId26 = string;
-export type AnchorId11 = string;
+export type AnchorId12 = string;
 export type SessionId17 = string;
 export type State19 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Phase12 = string;
 export type Attempt5 = number;
 export type Mode13 = "exact" | "combined";
-export type MinSimilarity12 = number | null;
+export type MinSimilarity10 = number | null;
 export type MaxExactCandidates6 = number;
 export type MaxSimilarCandidates6 = number | null;
 export type SelectedExact1 = number | null;
@@ -5753,14 +5753,14 @@ export type IdentityModelReviewed1 = boolean;
 export type AnnotationReviewStatus1 = "not_required" | "pending" | "running" | "completed" | "failed" | "cancelled" | "interrupted";
 export type AnnotationReviewLabel1 = string;
 export type RecordId = number;
-export type CandidateId18 = string;
+export type CandidateId19 = string;
 export type Phase13 = "gate" | "audit";
 export type Revision30 = number;
 export type GateRevision = number;
 export type RequestId9 = string;
 export type Active = boolean;
 export type GateId = string;
-export type CandidateId19 = string;
+export type CandidateId20 = string;
 export type Fingerprint7 = string;
 export type ExecutionStatus10 = "pending" | "completed" | "failed";
 export type Revision31 = number;
@@ -5772,7 +5772,7 @@ export type Media3 = VisualEvidence[];
 export type ErrorCode3 = string | null;
 export type GateStatus1 = ("eligible" | "rejected" | "unverified") | null;
 export type Source14 = ("program" | "vision") | null;
-export type PairKey2 = string | null;
+export type PairKey3 = string | null;
 export type ObservationCallIds1 = string[];
 export type RegionPairId = string;
 /**
@@ -5810,7 +5810,7 @@ export type Observation5 = string;
 export type UnmappedRegionChecks = UnmappedRegionCheck[];
 export type OverviewObservation = string | null;
 export type OverviewRelation = ("same" | "different" | "unverified") | null;
-export type ObservationId4 = string;
+export type ObservationId5 = string;
 export type VisualRelation1 = "same" | "different" | "unverified";
 export type Observation6 = string;
 /**
@@ -5829,7 +5829,7 @@ export type ObservationIds3 = string[];
 export type GateRevision1 = number;
 export type CandidateRecords = CandidatePhaseRecord[];
 export type Gates1 = CandidateIdentityRecord[];
-export type CandidateId20 = string;
+export type CandidateId21 = string;
 export type EvidenceId31 = string;
 export type ResultId10 = string;
 export type DetailRef = string;
@@ -5882,6 +5882,7 @@ export type SchemaVersion9 = 4 | 5 | 6;
 export type QualityScoreVersion1 = ("1.1" | "1.2" | "1.3" | "1.4" | "1.5" | "1.6" | "1.7" | "1.8" | "1.9") | null;
 export type ContextPolicy2 = "legacy" | "evidence-on-demand-v1";
 export type ConsistencySummaryInstruction = string;
+export type ConsistencySummaryUserInstruction = string | null;
 export type ReportInstruction1 = string;
 export type ConsistencyJobId2 = string;
 export type JobId30 = string;
@@ -5898,13 +5899,13 @@ export type SessionId19 = string;
 export type DatasetFormat8 = ("labelme" | "folder_classification") | null;
 export type SchemaVersion10 = 1;
 export type JobId32 = string;
-export type AnchorId12 = string;
+export type AnchorId13 = string;
 export type SessionId20 = string;
 export type State21 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
 export type Phase14 = string;
 export type Attempt6 = number;
 export type Mode14 = "exact" | "combined";
-export type MinSimilarity13 = number | null;
+export type MinSimilarity11 = number | null;
 export type MaxExactCandidates7 = number;
 export type MaxSimilarCandidates7 = number | null;
 export type SelectedExact2 = number | null;
@@ -5988,7 +5989,7 @@ export type SampleId69 = string;
 export type EvidenceId32 = string;
 export type SuggestionId2 = string;
 export type EvidenceId33 = string;
-export type ObservationId5 = string;
+export type ObservationId6 = string;
 export type RequestId10 = string;
 /**
  * @minItems 1
@@ -5996,7 +5997,7 @@ export type RequestId10 = string;
 export type CandidateIds3 = [string, ...string[]];
 export type SchemaVersion11 = 1;
 export type JobId33 = string;
-export type AnchorId13 = string;
+export type AnchorId14 = string;
 export type SessionId21 = string;
 export type Attempt7 = number;
 export type State23 = "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "CANCELLED" | "INTERRUPTED";
@@ -6032,7 +6033,7 @@ export type TotalTokens = number | null;
  */
 export type Cost = number | null;
 export type Calls = ModelCallSummary[];
-export type CandidateId21 = string | null;
+export type CandidateId22 = string | null;
 export type Phase17 = "gate";
 export type RequestId11 = string;
 export type Fingerprint9 = string;
@@ -6051,14 +6052,14 @@ export type Question3 = string | null;
 export type Phase19 = "gate" | "audit";
 export type RequestId13 = string;
 export type Fingerprint11 = string;
-export type CandidateId22 = string;
+export type CandidateId23 = string;
 export type ExpectedRevision7 = number;
 export type Action9 = "commit" | "recheck";
 export type ObservationIds4 = string[];
 export type Phase20 = "gate" | "audit";
 export type RequestId14 = string;
 export type Fingerprint12 = string;
-export type CandidateId23 = string;
+export type CandidateId24 = string;
 export type ExpectedRevision8 = number;
 export type Action10 = "commit" | "recheck";
 export type ObservationIds5 = string[];
@@ -7283,6 +7284,7 @@ export interface AuditAgentStart {
     master_prompt?: AnalysisRolePrompts;
     report_instruction?: ReportInstruction;
     observer_prompt?: AnalysisRolePrompts;
+    consistency_prompt?: AnalysisRolePrompts;
     benchmark_build_id?: BenchmarkBuildId;
 }
 export interface AuditKnowledgeSelection {
@@ -7360,7 +7362,6 @@ export interface JobSnapshot {
     submitted_at: SubmittedAt1;
     started_at: StartedAt2;
     finished_at: FinishedAt1;
-    deleted_at: DeletedAt;
     model_name: ModelName3;
     model_profile: ModelProfileSnapshot | null;
     image_max_side: ImageMaxSide;
@@ -7779,7 +7780,6 @@ export interface JobView {
     submitted_at: SubmittedAt3;
     started_at: StartedAt7;
     finished_at: FinishedAt4;
-    deleted_at: DeletedAt1;
     model_name: ModelName4;
     model_profile: ModelProfileSnapshot | null;
     image_max_side: ImageMaxSide1;
@@ -7844,7 +7844,6 @@ export interface JobSummary {
     submitted_at: SubmittedAt4;
     started_at: StartedAt8;
     finished_at: FinishedAt5;
-    deleted_at: DeletedAt2;
     model_name: ModelName5;
     model_profile: ModelProfileSnapshot | null;
     image_max_side: ImageMaxSide2;
@@ -11633,12 +11632,10 @@ export interface ModuleSettingsValues {
 }
 export interface ConsistencySettingsValues {
     mode: Mode7;
-    min_similarity: MinSimilarity6;
     max_exact_candidates: MaxExactCandidates1;
     max_similar_candidates: MaxSimilarCandidates1;
     model: ModuleModelReference | null;
     reasoning_effort: ReasoningEffort6;
-    whole_image_max_side: WholeImageMaxSide2;
     concurrency: Concurrency2;
     agent_limits: GenerationLimits;
     vision_limits: ModelLimits;
@@ -11658,7 +11655,7 @@ export interface AuditSettingsValues {
     audit_scope: AuditScope7;
     quality_score_weights: AuditScoreWeights;
     consistency_score_weights: ConsistencyScoreWeights;
-    whole_image_max_side: WholeImageMaxSide3;
+    whole_image_max_side: WholeImageMaxSide2;
     batch_size: BatchSize8;
     concurrency: Concurrency3;
     agent_limits: GenerationLimits;
@@ -11686,7 +11683,7 @@ export interface ExplorationSettingsValues1 {
     reasoning_effort?: ReasoningEffort9;
     batch_size?: BatchSize9;
     sampling_ratio?: SamplingRatio3;
-    whole_image_max_side?: WholeImageMaxSide4;
+    whole_image_max_side?: WholeImageMaxSide3;
     agent_limits?: GenerationLimits1;
     concurrency?: Concurrency4;
 }
@@ -11708,7 +11705,7 @@ export interface KnowledgeSettingsValues1 {
     reasoning_effort?: ReasoningEffort10;
     batch_size?: BatchSize10;
     sampling_ratio?: SamplingRatio4;
-    whole_image_max_side?: WholeImageMaxSide5;
+    whole_image_max_side?: WholeImageMaxSide4;
     agent_limits?: GenerationLimits1;
     concurrency?: Concurrency5;
 }
@@ -11718,12 +11715,10 @@ export interface SamplingRatio4 {
 }
 export interface ConsistencySettingsValues1 {
     mode?: Mode8;
-    min_similarity?: MinSimilarity7;
     max_exact_candidates?: MaxExactCandidates2;
     max_similar_candidates?: MaxSimilarCandidates2;
     model?: ModuleModelReference | null;
     reasoning_effort?: ReasoningEffort11;
-    whole_image_max_side?: WholeImageMaxSide6;
     concurrency?: Concurrency6;
     agent_limits?: GenerationLimits1;
     vision_limits?: ModelLimits1;
@@ -11758,7 +11753,7 @@ export interface AuditSettingsValues1 {
     audit_scope?: AuditScope8;
     quality_score_weights?: AuditScoreWeights1;
     consistency_score_weights?: ConsistencyScoreWeights1;
-    whole_image_max_side?: WholeImageMaxSide7;
+    whole_image_max_side?: WholeImageMaxSide5;
     batch_size?: BatchSize11;
     concurrency?: Concurrency7;
     agent_limits?: GenerationLimits1;
@@ -11774,15 +11769,16 @@ export interface ConsistencyScoreWeights1 {
 }
 export interface ConsistencyAgentStart {
     mode?: Mode9;
-    min_similarity?: MinSimilarity8;
     max_exact_candidates?: MaxExactCandidates3;
     max_similar_candidates?: MaxSimilarCandidates3;
+    min_similarity?: MinSimilarity6;
     submission_id: SubmissionId11;
     dataset_ids: DatasetIds30;
     analysis_kind?: AnalysisKind7;
     instruction?: Instruction22;
     system_prompt?: SystemPrompt9;
     identity_prompts?: IdentityPrompts | null;
+    whole_image_max_side?: WholeImageMaxSide6;
     subjects?: Subjects3;
     corpus_scope?: CorpusScope4;
 }
@@ -11790,7 +11786,7 @@ export interface ConsistencyCheckSnapshot {
     schema_version: SchemaVersion2;
     settings_revision: SettingsRevision2;
     concurrency: Concurrency8;
-    whole_image_max_side: WholeImageMaxSide8;
+    whole_image_max_side: WholeImageMaxSide7;
     retrieval: Retrieval;
     scopes: ConsistencyScopesSnapshot;
     model: ModuleModelReference | null;
@@ -11814,15 +11810,15 @@ export interface ConsistencyCheckSnapshot {
 }
 export interface ExactCandidatePolicy {
     mode: Mode10;
-    min_similarity: MinSimilarity9;
+    min_similarity: MinSimilarity7;
     max_exact_candidates: MaxExactCandidates4;
     max_similar_candidates: MaxSimilarCandidates4;
 }
 export interface CombinedCandidatePolicy {
     mode: Mode11;
-    min_similarity: MinSimilarity10;
     max_exact_candidates: MaxExactCandidates5;
     max_similar_candidates: MaxSimilarCandidates5;
+    min_similarity: MinSimilarity8;
 }
 export interface ConsistencyModelRoles {
     agent: FrozenModelRole;
@@ -11856,7 +11852,7 @@ export interface AnchorCandidates {
     anchor_id: AnchorId5;
     scope_id: ScopeId7;
     mode: Mode12;
-    min_similarity: MinSimilarity11;
+    min_similarity: MinSimilarity9;
     exact: CandidateBranch;
     similar: CandidateBranch;
     candidates: Candidates;
@@ -12022,6 +12018,7 @@ export interface AnchorObservation {
     observation_id: ObservationId3;
     request: AnchorVisualRequest;
     result: AnchorVisualResult;
+    shared_source: PairObservationSource | null;
 }
 export interface AnchorVisualRequest {
     request_id: RequestId7;
@@ -12073,8 +12070,16 @@ export interface VisualWindow1 {
     padding: Padding1;
     reason: Reason54;
 }
+export interface PairObservationSource {
+    pair_key: PairKey2;
+    observation_id: ObservationId4;
+    anchor_id: AnchorId11;
+    candidate_id: CandidateId16;
+    reversed: Reversed;
+    call_ids: CallIds;
+}
 export interface AnchorContextQuery {
-    candidate_id?: CandidateId16;
+    candidate_id?: CandidateId17;
 }
 export interface AnchorAssessmentInput {
     fingerprint: Fingerprint5;
@@ -12085,7 +12090,7 @@ export interface AnchorAssessmentInput {
  * 提交候选判定和全部独立问题，展示分类及结论由服务端派生
  */
 export interface AnchorAssessmentDecision1 {
-    candidate_id: CandidateId17;
+    candidate_id: CandidateId18;
     verdict: Verdict7;
     explanation: Explanation2;
     findings?: Findings8;
@@ -12115,13 +12120,13 @@ export interface AnchorResultDetail {
     dataset_format: DatasetFormat7;
     schema_version: SchemaVersion7;
     job_id: JobId26;
-    anchor_id: AnchorId11;
+    anchor_id: AnchorId12;
     session_id: SessionId17;
     state: State19;
     phase: Phase12;
     attempt: Attempt5;
     mode: Mode13;
-    min_similarity: MinSimilarity12;
+    min_similarity: MinSimilarity10;
     max_exact_candidates: MaxExactCandidates6;
     max_similar_candidates: MaxSimilarCandidates6;
     selected_exact: SelectedExact1;
@@ -12159,7 +12164,7 @@ export interface AnchorResultDetail {
 }
 export interface CandidatePhaseRecord {
     record_id: RecordId;
-    candidate_id: CandidateId18;
+    candidate_id: CandidateId19;
     phase: Phase13;
     revision: Revision30;
     gate_revision: GateRevision;
@@ -12170,7 +12175,7 @@ export interface CandidatePhaseRecord {
 }
 export interface CandidateIdentityRecord {
     gate_id: GateId;
-    candidate_id: CandidateId19;
+    candidate_id: CandidateId20;
     fingerprint: Fingerprint7;
     execution_status: ExecutionStatus10;
     revision: Revision31;
@@ -12183,7 +12188,7 @@ export interface CandidateIdentityRecord {
     error_code: ErrorCode3;
     gate_status: GateStatus1;
     source: Source14;
-    pair_key: PairKey2;
+    pair_key: PairKey3;
     observation_call_ids: ObservationCallIds1;
     region_pairs: RegionPairs;
     required_region_pair_ids: RequiredRegionPairIds;
@@ -12224,7 +12229,7 @@ export interface UnmappedRegionCheck {
     observation: Observation5;
 }
 export interface IdentityDisputeCheck {
-    observation_id: ObservationId4;
+    observation_id: ObservationId5;
     visual_relation: VisualRelation1;
     observation: Observation6;
     media_ids: MediaIds6;
@@ -12237,7 +12242,7 @@ export interface AnchorAssessmentSubmission {
     gate_revision: GateRevision1;
 }
 export interface AnchorEvidenceReference {
-    candidate_id: CandidateId20;
+    candidate_id: CandidateId21;
     evidence_id: EvidenceId31;
     result_id: ResultId10;
     detail_ref: DetailRef;
@@ -12320,6 +12325,7 @@ export interface AuditWorkflowSnapshot {
     quality_score_version: QualityScoreVersion1;
     context_policy: ContextPolicy2;
     consistency_summary_instruction: ConsistencySummaryInstruction;
+    consistency_summary_user_instruction: ConsistencySummaryUserInstruction;
     manifest: AnalysisManifest;
     agent: FrozenModelRole;
     report_instruction: ReportInstruction1;
@@ -12360,13 +12366,13 @@ export interface AuditConsistencyContext {
     dataset_format: DatasetFormat8;
     schema_version: SchemaVersion10;
     job_id: JobId32;
-    anchor_id: AnchorId12;
+    anchor_id: AnchorId13;
     session_id: SessionId20;
     state: State21;
     phase: Phase14;
     attempt: Attempt6;
     mode: Mode14;
-    min_similarity: MinSimilarity13;
+    min_similarity: MinSimilarity11;
     max_exact_candidates: MaxExactCandidates7;
     max_similar_candidates: MaxSimilarCandidates7;
     selected_exact: SelectedExact2;
@@ -12460,14 +12466,14 @@ export interface HistoricalAuditEvidenceReference {
     evidence_id: EvidenceId33;
 }
 export interface AnchorObservationReceipt {
-    observation_id: ObservationId5;
+    observation_id: ObservationId6;
     request_id: RequestId10;
     candidate_ids: CandidateIds3;
 }
 export interface AnchorDiagnostics {
     schema_version: SchemaVersion11;
     job_id: JobId33;
-    anchor_id: AnchorId13;
+    anchor_id: AnchorId14;
     session_id: SessionId21;
     attempt: Attempt7;
     state: State23;
@@ -12505,7 +12511,7 @@ export interface ModelRoleDiagnostics {
     cost: Cost;
 }
 export interface WorkflowContextQuery {
-    candidate_id?: CandidateId21;
+    candidate_id?: CandidateId22;
 }
 export interface AnomalyWorkflowObserve {
     phase: Phase17;
@@ -12532,7 +12538,7 @@ export interface AnomalyWorkflowAssess {
     phase: Phase19;
     request_id: RequestId13;
     fingerprint: Fingerprint11;
-    candidate_id: CandidateId22;
+    candidate_id: CandidateId23;
     expected_revision: ExpectedRevision7;
     action?: Action9;
     observation_ids?: ObservationIds4;
@@ -12541,7 +12547,7 @@ export interface BboxWorkflowAssess {
     phase: Phase20;
     request_id: RequestId14;
     fingerprint: Fingerprint12;
-    candidate_id: CandidateId23;
+    candidate_id: CandidateId24;
     expected_revision: ExpectedRevision8;
     action?: Action10;
     observation_ids?: ObservationIds5;
@@ -12551,7 +12557,7 @@ export interface BboxWorkflowAssess {
     assessment?: AnchorAssessmentDecision2 | null;
 }
 export interface AnchorAssessmentDecision2 {
-    candidate_id: CandidateId17;
+    candidate_id: CandidateId18;
     verdict: Verdict7;
     explanation: Explanation2;
     findings?: Findings8;

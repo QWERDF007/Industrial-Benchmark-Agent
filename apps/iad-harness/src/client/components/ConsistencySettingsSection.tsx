@@ -6,7 +6,6 @@ import {ModuleModelFields} from './ModuleModelFields.js';
 import {ModuleNumberSetting} from './ModuleNumberSetting.js';
 import {Button} from '@deepseek-ai/dsh-client-ui-primitives';
 import {ModuleSelectSetting} from './ModuleSelectSetting.js';
-import {ModelImageSizeSetting} from './ModelImageSizeSetting.js';
 
 export function ConsistencySettingsSection() {
   const business=useModuleSettings('consistency'),encoder=useImageEncoderSettings();
@@ -17,7 +16,6 @@ export function ConsistencySettingsSection() {
     {!settings||!('mode' in settings)?<p role="status">正在读取设置…</p>:<>
       <fieldset className="iad-settings-group" data-settings-group="review"><legend>审核设置</legend>
         <ModuleModelFields settings={settings} save={business.save}/>
-        <ModelImageSizeSetting value={settings.whole_image_max_side} onSave={whole_image_max_side=>business.save({whole_image_max_side})}/>
         <ModuleNumberSetting label="同时检查的主图数" value={settings.concurrency} min={1} step={1}
           validationMessage="并发数量需要为正整数" onSave={concurrency=>business.save({concurrency})}/>
       </fieldset>
@@ -43,8 +41,6 @@ export function ConsistencySettingsSection() {
         <ModuleNumberSetting label="相似图上限" value={settings.max_similar_candidates} min={1} max={200} step={1}
           hint="先取前 K 张，再按阈值过滤，结果可能少于 K 张。" validationMessage="相似图上限需要为 1～200 的整数"
           onSave={max_similar_candidates=>business.save({max_similar_candidates})}/>
-        <ModuleNumberSetting label="相似度阈值" value={settings.min_similarity} min={0} max={1} step={.001}
-          validationMessage="相似度阈值需要在 0～1 之间" onSave={min_similarity=>business.save({min_similarity})}/>
       </fieldset>}
     </>}
     <p className="iad-module-status" role="status" aria-live="polite">{business.saving||encoder.saving?'正在保存…':!error&&(business.saved||encoder.saved)?'已保存':''}</p>

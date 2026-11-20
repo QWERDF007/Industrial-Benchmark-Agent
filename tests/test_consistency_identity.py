@@ -77,14 +77,12 @@ def similar_job(dataset, tmp_path, request):
         vector[0] = 1
         FeatureRepository(database).upsert(FeatureRecord(content_group_id=group, profile_id=encoder.profile.profile_id,
             dim=encoder.profile.dim, dtype=encoder.profile.storage_dtype, embedding_blob=vector.tobytes()))
-    if case == 'limited_resolution':
-        from iad_core.workbench.module_settings import ModuleSettings
-        ModuleSettings(database).save(dict(module='consistency',expected_revision=0,settings={'whole_image_max_side':64}))
     runtime = WorkbenchRuntime(database)
     checks = ConsistencyAgentJobs(runtime)
     anchor = config.dataset.id + ':' + ('dent' if case in ('registered','registered_mixed','original_resolution','limited_resolution','no_annotations','mixed_empty') else case) + '.png'
     run_id = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id], 'mode': 'combined',
-        'min_similarity': 0.9, 'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
+        'min_similarity': 0.9, 'whole_image_max_side':64 if case=='limited_resolution' else None,
+        'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})['run_id']
     checks.session_created(run_id, anchor)
     checks.retrieve(run_id, anchor)
     try:

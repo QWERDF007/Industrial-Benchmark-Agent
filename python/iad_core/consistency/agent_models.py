@@ -28,6 +28,7 @@ class ConsistencyAgentStart(SelectedDatasets, ConsistencyRetrievalSettings):
     instruction: NonBlankText | None = None
     system_prompt: NonBlankText | None = None
     identity_prompts: IdentityPrompts | None = None
+    whole_image_max_side: ModelImageMaxSide = None
     subjects: ScopeSelector | None = None
     corpus_scope: CorpusScope | None = None
 

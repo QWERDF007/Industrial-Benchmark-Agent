@@ -37,13 +37,18 @@ class IdentityDisputes:
                     WHERE json_extract(observation.value,'$.candidate_id') IN (?,?)
                     AND json_type(observation.value,'$.gate_dispute')='object') ORDER BY rowid''',
                 (run_id, anchor_id, candidate_id, anchor_id, candidate_id)).fetchall()
-        result = []
+        observations = {}
         for row in rows:
             observed = AnchorObservation.model_validate_json(row[0])
+            source_id = observed.shared_source.observation_id if observed.shared_source else observed.observation_id
+            if source_id not in observations or observed.observation_id == source_id:
+                observations[source_id] = observed
+        result = []
+        for source_id, observed in observations.items():
             for item in observed.result.observations:
                 if item.candidate_id in (anchor_id, candidate_id) and item.gate_dispute is not None:
                     result.append(IdentityDispute(**item.gate_dispute.model_dump(),
-                        observation_id=observed.observation_id, anchor_id=observed.request.anchor_id,
+                        observation_id=source_id, anchor_id=observed.request.anchor_id,
                         candidate_id=item.candidate_id))
         return result
 

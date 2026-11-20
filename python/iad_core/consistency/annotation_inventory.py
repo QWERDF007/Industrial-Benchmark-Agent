@@ -63,11 +63,7 @@ class AnnotationObservation(AnalysisModel):
         categories=set(comparison.conflict_categories)
         if not geometry_compared:categories.update(inventory.categories)
         if reverse:
-            inverse={ConflictCategory.EXTRA:ConflictCategory.MISSING,ConflictCategory.MISSING:ConflictCategory.EXTRA,
-                ConflictCategory.MISSING_CONTENT:ConflictCategory.EXTRA_CONTENT,
-                ConflictCategory.EXTRA_CONTENT:ConflictCategory.MISSING_CONTENT,
-                ConflictCategory.SPLIT:ConflictCategory.MERGE,ConflictCategory.MERGE:ConflictCategory.SPLIT}
-            categories={inverse.get(category,category) for category in categories}
+            categories={category.inverse for category in categories}
             inventory=inventory.model_copy(update={'left':inventory.right,'right':inventory.left})
         summary=f'主图 {sum(inventory.left.values())} 个标注，候选图 {sum(inventory.right.values())} 个标注'
         if not inventory.complete or comparison.invalid_left or comparison.invalid_right:summary+='；原始标注读取不完整'

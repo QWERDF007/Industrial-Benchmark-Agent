@@ -107,15 +107,19 @@ class BatchRepository:
 
     def delete(self, batch_id: str) -> dict:
         with self.db.connection() as connection:
+            connection.execute('BEGIN IMMEDIATE')
             child_job_ids = [row[0] for row in connection.execute(
                 'SELECT run_id FROM consistency_children WHERE batch_id=?', (batch_id,)).fetchall()]
+            evidence_ids = [row[0] for row in connection.execute(
+                'SELECT evidence_id FROM consistency_batch_results WHERE batch_id=?', (batch_id,))]
             connection.execute('DELETE FROM consistency_batch_results WHERE batch_id=?', (batch_id,))
             connection.execute('DELETE FROM consistency_children WHERE batch_id=?', (batch_id,))
             connection.execute('DELETE FROM consistency_runs WHERE batch_id=?', (batch_id,))
             if child_job_ids:
-                placeholders = ','.join('?' * len(child_job_ids))
-                connection.execute(f'DELETE FROM model_calls WHERE run_id IN ({placeholders})', child_job_ids)
-                connection.execute(f'DELETE FROM job_runs WHERE job_id IN ({placeholders})', child_job_ids)
+                from iad_core.storage.job_deletion import JobDeletion
+                JobDeletion(connection).delete(child_job_ids)
+            from iad_core.consistency.deletion import ConsistencyDeletion
+            ConsistencyDeletion(connection).collect_evidence(evidence_ids)
         return {'deleted_batch_id': batch_id}
 
     def results(self, batch_id: str) -> list[BatchResultReference]:

@@ -5,11 +5,6 @@ export declare const consistencyAgentStartParameters: {
         readonly title: "Mode";
         readonly default: "combined";
     };
-    readonly min_similarity: {
-        readonly type: "number";
-        readonly title: "Min Similarity";
-        readonly default: 0.98;
-    };
     readonly max_exact_candidates: {
         readonly type: "integer";
         readonly title: "Max Exact Candidates";
@@ -19,6 +14,11 @@ export declare const consistencyAgentStartParameters: {
         readonly type: "integer";
         readonly title: "Max Similar Candidates";
         readonly default: 10;
+    };
+    readonly min_similarity: {
+        readonly type: "number";
+        readonly title: "Min Similarity";
+        readonly default: 0.99;
     };
     readonly submission_id: {
         readonly type: "string";
@@ -77,6 +77,14 @@ export declare const consistencyAgentStartParameters: {
             };
         };
         readonly title: "IdentityPrompts";
+    };
+    readonly whole_image_max_side: {
+        readonly oneOf: readonly [{
+            readonly type: "integer";
+        }, {
+            readonly type: "null";
+        }];
+        readonly title: "Whole Image Max Side";
     };
     readonly subjects: {
         readonly oneOf: readonly [{

@@ -37,6 +37,7 @@ def initialize_analysis_schema(connection: Connection):
         job_id TEXT NOT NULL REFERENCES analysis_workflow_runs(job_id) ON DELETE CASCADE,
         call_id TEXT NOT NULL REFERENCES model_calls(call_id) ON DELETE CASCADE,
         evidence_id TEXT NOT NULL, PRIMARY KEY(job_id,call_id,evidence_id))''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_analysis_media_call ON analysis_media_deliveries(call_id)')
     connection.execute(COMMITS_SCHEMA)
     connection.execute(OBSERVATIONS_SCHEMA)
     columns = connection.execute('PRAGMA table_info(analysis_workflow_commits)').fetchall()

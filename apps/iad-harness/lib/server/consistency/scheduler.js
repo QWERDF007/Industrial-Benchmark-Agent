@@ -3,7 +3,6 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { imageSessionPath } from '../sessions/image-path.js';
 import { runConcurrent, runDependencies } from '../jobs/concurrency.js';
-import { pairReviewBatchSize, pairReviewMinBatchSize } from '../../shared/consistency.parameters.generated.js';
 export class ConsistencyCheckScheduler {
     bridge;
     host;
@@ -156,33 +155,39 @@ export class ConsistencyCheckScheduler {
         let pending = [];
         for (let pass = 0; pass < 3 && !signal.aborted && work.length; pass++) {
             const { tasks } = await this.bridge.execute('consistency_agent_pair_tasks', { run_id: runId });
+            const { tasks: annotationTasks } = await this.bridge.execute('consistency_agent_annotation_pair_tasks', { run_id: runId });
             const active = work.filter(task => !failed.has(task.anchorId) && !finalized.has(task.anchorId));
             const audited = new Set(), settled = new Set();
             const activeIds = new Set(active.map(task => task.anchorId));
-            const visualCount = tasks.filter(task => (task.estimated_annotation_count ?? 0) > 0).length;
-            const batchSize = Math.min(pairReviewBatchSize, Math.max(pairReviewMinBatchSize, Math.floor(visualCount / (snapshot.concurrency * 2))));
-            const batches = Array.from({ length: Math.ceil(tasks.length / batchSize) }, (_, index) => tasks.slice(index * batchSize, (index + 1) * batchSize));
             const preparationOrder = new Map();
-            for (const batch of batches)
-                for (const task of batch)
-                    for (const link of task.links)
-                        if (!preparationOrder.has(link.anchor_id))
-                            preparationOrder.set(link.anchor_id, preparationOrder.size);
+            for (const task of tasks)
+                for (const link of task.links)
+                    if (!preparationOrder.has(link.anchor_id))
+                        preparationOrder.set(link.anchor_id, preparationOrder.size);
             const preparing = [...active].sort((a, b) => (preparationOrder.get(a.anchorId) ?? Infinity) - (preparationOrder.get(b.anchorId) ?? Infinity));
             const dependencies = new Map(work.map(task => [task.anchorId, ['prepare:' + task.anchorId]]));
-            for (const [index, batch] of batches.entries())
-                for (const task of batch)
-                    for (const link of task.links)
-                        dependencies.get(link.anchor_id)?.push('pairs:' + index);
+            for (const [index, task] of tasks.entries())
+                for (const link of task.links)
+                    dependencies.get(link.anchor_id)?.push('pairs:' + index);
+            const identityDependencies = new Map(tasks.map((task, index) => [task.pair_key, 'pairs:' + index]));
+            const annotationDependencies = new Map(active.map(task => [task.anchorId, []]));
+            for (const task of annotationTasks)
+                for (const link of task.links)
+                    annotationDependencies.get(link.anchor_id)?.push('annotation:' + task.pair_key);
             const graph = [
                 ...preparing.map(task => ({ id: 'prepare:' + task.anchorId, resource: 'local', dependencies: [], value: { kind: 'prepare', task } })),
-                ...batches.map((batch, index) => ({ id: 'pair_inputs:' + index, resource: 'local', priority: 1,
-                    dependencies: [...new Set(batch.flatMap(task => task.links.map(link => link.anchor_id)).filter(id => activeIds.has(id)))].map(id => 'prepare:' + id),
-                    value: { kind: 'pair_inputs', tasks: batch } })),
-                ...batches.map((batch, index) => ({ id: 'pairs:' + index, resource: 'model', dependencies: ['pair_inputs:' + index],
-                    value: { kind: 'pairs', tasks: batch } })),
-                ...active.map(task => ({ id: 'audit:' + task.anchorId, resource: 'model',
-                    dependencies: dependencies.get(task.anchorId), priority: 1, value: { kind: 'audit', task } })),
+                ...tasks.map((task, index) => ({ id: 'pair_inputs:' + index, resource: 'local', priority: 1,
+                    dependencies: [...new Set(task.links.map(link => link.anchor_id).filter(id => activeIds.has(id)))].map(id => 'prepare:' + id),
+                    value: { kind: 'pair_inputs', task } })),
+                ...tasks.map((task, index) => ({ id: 'pairs:' + index, resource: 'model', dependencies: ['pair_inputs:' + index],
+                    value: { kind: 'pairs', task } })),
+                ...annotationTasks.map(task => ({ id: 'annotation:' + task.pair_key, resource: 'model', priority: 1,
+                    dependencies: [...new Set(task.links.filter(link => activeIds.has(link.anchor_id)).map(link => 'prepare:' + link.anchor_id)),
+                        ...(identityDependencies.has(task.pair_key) ? [identityDependencies.get(task.pair_key)] : [])],
+                    value: { kind: 'annotations', task } })),
+                ...active.map(task => ({ id: 'audit:' + task.anchorId, resource: 'local',
+                    dependencies: [...dependencies.get(task.anchorId), ...annotationDependencies.get(task.anchorId)],
+                    priority: 1, value: { kind: 'audit', task } })),
                 ...components.map((members, index) => ({ id: 'settle:' + index, resource: 'local',
                     dependencies: members.filter(id => activeIds.has(id)).map(id => 'audit:' + id),
                     priority: 1, value: { kind: 'settle', index } })),
@@ -207,15 +212,15 @@ export class ConsistencyCheckScheduler {
                     }
                 }
                 else if (item.kind === 'pair_inputs' || item.kind === 'pairs') {
-                    const current = item.tasks.filter(task => task.links.some(link => !failed.has(link.anchor_id) && !finalized.has(link.anchor_id)));
-                    if (!current.length)
+                    const task = item.task;
+                    if (!task.links.some(link => !failed.has(link.anchor_id) && !finalized.has(link.anchor_id)))
                         return;
                     try {
                         if (item.kind === 'pair_inputs') {
-                            await this.bridge.execute('consistency_agent_pair_prepare_many', { run_id: runId, pair_keys: current.map(task => task.pair_key) }, signal, { timeoutMs: 0 });
+                            await this.bridge.execute('consistency_agent_pair_prepare_many', { run_id: runId, pair_keys: [task.pair_key] }, signal, { timeoutMs: 0 });
                             return;
                         }
-                        const { receipts } = await this.bridge.execute('consistency_agent_pair_review_many', { run_id: runId, pair_keys: current.map(task => task.pair_key), _model_execution: await this.providers.credentialsFor(snapshot.roles.vision.profile) }, signal, { timeoutMs: 0 });
+                        const { receipts } = await this.bridge.execute('consistency_agent_pair_review_many', { run_id: runId, pair_keys: [task.pair_key], _model_execution: await this.providers.credentialsFor(snapshot.roles.vision.profile) }, signal, { timeoutMs: 0 });
                         for (const receipt of receipts)
                             for (const link of receipt.links) {
                                 const anchor = byAnchor.get(link.anchor_id);
@@ -226,16 +231,33 @@ export class ConsistencyCheckScheduler {
                     }
                     catch (error) {
                         const unresolved = item.kind === 'pairs' ? new Set((await this.bridge.execute('consistency_agent_pair_tasks', { run_id: runId })).tasks.map(task => task.pair_key)) : undefined;
-                        for (const task of current)
-                            for (const link of task.links) {
-                                if (unresolved && !unresolved.has(task.pair_key))
-                                    continue;
-                                const anchor = byAnchor.get(link.anchor_id);
-                                if (anchor && !failed.has(anchor.anchorId)) {
-                                    failed.add(anchor.anchorId);
-                                    await this.failure({ run_id: runId, anchor_id: anchor.anchorId, attempt: anchor.attempt }, error, signal);
-                                }
+                        for (const link of task.links) {
+                            if (unresolved && !unresolved.has(task.pair_key))
+                                continue;
+                            const anchor = byAnchor.get(link.anchor_id);
+                            if (anchor && !failed.has(anchor.anchorId)) {
+                                failed.add(anchor.anchorId);
+                                await this.failure({ run_id: runId, anchor_id: anchor.anchorId, attempt: anchor.attempt }, error, signal);
                             }
+                        }
+                    }
+                }
+                else if (item.kind === 'annotations') {
+                    const links = item.task.links.filter(link => !failed.has(link.anchor_id) && !finalized.has(link.anchor_id));
+                    if (!links.length)
+                        return;
+                    try {
+                        await this.bridge.execute('consistency_agent_annotation_pair_review', { run_id: runId, task: item.task,
+                            _model_execution: await this.providers.credentialsFor(snapshot.roles.vision.profile) }, signal, { timeoutMs: 0 });
+                    }
+                    catch (error) {
+                        for (const link of links) {
+                            const anchor = byAnchor.get(link.anchor_id);
+                            if (anchor && !failed.has(anchor.anchorId)) {
+                                failed.add(anchor.anchorId);
+                                await this.failure({ run_id: runId, anchor_id: anchor.anchorId, attempt: anchor.attempt }, error, signal);
+                            }
+                        }
                     }
                 }
                 else if (item.kind === 'settle') {

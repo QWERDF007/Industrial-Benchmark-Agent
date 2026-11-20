@@ -247,6 +247,7 @@ def compare_inputs(database: Path, control: dict, run_id: str, *, minimum_pairs:
                 )
             )
             context = json.loads(parts[1]['text'])
+            is_identity = context.get('scope') in ('joint', 'pairs')
             sent = set()
             wire_images = {}
             image_groups = collections.defaultdict(list)
@@ -269,13 +270,13 @@ def compare_inputs(database: Path, control: dict, run_id: str, *, minimum_pairs:
                         else bundle.get('evidence_id', view.get('evidence_id'))
                     )
                     assert alias is not None, '实际图片缺少引用'
-                    if call_id in associations:
+                    if is_identity:
                         assert alias not in wire_images, '实际身份请求的图片引用重复'
                     wire_images[alias] = (view, sha)
                     image_groups[bundle.get('evidence_id', alias)].append((view, sha))
                     actual_images += 1
-            if call_id in associations:
-                assert context['scope'] in ('joint', 'pairs')
+            if is_identity:
+                assert call_id in associations, '身份请求未关联图像对'
                 pair_contexts = context['pairs'].values() if context['scope'] == 'pairs' else [context]
                 for pair_context in pair_contexts:
                     annotations = pair_context.get('annotations')

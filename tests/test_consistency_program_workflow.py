@@ -199,7 +199,7 @@ def test_shared_pairs_preserve_program_empty_proofs_among_annotated_candidates(s
         client.close()
 
 
-def test_failed_pair_batch_keeps_the_shared_call_visible_from_every_link(pair_job):
+def test_failed_pair_call_is_visible_from_both_links_and_does_not_mark_unattempted_pairs(pair_job):
     from iad_core.consistency.pair_reviews import ConsistencyPairReviews
     from iad_core.consistency.agent_results import ConsistencyAgentResults
 
@@ -218,13 +218,13 @@ def test_failed_pair_batch_keeps_the_shared_call_visible_from_every_link(pair_jo
             reviews.review_many(run_id, [task.pair_key for task in tasks])
         checks.fail(run_id, tasks[0].links[-1].anchor_id, '共享请求失败', 'EXECUTION_ERROR')
         reviews.plan(run_id)
-        for task in tasks:
+        for index, task in enumerate(tasks):
             for link in task.links:
                 calls = ConsistencyAgentResults(runtime.db).diagnostics(run_id, link.anchor_id).calls
-                shared = [call for call in calls if call.operation == 'generate']
-                assert len(shared) == 1
-                assert task.pair_key in shared[0].pair_keys
-                assert shared[0].error and shared[0].http_status == 500
+                shared = [call for call in calls if call.operation == 'generate' and task.pair_key in call.pair_keys]
+                assert len(shared) == (0 if index else 1)
+                if shared:
+                    assert shared[0].error and shared[0].http_status == 500
     finally:
         client.close()
 
@@ -300,7 +300,7 @@ def test_capacity_split_preserves_successful_pairs_when_a_later_request_fails(pa
 
 
 @pytest.mark.parametrize('similar_job', ['registered'], indirect=True)
-def test_pair_batch_shares_one_real_call_and_preserves_each_pair_and_reverse_link(pair_job):
+def test_each_pair_has_an_independent_call_shared_by_both_directions(pair_job):
     from iad_core.consistency.pair_reviews import ConsistencyPairReviews
     from iad_core.consistency.identity import CandidateIdentity
     from iad_core.consistency.agent_results import ConsistencyAgentResults
@@ -314,17 +314,16 @@ def test_pair_batch_shares_one_real_call_and_preserves_each_pair_and_reverse_lin
         body = json.loads(request.content)
         context = json.loads(next(item['content'] for item in body['messages']
             if item['role'] == 'user' and isinstance(item['content'], list))[1]['text'])
-        assert context['scope'] == 'pairs'
+        assert context['scope'] == 'joint'
         delivered = [json.loads(part['text'][5:])['evidence_id'] for part in body['messages'][-1]['content']
             if part['type'] == 'text' and part['text'].startswith('原图资料：')]
-        required = {identity for pair in context['pairs'].values() for identity in [*pair['required_image_ids'],
-            *[region[side] for region in [*pair['windows'], *pair['unmapped_regions']]
+        required = {identity for identity in [*context['required_image_ids'],
+            *[region[side] for region in [*context['windows'], *context['unmapped_regions']]
                 for side in ('main_media_id', 'candidate_media_id') if region[side]]]}
         assert set(delivered) == required, 'Every original and region must resolve to a delivered image'
         assert len(delivered) == len(set(delivered)), 'Shared images should be delivered once per request'
         sent.append(context)
-        answer = {key: identity_response(pair, 'content_different', '两图中央胶线的形状不同。')
-            for key, pair in context['pairs'].items()}
+        answer = identity_response(context, 'content_different', '两图中央胶线的形状不同。')
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
@@ -333,9 +332,9 @@ def test_pair_batch_shares_one_real_call_and_preserves_each_pair_and_reverse_lin
         tasks = pairs.plan(run_id)[:4]
         assert len(tasks) >= 2
         receipts = pairs.review_many(run_id, [task.pair_key for task in tasks])
-        assert len(sent) == 1 and len(sent[0]['pairs']) == len(tasks)
+        assert len(sent) == len(tasks)
         assert len(receipts) == len(tasks)
-        assert len({call for receipt in receipts for call in receipt.observation_call_ids}) == 1
+        assert len({call for receipt in receipts for call in receipt.observation_call_ids}) == len(tasks)
         for task in tasks:
             for link in task.links:
                 gate = next(gate for gate in CandidateIdentity(runtime).read(run_id, link.anchor_id).gates
@@ -346,7 +345,7 @@ def test_pair_batch_shares_one_real_call_and_preserves_each_pair_and_reverse_lin
                 calls = ConsistencyAgentResults(runtime.db).diagnostics(run_id, link.anchor_id).calls
                 assert set(gate.observation_call_ids) <= {call.call_id for call in calls}
         pairs.review_many(run_id, [task.pair_key for task in tasks])
-        assert len(sent) == 1
+        assert len(sent) == len(tasks)
     finally:
         client.close()
 
@@ -370,8 +369,7 @@ def test_pair_inputs_are_frozen_locally_before_visual_workers_and_reused_unchang
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
         context = json.loads(json.loads(request.content)['messages'][-1]['content'][1]['text'])
-        answer = {key: identity_response(pair, 'unverified', '两图局部无法可靠对应。')
-            for key, pair in context['pairs'].items()}
+        answer = identity_response(context, 'unverified', '两图局部无法可靠对应。')
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
             'message': {'content': json.dumps(answer)}}]})
 
@@ -395,14 +393,11 @@ def test_pair_inputs_are_frozen_locally_before_visual_workers_and_reused_unchang
         client.close()
 
 
-@pytest.mark.parametrize('budget', ['PAIR_REVIEW_MEDIA_BYTES', 'PAIR_REVIEW_REGION_BUDGET'])
 @pytest.mark.parametrize('similar_job', ['original_resolution'], indirect=True)
-def test_pair_media_budget_splits_batches_without_removing_any_original_or_region(pair_job, monkeypatch, budget):
-    import iad_core.consistency.identity_inspection as inspection
+def test_independent_pairs_retain_every_original_and_region(pair_job):
     from iad_core.consistency.pair_reviews import ConsistencyPairReviews
 
     runtime, _, run_id = pair_job
-    monkeypatch.setattr(inspection, budget, 1)
     delivered = []
 
     def respond(request):
@@ -640,15 +635,16 @@ def test_shared_dispute_survives_a_failed_side_and_recovery(pair_job, failed_lin
 
     runtime, checks, run_id = pair_job
     requests = []
+    rechecking = False
 
     def respond(request):
         if request.url.path.endswith('/tokenize'):
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
         context = json.loads(json.loads(request.content)['messages'][-1]['content'][1]['text'])
         requests.append(context)
-        relation = 'transformed_same_content' if len(requests) == 1 else 'content_different'
+        relation = 'content_different' if rechecking else 'transformed_same_content'
         answers = {
-            key: identity_response(pair, relation, '两图细节相同。' if len(requests) == 1 else '两图中央纹理不同。')
+            key: identity_response(pair, relation, '两图中央纹理不同。' if rechecking else '两图细节相同。')
             for key, pair in (context['pairs'] if context['scope'] == 'pairs' else {'p0': context}).items()
         }
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {
@@ -659,9 +655,11 @@ def test_shared_dispute_survives_a_failed_side_and_recovery(pair_job, failed_lin
         reviews = ConsistencyPairReviews(runtime, client)
         tasks = reviews.plan(run_id)
         reviews.review_many(run_id, [task.pair_key for task in tasks])
-        assert len(requests) == 1
+        initial_calls = len(tasks)
+        assert len(requests) == initial_calls
         task = next(task for task in tasks if len(task.links) == 2)
         failed, active = task.links[failed_link_index], task.links[1 - failed_link_index]
+        rechecking = True
         checks.fail(run_id, failed.anchor_id, '另一个候选处理失败。', 'EXECUTION_ERROR')
         stopped_gate = next(item for item in CandidateIdentity(runtime).read(run_id, failed.anchor_id).gates
             if item.candidate_id == failed.candidate_id)
@@ -683,11 +681,11 @@ def test_shared_dispute_survives_a_failed_side_and_recovery(pair_job, failed_lin
         revoked = next(item for item in CandidateIdentity(runtime).read(run_id, failed.anchor_id).gates
             if item.candidate_id == failed.candidate_id)
         assert revoked.execution_status == 'pending', 'Recovery must not resurrect a disputed reverse gate'
-        assert len(requests) == 1
+        assert len(requests) == initial_calls
         checks.cancel(run_id)
         checks.resume(run_id)
         reviews.review_many(run_id, [task.pair_key])
-        assert len(requests) == 2, 'A shared dispute requires a new model observation after recovery'
+        assert len(requests) == initial_calls + 1, 'A shared dispute requires a new model observation after recovery'
         for link in task.links:
             latest = next(item for item in CandidateIdentity(runtime).read(run_id, link.anchor_id).gates
                 if item.candidate_id == link.candidate_id)

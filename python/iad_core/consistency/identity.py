@@ -91,14 +91,12 @@ class CandidateIdentity:
                 (evidence.sources.left, evidence.sources.right), context.checkpoint,
                 prompts=self.checks.snapshot(run_id).prompts, revision=request.expected_revision, request_id=request.request_id))
             states.append(state)
-        sources = {(request.anchor_id, request.candidate_id): (request, state) for request, state in zip(requests, states)}
-        try:
-            for item, result in inspection.run(run_id, prepared, context.checkpoint):
-                request, state = sources[(item.anchor_id, item.candidate_id)]
-                yield request, CandidateIdentityRecord(gate_id='pending', candidate_id=item.candidate_id,
-                    fingerprint=state.fingerprint, execution_status='completed', revision=item.revision, **result)
-        except Exception as error:
-            for request, state in zip(requests, states):
+        for item, request, state in zip(prepared, requests, states):
+            try:
+                for _, result in inspection.run(run_id, [item], context.checkpoint):
+                    yield request, CandidateIdentityRecord(gate_id='pending', candidate_id=item.candidate_id,
+                        fingerprint=state.fingerprint, execution_status='completed', revision=item.revision, **result)
+            except Exception as error:
                 current = self.checks.anchor(run_id, request.anchor_id)
                 latest = next((gate.revision for gate in self.read(run_id, request.anchor_id).gates
                     if gate.candidate_id == request.candidate_id), 0)
@@ -107,7 +105,7 @@ class CandidateIdentity:
                         fingerprint=state.fingerprint, execution_status='failed', relation=None,
                         reason=str(error) or '候选内容核对执行失败。', error_code=getattr(error, 'code', type(error).__name__)),
                         expected_revision=request.expected_revision, request_id=request.request_id + '-failed', attempt=request.attempt)
-            raise
+                raise
 
     def commit(self, run_id, anchor_id, record, *, expected_revision, request_id, attempt=1):
         from iad_core.consistency.identity_inputs import IdentityInputs
@@ -138,28 +136,27 @@ class CandidateIdentity:
         return CandidateIdentityRecord.model_validate_json(saved['record_json']).model_copy(update={'revision': saved['revision']})
 
     def verify(self, run_id: str, anchor_id: str, *, attempt: int = 1, step: bool = False) -> AnchorIdentityState:
+        from iad_core.consistency.pair_reviews import ConsistencyPairReviews
         state = self.prepare(run_id, anchor_id, attempt=attempt)
-        current = {gate.candidate_id: gate for gate in state.gates}
-        anchor = self.checks.anchor(run_id, anchor_id)
-        for candidate in anchor.candidates.candidates:
-            gate = current.get(candidate.sample_id)
-            if gate is not None and gate.execution_status == 'completed':
+        if state.completed:
+            return state
+        reviews = ConsistencyPairReviews(self.runtime, self.client)
+        for task in reviews.plan(run_id):
+            if not any(link.anchor_id == anchor_id for link in task.links):
                 continue
-            revision = gate.revision if gate else 0
-            request_id = 'verify-' + candidate.sample_id + '-' + str(revision)
-            result = self.observe(run_id, anchor_id, candidate.sample_id, expected_revision=revision,
-                request_id=request_id, attempt=attempt)
-            self.commit(run_id, anchor_id, result, expected_revision=revision, request_id=request_id, attempt=attempt)
+            reviews.review(run_id, task.pair_key)
             if step:
-                return self.read(run_id, anchor_id)
+                break
         return self.read(run_id, anchor_id)
 
-    def review_group(self, run_id: str, anchor_id: str):
+    def review_group(self, run_id: str, anchor_id: str, *, candidate_ids: list[str] | None = None):
         state = self.read(run_id, anchor_id)
-        if not state.completed:
+        selected_ids = set(state.eligible_ids) if candidate_ids is None else set(candidate_ids)
+        if (candidate_ids is None and not state.completed or candidate_ids is not None
+                and (not selected_ids or not selected_ids <= set(state.eligible_ids))):
             raise GateReviewRequired()
         group = ConsistencyAgentEvidence(self.runtime).freeze(run_id, anchor_id, checkpoint=lambda: None)
-        selected = group.model_copy(update={'members': [member for member in group.members if member.image.sample_id in state.eligible_ids]})
+        selected = group.model_copy(update={'members': [member for member in group.members if member.image.sample_id in selected_ids]})
         task_type = self.checks.snapshot(run_id).task_type
         for member in selected.members:
             from iad_core.consistency.identity_inputs import IdentityInputs

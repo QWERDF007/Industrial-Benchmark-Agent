@@ -34,7 +34,7 @@ export async function apply(ctx: Context, {bridge}: {bridge: PythonBridge}) {
     if (!modelContext) throw new ModelConfigurationError('原生模型服务尚未加载');
     return modelContext;
   });
-  const reviewer = new ConsistencyAnchorReviewer(bridge, host, providers);
+  const reviewer = new ConsistencyAnchorReviewer(bridge, host);
   const scheduler = new ConsistencyCheckScheduler(bridge, host, providers, task => reviewer.review(task),
     error => ctx.logger.warn(error));
   const analysis = new AnalysisWorkflowScheduler(bridge, providers, {exploration, knowledge}, dataRoot, error => ctx.logger.warn(error));

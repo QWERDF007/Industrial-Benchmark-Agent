@@ -1,6 +1,5 @@
 import hashlib
 import json
-from pathlib import Path
 from dataclasses import dataclass
 from collections import defaultdict
 from collections.abc import Iterator
@@ -15,8 +14,7 @@ from iad_core.consistency.identity_regions import IdentityRegionCheck, UnmappedR
 from iad_core.consistency.identity_disputes import IdentityDispute, IdentityDisputes
 from iad_core.consistency.identity_geometry import ImageCorrespondence
 import numpy as np
-from iad_core.consistency.identity_models import (PAIR_REVIEW_BATCH_SIZE, PAIR_REVIEW_MEDIA_BYTES,
-    PAIR_REVIEW_REGION_BUDGET, IDENTITY_VISUAL_PAIR_LIMIT, IDENTITY_VISUAL_IMAGE_LIMIT, candidate_pair_key)
+from iad_core.consistency.identity_models import PAIR_REVIEW_BATCH_SIZE, candidate_pair_key
 from iad_core.consistency.references import ReferenceAliases
 from iad_core.evidence.images import EvidenceImages, PreparedImage, PreparedImageBundle
 from iad_core.evidence.retained import RetainedImages
@@ -265,8 +263,9 @@ class IdentityInspection:
                     for annotation in sources[side].annotations.annotations]
                 views = tuple(view.with_source(samples[side],sources[side].annotations.dataset_format,annotations
                     ).for_model(model_inputs,max_side) for view in views)
-            wire_bundles.append(PreparedImageBundle(references.public[bundle.evidence_id],
-                references.translate(bundle.context),views))
+            wire_bundles.extend(PreparedImageBundle(references.public[view.evidence.evidence_id],
+                references.translate(bundle.context), (view,)) for view in views)
+        wire_bundles = list({bundle.evidence_id: bundle for bundle in wire_bundles}.values())
         layout = tuple(pair.mapping == 'registered' for pair in frozen.region_pairs)
         schema_key = (layout, len(disputes))
         if schema_key not in self._response_types:
@@ -331,53 +330,17 @@ class IdentityInspection:
             yield item, item.record(decision, call_ids)
 
     def generate(self, run_id: str, prepared: list[PreparedIdentityObservation], checkpoint):
-        from iad_core.workbench.vision import ModelCapacityError
-
-        prompts = prepared[0].prompts
-        if any(item.prompts != prompts for item in prepared):
-            raise ValueError('合并内容核对必须使用同一份提示词')
-        response_type = prepared[0].response_type
-        bundles, context = list(prepared[0].bundles), prepared[0].context
-        if len(prepared) > 1:
-            response_type = create_model('IdentityDecisions', __base__=AnalysisModel,
-                **{'p'+str(index): (item.response_type, ...) for index, item in enumerate(prepared)})
-            views = {view.evidence.evidence_id: view for item in prepared for bundle in item.bundles for view in bundle.images}
-            shared = ReferenceAliases({identity: 'image_'+str(index) for index, identity in enumerate(views)})
-            bundles = [PreparedImageBundle(shared.public[identity], {'original_size': view.evidence.original_size}, (view,))
-                for identity, view in views.items()]
-            pairs = {}
-            for index, item in enumerate(prepared):
-                key = 'p' + str(index)
-                aliases = ReferenceAliases({name: shared.public[identity] for identity, name in item.references.public.items()
-                    if identity in shared.public})
-                pairs[key] = aliases.translate({name: value for name, value in item.context.items() if name != 'examples'})
-            context = {'scope': 'pairs', 'pairs': pairs, 'examples': prompts['gate_examples']}
-        checkpoint()
-        request_id = 'identity-' + hashlib.sha256(json.dumps([
-            (item.anchor_id, item.candidate_id, item.revision, item.request_id, item.fingerprint) for item in prepared]).encode()).hexdigest()
-        with ModelCalls(self.runtime.db).bind(run_id, checkpoint, role='vision',
-                request_id=request_id, sample_id=prepared[0].anchor_id, pair_keys=[item.pair_key for item in prepared]):
-            try:
-                if len(prepared) > 1 and (
-                        len(prepared) > IDENTITY_VISUAL_PAIR_LIMIT
-                        or len(bundles) > IDENTITY_VISUAL_IMAGE_LIMIT
-                        or sum(len(item.frozen.region_pairs) for item in prepared) > PAIR_REVIEW_REGION_BUDGET
-                        or sum(Path(view.model_input.path if view.model_input else view.path).stat().st_size for bundle in bundles
-                            for view in bundle.images) > PAIR_REVIEW_MEDIA_BYTES):
-                    raise ModelCapacityError('批次超过媒体或局部数量预算，需要拆分完整图像对')
-                plan = self.client.plan(response_type, prompts['gate_user'], bundles, self.client.resolve_model(),
-                    context=context, system_prompt=prompts['gate_system'])
-            except ModelCapacityError:
-                if len(prepared) == 1:
-                    raise
-                middle = len(prepared)//2
-                yield from self.generate(run_id, prepared[:middle], checkpoint)
-                yield from self.generate(run_id, prepared[middle:], checkpoint)
-                return
-            decision = self.client.generate(plan)
-        with self.runtime.db.connection() as connection:
-            call_ids = [row[0] for row in connection.execute("""SELECT call_id FROM model_calls WHERE run_id=?
-                AND json_extract(summary_json,'$.request_id')=? AND json_extract(summary_json,'$.operation')='generate'
-                AND json_extract(summary_json,'$.error') IS NULL ORDER BY rowid""", (run_id, request_id))]
-        for index, item in enumerate(prepared):
-            yield item, decision if len(prepared) == 1 else getattr(decision, 'p'+str(index)), call_ids
+        for item in prepared:
+            checkpoint()
+            request_id = 'identity-' + hashlib.sha256(json.dumps([
+                (item.anchor_id, item.candidate_id, item.revision, item.request_id, item.fingerprint)]).encode()).hexdigest()
+            with ModelCalls(self.runtime.db).bind(run_id, checkpoint, role='vision',
+                    request_id=request_id, sample_id=item.anchor_id, pair_keys=[item.pair_key]):
+                plan = self.client.plan(item.response_type, item.prompts['gate_user'], list(item.bundles),
+                    self.client.resolve_model(), context=item.context, system_prompt=item.prompts['gate_system'])
+                decision = self.client.generate(plan)
+            with self.runtime.db.connection() as connection:
+                call_ids = [row[0] for row in connection.execute("""SELECT call_id FROM model_calls WHERE run_id=?
+                    AND json_extract(summary_json,'$.request_id')=? AND json_extract(summary_json,'$.operation')='generate'
+                    AND json_extract(summary_json,'$.error') IS NULL ORDER BY rowid""", (run_id, request_id))]
+            yield item, decision, call_ids

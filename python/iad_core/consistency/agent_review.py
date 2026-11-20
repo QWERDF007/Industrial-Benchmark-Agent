@@ -1,16 +1,13 @@
 from typing import TYPE_CHECKING
-from uuid import uuid4
 
 from iad_core.consistency.agent_assessments import AnchorAssessments
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.agent_models import ReviewedResult
 from iad_core.consistency.agent_review_models import (AnchorAssessmentInput, AnchorAssessmentRecord, AnchorAssessmentSubmission, AnchorDraftSubmission, AnchorObservation, AnchorVisualPlan, AnchorVisualRequest,
-    AnchorReviewSubmission, AnchorVisualResult, AnchorVisualStart, VISUAL_REQUEST_ID_RULE)
-from iad_core.consistency.agent_visual_inputs import AnchorVisualInput
+    AnchorReviewSubmission, AnchorVisualStart, VISUAL_REQUEST_ID_RULE)
 from iad_core.consistency.agent_visual_pages import AnchorVisualPages
 from iad_core.consistency.group_models import FrozenAnalysisGroup
 from iad_core.consistency.group_analysis_validation import GroupAnalysisValidation
-from iad_core.workbench.calls import ModelCalls
 from iad_core.workbench.vision import VlmClient
 from iad_core.consistency.errors import GateReviewRequired
 
@@ -67,7 +64,8 @@ class ConsistencyAgentReview:
         if self.client is None:
             raise ValueError('视觉分页需要冻结的视觉模型客户端')
         from iad_core.consistency.identity import CandidateIdentity
-        if not CandidateIdentity(self.runtime).prepare(run_id, anchor_id, attempt=attempt).completed:
+        state = CandidateIdentity(self.runtime).prepare(run_id, anchor_id, attempt=attempt)
+        if not state.completed and not state.eligible_ids:
             raise GateReviewRequired()
         return AnchorVisualPages(self.runtime, self.client).plan(run_id, anchor_id, attempt=attempt)
 
@@ -79,8 +77,6 @@ class ConsistencyAgentReview:
             raise ValueError('视觉观察需要冻结的视觉模型客户端')
         from iad_core.consistency.identity import CandidateIdentity
         state = CandidateIdentity(self.runtime).prepare(run_id, anchor_id, attempt=attempt)
-        if not state.completed:
-            raise GateReviewRequired()
         if not set(request.candidate_ids) <= set(state.eligible_ids):
             raise ValueError('未通过图像内容验证的候选不能进入标注观察')
         revisions = {gate.candidate_id: gate.revision for gate in state.gates if gate.candidate_id in request.candidate_ids}
@@ -108,37 +104,22 @@ class ConsistencyAgentReview:
         context = self.runtime.jobs.context(run_id)
         context.checkpoint()
         self.checks.phase(run_id, anchor_id, 'OBSERVING_ANCHOR')
-        inputs = AnchorVisualInput.prepare(self.runtime, run_id, anchor_id, request, context.checkpoint)
-        if saved is None:
-            with self.db.connection() as connection:
-                connection.execute('''INSERT INTO consistency_visual_requests(job_id,anchor_id,request_id,request_json)
-                    VALUES(?,?,?,?)''', (run_id, anchor_id, request.request_id, inputs.request.model_dump_json()))
-        with ModelCalls(self.db).bind(run_id, context.checkpoint, role='vision',
-                request_id=request.request_id, sample_id=anchor_id):
-            plan = inputs.plan(self.client)
-            context.checkpoint()
-            result = inputs.normalize(self.client.generate(plan))
-        context.checkpoint()
-        observed = AnchorObservation(observation_id='observation_' + uuid4().hex, request=inputs.request,
-            result=AnchorVisualResult.model_validate(result.model_dump()))
-        with self.db.connection() as connection:
-            changed = connection.execute('''UPDATE consistency_visual_requests SET observation_json=?
-                WHERE job_id=? AND anchor_id=? AND request_id=? AND EXISTS (
-                    SELECT 1 FROM consistency_anchor_runs WHERE job_id=? AND anchor_id=? AND attempt=? AND state='RUNNING')''',
-                (observed.model_dump_json(), run_id, anchor_id, request.request_id, run_id, anchor_id, attempt))
-            if not changed.rowcount:
-                raise ValueError('过期的主图审核 attempt')
+        from iad_core.consistency.annotation_pair_reviews import AnnotationPairReviews
+        observed = AnnotationPairReviews(self.runtime, self.client).observe(run_id, anchor_id, request, attempt=attempt)
         self.checks.phase(run_id, anchor_id, 'AWAITING_SUBMISSION')
         for finding in observed.result.observations:
             if finding.gate_dispute is not None:
                 from iad_core.consistency.identity import CandidateIdentity
-                current = next(gate for gate in CandidateIdentity(self.runtime).read(run_id, anchor_id).gates
-                    if gate.candidate_id == finding.candidate_id)
-                if current.revision != revisions[finding.candidate_id]:
-                    continue
-                CandidateIdentity(self.runtime).recheck(run_id, anchor_id, finding.candidate_id,
-                    expected_revision=revisions[finding.candidate_id],
-                    request_id='audit-dispute-' + request.request_id + '-' + finding.candidate_id, attempt=attempt)
+                from iad_core.consistency.identity_models import candidate_pair_key
+                from iad_core.consistency.pair_locks import CandidatePairLocks
+                with CandidatePairLocks.exclusive(self.db.db_path, run_id, candidate_pair_key(anchor_id, finding.candidate_id)):
+                    current = next(gate for gate in CandidateIdentity(self.runtime).read(run_id, anchor_id).gates
+                        if gate.candidate_id == finding.candidate_id)
+                    if current.revision != revisions[finding.candidate_id]:
+                        continue
+                    CandidateIdentity(self.runtime).recheck(run_id, anchor_id, finding.candidate_id,
+                        expected_revision=revisions[finding.candidate_id],
+                        request_id='audit-dispute-' + request.request_id + '-' + finding.candidate_id, attempt=attempt)
         return observed
 
     def observations(self, run_id: str, anchor_id: str) -> list[AnchorObservation]:
@@ -164,7 +145,7 @@ class ConsistencyAgentReview:
         submission = AnchorAssessmentInput.model_validate(submission)
         identity = submission.assessment.candidate_id
         from iad_core.consistency.identity import CandidateIdentity
-        group = CandidateIdentity(self.runtime).review_group(run_id, anchor_id)
+        group = CandidateIdentity(self.runtime).review_group(run_id, anchor_id, candidate_ids=[identity])
         selected = group.model_copy(update={'members': [member for member in group.members if member.image.sample_id == identity]})
         if not selected.members:
             raise ValueError('候选不属于本场冻结清单')

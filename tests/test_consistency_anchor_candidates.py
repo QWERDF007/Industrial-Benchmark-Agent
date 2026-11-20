@@ -99,7 +99,7 @@ def test_anchor_candidates_count_samples_and_exclude_all_exact_overflow(tmp_path
                 (1, 'exact', 3, 7, (3, 0)),
                 (2, 'combined', 11, 22, (11, 22))]:
             modules.save({'module': 'consistency', 'expected_revision': revision,
-                'settings': {'mode': mode, 'min_similarity': .98,
+                'settings': {'mode': mode,
                     'max_exact_candidates': exact_limit, 'max_similar_candidates': similar_limit}})
             job = checks.start({'dataset_ids': [config.dataset.id], 'submission_id': str(uuid4()),
                 'subjects': {'kind': 'samples', 'sample_ids': [anchor]}})

@@ -167,7 +167,7 @@ def test_anchor_visual_observation_records_the_images_actually_sent_and_reuses_i
         with pytest.raises(ValueError, match='恰好引用'):
             review.finalize(job_id, anchor_id, {**final, 'assessment_ids': [assessment.assessment_id, assessment.assessment_id]})
         changed = {**submitted, 'assessment': {**submitted['assessment'],
-            'explanation': '同像素图像中主图标注类别与参考图不同，已复查原始类别名称'}}
+            'explanation': '两图像素相同，标注类别名称不同。'}}
         revised = review.assess(job_id, anchor_id, changed)
         assert revised.assessment_id != assessment.assessment_id
         with pytest.raises(ValueError, match='最新评估'):
@@ -300,7 +300,7 @@ def test_image_and_annotation_comparison_does_not_require_external_policy_or_reg
         direction = 'missing_annotation' if case == 'exact_missing' else 'extra_annotation'
         saved = review.assess(job_id, main_id, {'fingerprint': candidates.fingerprint,
             'observation_ids': [observed.observation_id], 'assessment': {'candidate_id': reference_id,
-                'verdict': 'MATERIAL', 'explanation': '主图相对于候选的同内容对象标注数量不同。', 'issues': [{
+                'verdict': 'MATERIAL', 'explanation': '两图同一对象的标注数量不同。', 'issues': [{
                     'type': direction,
                     'main_annotation_ids': [item.annotation_id for item in frozen.sources.left.annotations.annotations],
                     'candidate_annotation_ids': [item.annotation_id for item in frozen.sources.right.annotations.annotations],

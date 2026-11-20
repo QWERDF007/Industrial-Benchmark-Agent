@@ -248,7 +248,10 @@ class ConsistencyAgentResults:
             shared = {row[0] for row in connection.execute('''SELECT DISTINCT c.call_id FROM model_call_pairs c
                 JOIN consistency_pair_reviews p ON p.job_id=c.job_id AND p.pair_key=c.pair_key,
                     json_each(p.task_json,'$.links') link
-                WHERE c.job_id=? AND json_extract(link.value,'$.anchor_id')=?''', (run_id, anchor_id))}
+                WHERE c.job_id=? AND json_extract(link.value,'$.anchor_id')=?
+                UNION SELECT c.call_id FROM model_call_pairs c
+                JOIN consistency_annotation_pair_observations p ON p.job_id=c.job_id AND p.pair_key=c.pair_key
+                WHERE c.job_id=? AND ? IN (p.anchor_id,p.candidate_id)''', (run_id, anchor_id, run_id, anchor_id))}
             calls = [call for call in ModelCalls(self.db).list(run_id, connection)
                 if call.sample_id == anchor_id or call.call_id in shared]
             no_candidates = anchor.result is not None and anchor.result.reason == 'NO_CANDIDATES'
@@ -339,7 +342,7 @@ class ConsistencyAgentResults:
         from iad_core.consistency.result_index import ConsistencyResultIndex
         with self.db.connection() as connection:
             identities = [run_id] if run_id else [row[0] for row in connection.execute('''SELECT DISTINCT a.job_id
-                FROM consistency_anchor_runs a JOIN job_runs j ON j.job_id=a.job_id WHERE j.deleted_at IS NULL''')]
+                FROM consistency_anchor_runs a JOIN job_runs j ON j.job_id=a.job_id''')]
             missing = [identity for identity in identities if not ConsistencyResultIndex(connection, identity).current()]
         return {identity: self.refresh_index(identity) for identity in missing}
 

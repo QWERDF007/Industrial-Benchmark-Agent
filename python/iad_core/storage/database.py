@@ -15,6 +15,7 @@ from sqlalchemy.pool import QueuePool, PoolProxiedConnection
 
 from iad_core.storage.schema import initialize_schema
 from iad_core.storage.call_payloads import CallPayloads
+from iad_core.storage.job_artifacts import JobArtifacts
 from iad_core.storage.schema_revision import SchemaRevision
 
 
@@ -26,6 +27,7 @@ class Database:
     def __init__(self, db_path: str = "data/benchmark.db"):
         self.db_path = db_path
         self.call_payloads = CallPayloads(db_path)
+        self.job_artifacts = JobArtifacts(db_path)
         os.makedirs(os.path.dirname(os.path.abspath(db_path)), exist_ok=True)
         self._pool: QueuePool | None = QueuePool(partial(self._connect, db_path))
         self._release_pool = finalize(self, self._pool.dispose)
@@ -42,6 +44,7 @@ class Database:
                     self.call_payloads.recover(conn)
                 self._schema_revisions[canonical] = (*identity, conn.execute('PRAGMA schema_version').fetchone()[0])
             self.call_payloads.collect(conn)
+            self.job_artifacts.collect(conn)
 
     @staticmethod
     def _connect(db_path: str) -> sqlite3.Connection:
@@ -77,6 +80,7 @@ class Database:
                     after_commit()
                 if conn.total_changes != changes:
                     self.call_payloads.collect(conn)
+                    self.job_artifacts.collect(conn)
             except Exception:
                 conn.rollback()
                 raise

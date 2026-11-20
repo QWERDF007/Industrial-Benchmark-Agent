@@ -215,7 +215,7 @@ class AnalysisQueries:
         with self.db.connection() as connection:
             rows = connection.execute('''SELECT p.publication_json,r.snapshot_json FROM analysis_publications p
                 JOIN analysis_workflow_runs r ON r.job_id=p.job_id JOIN job_runs j ON j.job_id=p.job_id
-                WHERE json_extract(r.snapshot_json,'$.module')=? AND j.deleted_at IS NULL
+                WHERE json_extract(r.snapshot_json,'$.module')=?
                 AND EXISTS(SELECT 1 FROM json_each(r.snapshot_json,'$.manifest.dataset_ids') WHERE value=?)
                 ORDER BY p.rowid DESC''', (module, dataset_id)).fetchall()
         return [KnowledgeVersion(version_id=p['version_id'], dataset_id=dataset_id, source_run_id=p['job_id'], parent_version_id=p.get('parent_version_id'),
@@ -229,7 +229,7 @@ class AnalysisQueries:
         with self.db.connection() as connection:
             rows = connection.execute('''SELECT p.version_id FROM analysis_publications p
                 JOIN analysis_workflow_runs r ON r.job_id=p.job_id JOIN job_runs j ON j.job_id=p.job_id
-                WHERE json_extract(r.snapshot_json,'$.module')='exploration' AND j.deleted_at IS NULL
+                WHERE json_extract(r.snapshot_json,'$.module')='exploration'
                 AND p.rowid=(SELECT MAX(recent.rowid) FROM analysis_publications recent WHERE recent.job_id=p.job_id)
                 AND EXISTS(SELECT 1 FROM json_each(r.snapshot_json,'$.manifest.dataset_ids') d
                     WHERE value IN (SELECT value FROM json_each(?))) ORDER BY p.rowid DESC''', (json.dumps(dataset_ids),)).fetchall()

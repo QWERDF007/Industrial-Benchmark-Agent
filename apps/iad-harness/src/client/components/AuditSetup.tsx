@@ -20,6 +20,7 @@ import {KnowledgeEntryList} from './KnowledgeEntryList.js';
 import {JobStatusDrawer} from './JobStatusDrawer.js';
 import {AnalysisPromptDrawer} from './AnalysisPromptDrawer.js';
 import {ConsistencyPromptDrawer} from './ConsistencyPromptDrawer.js';
+import {JobStartPanel} from './JobStartPanel.js';
 
 export function AuditSetup({datasets, availableDatasets, jobs, revision, onStarted, onCancel, onBusyChange}: {
   datasets:Dataset[];availableDatasets:Dataset[];jobs:JobSnapshot[];revision:number;
@@ -42,6 +43,8 @@ export function AuditSetup({datasets, availableDatasets, jobs, revision, onStart
   const [masterSystem,setMasterSystem]=useState<string>(promptDefaults.auditMasterSystem);
   const [masterUser,setMasterUser]=useState<string>(promptDefaults.auditBatch);
   const [reportPrompt,setReportPrompt]=useState<string>(promptDefaults.auditReport);
+  const [consistencySystem,setConsistencySystem]=useState<string>(promptDefaults.auditConsistencySystem);
+  const [consistencyUser,setConsistencyUser]=useState<string>(promptDefaults.auditConsistencyUser);
   const submission=useRef<{identity:string;id:string}>();
   const knowledgeJobs=catalog.data?.knowledge_jobs || [], consistencyJobs=catalog.data?.consistency_jobs || [];
   const sourceJobs=catalog.data?.jobs||[];
@@ -50,10 +53,12 @@ export function AuditSetup({datasets, availableDatasets, jobs, revision, onStart
   const chosen=knowledgeJobs.find(item=>item.version_id===versionId);
   const selectedEntries=chosen?.entries.filter(item=>entryIds.has(item.check_id)) || [];
   const selectedConsistency=consistencyJobs.find(item=>item.job_id===consistencyId);
-  const consistencyOnly=model.settings&&'audit_scope' in model.settings&&model.settings.audit_scope==='consistency';
-  const reason=catalog.error || (catalog.loading?'正在读取来源作业':!datasets.length?'请选择审计子数据集':
+  const auditSettings=model.settings&&'audit_scope' in model.settings?model.settings:undefined;
+  const consistencyOnly=auditSettings?.audit_scope==='consistency',fullScope=auditSettings?.audit_scope==='full';
+  const reason=!auditSettings?(model.error||'正在读取审计设置'):catalog.error || (catalog.loading?'正在读取来源作业':!datasets.length?'请选择审计子数据集':
     !selectedConsistency?'请选择一个已完成的一致性作业':!model.settings?.model?model.error || '请先配置模型审计分析模型':
     jobs.some(job=>['PENDING','RUNNING'].includes(job.status))?'当前范围仍有审计作业执行中':
+    consistencyOnly&&(!consistencySystem.trim()||!consistencyUser.trim())?'请填写系统和用户提示词':
     !consistencyOnly&&(!masterSystem.trim()||!masterUser.trim())?'请填写主 Agent 提示词':!consistencyOnly&&(!systemPrompt.trim()||!userPrompt.trim())?'请填写子 Agent 提示词':!consistencyOnly&&!reportPrompt.trim()?'请填写报告用户提示词':'');
   function selectKnowledge(job:AuditKnowledgeSource|null) {
     setVersionId(job?.version_id||'');setEntryIds(new Set());setDetail(null);setError('');
@@ -62,8 +67,11 @@ export function AuditSetup({datasets, availableDatasets, jobs, revision, onStart
     if (reason || !selectedConsistency || busy) return;
     const body:Omit<AuditStartRequest,'submission_id'>={subset_ids:[datasets[0].dataset_id,...datasets.slice(1).map(dataset=>dataset.dataset_id)],
       knowledge:!consistencyOnly&&chosen&&selectedEntries.length?{job_id:chosen.job_id,version_id:chosen.version_id,entry_ids:selectedEntries.map(item=>item.check_id)}:null,
-      consistency_job_id:selectedConsistency.job_id,master_prompt:{system_prompt:masterSystem,user_prompt:masterUser},
-      observer_prompt:{system_prompt:systemPrompt,user_prompt:userPrompt},report_instruction:reportPrompt,benchmark_build_id:consistencyOnly?null:benchmarkId||null};
+      consistency_job_id:selectedConsistency.job_id,
+      ...(consistencyOnly?{consistency_prompt:{system_prompt:consistencySystem,user_prompt:consistencyUser}}:{
+        master_prompt:{system_prompt:masterSystem,user_prompt:masterUser},
+        observer_prompt:{system_prompt:systemPrompt,user_prompt:userPrompt},report_instruction:reportPrompt}),
+      benchmark_build_id:consistencyOnly?null:benchmarkId||null};
     const identity=JSON.stringify(body);
     if(submission.current?.identity!==identity)submission.current={identity,id:uuid()};
     setBusy(true);onBusyChange(true);setError('');
@@ -71,8 +79,8 @@ export function AuditSetup({datasets, availableDatasets, jobs, revision, onStart
     catch(failure){setError(message(failure));}
     finally{setBusy(false);onBusyChange(false);}
   }
-  return <div className="audit-create-page" id="audit-create-view" aria-busy={busy}>
-    {!consistencyOnly&&<><JobList id="audit-create-knowledge-jobs" title="知识挖掘" list={knowledgeList} datasets={availableDatasets} loading={catalog.loading}
+  return <div className="iad-create-page" id="audit-create-view" aria-busy={busy}>
+    {fullScope&&<><JobList id="audit-create-knowledge-jobs" title="知识挖掘" list={knowledgeList} datasets={availableDatasets} loading={catalog.loading}
       actions={{status:setStatusJob,prompt:setPromptJob}}
       selection={{name:'audit-knowledge-source',label:'选择知识作业',selectedIds:new Set(chosen?[chosen.job_id]:[]),disabled:busy,onChange:ids=>{
         const added=[...ids].find(id=>id!==chosen?.job_id);
@@ -99,30 +107,35 @@ export function AuditSetup({datasets, availableDatasets, jobs, revision, onStart
       actions={{status:setStatusJob,prompt:setPromptJob,additional:[{id:'statistics',label:'统计',icon:'stats',onClick:job=>setStatisticsId(job.run_id)}]}}
       selection={{name:'audit-consistency-source',label:'选择一致性作业',selectedIds:new Set(selectedConsistency?[selectedConsistency.job_id]:[]),disabled:busy,
         onChange:ids=>setConsistencyId([...ids].find(id=>id!==consistencyId)||'')}}/>
-    {!consistencyOnly&&!!catalog.data?.benchmark_builds.length&&<section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>已有 Benchmark 成果</h2></header>
+    {fullScope&&!!catalog.data?.benchmark_builds.length&&<section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>已有 Benchmark 成果</h2></header>
       <Select aria-label="已有 Benchmark 成果" value={benchmarkId} disabled={busy} onChange={event=>setBenchmarkId(event.target.value)}>
         <option value="">不关联</option>{catalog.data.benchmark_builds.map(build=><option key={build.build_id} value={build.build_id}>
           {build.name}，覆盖 {build.covered_images} 张，来源共 {build.source_images} 张</option>)}
       </Select>
     </section>}
-    {!consistencyOnly&&<section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>提示词</h2></header>
+    <JobStartPanel error={error||catalog.error||model.error} onSubmit={()=>void start()} fields={[
+      {label:'审计范围',value:datasets.map(dataset=>dataset.name).join('、')||'未选择'},
+      {label:'审计内容',value:auditSettings?consistencyOnly?'数据一致性':'完整范围':''},
+      ...(fullScope?[
+        {label:'知识挖掘',value:chosen?.job_id||'未选择'},
+        {label:'知识条目',value:`${selectedEntries.length} 条`},
+      ]:[]),
+      {label:'数据一致性',value:`${selectedConsistency?1:0} 个已完成作业`},
+    ]} actions={<>
+      <Button id="audit-create-cancel" disabled={busy} onClick={onCancel}>取消</Button>
+      <Button id="audit-create-submit" type="submit" variant="primary" disabled={busy||!!reason} title={reason}>
+        {busy?'启动中…':'开始审计'}</Button>
+    </>}/>
+    {auditSettings&&<section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>提示词</h2></header>
+      {consistencyOnly?<AgentPromptEditors id="audit-consistency-prompt" system={consistencySystem} user={consistencyUser}
+        onSystemChange={setConsistencySystem} onUserChange={setConsistencyUser} disabled={busy}/>:<>
       <AgentPromptEditors id="audit-master-prompt" agentLabel="主 Agent" system={masterSystem} user={masterUser}
         onSystemChange={setMasterSystem} onUserChange={setMasterUser} disabled={busy}/>
       <AgentPromptEditors id="audit-observer-prompt" agentLabel="子 Agent" system={systemPrompt} user={userPrompt}
         onSystemChange={setSystemPrompt} onUserChange={setUserPrompt} disabled={busy}/>
       <div className="iad-agent-prompts"><PromptTextEditor id="audit-report-prompt" label="报告用户提示词" value={reportPrompt} onChange={setReportPrompt} disabled={busy}/></div>
+      </>}
     </section>}
-    <section className="audit-panel audit-source-panel"><header className="audit-panel-head"><h2>确认并启动</h2></header>
-      <div className="audit-create-confirm"><dl className="audit-create-facts" id="audit-create-summary" aria-live="polite">
-        <div><dt>审计范围</dt><dd>{datasets.map(dataset=>dataset.name).join('、') || '未选择'}</dd></div>
-        <div><dt>审计内容</dt><dd>{consistencyOnly?'数据一致性':'完整范围'}</dd></div>
-        {!consistencyOnly&&<><div><dt>知识挖掘</dt><dd>{chosen?.job_id || '未选择'}</dd></div>
-        <div><dt>知识条目</dt><dd>{selectedEntries.length} 条</dd></div></>}
-        <div><dt>数据一致性</dt><dd>{selectedConsistency?1:0} 个已完成作业</dd></div>
-      </dl><div className="audit-create-actions"><Button id="audit-create-cancel" disabled={busy} onClick={onCancel}>取消</Button>
-        <Button id="audit-create-submit" variant="primary" disabled={busy||!!reason} title={reason} onClick={()=>void start()}>{busy?'启动中…':'开始审计'}</Button></div></div>
-      {error&&<p className="audit-source-error" role="alert">{error}</p>}{catalog.error&&<p className="audit-source-error" role="alert">{catalog.error}</p>}
-    </section>
     {statusJob&&<JobStatusDrawer job={statusJob} onClose={()=>setStatusJob(null)}/>}
     {promptJob&&(promptJob.analysis_kind==='knowledge'?<AnalysisPromptDrawer title="知识挖掘提示词" jobId={promptJob.run_id} onClose={()=>setPromptJob(null)}/>
       :<ConsistencyPromptDrawer job={promptJob} onClose={()=>setPromptJob(null)}/>)}

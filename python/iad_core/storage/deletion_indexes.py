@@ -16,14 +16,19 @@ def _projection(conn: Connection, name: str, source: str, key: str, fields: tupl
         source_id TEXT NOT NULL REFERENCES {source}({key}) ON DELETE CASCADE,
         {','.join(field + ' TEXT NOT NULL' for field in fields)},PRIMARY KEY(source_id,{columns}))''')
     conn.execute(f'CREATE INDEX IF NOT EXISTS idx_{name}_lookup ON {name}({columns},source_id)')
-    insert = f'INSERT INTO {name} SELECT * FROM {name}_source WHERE source_id=NEW.{key};'
-    trigger = conn.execute("SELECT tbl_name FROM sqlite_master WHERE name=? AND type='trigger'", (name+'_insert',)).fetchone()
-    if trigger and trigger[0] != source:
-        conn.execute(f'DROP TRIGGER {name}_insert')
-        conn.execute(f'DROP TRIGGER {name}_update')
-    conn.execute(f'CREATE TRIGGER IF NOT EXISTS {name}_insert AFTER INSERT ON {source} BEGIN {insert} END')
-    conn.execute(f'''CREATE TRIGGER IF NOT EXISTS {name}_update AFTER UPDATE OF {updates} ON {source}
-        BEGIN DELETE FROM {name} WHERE source_id=OLD.{key}; {insert} END''')
+    insert = f'''INSERT INTO {name} SELECT * FROM {name}_source WHERE source_id=NEW.{key}
+        ON CONFLICT(source_id,{columns}) DO NOTHING;'''
+    definitions = {
+        'insert': f'CREATE TRIGGER {name}_insert AFTER INSERT ON {source} BEGIN {insert} END',
+        'update': f'''CREATE TRIGGER {name}_update AFTER UPDATE OF {updates} ON {source}
+            BEGIN DELETE FROM {name} WHERE source_id=OLD.{key}; {insert} END''',
+    }
+    for suffix, statement in definitions.items():
+        trigger_name = name + '_' + suffix
+        previous = conn.execute("SELECT sql FROM sqlite_master WHERE name=? AND type='trigger'", (trigger_name,)).fetchone()
+        if previous is None or ' '.join(previous[0].split()) != ' '.join(statement.split()):
+            conn.execute(f'DROP TRIGGER IF EXISTS {trigger_name}')
+            conn.execute(statement)
     if not exists or changed:
         conn.execute(f'DELETE FROM {name}')
         conn.execute(f'INSERT INTO {name} SELECT * FROM {name}_source')
@@ -32,6 +37,17 @@ def _projection(conn: Connection, name: str, source: str, key: str, fields: tupl
 def initialize_deletion_indexes(conn: Connection) -> None:
     if not conn.in_transaction:
         conn.execute('BEGIN IMMEDIATE')
+    conn.execute('DROP VIEW IF EXISTS job_consistency_evidence')
+    conn.execute('''CREATE VIEW job_consistency_evidence AS
+        SELECT job_id,evidence_id FROM consistency_anchor_evidence
+        UNION ALL SELECT job_id,json_extract(value,'$.evidence_id')
+            FROM audit_sample_runs,json_each(consistency_json,'$.evidence')
+        UNION ALL SELECT job_id,json_extract(value,'$.evidence_id')
+            FROM audit_sample_runs,json_each(consistency_json,'$.captured_evidence')
+        UNION ALL SELECT job_id,json_extract(value,'$.evidence_id')
+            FROM audit_upstream_records,json_each(record_json,'$.evidence')
+        UNION ALL SELECT c.run_id,r.evidence_id FROM audit_evidence_references r
+            JOIN audit_consistency_checks c ON c.check_id=r.source_id''')
     _projection(conn, 'job_dataset_scopes', 'job_requests', 'job_id', ('dataset_id', 'kind'), '''
         SELECT job_id AS source_id,
             COALESCE(json_extract(request_json,'$.dataset_id'),json_extract(payload_json,'$.dataset_id')) AS dataset_id,
@@ -54,6 +70,10 @@ def initialize_deletion_indexes(conn: Connection) -> None:
             FROM job_runs,json_each(payload_json,'$.batch_runs') WHERE value IS NOT NULL
         UNION SELECT job_id,json_extract(payload_json,'$.parent_run_id'),job_id FROM job_runs
             WHERE json_extract(payload_json,'$.parent_run_id') IS NOT NULL
+        ''', 'payload_json')
+    _projection(conn, 'job_index_batches', 'job_runs', 'job_id', ('batch_id',), '''
+        SELECT job_id AS source_id,json_extract(payload_json,'$.index_batch_id') AS batch_id
+            FROM job_runs WHERE batch_id IS NOT NULL
         ''', 'payload_json')
     _projection(conn, 'consistency_run_datasets', 'consistency_runs', 'batch_id', ('dataset_id',), '''
         SELECT batch_id AS source_id,value AS dataset_id FROM consistency_runs,json_each(plan_json,'$.scopes.subjects.dataset_ids')

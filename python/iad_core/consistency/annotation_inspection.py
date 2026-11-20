@@ -31,7 +31,7 @@ SINGLE_CANDIDATE_MISSING_ISSUE = create_model('SingleCandidateMissingIssue',
 
 class AnnotationDecision(AnalysisModel):
     verdict: Literal['EQUIVALENT', 'MATERIAL', 'UNCERTAIN', 'GATE_DISPUTE']
-    explanation: NonBlankText = Field(description='直接说明两侧标注区域、类别和实际覆盖的比较结果，不复述流程。')
+    explanation: NonBlankText = Field(description='两图共用的事实说明；用两图、一侧和另一侧表述具体标注差异，不使用主图、候选或左右图称呼，方向由问题类型和两侧标注引用表达。')
     issues: list[ReviewIssue] = Field(default_factory=list)
     limitations: list[NonBlankText] = Field(default_factory=list, description='只记录本次实际看不清或无法比较的具体部分。')
     disputed_regions: list[str] = Field(default_factory=list,
@@ -43,7 +43,13 @@ class AnnotationDecision(AnalysisModel):
     @classmethod
     def validate_structure(cls, value, handler):
         try:
-            return handler(value)
+            result = handler(value)
+            texts = [result.explanation, *result.limitations, *[text for issue in result.issues
+                for text in (issue.description, issue.coverage_reason or '', issue.review_suggestion, *issue.limitations)]]
+            if any(side in text for text in texts for side in ('主图', '候选', '左图', '右图')):
+                raise repairable_output_error('annotation_shared_perspective',
+                    '说明由两侧共用，须用两图或一侧、另一侧描述可见事实，不使用主图、候选或左右图称呼；保留type和两侧标注引用表达方向。')
+            return result
         except ValidationError as error:
             raise repairable_output_error('annotation_structure', str(error)) from error
 

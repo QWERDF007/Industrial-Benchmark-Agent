@@ -29,16 +29,24 @@ class ConsistencyWorkflow:
         self.review = ConsistencyAgentReview(runtime, client)
         self.identity = CandidateIdentity(runtime, client)
 
+    def collect(self, run_id, anchor_id, *, attempt=1):
+        anchor = self.checks.attempt(run_id, anchor_id, attempt)
+        if anchor.result is not None:
+            return {'ready': True}
+        state = self.identity.read(run_id, anchor_id)
+        if not state.completed:
+            return {'ready': False}
+        if self.review.finish_rules(run_id, anchor_id, attempt=attempt) is not None:
+            return {'ready': True}
+        assessed = {record.submission.assessment.candidate_id for record in self.review.assessments(run_id, anchor_id)}
+        return {'ready': set(state.eligible_ids) <= assessed}
+
     def audit(self, run_id, anchor_id, *, attempt=1):
         try:
-            anchor = self.checks.attempt(run_id, anchor_id, attempt)
-            if anchor.result is not None:
+            if self.collect(run_id, anchor_id, attempt=attempt)['ready']:
                 return {'ready': True}
-            state = self.identity.read(run_id, anchor_id)
-            if not state.completed:
+            if not self.identity.read(run_id, anchor_id).completed:
                 return {'ready': False}
-            if self.review.finish_rules(run_id, anchor_id, attempt=attempt) is not None:
-                return {'ready': True}
             plan = self.review.plan(run_id, anchor_id, attempt=attempt)
             for page in plan.pages:
                 assessed = {record.submission.assessment.candidate_id for record in self.review.assessments(run_id, anchor_id)}

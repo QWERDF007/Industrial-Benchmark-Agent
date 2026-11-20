@@ -70,14 +70,14 @@ def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
     database = str(tmp_path / 'modules.db')
     initial = module_settings_get({'module': 'consistency'}, database)
     assert initial['revision'] == 0
-    assert initial['settings'] == {'model': None, 'mode': 'combined', 'min_similarity': .98,
-        'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1, 'reasoning_effort': None, 'whole_image_max_side': None,
+    assert initial['settings'] == {'model': None, 'mode': 'combined',
+        'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1, 'reasoning_effort': None,
         'vision_limits': VISION_DEFAULTS,
         'position_tolerance': {'policy_version':'coverage-v1','absolute_boundary_px':None,'relative_boundary_fraction':None,
             'min_coverage_consistency':None,'consider_registration_uncertainty':True,'tiny_defect_coverage_override':True},
         'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     saved = module_settings_save({'module': 'consistency', 'expected_revision': 0,
-        'settings': {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'min_similarity': .97}}, database)
+        'settings': {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact'}}, database)
     assert saved['revision'] == 1
     assert module_settings_get({'module': 'consistency'}, database) == saved
     assert module_settings_get({'module': 'knowledge'}, database)['settings'] == {'model': None, 'reasoning_effort': None,
@@ -85,7 +85,7 @@ def test_module_settings_persist_separately_and_reject_stale_writes(tmp_path):
         'agent_limits': {'context_tokens': None, 'max_output_tokens': None, 'request_parameters': {}, 'generation_timeout_seconds': None}}
     with pytest.raises(ValueError, match='配置已变化'):
         module_settings_save({'module': 'consistency', 'expected_revision': 0, 'settings': saved['settings']}, database)
-    for invalid in [{'min_similarity': 1.1}, {'mode': 'visual'}, {'model': {'provider_id': 'vision', 'model_id': ''}}, {'api_key': 'secret'}]:
+    for invalid in [{'min_similarity': .97}, {'mode': 'visual'}, {'model': {'provider_id': 'vision', 'model_id': ''}}, {'api_key': 'secret'}]:
         with pytest.raises(ValueError):
             module_settings_save({'module': 'consistency', 'expected_revision': 1, 'settings': invalid}, database)
     with pytest.raises(ValueError):
@@ -98,28 +98,28 @@ def test_consistency_defaults_preserve_explicit_request_and_freeze_values(tmp_pa
     from iad_core.storage.database import Database
     store = ModuleSettings(Database(str(tmp_path / 'modules.db')))
     store.save({'module': 'consistency', 'expected_revision': 0,
-        'settings': {'mode': 'exact', 'min_similarity': .97,'max_similar_candidates':7}})
+        'settings': {'mode': 'exact','max_similar_candidates':7}})
     request = {'analysis_kind': 'consistency', 'dataset_ids': ['a']}
     frozen = store.consistency_request(request)
     assert request == {'analysis_kind': 'consistency', 'dataset_ids': ['a']}
-    assert frozen['mode'] == 'exact' and frozen['min_similarity'] == .97
+    assert frozen['mode'] == 'exact' and frozen['min_similarity'] == .99
     assert frozen['top_k']==7
     assert store.consistency_request({'mode': 'combined', 'min_similarity': .96,'top_k':3}) == {'mode': 'combined', 'min_similarity': .96,'top_k':3}
-    store.save({'module': 'consistency', 'expected_revision': 1, 'settings': {'mode': 'combined', 'min_similarity': .99}})
-    assert frozen['mode'] == 'exact' and frozen['min_similarity'] == .97
+    store.save({'module': 'consistency', 'expected_revision': 1, 'settings': {'mode': 'combined'}})
+    assert frozen['mode'] == 'exact' and frozen['min_similarity'] == .99
 
 
 def test_saving_one_field_preserves_other_module_settings(tmp_path):
     from iad_core.entry import module_settings_get, module_settings_save, module_settings_validate
     database = str(tmp_path / 'module-patches.db')
     first = module_settings_save({'module': 'consistency', 'expected_revision': 0,
-        'settings': {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'min_similarity': .97, 'reasoning_effort': 'high'}}, database)
+        'settings': {'model': {'provider_id': 'vision', 'model_id': 'v2'}, 'mode': 'exact', 'reasoning_effort': 'high'}}, database)
     patch = module_settings_validate({'module': 'consistency', 'expected_revision': first['revision'],
-        'settings': {'min_similarity': .98}}, database)
-    assert patch['settings'] == {'min_similarity': .98}
+        'settings': {'max_similar_candidates': 8}}, database)
+    assert patch['settings'] == {'max_similar_candidates': 8}
     changed = module_settings_save(patch, database)
     assert changed['settings'] == {'model': {'provider_id': 'vision', 'model_id': 'v2'},
-        'mode': 'exact', 'min_similarity': .98, 'max_exact_candidates': 5, 'max_similar_candidates': 10, 'concurrency': 1, 'reasoning_effort': 'high', 'whole_image_max_side': None,
+        'mode': 'exact', 'max_exact_candidates': 5, 'max_similar_candidates': 8, 'concurrency': 1, 'reasoning_effort': 'high',
         'vision_limits': VISION_DEFAULTS,
         'position_tolerance': {'policy_version':'coverage-v1','absolute_boundary_px':None,'relative_boundary_fraction':None,
             'min_coverage_consistency':None,'consider_registration_uncertainty':True,'tiny_defect_coverage_override':True},
@@ -135,13 +135,13 @@ def test_consistency_roles_and_candidate_limits_persist_without_leaking_into_ret
     store = ModuleSettings(Database(str(tmp_path / 'roles.db')))
     saved = store.save({'module': 'consistency', 'expected_revision': 0, 'settings': {
         'model': {'provider_id': 'vision', 'model_id': 'observer'},
-        'max_exact_candidates': 3, 'max_similar_candidates': 7, 'min_similarity': .90}})
+        'max_exact_candidates': 3, 'max_similar_candidates': 7}})
     assert store.read('consistency') == saved
     assert 'agent_model' not in saved.settings.model_dump()
     assert saved.settings.model.provider_id == 'vision'
     assert saved.settings.max_exact_candidates == 3
     assert saved.settings.max_similar_candidates == 7
-    request = store.consistency_request({'subjects': {'kind': 'all_registered'}, 'request_id': 'retrieval'})
+    request = store.consistency_request({'subjects': {'kind': 'all_registered'}, 'request_id': 'retrieval', 'min_similarity': .90})
     parsed = ConsistencyStart.model_validate(request)
     assert parsed.min_similarity == .90
     assert parsed.top_k==7
@@ -161,16 +161,18 @@ def test_candidate_limits_reject_invalid_values_without_changing_settings(tmp_pa
     assert store.read('consistency') == saved
 
 
-def test_legacy_consistency_settings_preserve_threshold_and_only_supply_missing_defaults(tmp_path):
+def test_legacy_consistency_settings_remove_job_threshold_and_supply_missing_defaults(tmp_path):
+    import sqlite3
     from iad_core.workbench.module_settings import ModuleSettings
     from iad_core.storage.database import Database
-    database = Database(str(tmp_path / 'legacy.db'))
-    with database.connection() as conn:
+    path = str(tmp_path / 'legacy.db')
+    with sqlite3.connect(path) as conn:
+        conn.execute('CREATE TABLE workbench_module_settings(module TEXT PRIMARY KEY, revision INTEGER, settings_json TEXT)')
         conn.execute('INSERT INTO workbench_module_settings(module,revision,settings_json) VALUES(?,?,?)',
             ('consistency', 4, '{"model":null,"mode":"combined","min_similarity":0.90}'))
-    snapshot = ModuleSettings(database).read('consistency')
-    assert snapshot.revision == 4
-    assert snapshot.settings.min_similarity == .90
+    snapshot = ModuleSettings(Database(path)).read('consistency')
+    assert snapshot.revision == 5
+    assert 'min_similarity' not in snapshot.settings.model_dump()
     assert snapshot.settings.max_exact_candidates == 5
     assert snapshot.settings.max_similar_candidates == 10
     assert 'agent_model' not in snapshot.settings.model_dump()
@@ -213,12 +215,38 @@ def test_old_model_settings_are_migrated_to_one_selection_without_changing_histo
     Database._schema_revisions.clear()
     reopened = Database(path)
     settings = ModuleSettings(reopened).read('consistency')
-    assert settings.revision == 3
+    assert settings.revision == 4
     assert settings.settings.model.model_id == 'observer'
     assert 'agent_model' not in settings.settings.model_dump()
     with pytest.raises(ValueError):
-        ModuleSettings(reopened).save({'module': 'consistency', 'expected_revision': 3,
+        ModuleSettings(reopened).save({'module': 'consistency', 'expected_revision': 4,
             'settings': {'agent_model': {'provider_id': 'agent', 'model_id': 'planner'}}})
+
+
+def test_consistency_job_parameters_are_removed_from_saved_defaults(tmp_path):
+    import sqlite3
+    from iad_core.storage.database import Database
+    from iad_core.workbench.module_settings import ModuleSettings
+    path = str(tmp_path / 'job-image-size.db')
+    with sqlite3.connect(path) as connection:
+        connection.execute('CREATE TABLE workbench_module_settings(module TEXT PRIMARY KEY, revision INTEGER, settings_json TEXT)')
+        connection.execute("INSERT INTO workbench_module_settings VALUES('consistency',3,?)",
+            ('{"whole_image_max_side":512,"min_similarity":0.91,"concurrency":4,"mode":"exact"}',))
+        connection.execute("INSERT INTO workbench_module_settings VALUES('audit',2,?)", ('{"whole_image_max_side":1024}',))
+    database = Database(path)
+    store = ModuleSettings(database)
+    saved = store.read('consistency')
+    assert saved.revision == 4
+    assert saved.settings.concurrency == 4 and saved.settings.mode == 'exact'
+    assert 'whole_image_max_side' not in saved.settings.model_dump()
+    assert 'min_similarity' not in saved.settings.model_dump()
+    assert store.read('audit').settings.whole_image_max_side == 1024
+    assert store.read('audit').revision == 2
+    with pytest.raises(ValueError):
+        store.save(dict(module='consistency',expected_revision=4,settings={'whole_image_max_side':256}))
+    with pytest.raises(ValueError):
+        store.save(dict(module='consistency',expected_revision=4,settings={'min_similarity':.95}))
+    assert ModuleSettings(Database(path)).read('consistency') == saved
 
 
 def test_quality_weights_partial_updates_preserve_other_coefficients(dataset):

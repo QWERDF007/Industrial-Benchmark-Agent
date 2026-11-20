@@ -222,12 +222,10 @@ class DatasetRegistry:
                 UNION SELECT job_id FROM job_runs WHERE task_id=? AND ?
                 UNION SELECT child_id FROM job_ownership_edges JOIN owned ON parent_id=owned.job_id)
                 SELECT job_id FROM owned""", (dataset_id,task_id,exclusive_task))]
-            jobs = 'SELECT value FROM json_each(?)'
-            job_scope = (json.dumps(related),)
             from iad_core.consistency.deletion import ConsistencyDeletion
             ConsistencyDeletion(conn).delete_dataset(dataset_id)
-            conn.execute(f"DELETE FROM model_calls WHERE run_id IN ({jobs})", job_scope)
-            conn.execute(f"DELETE FROM job_runs WHERE job_id IN ({jobs})", job_scope)
+            from iad_core.storage.job_deletion import JobDeletion
+            JobDeletion(conn).delete(related)
             for table in ('annotations','gold_records','split_assignments','review_decisions','audit_suggestions'):
                 conn.execute(f"DELETE FROM {table} WHERE sample_id IN (SELECT sample_id FROM samples WHERE dataset_id=?)", (dataset_id,))
             conn.execute("DELETE FROM review_sessions WHERE dataset_id=?", (dataset_id,))

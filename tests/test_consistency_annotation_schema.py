@@ -71,10 +71,10 @@ def test_annotation_schema_enforces_real_object_counts_and_merge_direction(merge
         assert missing['same_main_object_as']['maxItems'] == 0, '没有其他候选时不能填写跨候选对象归并'
         requests.append(body)
         answer = {'reviews': {candidate: {'verdict': 'MATERIAL',
-            'explanation': '同一条缺陷在主图用一个框，候选用两个相邻框，主图合并了两个实例。',
+            'explanation': '同一条缺陷一侧用一个框，另一侧用两个相邻框。',
             'issues': [{'type': 'merge', 'main_annotation_ids': ['main_a0'],
                 'candidate_annotation_ids': [candidate + '_a0', candidate + '_a1'],
-                'description': '主图一个框对应候选两个框。', 'region_pair_ids': [], 'same_main_object_as': []}],
+                'description': '同一缺陷一侧用一个框，另一侧用两个框。', 'region_pair_ids': [], 'same_main_object_as': []}],
             'limitations': [], 'disputed_regions': [], 'disputed_windows': []}}}
         if invalid_first and len(requests) == 1:
             issue = answer['reviews'][candidate]['issues'][0]
@@ -100,5 +100,35 @@ def test_annotation_schema_enforces_real_object_counts_and_merge_direction(merge
         assert [issue.type for issue in result.issues] == ['merge']
         assert checks.anchor(run_id, anchor).state == 'COMPLETED'
         assert len(requests) == (2 if invalid_first else 1)
+    finally:
+        client.close()
+
+
+def test_shared_annotation_analysis_repairs_directional_prose_before_caching(merged_annotation_pair):
+    runtime, _, run_id, anchor = merged_annotation_pair
+    sent = []
+
+    def respond(request):
+        if request.url.path.endswith('/tokenize'):
+            return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
+        body = json.loads(request.content)
+        parts = next(message['content'] for message in body['messages']
+            if message['role'] == 'user' and isinstance(message['content'], list))
+        identity = next(iter(json.loads(parts[1]['text'])['facts']['candidates']))
+        sent.append(body)
+        answer = {'reviews': {identity: {'verdict': 'MATERIAL',
+            'explanation': '主图把候选的两个框合并了。' if len(sent) == 1 else '同一缺陷一侧用一个框，另一侧用两个框。',
+            'issues': [{'type': 'merge', 'main_annotation_ids': ['main_a0'],
+                'candidate_annotation_ids': [identity + '_a0', identity + '_a1'],
+                'description': '同一缺陷一侧用一个框，另一侧用两个框。', 'region_pair_ids': []}],
+            'limitations': [], 'disputed_regions': [], 'disputed_windows': []}}}
+        return httpx.Response(200, json={'choices': [{'finish_reason': 'stop', 'message': {'content': json.dumps(answer)}}]})
+
+    client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)))
+    try:
+        workflow = ConsistencyWorkflow(runtime, client)
+        assert workflow.audit(run_id, anchor)['ready']
+        assert len(sent) == 2
+        assert '主图' not in workflow.finish(run_id, anchor).assessments[0].explanation
     finally:
         client.close()

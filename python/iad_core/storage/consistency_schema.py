@@ -101,6 +101,12 @@ def init_content_index_schema(connection: Connection) -> None:
         observation_json TEXT CHECK(observation_json IS NULL OR json_valid(observation_json)),
         PRIMARY KEY(job_id,anchor_id,request_id),
         FOREIGN KEY(job_id,anchor_id) REFERENCES consistency_anchor_runs(job_id,anchor_id) ON DELETE CASCADE)''')
+    connection.execute('''CREATE TABLE IF NOT EXISTS consistency_annotation_pair_observations (
+        job_id TEXT NOT NULL,pair_key TEXT NOT NULL,input_fingerprint TEXT NOT NULL,
+        anchor_id TEXT NOT NULL,candidate_id TEXT NOT NULL,request_id TEXT NOT NULL,
+        PRIMARY KEY(job_id,pair_key,input_fingerprint),
+        FOREIGN KEY(job_id,anchor_id,request_id)
+            REFERENCES consistency_visual_requests(job_id,anchor_id,request_id) ON DELETE CASCADE)''')
     connection.execute('''CREATE TABLE IF NOT EXISTS image_pair_observations (
         sample_id_a TEXT NOT NULL REFERENCES samples(sample_id) ON DELETE CASCADE,
         sample_id_b TEXT NOT NULL REFERENCES samples(sample_id) ON DELETE CASCADE,
@@ -167,6 +173,7 @@ def init_content_index_schema(connection: Connection) -> None:
             SELECT job_id,anchor_id,json_extract(member.value,'$.image.sample.sample_id'),
                 json_extract(member.value,'$.comparison.evidence_id')
             FROM consistency_anchor_runs,json_each(group_json,'$.members') member WHERE group_json IS NOT NULL''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_anchor_evidence_lookup ON consistency_anchor_evidence(evidence_id)')
     connection.execute('''CREATE TABLE IF NOT EXISTS consistency_pixel_evidence (
         pixel_key TEXT NOT NULL,sha256 TEXT NOT NULL,byte_count INTEGER NOT NULL CHECK(byte_count>0),
         PRIMARY KEY(pixel_key,sha256))''')

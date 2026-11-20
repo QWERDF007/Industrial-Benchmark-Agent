@@ -1,6 +1,17 @@
 import json
 import sqlite3
 
+from iad_core.storage.job_artifacts import JobArtifacts
+from iad_core.storage.job_deletion import JobDeletion
+
+
+def migrate_job_deletions(conn: sqlite3.Connection) -> None:
+    JobArtifacts.initialize(conn)
+    if 'deleted_at' in {row[1] for row in conn.execute('PRAGMA table_info(job_runs)')}:
+        removed = [row[0] for row in conn.execute('SELECT job_id FROM job_runs WHERE deleted_at IS NOT NULL')]
+        JobDeletion(conn).delete(removed)
+        conn.execute('ALTER TABLE job_runs DROP COLUMN deleted_at')
+
 
 def migrate_job_requests(conn: sqlite3.Connection) -> None:
     exists = conn.execute("SELECT 1 FROM sqlite_master WHERE name='job_requests' AND type='table'").fetchone()

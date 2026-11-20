@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from sqlite3 import Connection
 
 
@@ -7,6 +8,24 @@ class ConsistencyDeletion:
 
     def __init__(self, connection: Connection):
         self.connection = connection
+
+    def collect_evidence(self, evidence_ids: Sequence[str]) -> list[str]:
+        if not evidence_ids:
+            return []
+        conn = self.connection
+        unused = [row[0] for row in conn.execute('''WITH referenced(evidence_id) AS MATERIALIZED (
+            SELECT evidence_id FROM job_consistency_evidence WHERE evidence_id IS NOT NULL
+            UNION SELECT evidence_id FROM consistency_batch_results)
+            SELECT evidence_id FROM consistency_results WHERE evidence_id IN (SELECT value FROM json_each(?))
+                AND evidence_id NOT IN (SELECT evidence_id FROM referenced)''', (json.dumps(list(evidence_ids)),))]
+        scope = (json.dumps(unused),)
+        conn.execute('''DELETE FROM consistency_queries WHERE query_id IN (
+            SELECT query_id FROM consistency_query_items WHERE evidence_id IN (SELECT value FROM json_each(?)))''', scope)
+        conn.execute('''DELETE FROM consistency_correction_checks WHERE evidence_id IN (SELECT value FROM json_each(?))
+            OR decision_id IN (SELECT decision_id FROM consistency_decisions WHERE evidence_id IN (SELECT value FROM json_each(?)))''', scope * 2)
+        conn.execute('DELETE FROM consistency_decisions WHERE evidence_id IN (SELECT value FROM json_each(?))', scope)
+        conn.execute('DELETE FROM consistency_results WHERE evidence_id IN (SELECT value FROM json_each(?))', scope)
+        return unused
 
     def delete_dataset(self, dataset_id: str) -> None:
         conn = self.connection
@@ -44,6 +63,6 @@ class ConsistencyDeletion:
             OR evidence_id IN (SELECT value FROM json_each(?))''', (batches, evidence))
         conn.execute('DELETE FROM consistency_children WHERE batch_id IN (SELECT value FROM json_each(?))', (batches,))
         conn.execute('DELETE FROM consistency_runs WHERE batch_id IN (SELECT value FROM json_each(?))', (batches,))
-        conn.execute('DELETE FROM model_calls WHERE run_id IN (SELECT value FROM json_each(?))', (jobs,))
-        conn.execute('DELETE FROM job_runs WHERE job_id IN (SELECT value FROM json_each(?))', (jobs,))
+        from iad_core.storage.job_deletion import JobDeletion
+        JobDeletion(conn).delete(json.loads(jobs))
         conn.execute('DELETE FROM consistency_results WHERE evidence_id IN (SELECT value FROM json_each(?))', (evidence,))

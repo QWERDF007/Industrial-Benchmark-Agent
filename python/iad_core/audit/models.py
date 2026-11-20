@@ -17,7 +17,7 @@ from iad_core.audit.consistency_models import AuditCandidateContext, AuditUpstre
 from iad_core.audit.stage_models import AuditDefectProfileView
 from iad_core.audit.quality_models import QualityObservation, QualityScoreVersion
 from iad_core.audit.knowledge_models import AuditKnowledge, AuditKnowledgeSelection
-from iad_core.audit.prompt_text import (CONSISTENCY_SUMMARY_PROMPT,DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDIT_SYSTEM_PROMPT,
+from iad_core.audit.prompt_text import (CONSISTENCY_SUMMARY_PROMPT,DEFAULT_CONSISTENCY_SUMMARY_USER_PROMPT,DEFAULT_AUDIT_USER_PROMPT, OBSERVER_AUDIT_SYSTEM_PROMPT,
     MASTER_AUDIT_SYSTEM_PROMPT, DEFAULT_AUDIT_BATCH_PROMPT, DEFAULT_AUDIT_REPORT_PROMPT)
 from iad_core.analysis.prompt_models import AnalysisRolePrompts
 from iad_core.analysis.evidence_models import ContextPolicy, AnalysisEvidenceCandidate
@@ -38,7 +38,15 @@ class AuditAgentStart(AnalysisModel):
     report_instruction: NonBlankText = DEFAULT_AUDIT_REPORT_PROMPT
     observer_prompt: AnalysisRolePrompts = Field(default_factory=lambda:AnalysisRolePrompts(
         system_prompt=OBSERVER_AUDIT_SYSTEM_PROMPT,user_prompt=DEFAULT_AUDIT_USER_PROMPT))
+    consistency_prompt: AnalysisRolePrompts = Field(default_factory=lambda:AnalysisRolePrompts(
+        system_prompt=CONSISTENCY_SUMMARY_PROMPT,user_prompt=DEFAULT_CONSISTENCY_SUMMARY_USER_PROMPT))
     benchmark_build_id: NonBlankText | None = None
+
+    @model_validator(mode='after')
+    def consistency_system_prompt_required(self):
+        if self.consistency_prompt.system_prompt is None:
+            raise ValueError('请填写数据一致性审计的系统提示词')
+        return self
 
 
 class AuditAgentConfiguration(AnalysisModel):
@@ -51,6 +59,7 @@ class AuditWorkflowSnapshot(AuditAgentConfiguration):
     quality_score_version: QualityScoreVersion | None = None
     context_policy: ContextPolicy = 'legacy'
     consistency_summary_instruction: NonBlankText = CONSISTENCY_SUMMARY_PROMPT
+    consistency_summary_user_instruction: NonBlankText | None = None
     manifest: AnalysisManifest
     agent: FrozenModelRole
     report_instruction: NonBlankText

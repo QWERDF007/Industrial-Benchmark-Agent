@@ -328,7 +328,7 @@ class JobRunner:
             if self.closing:
                 raise ValueError('Worker is closing')
             state = self.status(run_id)
-            if state['status'] in ('PENDING', 'RUNNING') or state['status']=='COMPLETED' and not restart_completed or state['deleted_at']:
+            if state['status'] in ('PENDING', 'RUNNING') or state['status']=='COMPLETED' and not restart_completed:
                 raise ValueError('当前作业不可继续')
             conn.execute('BEGIN IMMEDIATE')
             row = conn.execute('SELECT payload_json FROM job_run_requests WHERE job_id=?', (run_id,)).fetchone()
@@ -350,8 +350,6 @@ class JobRunner:
 
     def _retry_scope(self, run_id: str, job_types: Sequence[JobKind]) -> tuple[dict, dict, list[str]]:
         parent = self.status(run_id, job_types)
-        if parent['deleted_at']:
-            raise ValueError('作业已从列表删除，不可重试')
         if parent["status"] in ("PENDING", "RUNNING"):
             raise ValueError("当前作业仍在执行，请等待结束后重试")
         root = self.status(parent.get("root_run_id", run_id), job_types)
@@ -511,14 +509,13 @@ class JobRunner:
             with self.db.connection() as conn:
                 conn.execute('BEGIN IMMEDIATE')
                 if family:
-                    if conn.execute("""SELECT 1 FROM job_run_requests WHERE json_extract(payload_json,'$.root_run_id')=?
-                        AND status IN ('PENDING','RUNNING') LIMIT 1""", (status['root_run_id'],)).fetchone():
-                        raise ValueError('请先取消作业，等待结束后再删除')
-                    conn.execute("""UPDATE job_runs SET deleted_at=COALESCE(deleted_at,?)
-                        WHERE json_extract(payload_json,'$.root_run_id')=?""", (datetime.now(timezone.utc).isoformat(),status['root_run_id']))
+                    run_ids = [row[0] for row in conn.execute('''SELECT job_id FROM job_runs
+                        WHERE job_id=? OR json_extract(payload_json,'$.root_run_id')=?''',
+                        (status['root_run_id'], status['root_run_id']))]
                 else:
-                    conn.execute('UPDATE job_runs SET deleted_at=COALESCE(deleted_at,?) WHERE job_id=?',
-                                 (datetime.now(timezone.utc).isoformat(), run_id))
+                    run_ids = [run_id]
+                from iad_core.storage.job_deletion import JobDeletion
+                JobDeletion(conn).delete(run_ids)
         return {'deleted_run_id': run_id}
 
     def cancel(self, run_id: str, job_types: Sequence[JobKind]) -> dict:

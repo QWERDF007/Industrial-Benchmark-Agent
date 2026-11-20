@@ -1540,6 +1540,21 @@ dialog.iad-detail-dialog.iad-dialog-form.exp-source-dialog{height:min(var(--iba-
 .iad-setup-section>h3 {margin:0 0 var(--iad-space-4);}
 .iad-agent-prompts{display:grid;gap:16px;min-width:0}
 .iad-agent-prompts+.iad-agent-prompts{margin-top:16px}
+.iad-create-page{display:grid;gap:16px;min-width:0}
+.iad-create-page>.iad-job-list{margin:0}
+.iad-job-start{padding:0}
+.iad-job-start-fields tbody tr{cursor:default}
+.iad-job-start-fields th:last-child{text-align:left}
+.iad-job-start-fields td{white-space:normal;overflow-wrap:anywhere}
+.iad-job-start-actions{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:16px 20px}
+.iad-job-start-actions button{min-width:100px}
+.iad-job-start-error{padding:0 20px 16px;margin:0}
+.iad-job-start-fields .iad-module-row{display:flex;flex-direction:column-reverse;align-items:stretch;gap:7px;padding:0;border:0}
+.iad-job-start-fields .iad-module-row-text{padding:0}
+.iad-job-start-fields .iad-setting-label{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.iad-job-start-fields .iad-module-control{max-width:none;justify-content:flex-start}
+.iad-job-start-fields .iad-module-selector{height:var(--iad-control-height);border:1px solid var(--iad-control-border);border-radius:var(--iad-radius);padding:0 12px;background:var(--iad-surface);color:var(--iad-text);font:inherit}
+.iad-job-start-fields .iad-module-selector,.iad-job-start-fields input{width:100%;min-width:0;height:var(--iad-control-height)}
 .exp-input textarea.iad-prompt-editor{--iad-prompt-editor-height:300px;box-sizing:border-box;width:100%;height:var(--iad-prompt-editor-height);min-height:var(--iad-prompt-editor-height);max-height:var(--iad-prompt-editor-height);resize:none;overflow:auto}
 .iad-setup-section .iad-info-group {background:transparent;padding:0;margin:0;}
 `;var y6=`
@@ -2898,21 +2913,12 @@ dialog.iad-drawer>.iad-dialog-header{height:64px!important;min-height:64px!impor
 #audit-page .audit-evidence-link img{width:100px;height:66px;object-fit:contain;background:#f0f4f9}
 #audit-page .audit-evidence-link span{min-width:0;line-height:1.7}
 #audit-page .audit-disclaimer{margin-top:20px;color:var(--audit-ink);font-size:13px}
-#audit-page .audit-create-page{display:grid;gap:16px;min-width:0}
-#audit-page .audit-create-page>.iad-job-list{margin:0}
 #audit-page .audit-source-panel{margin:0;min-width:0}
 #audit-page .audit-source-panel .audit-panel-head{padding:16px 20px}
 #audit-page .audit-source-panel .audit-panel-head h2{font-size:16px}
 #audit-page .audit-pick-all{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
 #audit-page .audit-pick-all input{width:16px;height:16px;accent-color:var(--audit-blue)}
-#audit-page .audit-create-confirm{padding:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
 #audit-page .audit-source-panel>.iad-agent-prompts{padding:20px}
-#audit-page .audit-create-facts{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;margin:0;min-width:0;flex:1 1 500px}
-#audit-page .audit-create-facts>div{display:grid;grid-template-columns:95px minmax(0,1fr);gap:12px;line-height:1.75}
-#audit-page .audit-create-facts dd{margin:0;overflow-wrap:anywhere;max-width:720px}
-#audit-page .audit-create-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
-#audit-page .audit-create-actions button{min-width:100px}
-#audit-page .audit-source-error{padding:0 20px 16px;margin:0}
 
 #audit-page .audit-overlay{position:fixed;inset:0;z-index:310;display:flex;align-items:center;justify-content:center;background:#17243ab8;padding:30px}
 #audit-page .audit-overlay[hidden]{display:none!important}

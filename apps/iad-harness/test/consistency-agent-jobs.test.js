@@ -240,7 +240,7 @@ for name,values in [('A',(1,0)),('B',(.943,np.sqrt(1-.943**2)))]:
       if (!admitted) {assert.deepEqual(fixture.wires, []);assert.deepEqual(fixture.tokenizations, []);}
     }
     for (const run of snapshots) assert.deepEqual(await read('/consistency/checks/' + run.run_id + '/config'), run.snapshot);
-    assert.equal((await read('/settings/modules/consistency')).settings.min_similarity, .98);
+    assert.equal('min_similarity' in (await read('/settings/modules/consistency')).settings,false);
     assert.deepEqual(fixture.errors, []);
   } finally {
     await new Promise(resolve => server.close(resolve));await fixture.close();

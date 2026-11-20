@@ -70,7 +70,7 @@ class ConsistencyAgentEvidence:
     def prepare(self, run_id: str, anchor_id: str, candidate_ids: list[str], *,
                 checkpoint: Callable[[], None] = lambda: None) -> PreparedGroupInput:
         from iad_core.consistency.identity import CandidateIdentity
-        group = CandidateIdentity(self.runtime).review_group(run_id, anchor_id)
+        group = CandidateIdentity(self.runtime).review_group(run_id, anchor_id, candidate_ids=candidate_ids)
         members = {member.image.sample_id: member for member in group.members}
         if not candidate_ids or not set(candidate_ids) <= members.keys():
             raise ConsistencyError('INVALID_SCOPE', '视觉取证仅限本主图冻结候选')

@@ -279,11 +279,29 @@ def consistency_agent_pair_review_many(args, db_path):
             ConsistencyPairReviews(review.runtime, review.client).review_many(args['run_id'], args['pair_keys'])]}
 
 
+def consistency_agent_annotation_pair_tasks(args, db_path):
+    from iad_core.consistency.annotation_pair_reviews import AnnotationPairReviews
+    return {'tasks': [task.model_dump(mode='json') for task in AnnotationPairReviews(workbench(db_path)).plan(args['run_id'])]}
+
+
+@_publish_results
+def consistency_agent_annotation_pair_review(args, db_path):
+    from iad_core.consistency.annotation_pair_reviews import AnnotationPairReviews
+    with _visual_review(args, db_path) as review:
+        return AnnotationPairReviews(review.runtime, review.client).review(args['run_id'], args['task'])
+
+
 @_publish_results
 def consistency_agent_audit(args, db_path):
     from iad_core.consistency.workflow import ConsistencyWorkflow
     with _visual_review(args, db_path) as review:
         return ConsistencyWorkflow(review.runtime, review.client).audit(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1))
+
+
+@_publish_results
+def consistency_agent_collect(args, db_path):
+    from iad_core.consistency.workflow import ConsistencyWorkflow
+    return ConsistencyWorkflow(workbench(db_path)).collect(args['run_id'], args['anchor_id'], attempt=args.get('attempt', 1))
 
 
 @_publish_results

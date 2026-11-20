@@ -75,21 +75,12 @@ export const auditStyles = `#audit-page { --audit-ink:#172338; --audit-border:#d
 #audit-page .audit-evidence-link img{width:100px;height:66px;object-fit:contain;background:#f0f4f9}
 #audit-page .audit-evidence-link span{min-width:0;line-height:1.7}
 #audit-page .audit-disclaimer{margin-top:20px;color:var(--audit-ink);font-size:13px}
-#audit-page .audit-create-page{display:grid;gap:16px;min-width:0}
-#audit-page .audit-create-page>.iad-job-list{margin:0}
 #audit-page .audit-source-panel{margin:0;min-width:0}
 #audit-page .audit-source-panel .audit-panel-head{padding:16px 20px}
 #audit-page .audit-source-panel .audit-panel-head h2{font-size:16px}
 #audit-page .audit-pick-all{display:inline-flex;align-items:center;gap:7px;font-size:13px;cursor:pointer}
 #audit-page .audit-pick-all input{width:16px;height:16px;accent-color:var(--audit-blue)}
-#audit-page .audit-create-confirm{padding:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
 #audit-page .audit-source-panel>.iad-agent-prompts{padding:20px}
-#audit-page .audit-create-facts{display:grid;grid-template-columns:minmax(0,1fr);gap:7px;margin:0;min-width:0;flex:1 1 500px}
-#audit-page .audit-create-facts>div{display:grid;grid-template-columns:95px minmax(0,1fr);gap:12px;line-height:1.75}
-#audit-page .audit-create-facts dd{margin:0;overflow-wrap:anywhere;max-width:720px}
-#audit-page .audit-create-actions{display:flex;align-items:center;gap:10px;margin-left:auto}
-#audit-page .audit-create-actions button{min-width:100px}
-#audit-page .audit-source-error{padding:0 20px 16px;margin:0}
 
 #audit-page .audit-overlay{position:fixed;inset:0;z-index:310;display:flex;align-items:center;justify-content:center;background:#17243ab8;padding:30px}
 #audit-page .audit-overlay[hidden]{display:none!important}

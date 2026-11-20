@@ -34,6 +34,7 @@ def initialize_audit_schema(connection: Connection):
         PRIMARY KEY(job_id,target_id,call_id,evidence_id),
         FOREIGN KEY(job_id,target_id) REFERENCES audit_sample_runs(job_id,sample_id) ON DELETE CASCADE)''')
 
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_audit_media_call ON audit_media_deliveries(call_id)')
     connection.execute("""CREATE TABLE IF NOT EXISTS audit_report_runs (
         job_id TEXT PRIMARY KEY REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
         session_id TEXT NOT NULL UNIQUE, session_created INTEGER NOT NULL DEFAULT 0,
@@ -95,3 +96,5 @@ def initialize_audit_schema(connection: Connection):
         job_id TEXT NOT NULL REFERENCES audit_workflow_runs(job_id) ON DELETE CASCADE,
         call_id TEXT NOT NULL REFERENCES model_calls(call_id) ON DELETE CASCADE,
         evidence_id TEXT NOT NULL, PRIMARY KEY(job_id,call_id,evidence_id))''')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_audit_master_read_call ON audit_master_reads(call_id)')
+    connection.execute('CREATE INDEX IF NOT EXISTS idx_audit_master_media_call ON audit_master_media_deliveries(call_id)')

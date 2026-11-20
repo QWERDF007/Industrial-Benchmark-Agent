@@ -53,6 +53,10 @@ class GenerationRequest(Generic[T]):
 GENERATION_PARAMETERS = {"temperature": 0.1}
 
 
+def _encode_request_body(body: dict) -> bytes:
+    return json.dumps(body, ensure_ascii=True, separators=(',', ':'), allow_nan=False).encode('ascii')
+
+
 class VlmClient:
     def __init__(self, http_client: Optional[httpx.Client] = None, *, profile: Optional[ModelProfile] = None,
                  api_key: Optional[str] = None):
@@ -87,7 +91,7 @@ class VlmClient:
 
     def within_limits(self, body: dict, images: List[PreparedImage]) -> bool:
         return (self.profile.max_visual_inputs is None or len(images) <= self.profile.max_visual_inputs) and (self.profile.max_request_bytes is None or
-            len(json.dumps(body, ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode()) <= self.profile.max_request_bytes)
+            len(_encode_request_body(body)) <= self.profile.max_request_bytes)
 
     @property
     def _headers(self) -> dict[str, str]:
@@ -95,9 +99,10 @@ class VlmClient:
 
     def token_budget(self, body: dict, output_reserve: int | None, schema_name: str) -> TokenBudget:
         root = self.endpoint.rsplit('/chat/completions', 1)[0].removesuffix('/v1')
-        request = self.client.build_request('POST', root + '/tokenize', headers=self._headers,
-            json={key: body[key] for key in ('model', 'messages', 'tools', 'tool_choice',
-                'parallel_tool_calls', 'chat_template_kwargs') if key in body})
+        request = self.client.build_request('POST', root + '/tokenize',
+            headers={**self._headers, 'Content-Type': 'application/json'},
+            content=_encode_request_body({key: body[key] for key in ('model', 'messages', 'tools', 'tool_choice',
+                'parallel_tool_calls', 'chat_template_kwargs') if key in body}))
         with ModelCalls.exchange(self.client, request, 'tokenize', schema_name) as response:
             raise_for_model_status(response)
             capacity = TokenCapacity.model_validate(response.json())
@@ -217,8 +222,9 @@ class VlmClient:
     def generate_once(self, plan: GenerationRequest[T]) -> T:
         response_type = plan.response_type
         request = self.client.build_request('POST', self.endpoint,
-            headers={**self._headers, 'Accept': 'text/event-stream', 'Accept-Encoding': 'identity'},
-            json=plan.body)
+            headers={**self._headers, 'Content-Type': 'application/json',
+                'Accept': 'text/event-stream', 'Accept-Encoding': 'identity'},
+            content=_encode_request_body(plan.body))
         with ModelCalls.exchange(self.client, request, 'generate', response_type.__name__, stream=True) as response:
             raise_for_model_status(response)
             completion = CompletionResponse.read(response, validate_json_object=True)

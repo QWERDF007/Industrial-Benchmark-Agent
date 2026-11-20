@@ -88,7 +88,7 @@ def test_check_requires_a_stable_submission_id(indexed_dataset):
         runtime.close()
 
 
-def test_new_check_freezes_five_exact_and_ten_similar_at_ninety_eight_percent(indexed_dataset):
+def test_new_check_freezes_default_retrieval_and_candidate_limits(indexed_dataset):
     from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 
     database, _, config = indexed_dataset
@@ -98,12 +98,12 @@ def test_new_check_freezes_five_exact_and_ten_similar_at_ninety_eight_percent(in
         job = checks.start({'submission_id': str(uuid4()), 'dataset_ids': [config.dataset.id]})
         frozen = checks.snapshot(job['run_id'])
         assert frozen.retrieval.mode == 'combined'
-        assert frozen.retrieval.min_similarity == .98
+        assert frozen.retrieval.min_similarity == .99
         assert frozen.retrieval.max_exact_candidates == 5
         assert frozen.retrieval.max_similar_candidates == 10
         from iad_core.workbench.job_snapshots import JobSnapshots
         view = JobSnapshots(database).snapshot(job['run_id'], ('ANALYSIS_WORKFLOW',), include_request=False)
-        assert (view.image_max_side, view.retrieval_mode, view.similarity_threshold) == (None, 'combined', .98)
+        assert (view.image_max_side, view.retrieval_mode, view.similarity_threshold) == (None, 'combined', .99)
     finally:
         runtime.close()
 
@@ -114,7 +114,7 @@ def test_check_submission_freezes_the_configuration_once_without_requiring_model
     database, _, config = indexed_dataset
     modules = ModuleSettings(database)
     modules.save({'module': 'consistency', 'expected_revision': 0,
-        'settings': {'mode': 'exact', 'min_similarity': .90, 'max_exact_candidates': 3, 'max_similar_candidates': 7}})
+        'settings': {'mode': 'exact', 'max_exact_candidates': 3, 'max_similar_candidates': 7}})
     runtime = WorkbenchRuntime(database)
     try:
         checks = ConsistencyAgentJobs(runtime)
@@ -131,7 +131,7 @@ def test_check_submission_freezes_the_configuration_once_without_requiring_model
         assert frozen.instruction == request['instruction']
         assert frozen.scopes.subjects.sample_count == frozen.scopes.corpus.sample_count == 4
         modules.save({'module': 'consistency', 'expected_revision': 1,
-            'settings': {'mode': 'combined', 'min_similarity': .99, 'max_exact_candidates': 11, 'max_similar_candidates': 22}})
+            'settings': {'mode': 'combined', 'max_exact_candidates': 11, 'max_similar_candidates': 22}})
         replayed = checks.start(request)
         assert replayed['run_id'] == started['run_id'] and replayed['created'] is False
         assert checks.snapshot(started['run_id']) == frozen
@@ -141,6 +141,34 @@ def test_check_submission_freezes_the_configuration_once_without_requiring_model
         assert len(anchors) == 4
         assert len({anchor.session_id for anchor in anchors}) == 4
         assert all(not anchor.session_created and anchor.state == 'PENDING' for anchor in anchors)
+    finally:
+        runtime.close()
+
+
+def test_similarity_threshold_is_validated_and_frozen_per_job(indexed_dataset):
+    from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
+    from iad_core.workbench.job_snapshots import JobSnapshots
+
+    database, _, config = indexed_dataset
+    runtime = WorkbenchRuntime(database)
+    try:
+        checks = ConsistencyAgentJobs(runtime)
+        assert 'min_similarity' not in checks.configuration().settings.model_dump()
+        request = dict(submission_id=str(uuid4()),dataset_ids=[config.dataset.id],min_similarity=.9437)
+        first = checks.start(request)['run_id']
+        frozen = checks.snapshot(first)
+        assert frozen.retrieval.min_similarity == .9437
+        ModuleSettings(database).save(dict(module='consistency',expected_revision=0,settings={'max_similar_candidates':6}))
+        second = checks.start(dict(submission_id=str(uuid4()),dataset_ids=[config.dataset.id]))['run_id']
+        assert checks.snapshot(second).retrieval.min_similarity == .99
+        assert checks.snapshot(first) == frozen
+        assert checks.start(request)['run_id'] == first
+        assert JobSnapshots(database).snapshot(first,('ANALYSIS_WORKFLOW',),include_request=False).similarity_threshold == .9437
+        with pytest.raises(ValueError,match='提交ID'):
+            checks.start(dict(request,min_similarity=.97))
+        for invalid in (-.1,1.1,True,'0.95',float('nan'),float('inf')):
+            with pytest.raises(ValueError):
+                checks.start(dict(request,submission_id=str(uuid4()),min_similarity=invalid))
     finally:
         runtime.close()
 

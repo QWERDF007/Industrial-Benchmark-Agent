@@ -95,7 +95,7 @@ def test_same_content_requires_visible_features_for_every_region(similar_job):
 
 
 @pytest.mark.parametrize('similar_job', ['original_resolution'], indirect=True)
-def test_identity_visual_batches_limit_pairs_and_images_without_dropping_evidence(pair_job):
+def test_identity_requests_isolate_pairs_without_dropping_evidence(pair_job):
     from iad_core.consistency.pair_reviews import ConsistencyPairReviews
 
     runtime, _, run_id = pair_job
@@ -106,13 +106,9 @@ def test_identity_visual_batches_limit_pairs_and_images_without_dropping_evidenc
             return httpx.Response(200, json={'count': 1000, 'max_model_len': 32768})
         content = json.loads(request.content)['messages'][-1]['content']
         context = json.loads(content[1]['text'])
-        pairs = context['pairs'] if context['scope'] == 'pairs' else {'p0': context}
-        assert len(pairs) <= 4, '身份核对每次最多四对，不能用大批次替代实际局部观察'
-        assert len(pairs) == 1 or sum(part['type'] == 'image_url' for part in content) <= 24
-        delivered.extend(pairs.values())
-        answers = {key: identity_response(pair, 'unverified', '当前局部无法可靠对应。')
-            for key, pair in pairs.items()}
-        answer = answers if context['scope'] == 'pairs' else answers['p0']
+        assert context['scope'] == 'joint', '每次身份核对仅包含一个图像对及其全部局部'
+        delivered.append(context)
+        answer = identity_response(context, 'unverified', '当前局部无法可靠对应。')
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
             'message': {'content': json.dumps(answer)}}]})
 
@@ -134,7 +130,7 @@ def test_identity_visual_batches_limit_pairs_and_images_without_dropping_evidenc
 
 @pytest.mark.parametrize('similar_job', ['registered', 'registered_mixed', 'original_resolution'], indirect=True)
 @pytest.mark.parametrize('protocol', ['openai-completions', 'openai-responses'])
-def test_pair_batch_declares_each_region_contract_once(pair_job, record_property, protocol):
+def test_single_pair_declares_its_region_contract_once(pair_job, record_property, protocol):
     from iad_core.consistency.pair_reviews import ConsistencyPairReviews
 
     runtime, _, run_id = pair_job
@@ -146,33 +142,25 @@ def test_pair_batch_declares_each_region_contract_once(pair_job, record_property
         body = json.loads(request.content)
         messages = body['input'] if protocol == 'openai-responses' else body['messages']
         context = json.loads(messages[-1]['content'][1]['text'])
-        assert context['scope'] == 'pairs'
+        assert context['scope'] == 'joint'
         schema = (body['text']['format']['schema'] if protocol == 'openai-responses'
             else body['response_format']['json_schema']['schema'])
-        layouts = {
-            (tuple(view['ref'] for view in pair['windows']),
-             tuple(view['ref'] for view in pair['unmapped_regions']))
-            for pair in context['pairs'].values()
-        }
-        definitions = [value for value in schema['$defs'].values() if value.get('title') == 'IdentityDecision']
-        for definition in definitions:
-            fields = list(definition['properties'])
-            assert fields.index('overview_observation') < fields.index('details') < fields.index('regions') < fields.index('overview') < fields.index('summary'), (
-                '模型应先观察完整原图和局部，再判断局部关系，最后汇总整图')
+        assert schema['title'] == 'IdentityDecision'
+        fields = list(schema['properties'])
+        assert fields.index('overview_observation') < fields.index('details') < fields.index('regions') < fields.index('overview') < fields.index('summary'), (
+            '模型应先观察完整原图和局部，再判断局部关系，最后汇总整图')
+        assert schema['properties']['regions']['minLength'] == len(context['windows'])
+        assert schema['properties']['regions']['maxLength'] == len(context['windows'])
         record_property('schema_bytes', len(json.dumps(schema, ensure_ascii=False).encode()))
-        record_property('pairs', len(context['pairs']))
-        record_property('distinct_region_layouts', len(layouts))
-        record_property('region_layouts', json.dumps(sorted(layouts)))
-        assert len(definitions) == len(layouts), 'Identical region layouts must share the output contract'
-        assert set(schema['properties']) == set(schema['required']) == set(context['pairs'])
+        record_property('registered_regions', len(context['windows']))
+        record_property('unmapped_regions', len(context['unmapped_regions']))
         requests.append(body)
-        answers = {key: identity_response(pair, 'unverified', '两图局部无法可靠对应。')
-            for key, pair in context['pairs'].items()}
+        answer = identity_response(context, 'unverified', '两图局部无法可靠对应。')
         if protocol == 'openai-responses':
             return httpx.Response(200, json={'status':'completed','output':[{'type':'message','role':'assistant',
-                'content':[{'type':'output_text','text':json.dumps(answers),'annotations':[]}]}]})
+                'content':[{'type':'output_text','text':json.dumps(answer),'annotations':[]}]}]})
         return httpx.Response(200, json={'choices': [{'finish_reason': 'stop',
-            'message': {'content': json.dumps(answers)}}]})
+            'message': {'content': json.dumps(answer)}}]})
 
     client = VlmClient(httpx.Client(transport=httpx.MockTransport(respond)), profile=ModelProfile(
         endpoint='http://model.invalid/v1', api=protocol, model_id='vision',
@@ -183,9 +171,9 @@ def test_pair_batch_declares_each_region_contract_once(pair_job, record_property
         tasks = reviews.plan(run_id)
         receipts = reviews.review_many(run_id, [task.pair_key for task in tasks])
         delivered_pairs = [json.loads((body['input'] if protocol == 'openai-responses' else body['messages'])[-1]
-            ['content'][1]['text'])['pairs'] for body in requests]
-        assert sum(map(len, delivered_pairs)) == len(receipts) == len(tasks)
-        assert all(len(pairs) <= 4 for pairs in delivered_pairs)
+            ['content'][1]['text']) for body in requests]
+        assert len(delivered_pairs) == len(receipts) == len(tasks)
+        assert all(pair['scope'] == 'joint' for pair in delivered_pairs)
     finally:
         client.close()
 

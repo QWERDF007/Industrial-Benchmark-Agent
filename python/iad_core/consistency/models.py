@@ -15,7 +15,7 @@ CandidateLimit = Annotated[int, Field(ge=1, strict=True)]
 TopKLimit = Annotated[int, Field(ge=1, le=200, strict=True)]
 SimilarityThreshold = Annotated[FiniteFloat, Field(ge=0, le=1, strict=True)]
 DEFAULT_MIN_SIMILARITY = 0.95
-DEFAULT_REVIEW_MIN_SIMILARITY = 0.98
+DEFAULT_REVIEW_MIN_SIMILARITY = 0.99
 Mode = Literal['exact', 'visual', 'combined']
 ReviewMode = Literal['exact', 'combined']
 Relation = Literal['EXACT', 'NEAR_CANDIDATE', 'VISUAL_REFERENCE', 'DIFFERENT', 'UNCHECKED']
@@ -23,11 +23,14 @@ DifferenceType = Literal['QUALITY_LABEL', 'CATEGORY', 'ANNOTATION_COUNT', 'ONE_S
     'SPLIT_MERGE', 'POLICY_UNCONFIRMED', 'ANNOTATION_UNREADABLE']
 
 
-class ConsistencyRetrievalSettings(AnalysisModel):
+class ConsistencyRetrievalDefaults(AnalysisModel):
     mode: ReviewMode = 'combined'
-    min_similarity: SimilarityThreshold = DEFAULT_REVIEW_MIN_SIMILARITY
     max_exact_candidates: CandidateLimit = 5
     max_similar_candidates: TopKLimit = 10
+
+
+class ConsistencyRetrievalSettings(ConsistencyRetrievalDefaults):
+    min_similarity: SimilarityThreshold = DEFAULT_REVIEW_MIN_SIMILARITY
 
 
 class AllRegisteredScope(AnalysisModel):

@@ -71,7 +71,7 @@ class AuditAgentJobs(AuditState):
         if len({record.dataset_format for record in manifest.records}) != 1:
             raise ValueError('同一审计作业不能混用图像级和矩形标注类型')
         upstream = self.jobs.status(request.consistency_job_id, ('ANALYSIS_WORKFLOW',))
-        if upstream['status'] != 'COMPLETED' or upstream['deleted_at']:
+        if upstream['status'] != 'COMPLETED':
             raise ValueError('请选择已完成的一致性作业')
         source = ConsistencyAgentJobs(self.runtime).snapshot(request.consistency_job_id)
         frozen = {sample.sample_id:sample for sample in source.scopes.subjects.samples}
@@ -87,6 +87,8 @@ class AuditAgentJobs(AuditState):
         if any(anchor.result is None or anchor.state != 'COMPLETED' for anchor in anchors):
             raise ValueError('一致性作业尚未形成所选主图的终稿')
         snapshot = AuditWorkflowSnapshot(**configuration.model_dump(), schema_version=6, quality_score_version=QUALITY_SCORE_VERSION, context_policy='evidence-on-demand-v1', manifest=manifest, agent=role,
+            consistency_summary_instruction=request.consistency_prompt.system_prompt,
+            consistency_summary_user_instruction=request.consistency_prompt.user_prompt,
             report_instruction=request.report_instruction, consistency_job_id=request.consistency_job_id,
             knowledge=self.freeze_knowledge(request.knowledge),
             master_prompt=request.master_prompt,observer_prompt=request.observer_prompt,
@@ -111,7 +113,8 @@ class AuditAgentJobs(AuditState):
 
         job = self.jobs.start('MODEL_AUDIT', manifest.records[0].sample.task_id,
             dict(audit_workflow_version=6, audit_scope=configuration.settings.audit_scope, submission=submission, dataset_id=manifest.dataset_ids[0], dataset_ids=manifest.dataset_ids,
-                sample_ids=[record.sample.sample_id for record in manifest.records], instruction=request.master_prompt.user_prompt,
+                sample_ids=[record.sample.sample_id for record in manifest.records],
+                instruction=request.consistency_prompt.user_prompt if lightweight else request.master_prompt.user_prompt,
                 model_name=role.profile.model_id, model_profile=role.profile.model_dump(),
                 image_max_side=configuration.settings.whole_image_max_side,
                 knowledge_version_id=snapshot.knowledge.selection.version_id if snapshot.knowledge else None),

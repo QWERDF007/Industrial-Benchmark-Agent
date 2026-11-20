@@ -40,9 +40,7 @@ test('consistency groups its encoder settings and automatically saves fixed loca
     const nativeAction=await driver.findElement(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='Open configuration file']"));
     const actionHover=await hoverStyle(nativeAction);
     const group=await driver.wait(until.elementLocated(By.css('[data-settings-group="similar"]')),6000);
-    const threshold=await driver.findElement(By.css('input[aria-label="相似度阈值"]'));
-    await threshold.clear();await threshold.sendKeys('0.995','\uE004');
-    await driver.wait(async()=>(await api('/settings/modules/consistency')).data.settings.min_similarity===.995,7000);
+    assert.equal((await driver.findElements(By.css('input[aria-label="相似度阈值"]'))).length,0);
     assert.equal((await group.findElements(By.xpath(".//*[normalize-space(.)='模型架构']"))).length,0);
     assert.equal((await group.findElements(By.xpath(".//label[normalize-space(.)='模型']"))).length,1);
     const model=await driver.findElement(By.css('button[aria-label="相似图模型"]'));
@@ -109,7 +107,7 @@ test('consistency groups its encoder settings and automatically saves fixed loca
     await driver.wait(until.elementLocated(By.css('button[aria-label="相似图模型"]')),5000);
     assert.equal(await driver.findElement(By.css('input[aria-label="编码批量大小"]')).getAttribute('value'),'64');
     assert.equal(await driver.findElement(By.css('input[aria-label="输入大小"]')).getAttribute('value'),'272');
-    assert.equal(await driver.findElement(By.css('input[aria-label="相似度阈值"]')).getAttribute('value'),'0.995');
+    assert.equal((await driver.findElements(By.css('input[aria-label="相似度阈值"]'))).length,0);
     await fs.mkdir('../../.scratch/consistency-gpu',{recursive:true});
     await fs.writeFile('../../.scratch/consistency-gpu/encoder-desktop.png',await driver.takeScreenshot(),'base64');
     await open('General');await(await driver.findElement(By.xpath("//*[@data-shortcut-modal='settings']//button[normalize-space(.)='Dark']"))).click();

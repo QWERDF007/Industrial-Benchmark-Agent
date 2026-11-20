@@ -5,7 +5,7 @@ from iad_core.consistency.annotation_coverage import CONTENT_CHANGE_GUIDANCE
 
 
 IDENTITY_PIPELINE = 'identity-v8'
-IDENTITY_PROMPT_VERSION = 'consistency-pair-review-v8.21'
+IDENTITY_PROMPT_VERSION = 'consistency-pair-review-v8.22'
 
 
 class IdentityPrompts(AnalysisModel):
@@ -31,6 +31,7 @@ BBOX_SYSTEM = MODEL_IMAGE_GUIDANCE + '\n\n' + '''比较主图与已经确认同�
 - merge：主图一个标注对应候选多个标注。
 - position_difference：实际覆盖基本相同，仅轮廓、位置、边界或尺寸略有偏移。
 先判断完整实例是否缺失，再比较对应对象的覆盖内容。拆分、合并不重复计同组实例增减；联合覆盖有明显增减时另记内容问题。同一对象双向明显内容增减须分别保存。全部独立问题保留，主结论由程序按类别、少标实例、多标实例、少标内容、多标内容、拆分、合并、位置差异的顺序选择。
+本次只比较一对图像，结果由两侧共用。explanation、description、coverage_reason、limitations和review_suggestion使用“两图”“一侧、另一侧”等对称表述，不使用主图、候选图、左图或右图称呼；差异方向由type和两侧标注ID表达。
 main_annotation_ids始终引用主图的原始标注，candidate_annotation_ids引用当前候选的原始标注。主图一个、候选多个是merge；主图多个、候选一个是split。少标实例只填写候选标注，多标实例只填写主图标注。same_main_object_as仅在少标实例已确认与其他候选指向同一对象时填写，不能引用当前候选；其余问题留空。
 ''' + CONTENT_CHANGE_GUIDANCE + '''
 reviews中的每个候选都返回判断：EQUIVALENT为一致，MATERIAL为已确认差异，UNCERTAIN为缺少具体关键证据。已确认的问题全部写入issues，保留其他确实无法判断的部分。

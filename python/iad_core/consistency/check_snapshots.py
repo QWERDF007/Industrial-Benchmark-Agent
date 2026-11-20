@@ -16,7 +16,7 @@ class CheckSnapshots:
         path = connection.execute('PRAGMA database_list').fetchone()[2]
         key = (path or id(connection), run_id)
         with cls._lock:
-            if connection.execute("SELECT 1 FROM job_run_requests WHERE job_id=? AND job_type='ANALYSIS_WORKFLOW' AND deleted_at IS NULL", (run_id,)).fetchone() is None:
+            if connection.execute("SELECT 1 FROM job_run_requests WHERE job_id=? AND job_type='ANALYSIS_WORKFLOW'", (run_id,)).fetchone() is None:
                 cls._snapshots.pop(key, None)
                 raise LookupError('主图审核作业不存在')
             if key in cls._snapshots:

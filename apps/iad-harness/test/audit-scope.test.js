@@ -9,20 +9,7 @@ import {randomUUID} from 'node:crypto';
 import {findWorkspaceRoot,resolvePythonPath} from '../lib/server/python-bridge/index.js';
 import {createAuditAgentHost} from './fixtures/audit-agent-host.js';
 
-function sendSummary(res,input) {
-  const result={conclusion:input.context.problem_groups.length?'同内容图像具有不同整图标签。':'本次未发现标注冲突。',
-    consistency_analysis:input.context.problem_groups.length?'上游记录存在整图标签冲突。':'图像标注没有冲突。',
-    distribution_analysis:'图像尺寸一致。',
-    analyses:input.context.problem_groups.map(g=>({issue_type:g.issue_type,analysis:'正常与异常目录中的同内容图像标签冲突。'})),
-    consistency_reviews:input.context.consistency_scoring.flatMap(scope=>scope.items.map(item=>({
-      scope_id:scope.scope_id,code:item.code,coefficient:1,evidence_refs:[item.ref],analysis:'不同标签会直接影响识别。'}))),
-    distribution_reviews:input.context.distribution_facts.flatMap(scope=>Object.entries(scope.axes).map(([axis,facts])=>({
-      scope_id:scope.scope_id,axis,status:facts.base_deduction>0?'problem':facts.metrics.length?'normal':'not_applicable',
-      coefficient:facts.base_deduction>0?1:null,grouping:'当前范围按真实统计评价。',
-      evidence_refs:[facts.ref],analysis:'当前范围未见明显失衡。'})))};
-  res.writeHead(200,{'content-type':'text/event-stream'});
-  res.end('data: '+JSON.stringify({id:'summary',choices:[{index:0,delta:{role:'assistant',content:JSON.stringify(result)},finish_reason:'stop'}]})+'\n\ndata: [DONE]\n\n');
-}
+import {sendConsistencySummary as sendSummary} from './fixtures/consistency-summary.js';
 
 test('consistency scope makes one text-only request for problems and exports frozen paired report',{timeout:60000},async()=>{
   const root=await fs.mkdtemp(path.join(os.tmpdir(),'iad-audit-scope-'));
@@ -44,11 +31,17 @@ test('consistency scope makes one text-only request for problems and exports fro
     const source=JSON.parse(execFileSync(resolvePythonPath(),['apps/iad-harness/test/fixtures/audit_summary_dataset.py',root,path.join(root,'audit.db')],
       {cwd:findWorkspaceRoot(),env:{...process.env,PYTHONPATH:'python'},encoding:'utf8'}));
     runtime=await createAuditAgentHost(root,`http://127.0.0.1:${server.address().port}/v1`);
-    const job=await runtime.scheduler.start({submission_id:randomUUID(),subset_ids:[source.dataset_id],consistency_job_id:source.consistency_job_id});
+    const consistency_prompt={system_prompt:'依据实际记录评价数据质量。',user_prompt:'优先说明实例缺失及覆盖不完整的影响。'};
+    const job=await runtime.scheduler.start({submission_id:randomUUID(),subset_ids:[source.dataset_id],
+      consistency_job_id:source.consistency_job_id,consistency_prompt});
     await runtime.scheduler.whenIdle();
     const status=await runtime.bridge.execute('audit_status',{run_id:job.run_id});
     assert.equal(status.status,'COMPLETED',JSON.stringify(status));
     assert.equal(wire.length,1);
+    assert.equal(wire[0].messages.find(message=>message.role==='system').content,consistency_prompt.system_prompt);
+    assert.equal(JSON.parse(wire[0].messages.at(-1).content).instruction,consistency_prompt.user_prompt);
+    const shown=await runtime.bridge.execute('audit_job_prompts',{run_id:job.run_id});
+    assert.deepEqual(shown.sections.map(section=>section.text),[consistency_prompt.system_prompt,consistency_prompt.user_prompt]);
     const {samples}=await runtime.bridge.execute('audit_agent_samples',{run_id:job.run_id});
     assert.equal(samples.length,0);
     const report=await runtime.bridge.execute('audit_job_report',{run_id:job.run_id});

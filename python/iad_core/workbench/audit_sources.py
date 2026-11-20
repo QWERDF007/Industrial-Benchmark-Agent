@@ -57,8 +57,6 @@ class AuditSources:
         native_versions = {version.version_id:version for dataset_id in dataset_ids for version in queries.versions(dataset_id,'knowledge')}
         ordered_jobs = sorted(jobs.values(), key=lambda job: job.submitted_at, reverse=True)
         for job in ordered_jobs:
-            if job.deleted_at:
-                continue
             request = job.model_extra.get('request', {})
             if job.analysis_kind == 'knowledge':
                 versions = {identity:version for identity,version in native_versions.items() if version.source_run_id == job.run_id}

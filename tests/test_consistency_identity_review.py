@@ -171,7 +171,7 @@ def test_bbox_review_retains_multiple_independent_issues_with_real_ids(dataset):
             'observation_ids': [observed.observation_id], 'assessment': {'candidate_id': sample.sample_id,
                 'verdict': 'MATERIAL', 'explanation': '类别不同，且框覆盖不同。', 'limitations': ['另一处反光区域无法确定。'], 'issues': [
                     dict(issue, type='category_mismatch', description='同一对象的原始类别不同。'),
-                    dict(issue, type='position_difference', description='候选只覆盖对象的一部分。', coverage_effect='material_change', coverage_reason='实际对象的右侧区域没有被候选框覆盖。')]}})
+                    dict(issue, type='position_difference', description='一侧只覆盖对象的一部分。', coverage_effect='material_change', coverage_reason='实际对象的右侧区域在一侧没有被框覆盖。')]}})
         result = review.finalize(run_id, anchor, {'fingerprint': selected.fingerprint, 'assessment_ids': [record.assessment_id]})
         assert result.result == 'discrepancy'
         assert [item.type for item in result.issues] == ['category_mismatch', 'position_difference']

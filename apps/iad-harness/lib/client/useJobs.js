@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { message, request } from './api.js';
+import { ApiError, message, request } from './api.js';
 import { queryClient } from './query-client.js';
 import { JOB_POLL_INTERVAL, jobIsActive } from '../shared/job-display.js';
 export function useJobs(kind, datasetId, onProgress, selectedRunId = '', refreshRevision = 0) {
@@ -29,8 +29,10 @@ export function useJobs(kind, datasetId, onProgress, selectedRunId = '', refresh
     const needsSelected = !!selectedRunId && !!query.data && !query.data.jobs.some(job => job.run_id === selectedRunId || job.root_run_id === selectedRunId);
     const selected = useQuery({ queryKey: ['iad', 'selected-job', kind, scope, selectedRunId], enabled: needsSelected,
         queryFn: async () => {
-            const job = await request(`/${kind === 'audit' ? 'audit' : 'analysis'}/status/${encodeURIComponent(selectedRunId)}`);
-            if (job.deleted_at)
+            const job = await request(`/${kind === 'audit' ? 'audit' : 'analysis'}/status/${encodeURIComponent(selectedRunId)}`)
+                .catch(error => { if (error instanceof ApiError && error.status === 404)
+                return null; throw error; });
+            if (!job)
                 return null;
             const ids = JSON.parse(scope);
             if (!ids.includes(job.dataset_id) && !job.dataset_ids.some(id => ids.includes(id)))

@@ -72,7 +72,7 @@ export async function createConsistencyAgentHost({multiCandidate=false,withSimil
         answer={reviews:Object.fromEntries(Object.keys(facts.candidates).map(identity=>{
           const candidate=sources.find(source=>source.sample_id===identity),count=main.annotations.length-candidate.annotations.length;
           return [identity,{verdict:count?'MATERIAL':'EQUIVALENT',
-            explanation:count?'主图有'+main.annotations.length+'个框，候选有'+candidate.annotations.length+'个框。':'两图框住相同区域，类别相同。',
+            explanation:count?'同一缺陷只在其中一张图中有标注。':'两图框住相同区域，类别相同。',
             issues:count?[{type:count>0?'extra_annotation':'missing_annotation',
               main_annotation_ids:count>0?main.annotations.map(item=>item.annotation_id):[],
               candidate_annotation_ids:count<0?candidate.annotations.map(item=>item.annotation_id):[],
@@ -150,7 +150,7 @@ if sys.argv[7]=='true':
         vector=np.zeros(selection.profile.dim,dtype=selection.profile.storage_dtype);vector[index//group_size if group_size else 0]=1
         FeatureRepository(db).upsert(FeatureRecord(content_group_id=PixelIndex(db).get(identities[name]).content_group_id,
             profile_id=selection.profile.profile_id,dim=selection.profile.dim,dtype=selection.profile.storage_dtype,embedding_blob=vector.tobytes()))
-retrieval={'mode':'combined','min_similarity':0.9} if sys.argv[7]=='true' else {'mode':'exact'}
+retrieval={'mode':'combined'} if sys.argv[7]=='true' else {'mode':'exact'}
 ModuleSettings(db).save({'module':'consistency','expected_revision':0,'settings':{**retrieval,'vision_limits':{'capacity_mode':'vllm_tokenize','max_output_tokens':4096,'max_visual_inputs':json.loads(sys.argv[4]),'request_parameters':{'temperature':0.2}},'model':{'provider_id':'isolated','model_id':'vision'}}})
 print(json.dumps({'dataset_id':config.dataset.id,'sample_ids':identities}))
 `, root, database, multiCandidate ? 'multi' : 'pair', JSON.stringify(maxVisualInputs ?? null), indexMode ?? (withSimilarCandidate?'cached':'none'), JSON.stringify(candidateCount ?? null), JSON.stringify(withSimilarCandidate),taskType,JSON.stringify(unannotated),JSON.stringify(annotatedCandidates),JSON.stringify(featureGroupSize??null)], {cwd: workspace, env: {...process.env, PYTHONPATH: path.join(workspace, 'python')}, encoding: 'utf8'}));
@@ -167,7 +167,7 @@ print(json.dumps({'dataset_id':config.dataset.id,'sample_ids':identities}))
   ctx.provide('credentials', {resolve: async () => ({value: 'isolated-test-key'})});
   const fork = await ctx.plugin(piAi, {providers});
   const native = new NativeProviders(() => ctx);
-  const reviewer = new ConsistencyAnchorReviewer(bridge, host, native);
+  const reviewer = new ConsistencyAnchorReviewer(bridge, host);
   const scheduler = new ConsistencyCheckScheduler(bridge, host, native, task => reviewer.review(task), error => errors.push(error));
   const removeRouting = bridge.useModelRouting({execute: async (operation, args, signal, dispatch) => {
     const result = modelRouting?await modelRouting.execute(operation,args,signal,(name,values={},cancellation)=>scheduler.execute(name,values,cancellation,dispatch)):

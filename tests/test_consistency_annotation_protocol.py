@@ -53,7 +53,7 @@ def test_annotation_disputes_retain_original_image_differences_and_only_referenc
         review = ConsistencyAgentReview(runtime, client)
         state = review.verify(run_id, anchor)
         observed = review.observe(run_id, anchor, {'request_id': 'annotation-content-dispute',
-            'fingerprint': state.fingerprint, 'candidate_ids': state.eligible_ids,
+            'fingerprint': state.fingerprint, 'candidate_ids': [next(gate.candidate_id for gate in state.gates if gate.relation != 'pixel_identical')],
             'question': '核对两图原始标注，同时保留具体图像差别。'})
         disputes = [item.gate_dispute for item in observed.result.observations if item.gate_dispute]
         assert len(audit_calls) == 1 and len(disputes) == 1

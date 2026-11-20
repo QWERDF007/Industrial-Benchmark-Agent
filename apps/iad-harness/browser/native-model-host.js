@@ -1,5 +1,6 @@
 import {finalizeFixtureCatalog,respondFixtureTools} from '../test/fixtures/analysis-finalization.js';
 import {auditReportTool} from '../test/fixtures/audit-report.js';
+import {sendConsistencySummary} from '../test/fixtures/consistency-summary.js';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -18,6 +19,12 @@ export async function startNativeModelHost({bundlePath = path.join(workspace, 'a
     const body=chunks.length ? JSON.parse(Buffer.concat(chunks)) : null;
     calls.push({path:req.url, authorization:req.headers.authorization, body});
     const model = req.url.startsWith('/second/') ? 'second-model' : 'first-model';
+    if(body?.stream&&!body.tools){
+      const message=body.messages.at(-1).content;
+      let input;
+      try{input=typeof message==='string'?JSON.parse(message):null;}catch{}
+      if(input?.context&&input.response_schema){sendConsistencySummary(res,input,{model});return;}
+    }
     if (body?.stream && !body.response_format) {
       const parse=content=>{try{return JSON.parse((typeof content==='string'?content:content.find(part=>part.type==='text').text).split('\n')[0]);}catch{return null;}};
       const index=body.messages.findLastIndex(message=>message.role==='user'&&parse(message.content)?.job_id);

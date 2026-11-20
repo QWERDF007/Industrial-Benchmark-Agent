@@ -1,5 +1,3 @@
-export declare const pairReviewBatchSize: 4;
-export declare const pairReviewMinBatchSize: 2;
 export declare const conflictCategoryDefaults: {
     readonly labelme: readonly ["类别不一致", "少类别", "多类别", "少标内容", "多标内容", "拆分", "合并", "位置差异"];
     readonly folder_classification: readonly ["类别不一致"];

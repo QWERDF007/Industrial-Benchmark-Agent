@@ -3,7 +3,7 @@ from iad_core.storage.call_payloads import CallPayloads
 from iad_core.storage.deletion_indexes import initialize_deletion_indexes
 
 from iad_core.storage.review_schema import init_review_schema
-from iad_core.storage.job_schema import migrate_audit_jobs, migrate_job_requests
+from iad_core.storage.job_schema import migrate_audit_jobs, migrate_job_requests, migrate_job_deletions
 from iad_core.storage.knowledge_schema import migrate_knowledge_sources, migrate_unified_knowledge
 from iad_core.storage.consistency_schema import init_content_index_schema
 from iad_core.storage.analysis_schema import initialize_analysis_schema
@@ -22,6 +22,10 @@ def initialize_schema(conn: Connection) -> bool:
 
     cursor.execute("""UPDATE workbench_module_settings SET settings_json=json_remove(settings_json,'$.agent_model')
         WHERE module='consistency' AND json_type(settings_json,'$.agent_model') IS NOT NULL""")
+    cursor.execute("""UPDATE workbench_module_settings
+        SET settings_json=json_remove(settings_json,'$.whole_image_max_side','$.min_similarity'),revision=revision+1
+        WHERE module='consistency' AND (json_type(settings_json,'$.whole_image_max_side') IS NOT NULL
+            OR json_type(settings_json,'$.min_similarity') IS NOT NULL)""")
 
     cursor.execute('DROP TABLE IF EXISTS workbench_model_settings')
 
@@ -305,8 +309,6 @@ def initialize_schema(conn: Connection) -> bool:
     job_columns = {row[1] for row in cursor.execute("PRAGMA table_info(job_runs)")}
     if "payload_json" not in job_columns:
         cursor.execute("ALTER TABLE job_runs ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'")
-    if "deleted_at" not in job_columns:
-        cursor.execute("ALTER TABLE job_runs ADD COLUMN deleted_at TEXT")
     migrate_audit_jobs(conn)
     migrate_job_requests(conn)
     cursor.execute("""CREATE INDEX IF NOT EXISTS idx_jobs_root
@@ -408,4 +410,5 @@ def initialize_schema(conn: Connection) -> bool:
             PRIMARY KEY(dataset_id)
         )
     """)
+    migrate_job_deletions(conn)
     return externalized_calls

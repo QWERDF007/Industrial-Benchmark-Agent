@@ -1,0 +1,5 @@
+import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
+import { SectionHeading } from './layout/SectionHeading.js';
+export function JobStartPanel({ fields, actions, error, onSubmit }) {
+    return _jsxs("form", { className: "iad-job-list iad-job-start", "aria-label": "\u786E\u8BA4\u5E76\u542F\u52A8", onSubmit: event => { event.preventDefault(); onSubmit(); }, children: [_jsx(SectionHeading, { title: "\u786E\u8BA4\u5E76\u542F\u52A8", className: "iad-job-list-header" }), _jsx("div", { className: "iad-job-table-scroll", children: _jsxs("table", { className: "iad-job-table-grid iad-jobs-table iad-job-start-fields", children: [_jsx("thead", { children: _jsx("tr", { children: fields.map(({ label }) => _jsx("th", { scope: "col", children: label }, label)) }) }), _jsx("tbody", { children: _jsx("tr", { children: fields.map(({ label, value }) => _jsx("td", { title: typeof value === 'string' ? value : undefined, children: value }, label)) }) })] }) }), error && _jsx("p", { className: "iad-job-start-error iad-error", role: "alert", children: error }), _jsx("footer", { className: "iad-job-start-actions", children: actions })] });
+}

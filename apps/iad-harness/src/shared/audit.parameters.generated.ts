@@ -2930,6 +2930,30 @@ export const auditStartParameters = {
     },
     "title": "AnalysisRolePrompts"
   },
+  "consistency_prompt": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "system_prompt": {
+        "oneOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "title": "System Prompt",
+        "required": true
+      },
+      "user_prompt": {
+        "type": "string",
+        "title": "User Prompt",
+        "required": true
+      }
+    },
+    "title": "AnalysisRolePrompts"
+  },
   "benchmark_build_id": {
     "oneOf": [
       {

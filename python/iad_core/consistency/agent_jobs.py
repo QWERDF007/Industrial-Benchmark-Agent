@@ -15,7 +15,7 @@ from iad_core.consistency.scopes import ConsistencyScopes
 from iad_core.dataset.registry import DatasetRegistry
 from iad_core.feature.profiles import ImageEncoders
 from iad_core.workbench.analysis_job_views import AnalysisJobViews
-from iad_core.workbench.module_settings import ConsistencySettingsValues, ModuleSettings
+from iad_core.workbench.module_settings import ModuleSettings
 from iad_core.workbench.job_models import JobExecutionError
 
 if TYPE_CHECKING:
@@ -40,9 +40,11 @@ class ConsistencyAgentJobs:
             return {**AnalysisJobViews(self.db).view(existing['run_id']), 'created': False}
         configured = ConsistencyCheckConfiguration.model_validate(configuration) if configuration is not None else self.configuration()
         overrides = submitted.model_dump(include=set(ConsistencyRetrievalSettings.model_fields), exclude_unset=True)
-        settings = ConsistencySettingsValues.model_validate({**configured.settings.model_dump(), **overrides})
-        retrieval = (ExactCandidatePolicy(max_exact_candidates=settings.max_exact_candidates) if settings.mode == 'exact'
-            else CombinedCandidatePolicy.model_validate(settings.model_dump(include=set(ConsistencyRetrievalSettings.model_fields))))
+        settings = configured.settings
+        retrieval_settings = ConsistencyRetrievalSettings.model_validate({
+            **settings.model_dump(include=set(ConsistencyRetrievalSettings.model_fields)), **overrides})
+        retrieval = (ExactCandidatePolicy(max_exact_candidates=retrieval_settings.max_exact_candidates) if retrieval_settings.mode == 'exact'
+            else CombinedCandidatePolicy.model_validate(retrieval_settings.model_dump()))
         scope = {'kind': 'datasets', 'dataset_ids': submitted.dataset_ids}
         scopes = ConsistencyScopes(self.db).freeze(submitted.subjects or scope, submitted.corpus_scope or scope)
         if not scopes.subjects.samples:
@@ -56,14 +58,14 @@ class ConsistencyAgentJobs:
         task_type = TASK_TYPES_BY_FORMAT[next(iter(formats.values()))]
         prompts = task_prompt_defaults(task_type)
         snapshot = ConsistencyCheckSnapshot(settings_revision=configured.settings_revision, retrieval=retrieval, scopes=scopes,
-            concurrency=settings.concurrency, whole_image_max_side=settings.whole_image_max_side,
+            concurrency=settings.concurrency, whole_image_max_side=submitted.whole_image_max_side,
             model_call_logging='native-v1', phase_logging='timeline-v1',
             model=settings.model,
             model_limits=settings.vision_limits,
             position_tolerance=settings.position_tolerance,
             annotation_classification='content-coverage-v1',
             roles=ConsistencyModelRoles.model_validate(roles or {}),
-            image_encoder=ImageEncoders(self.db).read().selection if settings.mode == 'combined' else None,
+            image_encoder=ImageEncoders(self.db).read().selection if retrieval.mode == 'combined' else None,
             dataset_formats=formats,
             policies={dataset_id: AnnotationPolicy.model_validate(registry.get(dataset_id).annotations.model_dump(
                 include=set(AnnotationPolicy.model_fields))) for dataset_id in dataset_ids},

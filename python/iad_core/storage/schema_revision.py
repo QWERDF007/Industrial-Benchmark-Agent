@@ -10,7 +10,7 @@ class SchemaRevision:
     def source_digest() -> str:
         root = Path(__file__).parent
         sources = set(root.glob('*schema*.py')) | {root / name for name in
-            ('database.py', 'deletion_indexes.py', 'call_payloads.py')}
+            ('database.py', 'deletion_indexes.py', 'call_payloads.py', 'job_deletion.py', 'job_artifacts.py')}
         digest = hashlib.sha256()
         for source in sorted(sources):
             digest.update(source.name.encode())

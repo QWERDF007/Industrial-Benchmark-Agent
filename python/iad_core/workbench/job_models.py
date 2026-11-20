@@ -92,7 +92,6 @@ class JobView(AnalysisModel):
     submitted_at: str
     started_at: Optional[str]
     finished_at: Optional[str]
-    deleted_at: Optional[str] = None
     model_name: Optional[str] = None
     model_profile: Optional[ModelProfileSnapshot] = None
     image_max_side: int | None = Field(default=None, ge=1)

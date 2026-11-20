@@ -15,20 +15,18 @@ from iad_core.storage.repositories import SampleRepository
 from iad_core.workbench.vision import VlmClient
 
 
-@pytest.mark.parametrize('module', ['consistency', 'audit'])
-def test_image_size_settings_are_optional_independent_and_strict(dataset, module):
+def test_audit_image_size_settings_are_optional_independent_and_strict(dataset):
     from iad_core.workbench.module_settings import ModuleSettings
     db, _, _ = dataset
     settings = ModuleSettings(db)
-    assert settings.read(module).settings.whole_image_max_side is None
-    saved = settings.save(dict(module=module, expected_revision=0, settings={'whole_image_max_side':512}))
-    assert settings.read(module) == saved
-    other = 'audit' if module == 'consistency' else 'consistency'
-    assert settings.read(other).settings.whole_image_max_side is None
+    assert settings.read('audit').settings.whole_image_max_side is None
+    saved = settings.save(dict(module='audit', expected_revision=0, settings={'whole_image_max_side':512}))
+    assert settings.read('audit') == saved
+    assert settings.read('knowledge').settings.whole_image_max_side is None
     for invalid in (0, -1, 1.5, True, '512'):
         with pytest.raises(ValueError):
-            settings.save(dict(module=module, expected_revision=1, settings={'whole_image_max_side':invalid}))
-    assert settings.save(dict(module=module, expected_revision=1, settings={'whole_image_max_side':None})).settings.whole_image_max_side is None
+            settings.save(dict(module='audit', expected_revision=1, settings={'whole_image_max_side':invalid}))
+    assert settings.save(dict(module='audit', expected_revision=1, settings={'whole_image_max_side':None})).settings.whole_image_max_side is None
 
 
 @pytest.mark.parametrize('bundled', [False, True])
@@ -119,20 +117,24 @@ def test_consistency_input_limit_is_frozen_for_all_group_views(dataset):
     from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
     from iad_core.consistency.agent_review import ConsistencyAgentReview
     from iad_core.consistency.agent_preparation import ConsistencyAgentPreparation
-    from iad_core.workbench.module_settings import ModuleSettings
     from iad_core.workbench.runtime import WorkbenchRuntime
     from tests.test_consistency_agent_preparation import wait_for_preparation
     db, _, config = dataset
-    settings = ModuleSettings(db)
-    settings.save(dict(module='consistency',expected_revision=0,settings={'whole_image_max_side':64}))
     runtime = WorkbenchRuntime(db)
     try:
         jobs = ConsistencyAgentJobs(runtime)
         anchor = config.dataset.id + ':dent.png'
-        run = jobs.start(dict(submission_id=str(uuid4()),dataset_ids=[config.dataset.id],mode='exact',subjects={'kind':'samples','sample_ids':[anchor]}))['run_id']
+        request = dict(submission_id=str(uuid4()),dataset_ids=[config.dataset.id],mode='exact',
+            whole_image_max_side=64,subjects={'kind':'samples','sample_ids':[anchor]})
+        run = jobs.start(request)['run_id']
         wait_for_preparation(ConsistencyAgentPreparation(runtime),run)
-        settings.save(dict(module='consistency',expected_revision=1,settings={'whole_image_max_side':128}))
         assert jobs.snapshot(run).whole_image_max_side == 64
+        assert jobs.start(request)['run_id'] == run
+        original = jobs.start(dict(submission_id=str(uuid4()),dataset_ids=[config.dataset.id],mode='exact'))['run_id']
+        assert jobs.snapshot(original).whole_image_max_side is None
+        for invalid in (0, -1, 1.5, True, '512'):
+            with pytest.raises(ValueError):
+                jobs.start(dict(request,submission_id=str(uuid4()),whole_image_max_side=invalid))
         jobs.session_created(run,anchor)
         candidates = jobs.retrieve(run,anchor)
         ConsistencyAgentReview(runtime).verify(run,anchor)

@@ -14,6 +14,17 @@ class ConflictCategory(StrEnum):
     POSITION = '位置差异'
 
 
+    @property
+    def inverse(self) -> 'ConflictCategory':
+        return CONFLICT_CATEGORY_INVERSES.get(self, self)
+
+
+CONFLICT_CATEGORY_INVERSES = {source: target for pair in (
+    (ConflictCategory.MISSING, ConflictCategory.EXTRA),
+    (ConflictCategory.MISSING_CONTENT, ConflictCategory.EXTRA_CONTENT),
+    (ConflictCategory.SPLIT, ConflictCategory.MERGE)) for source, target in (pair, pair[::-1])}
+
+
 @dataclass(frozen=True)
 class ConflictRule:
     label: str

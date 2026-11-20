@@ -1,4 +1,6 @@
 import json
+import hashlib
+from copy import deepcopy
 import numpy as np
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -10,7 +12,7 @@ from iad_core.consistency.agent_evidence import ConsistencyAgentEvidence
 from iad_core.consistency.agent_jobs import ConsistencyAgentJobs
 from iad_core.consistency.identity_geometry import ImageCorrespondence
 from iad_core.consistency.position import PositionComparison
-from iad_core.consistency.agent_review_models import AnchorVisualRequest, AnchorVisualResult, AnchorVisualStart
+from iad_core.consistency.agent_review_models import AnchorObservation, AnchorVisualRequest, AnchorVisualResult, AnchorVisualStart
 from iad_core.consistency.evidence_models import FrozenEvidence
 from iad_core.consistency.identity_models import CandidateIdentityRecord
 from iad_core.consistency.group_analysis_inputs import GroupAnalysisInputs
@@ -19,6 +21,7 @@ from iad_core.workbench.vision import GenerationRequest, VlmClient
 
 if TYPE_CHECKING:
     from iad_core.workbench.runtime import WorkbenchRuntime
+    from iad_core.consistency.agent_models import ConsistencyCheckSnapshot
 
 
 @dataclass(frozen=True)
@@ -39,43 +42,7 @@ class AnchorVisualInput:
         snapshot = ConsistencyAgentJobs(runtime).snapshot(run_id)
         from iad_core.consistency.identity import CandidateIdentity
         gates = {gate.candidate_id: gate for gate in CandidateIdentity(runtime).read(run_id, anchor_id).gates}
-        for identity, candidate in prepared.facts['candidates'].items():
-            gate = gates[identity]
-            candidate['identity'] = {'relation': gate.relation,
-                'geometry': gate.geometry.model_dump(mode='json', exclude_none=True) if gate.geometry else None}
-            candidate['gate'] = {'status':'eligible', 'revision':gate.revision,
-                'verified_region_pair_ids':[check.region_pair_id for check in gate.region_checks if check.visual_relation == 'same'],
-                'regions':[pair.model_dump(mode='json', include={'region_pair_id','source_annotations','main_window','candidate_window'})
-                    for pair in gate.region_pairs]}
-            if gate.dispute_checks:
-                candidate['gate']['dispute_checks'] = [check.model_dump(mode='json') for check in gate.dispute_checks]
-            matrix = np.eye(3) if gate.relation == 'pixel_identical' else np.asarray(gate.geometry.candidate_to_main)
-            mapping = ImageCorrespondence(matrix, gate.geometry)
-            source = next(source for source in prepared.facts['sources'].values() if source['sample_id'] == identity)
-            candidate['mapped_annotations'] = {annotation['annotation_id']: mapping.project(annotation['bbox']).tolist()
-                for annotation in source['annotations'] if annotation.get('bbox')}
-            main_source = next(source for source in prepared.facts['sources'].values() if source['sample_id'] == anchor_id)
-            main_boxes = {annotation['annotation_id']:annotation['bbox'] for annotation in main_source['annotations'] if annotation.get('bbox')}
-            mapped = {identity:[min(point[0] for point in points),min(point[1] for point in points),
-                max(point[0] for point in points),max(point[1] for point in points)]
-                for identity,points in candidate['mapped_annotations'].items()}
-            candidate['position_policy'] = snapshot.position_tolerance.model_dump(mode='json')
-            candidate['position_comparisons'] = [item.model_dump(mode='json') for item in PositionComparison.compare_annotations(
-                main_boxes,mapped,policy=snapshot.position_tolerance,
-                uncertainty_px=0 if gate.relation == 'pixel_identical' else gate.geometry.reprojection_error_px)]
-        for source in prepared.facts['sources'].values():
-            source.pop('quality_status', None)
-            source.pop('quality_source', None)
-            source['annotation_geometry'] = {annotation['annotation_id']: {
-                'width': annotation['bbox'][2] - annotation['bbox'][0],
-                'height': annotation['bbox'][3] - annotation['bbox'][1],
-                'area': (annotation['bbox'][2] - annotation['bbox'][0]) * (annotation['bbox'][3] - annotation['bbox'][1]),
-                'center': [(annotation['bbox'][0] + annotation['bbox'][2]) / 2, (annotation['bbox'][1] + annotation['bbox'][3]) / 2],
-                'visible_bbox': [max(0, annotation['bbox'][0]), max(0, annotation['bbox'][1]),
-                    min(source['original_size'][0], annotation['bbox'][2]), min(source['original_size'][1], annotation['bbox'][3])],
-                'out_of_frame': annotation['bbox'][0] < 0 or annotation['bbox'][1] < 0
-                    or annotation['bbox'][2] > source['original_size'][0] or annotation['bbox'][3] > source['original_size'][1]}
-                for annotation in source['annotations'] if annotation.get('bbox')}
+        cls.bind_identity(prepared.facts, snapshot, anchor_id, gates)
         views = {image.evidence.evidence_id: image for image in prepared.images}
         bundles = []
         references = {}
@@ -129,6 +96,76 @@ class AnchorVisualInput:
         evidence = {identity: runtime.consistency_service.evidence(candidate['comparison']['evidence_id'])
             for identity, candidate in prepared.facts['candidates'].items()}
         return cls(captured, prompt, context, bundles, response_type, snapshot.system_prompt, evidence, gates)
+
+    @staticmethod
+    def bind_identity(facts: dict, snapshot: 'ConsistencyCheckSnapshot', anchor_id: str,
+                      gates: dict[str, CandidateIdentityRecord]) -> None:
+        for identity, candidate in facts['candidates'].items():
+            gate = gates[identity]
+            candidate['identity'] = {'relation': gate.relation,
+                'geometry': gate.geometry.model_dump(mode='json', exclude_none=True) if gate.geometry else None}
+            candidate['gate'] = {'status':'eligible', 'revision':gate.revision,
+                'verified_region_pair_ids':[check.region_pair_id for check in gate.region_checks if check.visual_relation == 'same'],
+                'regions':[pair.model_dump(mode='json', include={'region_pair_id','source_annotations','main_window','candidate_window'})
+                    for pair in gate.region_pairs]}
+            if gate.dispute_checks:
+                candidate['gate']['dispute_checks'] = [check.model_dump(mode='json') for check in gate.dispute_checks]
+            matrix = np.eye(3) if gate.relation == 'pixel_identical' else np.asarray(gate.geometry.candidate_to_main)
+            mapping = ImageCorrespondence(matrix, gate.geometry)
+            source = next(source for source in facts['sources'].values() if source['sample_id'] == identity)
+            candidate['mapped_annotations'] = {annotation['annotation_id']: mapping.project(annotation['bbox']).tolist()
+                for annotation in source['annotations'] if annotation.get('bbox')}
+            main_source = next(source for source in facts['sources'].values() if source['sample_id'] == anchor_id)
+            main_boxes = {annotation['annotation_id']:annotation['bbox'] for annotation in main_source['annotations'] if annotation.get('bbox')}
+            mapped = {identity:[min(point[0] for point in points),min(point[1] for point in points),
+                max(point[0] for point in points),max(point[1] for point in points)]
+                for identity,points in candidate['mapped_annotations'].items()}
+            candidate['position_policy'] = snapshot.position_tolerance.model_dump(mode='json')
+            candidate['position_comparisons'] = [item.model_dump(mode='json') for item in PositionComparison.compare_annotations(
+                main_boxes,mapped,policy=snapshot.position_tolerance,
+                uncertainty_px=0 if gate.relation == 'pixel_identical' else gate.geometry.reprojection_error_px)]
+        for source in facts['sources'].values():
+            source.pop('quality_status', None)
+            source.pop('quality_source', None)
+            source['annotation_geometry'] = {annotation['annotation_id']: {
+                'width': annotation['bbox'][2] - annotation['bbox'][0],
+                'height': annotation['bbox'][3] - annotation['bbox'][1],
+                'area': (annotation['bbox'][2] - annotation['bbox'][0]) * (annotation['bbox'][3] - annotation['bbox'][1]),
+                'center': [(annotation['bbox'][0] + annotation['bbox'][2]) / 2, (annotation['bbox'][1] + annotation['bbox'][3]) / 2],
+                'visible_bbox': [max(0, annotation['bbox'][0]), max(0, annotation['bbox'][1]),
+                    min(source['original_size'][0], annotation['bbox'][2]), min(source['original_size'][1], annotation['bbox'][3])],
+                'out_of_frame': annotation['bbox'][0] < 0 or annotation['bbox'][1] < 0
+                    or annotation['bbox'][2] > source['original_size'][0] or annotation['bbox'][3] > source['original_size'][1]}
+                for annotation in source['annotations'] if annotation.get('bbox')}
+
+    @classmethod
+    def project(cls, runtime: 'WorkbenchRuntime', run_id: str, anchor_id: str, request: AnchorVisualStart,
+                original: AnchorObservation) -> AnchorVisualRequest:
+        from iad_core.consistency.identity import CandidateIdentity
+        candidate_id = request.candidate_ids[0]
+        checks = ConsistencyAgentJobs(runtime)
+        group = ConsistencyAgentEvidence(runtime).freeze(run_id, anchor_id, checkpoint=lambda: None)
+        member = next(member for member in group.members if member.image.sample_id == candidate_id)
+        evidence = runtime.consistency_service.evidence(member.comparison.evidence_id)
+        facts = deepcopy(original.request.facts)
+        sources = {source['sample_id']: (key, source) for key, source in facts['sources'].items()}
+        facts['anchor'] = {'sample_id': anchor_id, 'evidence_id': member.comparison.evidence_id, 'side': 'left'}
+        facts['candidates'] = {candidate_id: {'evidence_id': member.image.evidence_id, 'side': member.image.side,
+            'comparison': member.comparison.model_dump(mode='json')}}
+        facts['evidence'] = [{'evidence_id': evidence.result.evidence_id, 'result_id': evidence.result.result_id,
+            'source_states': evidence.source_states.model_dump(mode='json'),
+            'sources': {'left': sources[anchor_id][0], 'right': sources[candidate_id][0]},
+            'verification': {'relation': evidence.result.verification.relation}}]
+        facts['required_image_ids'] = {candidate_id: [sources[anchor_id][1]['evidence_id'],
+            sources[candidate_id][1]['evidence_id']]}
+        gates = {gate.candidate_id: gate for gate in CandidateIdentity(runtime).read(run_id, anchor_id).gates}
+        cls.bind_identity(facts, checks.snapshot(run_id), anchor_id, gates)
+        media = {view.evidence_id: view for view in original.request.media}
+        roots = facts['required_image_ids'][candidate_id]
+        ordered = [media[identity] for identity in roots] + [view for identity, view in media.items() if identity not in roots]
+        return AnchorVisualRequest(**request.model_dump(), anchor_id=anchor_id, facts=facts, media=ordered,
+            input_fingerprint=hashlib.sha256(json.dumps([original.request.input_fingerprint, anchor_id,
+                request.model_dump(mode='json'), facts], sort_keys=True).encode()).hexdigest())
 
     def plan(self, client: VlmClient) -> GenerationRequest[AnchorVisualResult]:
         from iad_core.consistency.annotation_inspection import AnnotationInspection

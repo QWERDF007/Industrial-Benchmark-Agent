@@ -19,7 +19,8 @@ export class ConsistencySummary {
     await this.host.create(input.session_id);
     await this.bridge.execute('audit_agent_report_session_created',identity,signal);
     const instruction=snapshot.consistency_summary_instruction;
-    const prompt=JSON.stringify({context:input.context,response_schema:input.response_schema});
+    const prompt=JSON.stringify({...(snapshot.consistency_summary_user_instruction
+      ?{instruction:snapshot.consistency_summary_user_instruction}:{}),context:input.context,response_schema:input.response_schema});
     await this.host.notice(input.session_id,{type:'iad/job',summary:'分析上游一致性问题',value:{instruction,prompt}});
     let output='';
     await this.host.withModel(input.session_id,async scope=>{

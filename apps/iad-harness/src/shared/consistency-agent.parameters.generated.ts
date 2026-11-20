@@ -9,11 +9,6 @@ export const consistencyAgentStartParameters = {
     "title": "Mode",
     "default": "combined"
   },
-  "min_similarity": {
-    "type": "number",
-    "title": "Min Similarity",
-    "default": 0.98
-  },
   "max_exact_candidates": {
     "type": "integer",
     "title": "Max Exact Candidates",
@@ -23,6 +18,11 @@ export const consistencyAgentStartParameters = {
     "type": "integer",
     "title": "Max Similar Candidates",
     "default": 10
+  },
+  "min_similarity": {
+    "type": "number",
+    "title": "Min Similarity",
+    "default": 0.99
   },
   "submission_id": {
     "type": "string",
@@ -89,6 +89,17 @@ export const consistencyAgentStartParameters = {
       }
     },
     "title": "IdentityPrompts"
+  },
+  "whole_image_max_side": {
+    "oneOf": [
+      {
+        "type": "integer"
+      },
+      {
+        "type": "null"
+      }
+    ],
+    "title": "Whole Image Max Side"
   },
   "subjects": {
     "oneOf": [

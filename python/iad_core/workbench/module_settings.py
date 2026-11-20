@@ -4,7 +4,7 @@ from pydantic import Field, model_validator
 
 from iad_core.audit.quality_models import AuditScoreWeights, AuditScope, ConsistencyScoreWeights
 from iad_core.advisory.analysis import AnalysisModel, NonBlankText
-from iad_core.consistency.models import ConsistencyRetrievalSettings
+from iad_core.consistency.models import ConsistencyRetrievalDefaults, DEFAULT_REVIEW_MIN_SIMILARITY
 from iad_core.consistency.position import PositionTolerancePolicy
 from iad_core.storage.database import Database
 from iad_core.workbench.model_profile import GenerationLimits, ModelLimits, ReasoningEffort
@@ -51,8 +51,7 @@ class AuditSettingsValues(ModuleSettingsValues):
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
 
 
-class ConsistencySettingsValues(ModuleSettingsValues, ConsistencyRetrievalSettings):
-    whole_image_max_side: ModelImageMaxSide = None
+class ConsistencySettingsValues(ModuleSettingsValues, ConsistencyRetrievalDefaults):
     concurrency: JobConcurrency = 1
     agent_limits: GenerationLimits = Field(default_factory=GenerationLimits)
     vision_limits: ModelLimits = Field(default_factory=lambda: ModelLimits(capacity_mode='vllm_tokenize'))
@@ -119,7 +118,8 @@ class ModuleSettings:
 
     def consistency_request(self, request: dict) -> dict:
         settings = self.read('consistency').settings
-        defaults = {**settings.model_dump(include={'mode', 'min_similarity'}), 'top_k': settings.max_similar_candidates}
+        defaults = {'mode':settings.mode, 'min_similarity':DEFAULT_REVIEW_MIN_SIMILARITY,
+            'top_k':settings.max_similar_candidates}
         return {**defaults, **request}
 
 

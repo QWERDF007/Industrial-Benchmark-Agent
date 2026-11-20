@@ -70,7 +70,7 @@ test('ready annotation review starts while another content comparison is still r
   const fixture=await createConsistencyAgentHost({candidateCount:9,withSimilarCandidate:true,
     modelRouting:{execute:async(operation,args,signal,dispatch)=>{
       if(operation==='consistency_agent_pair_review_many'&&!held){held=true;comparing.resolve();await release.promise;}
-      if(operation==='consistency_agent_audit'&&held)auditing.resolve();
+      if(operation==='consistency_agent_annotation_pair_review'&&held)auditing.resolve();
       return dispatch(operation,args,signal);
     }}});
   try{
@@ -91,7 +91,7 @@ test('connected images settle every reverse audit before publishing final result
   const fixture=await createConsistencyAgentHost({candidateCount:2,modelRouting:{execute:async(operation,args,signal,dispatch)=>{
     if(operation==='consistency_agent_finalize')assert.equal(audited.size,3,'A reverse audit can still dispute this result');
     const result=await dispatch(operation,args,signal);
-    if(operation==='consistency_agent_audit')audited.add(args.anchor_id);
+    if(operation==='consistency_agent_collect')audited.add(args.anchor_id);
     return result;
   }}});
   try{
@@ -164,34 +164,34 @@ test('mutual similar candidates share the one delivered content comparison', {ti
       .filter(context=>context.scope==='joint'||context.scope==='pairs');
     const comparedPairs=comparisons.reduce((count,context)=>count+(context.scope==='joint'?1:Object.keys(context.pairs).length),0);
     assert.equal(comparedPairs,pairKeys.size);
-    assert.ok(comparisons.every(context=>context.scope==='joint'||Object.keys(context.pairs).length<=4));
+    assert.ok(comparisons.every(context=>context.scope==='joint'));
     assert.equal(gates.length,comparedPairs*2);
     assert.ok(status.model_calls.filter(call=>call.schema_name.startsWith('IdentityDecision')).every(call=>call.phase==='VERIFYING_CONTENT'));
     assert.deepEqual(fixture.errors,[]);
   } finally {await fixture.close();}
 });
 
-test('content requests use at most four pairs while retaining every comparison',{timeout:120000},async(t)=>{
-  const fixture=await createConsistencyAgentHost({candidateCount:65,withSimilarCandidate:true,annotatedCandidates:true,
+test('content requests isolate every pair while retaining every comparison',{timeout:120000},async(t)=>{
+  const fixture=await createConsistencyAgentHost({candidateCount:9,withSimilarCandidate:true,annotatedCandidates:true,
     protocol:'openai-responses'});
   try{
     const job=await fixture.scheduler.start({submission_id:randomUUID(),dataset_ids:[fixture.datasetId]});
     await fixture.scheduler.whenIdle();
     const status=await fixture.bridge.execute('analysis_status',{run_id:job.run_id});
-    assert.equal(status.status,'COMPLETED',JSON.stringify(status.errors));assert.equal(status.completed,66);
+    assert.equal(status.status,'COMPLETED',JSON.stringify(status.errors));assert.equal(status.completed,10);
     const contexts=fixture.wires.map(body=>JSON.parse(body.messages.find(message=>message.role==='user').content[1].text))
       .filter(context=>context.scope==='pairs'||context.scope==='joint');
     const sizes=contexts.map(context=>context.scope==='pairs'?Object.keys(context.pairs).length:1);
-    assert.ok(sizes.includes(4),JSON.stringify({sizes}));assert.ok(sizes.every(size=>size<=4));
+    assert.ok(sizes.length);assert.ok(sizes.every(size=>size===1),JSON.stringify({sizes}));
     const {anchors}=await fixture.bridge.execute('consistency_agent_anchors',{run_id:job.run_id});
     const details=await Promise.all(anchors.map(anchor=>fixture.bridge.execute('consistency_agent_detail',
       {run_id:job.run_id,anchor_id:anchor.anchor_id})));
     const pairs=new Set(details.flatMap(detail=>detail.gates.filter(gate=>gate.source==='vision').map(gate=>gate.pair_key)));
     assert.equal(sizes.reduce((sum,size)=>sum+size,0),pairs.size);
-    assert.equal(contexts.length,Math.ceil(pairs.size/4),'Program-only pairs must not fragment visual batches');
+    assert.equal(contexts.length,pairs.size,'Each visual comparison must have its own request');
     const schemas=fixture.wires.map(body=>body.responses?.text.format.schema).filter(Boolean);
     const maxSchemaBytes=Math.max(...schemas.map(schema=>Buffer.byteLength(JSON.stringify(schema))));
-    assert.ok(maxSchemaBytes<12000,'The batch must share identical contracts instead of repeating them');
+    assert.ok(maxSchemaBytes<12000,'Each pair must use the same compact contract');
     t.diagnostic(JSON.stringify({maximum_pairs:Math.max(...sizes),maximum_schema_bytes:maxSchemaBytes,
       compared_pairs:pairs.size,requests:contexts.length}));
     assert.deepEqual(fixture.errors,[]);
@@ -224,13 +224,12 @@ test('local workers freeze each pair batch before it enters the model pool',{tim
   }finally{await fixture.close();}
 });
 
-test('a rejected capacity subrequest does not fail already delivered unrelated pairs',{timeout:45000},async()=>{
+test('a rejected pair request does not fail already delivered unrelated pairs',{timeout:45000},async()=>{
   let requests=0;
   const fixture=await createConsistencyAgentHost({candidateCount:15,withSimilarCandidate:true,
     annotatedCandidates:true,featureGroupSize:2,maxVisualInputs:16,onGeneration:async(body,response)=>{
       const context=JSON.parse(body.messages.find(message=>message.role==='user').content[1].text);
-      assert.equal(context.scope,'pairs');
-      assert.equal(Object.keys(context.pairs).length,2);
+      assert.equal(context.scope,'joint');
       if(++requests===2){
         response.writeHead(400,{'Content-Type':'application/json'});
         response.end(JSON.stringify({error:{type:'invalid_request_error',message:'Bad Request'}}));
@@ -241,26 +240,26 @@ test('a rejected capacity subrequest does not fail already delivered unrelated p
     const job=await fixture.scheduler.start({submission_id:randomUUID(),dataset_ids:[fixture.datasetId]});
     await fixture.scheduler.whenIdle();
     const status=await fixture.bridge.execute('analysis_status',{run_id:job.run_id});
-    assert.equal(requests,4,'An unknown HTTP 400 must not be automatically retried');
+    assert.equal(requests,8,'An unknown HTTP 400 must not be automatically retried');
     assert.equal(status.status,'PARTIAL');
-    assert.equal(status.completed,12,'The six delivered pairs must finish all twelve linked images');
-    assert.equal(status.failed,4,'Only images with an unresolved pair may fail');
+    assert.equal(status.completed,14,'The seven delivered pairs must finish all fourteen linked images');
+    assert.equal(status.failed,2,'Only images with an unresolved pair may fail');
     const {anchors}=await fixture.bridge.execute('consistency_agent_anchors',{run_id:job.run_id});
     const successful=new Set();
     for(const anchor of anchors){
       const detail=await fixture.bridge.execute('consistency_agent_detail',{run_id:job.run_id,anchor_id:anchor.anchor_id});
       for(const gate of detail.gates)if(gate.source==='vision'&&gate.execution_status==='completed')successful.add(anchor.anchor_id);
     }
-    assert.equal(successful.size,12);
+    assert.equal(successful.size,14);
     assert.ok(anchors.filter(anchor=>successful.has(anchor.anchor_id)).every(anchor=>anchor.state==='COMPLETED'));
     assert.equal(status.model_calls.filter(call=>call.operation==='generate'&&call.http_status===400).length,1);
     await fixture.scheduler.resume(job.run_id);
     await fixture.scheduler.whenIdle();
     const recovered=await fixture.bridge.execute('analysis_status',{run_id:job.run_id});
     assert.equal(recovered.status,'COMPLETED');assert.equal(recovered.completed,16);assert.equal(recovered.failed,0);
-    assert.equal(requests,5,'Explicit recovery must reuse all successful comparisons');
+    assert.equal(requests,9,'Explicit recovery must reuse all successful comparisons');
     const delivered=recovered.model_calls.filter(call=>call.operation==='generate'&&!call.error);
-    assert.equal(delivered.length,4);
+    assert.equal(delivered.length,8);
     assert.equal(new Set(delivered.flatMap(call=>call.pair_keys)).size,8);
     assert.deepEqual(fixture.errors,[]);
   }finally{await fixture.close();}

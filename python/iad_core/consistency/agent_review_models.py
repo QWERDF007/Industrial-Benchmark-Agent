@@ -21,7 +21,7 @@ VISUAL_REQUEST_ID_RULE = (
 class AnchorVisualStart(AnalysisModel):
     request_id: Identifier = Field(description=VISUAL_REQUEST_ID_RULE)
     fingerprint: Digest = Field(description='上下文提供的当前冻结清单指纹。')
-    candidate_ids: list[Identifier] = Field(min_length=1, description='完整使用上下文中一个冻结页的候选集合，不拆页、不跨页拼接。')
+    candidate_ids: list[Identifier] = Field(min_length=1, description='本次图像对中的唯一候选；每对图像独立审核。')
     question: NonBlankText
     windows: list[VisualWindow] = Field(default_factory=list, exclude=True)
     gate_revisions: dict[str, int] = Field(default_factory=dict)
@@ -74,10 +74,20 @@ class AnchorVisualRequest(AnchorVisualStart):
     facts: dict
 
 
+class PairObservationSource(AnalysisModel):
+    pair_key: Identifier
+    observation_id: Identifier
+    anchor_id: Identifier
+    candidate_id: Identifier
+    reversed: bool = False
+    call_ids: list[Identifier] = Field(default_factory=list)
+
+
 class AnchorObservation(AnalysisModel):
     observation_id: Identifier
     request: AnchorVisualRequest
     result: AnchorVisualResult
+    shared_source: PairObservationSource | None = None
 
 
 class AnchorDraftSubmission(AnalysisModel):

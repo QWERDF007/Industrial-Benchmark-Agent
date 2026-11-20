@@ -29,7 +29,7 @@ class JobSnapshots:
                 rows = conn.execute(f"""WITH owned AS MATERIALIZED (
                     SELECT DISTINCT child_id job_id FROM job_ownership_edges), visible AS (
                     SELECT id,job_id,job_type,status,json_extract(payload_json,'$.root_run_id') root_run_id
-                    FROM job_runs j WHERE job_id NOT IN (SELECT job_id FROM owned) AND deleted_at IS NULL
+                    FROM job_runs j WHERE job_id NOT IN (SELECT job_id FROM owned)
                     AND job_type IN ({placeholders}) AND EXISTS(
                         SELECT 1 FROM job_dataset_scopes s WHERE s.source_id=j.job_id AND s.dataset_id=?))
                     SELECT job_id,root_run_id FROM visible WHERE id IN (
@@ -80,7 +80,7 @@ class JobSnapshots:
         values = {**request, **payload, 'request': request, "run_id": run_id, "task_id": row["task_id"], "job_type": row["job_type"],
                 "status": row["status"], "message": row["message"], "started_at": row["started_at"],
                 "submitted_at": payload.get('submitted_at', row['created_at']), "queue_position": position,
-                "finished_at": row["finished_at"], "progress": row["progress"], "deleted_at": row['deleted_at'],
+                "finished_at": row["finished_at"], "progress": row["progress"],
                 "cancel_requested": payload.get("cancel_requested", False),
                 "unprocessed": payload["total_samples"] - payload["completed"] - payload["failed"],
                 "model_calls": [call.model_dump() for call in ModelCalls(self.db).list(run_id,connection=connection)] if include_calls else []}

@@ -14,11 +14,6 @@ from iad_core.consistency.identity_regions import IdentityRegionPair, IdentityRe
 
 ContentRelation = Literal['pixel_identical', 'transformed_same_content', 'content_different', 'unverified']
 PAIR_REVIEW_BATCH_SIZE = 32
-PAIR_REVIEW_MIN_BATCH_SIZE = 2
-PAIR_REVIEW_MEDIA_BYTES = 48 * 1024 * 1024
-PAIR_REVIEW_REGION_BUDGET = 96
-IDENTITY_VISUAL_PAIR_LIMIT = 4
-IDENTITY_VISUAL_IMAGE_LIMIT = 24
 
 
 def candidate_pair_key(anchor_id: str, candidate_id: str) -> str:

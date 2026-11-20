@@ -57,6 +57,41 @@ def test_consistency_job_imports_upstream_without_independent_image_sessions(nat
     assert jobs.start(request, agent=role)['created'] is False
 
 
+def test_consistency_scope_freezes_system_and_user_prompts_for_history(native_audit):
+    from iad_core.audit.operations import audit_job_prompts
+    jobs, dataset_id, upstream_id, role = native_audit
+    ModuleSettings(jobs.db).save(dict(module='audit',expected_revision=1,settings={'audit_scope':'consistency'}))
+    prompt = dict(system_prompt='根据冻结记录判断标注质量。',user_prompt='优先说明实例缺失的实际影响。')
+    request = dict(submission_id=str(uuid4()),subset_ids=[dataset_id],consistency_job_id=upstream_id,
+        consistency_prompt=prompt)
+    run_id = jobs.start(request,agent=role)['run_id']
+    snapshot = jobs.snapshot(run_id)
+    assert snapshot.consistency_summary_instruction == prompt['system_prompt']
+    assert snapshot.consistency_summary_user_instruction == prompt['user_prompt']
+    assert audit_job_prompts(dict(run_id=run_id),jobs.db.db_path)['sections'] == [
+        dict(title='系统提示词',text=prompt['system_prompt']),dict(title='用户提示词',text=prompt['user_prompt'])]
+    assert jobs.start(request,agent=role)['run_id'] == run_id
+    for invalid in (dict(prompt,system_prompt=None),dict(prompt,system_prompt=' '),dict(prompt,user_prompt=' ')):
+        with pytest.raises(ValueError):
+            jobs.start(dict(request,submission_id=str(uuid4()),consistency_prompt=invalid),agent=role)
+
+
+def test_existing_consistency_audit_keeps_its_original_single_prompt(native_audit):
+    import json
+    from iad_core.audit.operations import audit_job_prompts
+    jobs, dataset_id, upstream_id, role = native_audit
+    run_id = jobs.start(dict(submission_id=str(uuid4()),subset_ids=[dataset_id],consistency_job_id=upstream_id),agent=role)['run_id']
+    snapshot = jobs.snapshot(run_id).model_dump(mode='json')
+    snapshot['settings']['audit_scope'] = 'consistency'
+    snapshot['consistency_summary_instruction'] = '本作业冻结的原有分析要求。'
+    snapshot.pop('consistency_summary_user_instruction',None)
+    with jobs.db.connection() as connection:
+        connection.execute('UPDATE audit_workflow_runs SET snapshot_json=? WHERE job_id=?',
+            (json.dumps(snapshot),run_id))
+    assert audit_job_prompts(dict(run_id=run_id),jobs.db.db_path)['sections'] == [
+        dict(title='一致性问题分析提示词',text='本作业冻结的原有分析要求。')]
+
+
 def test_consistency_scope_keeps_imported_samples_and_source_status_visible(native_audit):
     from iad_core.audit.queries import AuditQueries
     from iad_core.workbench.audit_result_models import AuditSampleQuery

@@ -220,6 +220,9 @@ def audit_job_prompts(args, db_path):
             ('system_prompt','图级系统提示词'),('instruction','图级用户提示词'),('report_instruction','报告用户提示词'))])
     snapshot=state.snapshot(args['run_id'])
     if snapshot.settings.audit_scope == 'consistency':
+        if snapshot.consistency_summary_user_instruction is not None:
+            return dict(sections=[dict(title='系统提示词',text=snapshot.consistency_summary_instruction),
+                dict(title='用户提示词',text=snapshot.consistency_summary_user_instruction)])
         return dict(sections=[dict(title='一致性问题分析提示词',text=snapshot.consistency_summary_instruction)])
     return dict(sections=[dict(title=title,text=text or '') for title,text in (
         ('主 Agent 系统提示词',snapshot.master_prompt.system_prompt),('主 Agent 用户提示词',snapshot.master_prompt.user_prompt),

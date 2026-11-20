@@ -29,7 +29,7 @@ if (mode === 'commit') {
     async session_id => imageSessionPath(path.join(root, 'sessions'), await bridge.execute('consistency_agent_session_location', {session_id})));
   const ctx = new Context();
   const providers = new NativeProviders(() => ctx);
-  const reviewer = new ConsistencyAnchorReviewer(bridge, host, providers);
+  const reviewer = new ConsistencyAnchorReviewer(bridge, host);
   const errors = [];
   const scheduler = new ConsistencyCheckScheduler(bridge, host, providers, task => reviewer.review(task), error => errors.push(String(error)));
   try {
